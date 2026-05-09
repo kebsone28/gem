@@ -139,7 +139,7 @@ export default function Login() {
         orgConfigResp,
         userPayload?.permissions
       );
-      navigate('/dashboard');
+      navigate('/home');
     } catch (err: any) {
       setError(getApiErrorMessage(err, 'Identifiant ou mot de passe incorrect.'));
     } finally {
@@ -171,7 +171,7 @@ export default function Login() {
         user.organizationConfig,
         user.permissions
       );
-      navigate('/dashboard');
+      navigate('/home');
     } catch {
       setError('Réponse de sécurité incorrecte.');
     } finally {

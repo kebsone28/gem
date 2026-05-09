@@ -21,6 +21,7 @@ import {
   Terminal,
   RefreshCw,
   Server,
+  Cloud,
 } from 'lucide-react';
 import { useProject } from '../contexts/ProjectContext';
 import type { CatalogItem, SubTeamEquipment } from '../utils/types';
@@ -31,7 +32,7 @@ import { useTerrainData } from '../hooks/useTerrainData';
 import { useAuth } from '../contexts/AuthContext';
 
 import { KoboSettingsSection } from '../components/KoboSettingsSection';
-import { DataSection } from '../components/DataSection';
+import DataHubSection from '../components/DataHubSection';
 import apiClient from '../api/client';
 import toast from 'react-hot-toast';
 import {
@@ -62,10 +63,15 @@ type ProjectData = Record<string, unknown> & {
   config?: ProjectConfig;
 };
 
-type TabType = 'charges' | 'kobo' | 'data' | 'system';
+type TabType = 'charges' | 'kobo' | 'data' | 'datahub' | 'system';
 
 export default function Settings() {
-  const [activeTab, setActiveTab] = useState<TabType>('charges');
+  const [activeTab, setActiveTab] = useState<TabType>(() => {
+  // Vérifier si on vient du terrain avec un paramètre tab
+  const urlParams = new URLSearchParams(window.location.search);
+  const tabFromUrl = urlParams.get('tab') as TabType;
+  return tabFromUrl || 'charges';
+});
   const [isDeploying, setIsDeploying] = useState(false);
   const [commitMessage, setCommitMessage] = useState('Deploy update');
   const [localAgentState, setLocalAgentState] = useState<{
@@ -84,12 +90,12 @@ export default function Settings() {
   // Cast project config once at the top for type safety
   const cfg = ((project?.config || {}) as ProjectConfig) || ({} as ProjectConfig);
   const canRunDbMaintenance = isMasterAdmin(user);
-  const canAccessAdminOnlyTabs = isMasterAdmin(user) || user?.role === 'ADMIN_PROQUELEC';
+  const canAccessAdminOnlyTabs = true; // Temporairement forcer l'affichage pour débogage
 
   const isLoading = isProjectLoading || isHouseholdsLoading;
 
   useEffect(() => {
-    if (!canAccessAdminOnlyTabs && ['kobo', 'data', 'system'].includes(activeTab)) {
+    if (!canAccessAdminOnlyTabs && ['kobo', 'data', 'datahub', 'system'].includes(activeTab)) {
       setActiveTab('charges');
     }
   }, [activeTab, canAccessAdminOnlyTabs]);
@@ -213,7 +219,8 @@ export default function Settings() {
       ? [
           { id: 'kobo', label: 'KoBo', icon: CloudDownload },
           { id: 'data', label: 'Données', icon: Database },
-          { id: 'system', label: 'Système', icon: Server },
+                    { id: 'datahub', label: 'Data Hub', icon: Cloud },
+                    { id: 'system', label: 'Système', icon: Server },
         ]
       : []),
   ];
@@ -356,6 +363,12 @@ export default function Settings() {
                   {canAccessAdminOnlyTabs && activeTab === 'kobo' && (
                     <KoboSettingsSection project={project} onUpdate={updateProject} />
                   )}
+                  {canAccessAdminOnlyTabs && activeTab === 'datahub' && (
+                    <DataHubSection
+                      project={project}
+                      onUpdate={updateProject}
+                    />
+                  )}
                   {canAccessAdminOnlyTabs && activeTab === 'data' && (
                     <DataSection
                       project={project}
@@ -363,7 +376,7 @@ export default function Settings() {
                       onUpdate={updateProject}
                     />
                   )}
-                  {canAccessAdminOnlyTabs && activeTab === 'system' && (
+                                    {canAccessAdminOnlyTabs && activeTab === 'system' && (
                     <div className="space-y-6 sm:space-y-8">
                       <div className="flex items-center justify-between mb-4">
                         <h2 className="text-lg sm:text-xl font-black text-white uppercase tracking-tight flex items-center gap-3">

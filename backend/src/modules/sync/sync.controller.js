@@ -595,10 +595,12 @@ export const syncKobo = async (req, res) => {
 
         try {
         console.log(`[SYNC-KOBO] 🚀 Triggered by User: ${req.user.id} for Org: ${organizationId}`);
+        console.log(`[SYNC-KOBO] Request body:`, req.body);
 
         // --- RESOLVE TARGET PROJECT & ZONE ---
         let defaultZoneId = req.body.zoneId || null;
         const targetProjectId = req.body.projectId;
+        console.log(`[SYNC-KOBO] targetProjectId: ${targetProjectId}`);
         let targetProject = null;
 
         if (targetProjectId) {
@@ -635,13 +637,17 @@ export const syncKobo = async (req, res) => {
         }
 
         // Use the proper kobo.service (has KOBO_TOKEN from .env)
+        console.log(`[SYNC-KOBO] Importing kobo.service...`);
         const { syncKoboToDatabase } = await import('../../services/kobo.service.js');
+        console.log(`[SYNC-KOBO] kobo.service imported successfully.`);
         
         // --- FORCE FULL SYNC IF REQUESTED ---
         const force = req.body.force === true;
         const lastSyncDate = force ? new Date(0) : null; // Date(0) = 1970, force tout reprendre
 
+        console.log(`[SYNC-KOBO] Calling syncKoboToDatabase with:`, { organizationId, defaultZoneId, lastSyncDate, projectId: targetProject.id, userId: req.user.id });
         const results = await syncKoboToDatabase(organizationId, defaultZoneId, lastSyncDate, targetProject.id, req.user.id);
+        console.log(`[SYNC-KOBO] syncKoboToDatabase results:`, results);
 
         // Sync Log
         try {
@@ -676,7 +682,17 @@ export const syncKobo = async (req, res) => {
         }
     } catch (error) {
         console.error('[SYNC-KOBO-ERROR]:', error.message);
-        res.status(500).json({ error: 'Kobo synchronization failed', message: error.message });
+        const statusCode = error.statusCode || 500;
+        
+        let errorType = 'Kobo synchronization failed';
+        if (statusCode === 400) errorType = 'Configuration requise';
+        if (statusCode === 401) errorType = 'Problème d\'authentification KoBo';
+        if (statusCode === 503) errorType = 'Serveur KoBo indisponible';
+
+        res.status(statusCode).json({ 
+            error: errorType, 
+            message: error.message 
+        });
     }
 };
 

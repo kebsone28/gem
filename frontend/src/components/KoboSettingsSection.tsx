@@ -151,8 +151,9 @@ export function KoboSettingsSection({ project, onUpdate }: { project: any; onUpd
                     } else {
                       toast.error('Échec de la connexion.', { id: 'kobo-test' });
                     }
-                  } catch (err) {
-                    toast.error('Erreur serveur lors du test.', { id: 'kobo-test' });
+                  } catch (err: any) {
+                    const errorMsg = err.response?.data?.message || err.response?.data?.error || err.message;
+                    toast.error(`Erreur : ${errorMsg}`, { id: 'kobo-test' });
                   }
                 }}
                 className="mt-4 flex items-center gap-2 text-indigo-400 hover:text-indigo-300 text-[10px] font-black uppercase tracking-[0.2em] transition-colors"

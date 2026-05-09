@@ -11,12 +11,19 @@ import {
   acceptMentorTrainingEntry,
   findMentorTrainingMatch
 } from './assistant.controller.js';
+import { analyzeQuery, executeAction } from './AgenticController.js';
+import { getVpsStatus } from './vpsStatus.controller.js';
+
 
 const router = Router();
 
 router.use(authProtect);
 
 router.post('/query', handleQuery);
+router.post('/agent/query', analyzeQuery);
+router.post('/agent/execute', executeAction);
+router.get('/vps/status', getVpsStatus);
+
 router.post('/mentor/query', handleMentorQuery);
 router.get('/training', listMentorTrainingEntries);
 router.post('/training', saveMentorTrainingEntry);

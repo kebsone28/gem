@@ -76,7 +76,9 @@ export async function fetchKoboSubmissions(token, assetUid, since = null) {
     const finalAssetUid = assetUid || KOBO_FORM_ID;
 
     if (!finalToken || !finalAssetUid) {
-        throw new Error('KOBO_TOKEN ou KOBO_FORM_ID non configurés (ni en variable d\'env, ni dans le projet).');
+        const error = new Error('Configuration Kobo manquante (Token ou ID de formulaire non renseigné dans les paramètres du projet).');
+        error.statusCode = 400;
+        throw error;
     }
 
     let allResults = [];
@@ -111,7 +113,20 @@ export async function fetchKoboSubmissions(token, assetUid, since = null) {
                 });
 
                 if (!response.ok) {
-                    throw new Error(`KoboToolbox API error ${response.status}`);
+                    let specificMsg = `KoboToolbox API error ${response.status}`;
+                    if (response.status === 503) specificMsg = "Le serveur KoBoToolbox est temporairement indisponible (Erreur 503). Veuillez réessayer plus tard.";
+                    if (response.status === 401) specificMsg = "Identifiants KoBo invalides (Token API incorrect).";
+                    if (response.status === 404) specificMsg = "Formulaire KoBo introuvable (Vérifiez l'Asset UID).";
+                    
+                    const error = new Error(specificMsg);
+                    if (response.status === 401 || response.status === 403) {
+                        error.statusCode = 401;
+                    } else if (response.status === 503) {
+                        error.statusCode = 503;
+                    } else {
+                        error.statusCode = 400;
+                    }
+                    throw error;
                 }
 
                 data = await response.json();
@@ -120,7 +135,9 @@ export async function fetchKoboSubmissions(token, assetUid, since = null) {
                 retries--;
                 console.warn(`[KOBO-SYNC] ⚠️ Échec du téléchargement Kobo (reste ${retries} tentatives) : ${error.message}`);
                 if (retries === 0) {
-                    throw new Error(`KoboToolbox API error après 3 tentatives : ${error.message}`);
+                    const finalError = new Error(`KoboToolbox API error après 3 tentatives : ${error.message}`);
+                    finalError.statusCode = error.statusCode || 400;
+                    throw finalError;
                 }
                 // Attente exponentielle (2s, 4s...)
                 await delay((3 - retries) * 2000);

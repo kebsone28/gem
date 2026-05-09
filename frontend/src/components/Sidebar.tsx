@@ -27,6 +27,7 @@ import {
   MessagesSquare,
   PanelLeftClose,
   PanelLeftOpen,
+  Brain,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSync } from '../hooks/useSync';
@@ -281,15 +282,23 @@ export default function Sidebar() {
         to: '/admin/security',
         icon: ShieldCheck,
         label: 'Sécurité',
-        title: 'Journal d’audit et contrôles de sécurité avancés',
+        title: 'Journal d\'audit et contrôles de sécurité avancés',
         permission: PERMISSIONS.GERER_PARAMETRES,
+        category: 'SYSTÈME',
+      },
+      {
+        to: '/admin/ai-config',
+        icon: Brain,
+        label: 'Configuration IA',
+        title: 'Configuration du cerveau IA et auto-entraînement',
+        visible: isMaster,
         category: 'SYSTÈME',
       },
       {
         to: '/aide',
         icon: HelpCircle,
         label: "Centre d'Aide",
-        title: 'Besoin d’un guide ? Consultez notre documentation complète',
+        title: 'Besoin d\'un guide ? Consultez notre documentation complète',
         category: 'SYSTÈME',
       },
     ],

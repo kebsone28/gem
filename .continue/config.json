@@ -1,0 +1,52 @@
+{
+  "models": [
+    {
+      "title": "🤖 GEM VPS (Ollama - qwen2.5-coder:7b)",
+      "provider": "ollama",
+      "model": "qwen2.5-coder:7b",
+      "apiBase": "http://localhost:11434",
+      "contextLength": 8192,
+      "description": "IA locale installée sur le VPS gem.proquelec.sn par votre fournisseur. Modèle Qwen 2.5 Coder optimisé pour le développement."
+    },
+    {
+      "title": "⚡ GEM VPS (Ollama - llama3)",
+      "provider": "ollama",
+      "model": "llama3",
+      "apiBase": "http://localhost:11434",
+      "contextLength": 8192,
+      "description": "Modèle Llama3 généraliste - pour les questions non techniques."
+    }
+  ],
+  "tabAutocompleteModel": {
+    "title": "Autocomplete (qwen2.5-coder)",
+    "provider": "ollama",
+    "model": "qwen2.5-coder:7b",
+    "apiBase": "http://localhost:11434"
+  },
+  "embeddingsProvider": {
+    "provider": "ollama",
+    "model": "nomic-embed-text",
+    "apiBase": "http://localhost:11434"
+  },
+  "contextProviders": [
+    { "name": "code" },
+    { "name": "docs" },
+    { "name": "diff" },
+    { "name": "terminal" },
+    { "name": "problems" },
+    { "name": "folder" },
+    { "name": "codebase" }
+  ],
+  "slashCommands": [
+    {
+      "name": "share",
+      "description": "Export the current chat session to markdown"
+    },
+    {
+      "name": "commit",
+      "description": "Generate a git commit message"
+    }
+  ],
+  "allowAnonymousTelemetry": false,
+  "docs": []
+}

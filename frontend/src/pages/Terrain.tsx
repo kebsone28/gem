@@ -10,7 +10,7 @@ import { useAuth } from '../contexts/AuthContext';
 const MapComponent = React.lazy(() => import('../components/terrain/MapComponent'));
 import type { Household } from '../utils/types';
 import { motion, AnimatePresence } from 'framer-motion';
-import { DataHubModal } from '../components/terrain/DataHubModal';
+
 import { useProject } from '../contexts/ProjectContext';
 import { useSync } from '../contexts/SyncContext';
 import { useLogistique } from '../hooks/useLogistique';
@@ -829,7 +829,7 @@ const Terrain: React.FC = () => {
         statusOptions={terrainStatusOptions}
         project={project}
         onSync={handleManualSync}
-        onOpenDataHub={() => setPanel('datahub')}
+        onOpenDataHub={() => { window.location.href = '/settings?tab=datahub'; }}
         viewMode={viewMode}
         onViewModeChange={setViewMode}
         onRecenter={handleRecenterOnUser}
@@ -932,9 +932,6 @@ const Terrain: React.FC = () => {
         <div className="z-[60] pointer-events-auto">
           <MapRegionDownload onClose={closePanel} />
         </div>
-      )}
-      {terrainFeatures.dataHub && (
-        <DataHubModal isOpen={activePanel === 'datahub'} onClose={closePanel} />
       )}
 
       {selectedHousehold && (

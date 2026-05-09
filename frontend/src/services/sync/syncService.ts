@@ -152,7 +152,16 @@ async function pullUpdates(): Promise<void> {
 
 /** Trigger server-side Kobo external sync */
 async function triggerKoboSync(): Promise<void> {
+  const { user } = useAuthStore.getState();
   const activeProjectId = safeStorage.getItem('active_project_id');
+  
+  // Guard: Only sync if user has permission to avoid 403 noise
+  const hasKoboPerm = user?.permissions?.includes('acces_terminal_kobo');
+  if (!hasKoboPerm) {
+    logger.debug('SYNC', 'Skipping Kobo sync: insufficient permissions');
+    return;
+  }
+
   logger.debug('SYNC', 'Triggering Kobo external sync');
   try {
     let payload: Record<string, string> = {};

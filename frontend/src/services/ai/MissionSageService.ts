@@ -21,6 +21,18 @@ import {
   type MissionSageSessionMemory,
 } from './missionSageMemory';
 import { findUniversalQR as findUniversalMissionSageQR } from './missionSageResponses';
+import {
+  type ReponseIAEnrichie,
+  type VerdictType,
+  type SeverityType,
+  type DomaineTechnique,
+  type ReferenceCitee,
+  type RisqueIdentifie,
+  type EtapeProcedure,
+  type DefinitionTechniqueEnrichie,
+  type FicheControleTerrain,
+} from './referentialTypes';
+import { enrichResponse } from './responseEnricher';
 import logger from '../../utils/logger';
 
 // ─────────────────────────────────────────────
@@ -62,7 +74,9 @@ export interface ExpertControlSheet {
   immediateAction?: string;
 }
 
+// Type enrichi pour les réponses IA avec métadonnées détaillées
 export interface AIResponse {
+  // Champs existants maintenus pour compatibilité
   message: string;
   type: 'info' | 'success' | 'warning' | 'error' | 'user';
   actionLabel?: string;
@@ -70,11 +84,29 @@ export interface AIResponse {
   actionType?: 'nav' | 'download_report' | 'download_contract';
   images?: { url: string; caption: string }[];
   smartReplies?: string[];
-  verdict?: 'Conforme' | 'Conforme sous réserve' | 'Non conforme' | 'A verifier';
-  severity?: 'critique' | 'majeure' | 'mineure' | 'information';
+  verdict?: VerdictType;
+  severity?: SeverityType;
   recommendedAction?: string;
-  controlSheet?: ExpertControlSheet;
+  controlSheet?: ExpertControlSheet | FicheControleTerrain;
   _engine?: 'RULES' | 'CLAUDE' | 'RULES_FALLBACK' | 'CLAUDE_FALLBACK' | 'VISION' | 'VISION_ERROR';
+  
+  // Nouveaux champs enrichis (optionnels pour compatibilité ascendante)
+  domaine?: DomaineTechnique;
+  referencesCitees?: ReferenceCitee[];
+  risquesIdentifies?: RisqueIdentifie[];
+  etapesProcedure?: EtapeProcedure[];
+  definitionTechnique?: DefinitionTechniqueEnrichie;
+  contexte?: {
+    roleUtilisateur?: string;
+    moduleActif?: string;
+    donneesContextuelles?: Record<string, unknown>;
+  };
+  meta?: {
+    confiance?: number;
+    sources?: string[];
+    version?: string;
+    dateGeneration?: string;
+  };
 }
 
 type SessionMemory = MissionSageSessionMemory;
@@ -685,17 +717,24 @@ function extractExpertMetadata(message: string): Pick<
   };
 }
 
-function enrichExpertMetadata(response: AIResponse): AIResponse {
+function enrichExpertMetadata(response: AIResponse, user?: any): AIResponse {
+  // Si la réponse a déjà des métadonnées enrichies, la retourner
   if (response.verdict || response.severity || response.recommendedAction || response.controlSheet) {
-    return response;
+    return enrichResponse(response, {
+      roleUtilisateur: user?.role,
+    });
   }
 
   const expertMetadata = extractExpertMetadata(response.message);
 
-  return {
+  const enriched = {
     ...response,
     ...expertMetadata,
   };
+
+  return enrichResponse(enriched, {
+    roleUtilisateur: user?.role,
+  });
 }
 
 const CATEGORY_DISPLAY_NAME: Record<string, string> = {
@@ -850,19 +889,17 @@ function buildGemSaasWorkRedirect(user?: any): AIResponse {
 
 async function logMissionSageLearningEvent(
   query: string,
-  user: any,
-  context: 'rules_fallback' | 'scope_redirect' | 'work_redirect'
+  user: any
 ): Promise<void> {
   try {
     await db.ai_learning_logs.add({
       query,
       userId: user?.email || user?.id || 'anonymous',
       role: user?.role || 'UNKNOWN',
-      timestamp: new Date(),
-      context,
+      timestamp: Date.now(),
     });
   } catch (err) {
-    logger.warn('[MissionSage] Learning log failed', { context, err });
+    logger.warn('[MissionSage] Learning log failed', { err });
   }
 }
 
@@ -1743,13 +1780,13 @@ async function runRulesEngine(
 
   const hasBusinessIntent = hasIntentIn(intent, BUSINESS_INTENTS);
   if (!hasBusinessIntent && hasIntentIn(intent, OFF_TOPIC_INTENTS)) {
-    await logMissionSageLearningEvent(query, user, 'scope_redirect');
+    await logMissionSageLearningEvent(query, user);
     const scoped = buildGemSaasScopeRedirect(user);
     return { ...scoped, message: pfx(scoped.message) };
   }
 
   if (!hasBusinessIntent && hasIntentIn(intent, WORK_SUPPORT_INTENTS)) {
-    await logMissionSageLearningEvent(query, user, 'work_redirect');
+    await logMissionSageLearningEvent(query, user);
     const scoped = buildGemSaasWorkRedirect(user);
     return { ...scoped, message: pfx(scoped.message) };
   }
@@ -2710,7 +2747,7 @@ async function orchestrate(
     const res = await runRulesEngine(query, user, state, memory);
     if (res) return res;
     // Audit failure
-    await logMissionSageLearningEvent(query, user, 'rules_fallback');
+    await logMissionSageLearningEvent(query, user);
     return { ...DEFAULT_FALLBACK, smartReplies: getSmartSuggestions(query).slice(0, 4) };
   }
 
@@ -2786,7 +2823,7 @@ export const missionSageService = {
       memory.contextHistory.push({ role: 'assistant', content: response.message });
     }
     saveMemory(userId, memory);
-    return enrichExpertMetadata(ensureSmartReplies(response, query));
+    return enrichExpertMetadata(ensureSmartReplies(response, query), user);
   },
 
   async getProactiveMessage(user: User, state: AIState): Promise<AIResponse | null> {

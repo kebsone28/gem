@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React from 'react';
+import { motion } from 'framer-motion';
 import {
   RefreshCw,
   Database,
@@ -150,56 +151,102 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   ];
 
   return (
-    <section className="relative overflow-hidden rounded-[1.7rem] border border-white/10 bg-[linear-gradient(180deg,rgba(20,28,48,0.98),rgba(10,15,28,1))] px-4 py-4 shadow-[0_30px_80px_rgba(2,6,23,0.52)] backdrop-blur-2xl sm:rounded-[2.1rem] sm:px-5 sm:py-5 lg:px-7 lg:py-7">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.12),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.07),transparent_24%)]" />
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-white/10" />
+    <motion.section 
+      initial={{ opacity: 0, y: -20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.9),rgba(2,6,23,0.95))] px-5 py-6 shadow-[0_40px_100px_rgba(2,6,23,0.6)] backdrop-blur-3xl sm:rounded-[2.5rem] sm:px-8 sm:py-8 lg:px-10 lg:py-10"
+    >
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.15),transparent_40%),radial-gradient(circle_at_bottom_right,rgba(99,102,241,0.1),transparent_35%)]" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
 
-      <div className="relative flex flex-col gap-4 sm:gap-5">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+      <div className="relative flex flex-col gap-6">
+        <div className="flex flex-col gap-6 xl:flex-row xl:items-center xl:justify-between">
           <div className="min-w-0">
-            <div className="mb-2.5 flex flex-wrap items-center gap-2.5">
+            <motion.div 
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.1 }}
+              className="mb-4 flex flex-wrap items-center gap-3"
+            >
               <StatusBadge
                 status={serviceTone}
-                label={syncHealth === 'healthy' ? 'Terrain pret' : 'Verifier services'}
+                label={syncHealth === 'healthy' ? 'Système Opérationnel' : 'Vérification requise'}
               />
-              <span className="min-w-0 truncate text-[10px] font-black uppercase tracking-[0.08em] text-blue-300/55 sm:text-[11px]">
-                {projectName || 'Projet non defini'}
-              </span>
-            </div>
-            <h1 className="text-[1.85rem] font-black tracking-[-0.05em] text-white sm:text-[2.45rem] xl:text-[3.1rem]">
-              Console terrain
-            </h1>
-            <p className="mt-2 max-w-2xl text-[0.9rem] leading-relaxed text-slate-400 sm:text-[0.98rem]">
-              Pilotage terrain, sync et collecte hors-ligne.
-            </p>
-            <div className="mt-4 flex flex-wrap gap-2.5">
+              <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10">
+                <div className={`h-1.5 w-1.5 rounded-full ${isSyncing ? 'bg-blue-400 animate-pulse' : 'bg-slate-500'}`} />
+                <span className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">
+                  {projectName || 'Projet non défini'}
+                </span>
+              </div>
+            </motion.div>
+            
+            <motion.h1 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.2, type: 'spring', stiffness: 100 }}
+              className="text-[2rem] font-black tracking-[-0.06em] text-white sm:text-[3rem] xl:text-[4.2rem] leading-[0.95]"
+            >
+              Console <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-500">Stratégique</span>
+            </motion.h1>
+            
+            <motion.p 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.3 }}
+              className="mt-4 max-w-2xl text-[1rem] font-medium leading-relaxed text-slate-400 sm:text-[1.1rem]"
+            >
+              Supervision en temps réel des opérations terrain et synchronisation intelligentes des flux Kobo.
+            </motion.p>
+
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className="mt-6 flex flex-wrap gap-3"
+            >
               {heroSignals.map(({ label, value }) => (
                 <div
                   key={label}
-                  className="rounded-full border border-white/10 bg-white/[0.035] px-3 py-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
+                  className="group flex items-center gap-2 rounded-xl border border-white/5 bg-white/[0.02] px-4 py-2 transition-all hover:bg-white/[0.05] hover:border-white/10"
                 >
-                  <span className="text-[0.62rem] font-black uppercase tracking-[0.14em] text-slate-500">
+                  <span className="text-[0.65rem] font-black uppercase tracking-[0.18em] text-slate-500 group-hover:text-slate-400">
                     {label}
                   </span>
-                  <span className="ml-2 text-[0.72rem] font-bold uppercase tracking-[0.08em] text-slate-200">
+                  <div className="h-4 w-px bg-white/10" />
+                  <span className="text-[0.75rem] font-black uppercase tracking-[0.1em] text-white">
                     {value}
                   </span>
                 </div>
               ))}
-            </div>
+            </motion.div>
           </div>
 
-          <button
-            onClick={onSync}
-            disabled={isSyncing || isLoading}
-            className="flex h-13 w-full items-center justify-center gap-3 rounded-[1.2rem] border border-blue-500/20 bg-[linear-gradient(180deg,rgba(17,24,39,0.98),rgba(13,20,35,1))] px-4 text-[0.82rem] font-black uppercase tracking-[0.08em] text-white shadow-[0_18px_36px_rgba(37,99,235,0.28)] transition-all hover:border-blue-400/35 hover:shadow-[0_20px_42px_rgba(37,99,235,0.38)] disabled:cursor-not-allowed disabled:opacity-60 sm:h-14 sm:rounded-[1.45rem] sm:px-5 sm:text-[0.88rem] xl:w-auto xl:min-w-[280px]"
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.3 }}
+            className="flex flex-col gap-3 sm:flex-row xl:flex-col"
           >
-            <RefreshCw
-              size={20}
-              className={isSyncing ? 'animate-spin' : 'transition-transform duration-500'}
-            />
-            {isSyncing ? 'Synchronisation...' : 'Synchroniser maintenant'}
-          </button>
+            <button
+              onClick={onSync}
+              disabled={isSyncing || isLoading}
+              className="group relative flex h-16 items-center justify-center gap-4 overflow-hidden rounded-2xl bg-blue-600 px-8 text-[0.95rem] font-black uppercase tracking-[0.12em] text-white shadow-[0_20px_40px_rgba(37,99,235,0.3)] transition-all hover:scale-[1.02] hover:bg-blue-500 active:scale-[0.98] disabled:opacity-50 xl:min-w-[320px]"
+            >
+              <div className="absolute inset-0 bg-[linear-gradient(120deg,transparent,rgba(255,255,255,0.2),transparent)] -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+              <RefreshCw
+                size={22}
+                className={isSyncing ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-700'}
+              />
+              <span className="relative">
+                {isSyncing ? 'Mise à jour flux...' : 'Synchronisation Totale'}
+              </span>
+            </button>
+            
+            <div className="flex items-center justify-between px-6 py-3 rounded-2xl bg-white/5 border border-white/10">
+              <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Dernier état</span>
+              <span className="text-[11px] font-bold text-blue-400 uppercase tracking-wider">{lastSyncLabel}</span>
+            </div>
+          </motion.div>
         </div>
 
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1.18fr)_minmax(320px,0.82fr)] lg:gap-4">
@@ -335,6 +382,6 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
           </button>
         </div>
       </div>
-    </section>
+    </motion.section>
   );
 };

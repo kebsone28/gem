@@ -15,7 +15,9 @@ import { CommandPalette } from './components/common/CommandPalette';
 import { LazyRouteErrorBoundary } from './components/LazyRouteErrorBoundary';
 import { Toaster } from 'react-hot-toast';
 import { useWebSockets } from './hooks/useWebSockets';
+import CopilotAssistant from './components/CopilotAssistant';
 import { PERMISSIONS, ROLES, hasPermission, normalizeRole } from './utils/permissions';
+import { isMasterAdminEmail } from './utils/roleUtils';
 
 function lazyWithRetry<T extends React.ComponentType<Record<string, never>>>(
   importer: () => Promise<{ default: T }>,
@@ -43,6 +45,7 @@ function lazyWithRetry<T extends React.ComponentType<Record<string, never>>>(
 }
 
 // ── Lazy-loaded heavy pages ────────────────────────────────────────────────
+const Home = lazyWithRetry(() => import('./pages/Home'), 'lazy:home');
 const Dashboard = lazyWithRetry(() => import('./pages/Dashboard'), 'lazy:dashboard');
 const Terrain = lazyWithRetry(() => import('./pages/Terrain'), 'lazy:terrain');
 const Cahier = lazyWithRetry(() => import('./pages/Cahier'), 'lazy:cahier');
@@ -55,6 +58,7 @@ const Aide = lazyWithRetry(() => import('./pages/Aide'), 'lazy:aide');
 const Bordereau = lazyWithRetry(() => import('./pages/Bordereau'), 'lazy:bordereau');
 const AdminUsers = lazyWithRetry(() => import('./pages/AdminUsers'), 'lazy:admin-users');
 const AdminPermissions = lazyWithRetry(() => import('./pages/AdminPermissions'), 'lazy:admin-permissions');
+const AdminProjectCreation = lazyWithRetry(() => import('./pages/AdminProjectCreation'), 'lazy:admin-project-creation');
 const DiagnosticSante = lazyWithRetry(() => import('./pages/DiagnosticSante'), 'lazy:diagnostic');
 const SecuritySettings = lazyWithRetry(() => import('./pages/SecuritySettings'), 'lazy:security');
 const MissionOrder = lazyWithRetry(() => import('./pages/MissionOrder'), 'lazy:mission-order');
@@ -91,6 +95,7 @@ const PlanningFormation = lazyWithRetry(
 );
 const Alerts = lazyWithRetry(() => import('./pages/Alerts'), 'lazy:alerts');
 const Communication = lazyWithRetry(() => import('./pages/Communication'), 'lazy:communication');
+const AdminAIConfig = lazyWithRetry(() => import('./pages/AdminAIConfig'), 'lazy:admin-ai-config');
 
 // ── Fallback loader ────────────────────────────────────────────────────────
 const PageLoader = () => (
@@ -136,6 +141,16 @@ const RoleRoute = ({
   return <>{children}</>;
 };
 
+const MasterAdminRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user } = useAuth();
+  if (!user) return <Navigate to="/login" replace />;
+  const isMaster = user.role === 'ADMIN_PROQUELEC' || isMasterAdminEmail(user.email);
+  if (!isMaster) {
+    return <Navigate to="/dashboard" replace />;
+  }
+  return <>{children}</>;
+};
+
 // ── App ────────────────────────────────────────────────────────────────────
 function App() {
   const { user } = useAuth();
@@ -153,6 +168,24 @@ function App() {
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/verify/mission/:identifier" element={<MissionVerification />} />
+
+            <Route
+              path="/"
+              element={
+                <ProtectedRoute>
+                  <Navigate to="/home" replace />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/home"
+              element={
+                <ProtectedRoute>
+                  <Home />
+                </ProtectedRoute>
+              }
+            />
 
             <Route
               path="/dashboard"
@@ -205,7 +238,7 @@ function App() {
               path="/charges"
               element={
                 <ProtectedRoute>
-                  <RoleRoute allowedRoles={[ROLES.ADMIN, ROLES.DG, ROLES.COMPTABLE]}>
+                  <RoleRoute allowedRoles={[ROLES.PROQUELEC_ADMIN, ROLES.PROQUELEC_DG, ROLES.PROQUELEC_COMPTABLE]}>
                     <Charges />
                   </RoleRoute>
                 </ProtectedRoute>
@@ -437,9 +470,31 @@ function App() {
               }
             />
 
+            <Route
+              path="/admin/project-creation"
+              element={
+                <ProtectedRoute>
+                  <RoleRoute allowedRoles={[ROLES.PROQUELEC_ADMIN, ROLES.PROQUELEC_DG]}>
+                    <AdminProjectCreation />
+                  </RoleRoute>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/admin/ai-config"
+              element={
+                <ProtectedRoute>
+                  <MasterAdminRoute>
+                    <AdminAIConfig />
+                  </MasterAdminRoute>
+                </ProtectedRoute>
+              }
+            />
+
             <Route path="/mission-order" element={<Navigate to="/admin/mission" replace />} />
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            <Route path="*" element={<Navigate to={user ? '/dashboard' : '/login'} replace />} />
+            <Route path="/" element={<Navigate to="/home" replace />} />
+            <Route path="*" element={<Navigate to={user ? '/home' : '/login'} replace />} />
           </Routes>
         </Suspense>
       </LazyRouteErrorBoundary>
@@ -451,7 +506,7 @@ function App() {
       <SyncNotification />
       <CommandPalette />
       <Toaster position="bottom-right" reverseOrder={false} />
-
+      <CopilotAssistant />
     </Router>
   );
 }

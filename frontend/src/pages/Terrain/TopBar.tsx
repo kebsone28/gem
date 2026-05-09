@@ -32,6 +32,7 @@ interface TopBarProps {
 
   onSync: () => void;
   onOpenDataHub: () => void;
+  onNavigateToSettings?: () => void;
 
   viewMode: 'map' | 'list';
   onViewModeChange: (mode: 'map' | 'list') => void;
@@ -69,12 +70,10 @@ const TopBar: React.FC<TopBarProps> = ({
 
   onSync,
   onOpenDataHub,
-
+  onNavigateToSettings,
   viewMode,
   onViewModeChange,
-
   onRecenter,
-
   peutVoirDataHub,
   isSyncing,
   showSearch = true,
@@ -149,7 +148,10 @@ const TopBar: React.FC<TopBarProps> = ({
                   statusOptions={statusOptions}
                   showTeamFilter={showTeamFilter}
                   showStatusFilter={showStatusFilter}
-                  onOpenDataHub={onOpenDataHub}
+                  onOpenDataHub={() => {
+                    // Rediriger vers les paramètres Data Hub
+                    window.location.href = '/settings?tab=datahub';
+                  }}
                   showDataHub={showDataHub}
                   peutVoirDataHub={peutVoirDataHub}
                 />

@@ -60,7 +60,7 @@ function mergeJsonField(existingValue, nextValue) {
 export const getHouseholds = async (req, res) => {
     try {
         const { organizationId } = req.user;
-        const { projectId, zoneId, grappeId, status, bbox, limit = '5000', page = '1' } = req.query;
+        const { projectId, zoneId, grappeId, status, bbox, limit = '5000', page = '1', search } = req.query;
 
         const limitNum = Math.min(parseInt(limit), 10000);
         const pageNum = Math.max(parseInt(page, 10) || 1, 1);
@@ -70,6 +70,16 @@ export const getHouseholds = async (req, res) => {
             organizationId,
             deletedAt: null
         };
+
+        if (search) {
+            const searchTerm = String(search).trim();
+            where.OR = [
+                { name: { contains: searchTerm, mode: 'insensitive' } },
+                { numeroordre: { contains: searchTerm, mode: 'insensitive' } },
+                { owner: { path: ['chefNom'], string_contains: searchTerm } }, // Fallback pour les données structurées
+                { owner: { path: ['chefPrenom'], string_contains: searchTerm } }
+            ];
+        }
 
         if (zoneId) {
             where.zoneId = zoneId;

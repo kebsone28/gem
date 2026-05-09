@@ -1,6 +1,7 @@
-﻿/* eslint-disable no-inline-styles */
+/* eslint-disable no-inline-styles */
  
 import React from 'react';
+import { motion } from 'framer-motion';
 import {
   TrendingUp,
   TrendingDown,
@@ -193,34 +194,49 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
   status = 'info',
 }) => {
   const barColors = {
-    success: 'from-emerald-600 to-emerald-400 shadow-emerald-500/40',
-    warning: 'from-amber-600 to-amber-400 shadow-amber-500/40',
-    danger: 'from-rose-600 to-rose-400 shadow-rose-500/40',
-    info: 'from-blue-700 to-blue-400 shadow-blue-600/40',
+    success: 'from-emerald-600 via-emerald-400 to-emerald-300 shadow-emerald-500/30',
+    warning: 'from-amber-600 via-amber-400 to-amber-300 shadow-amber-500/30',
+    danger: 'from-rose-600 via-rose-400 to-rose-300 shadow-rose-500/30',
+    info: 'from-blue-700 via-blue-500 to-cyan-400 shadow-blue-600/30',
   };
 
   return (
-    <div className="w-full space-y-2.5 py-2">
-      <div className="flex items-end justify-between gap-3 px-1">
-        <span className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.12em] leading-tight text-blue-200/60">
-          {label}
-        </span>
-        <div className="shrink-0 text-right">
-          <span className="text-xs sm:text-sm font-semibold text-white tracking-tight">
-            {percentage}%
+    <div className="w-full space-y-3 py-3 group">
+      <div className="flex items-end justify-between gap-3 px-1.5">
+        <div className="flex flex-col gap-1">
+          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 group-hover:text-slate-400 transition-colors">
+            {label}
           </span>
           {count && (
-              <span className="ml-1.5 hidden text-[9px] font-semibold uppercase tracking-[0.1em] leading-none text-white/35 sm:inline">
-              [{count}]
+            <span className="text-[9px] font-bold text-blue-400/60 uppercase tracking-widest">
+              Volume: {count}
             </span>
           )}
         </div>
+        <div className="flex items-baseline gap-1">
+          <motion.span 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-lg font-black text-white tracking-tighter"
+          >
+            {percentage}
+          </motion.span>
+          <span className="text-[10px] font-black text-slate-500">%</span>
+        </div>
       </div>
-      <div className="h-2 sm:h-2.5 w-full bg-white/5 rounded-full overflow-hidden border border-white/5 shadow-inner p-[1px]">
-        <div
-          className={`h-full transition-all duration-1000 ease-out rounded-full bg-gradient-to-r shadow-[0_0_15px] w-[var(--progress)] ${barColors[status]}`}
-          style={{ '--progress': `${percentage}%` } as React.CSSProperties}
-        />
+      <div className="relative h-3 w-full bg-slate-950/50 rounded-full border border-white/5 shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)] overflow-hidden p-[2px]">
+        {/* Track shine */}
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.02] to-transparent" />
+        
+        <motion.div
+          initial={{ width: 0 }}
+          animate={{ width: `${percentage}%` }}
+          transition={{ duration: 1.5, ease: [0.22, 1, 0.36, 1] }}
+          className={`h-full rounded-full bg-gradient-to-r shadow-[0_0_15px] relative overflow-hidden ${barColors[status]}`}
+        >
+          {/* Animated glow pulse */}
+          <div className="absolute inset-0 bg-[linear-gradient(90deg,transparent_0%,rgba(255,255,255,0.3)_50%,transparent_100%)] animate-[shimmer_2s_infinite] -translate-x-full" />
+        </motion.div>
       </div>
     </div>
   );
@@ -244,56 +260,74 @@ interface KPICardProps {
 
 export const KPICard: React.FC<KPICardProps> = ({ title, value, icon, trend, sparkline }) => {
   return (
-    <div className={`${DASHBOARD_SECTION_SURFACE} group relative min-h-[142px] overflow-hidden p-4 transition-all hover:bg-white/[0.04] hover:shadow-blue-500/10 sm:min-h-[208px] sm:p-6 lg:rounded-[2.5rem] lg:p-8`}>
-      {/* Background Glow */}
-      <div className="absolute top-0 right-0 w-24 h-24 sm:w-32 sm:h-32 bg-blue-600/5 blur-[50px] rounded-full group-hover:bg-blue-600/10 transition-all duration-700" />
+    <motion.div 
+      whileHover={{ y: -5, scale: 1.02 }}
+      className={`${DASHBOARD_SECTION_SURFACE} group relative min-h-[142px] overflow-hidden p-5 transition-all hover:bg-white/[0.05] hover:shadow-[0_20px_50px_rgba(37,99,235,0.15)] sm:min-h-[210px] sm:p-7 lg:rounded-[2.8rem] lg:p-9`}
+    >
+      {/* Dynamic Background Pattern */}
+      <div className="absolute inset-0 opacity-[0.03] pointer-events-none group-hover:opacity-[0.05] transition-opacity duration-700" 
+        style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, rgba(255,255,255,0.15) 1px, transparent 0)', backgroundSize: '24px 24px' }} 
+      />
+      
+      {/* Advanced Glow Effect */}
+      <div className="absolute -top-12 -right-12 w-48 h-48 bg-blue-500/10 blur-[60px] rounded-full group-hover:bg-blue-400/20 group-hover:scale-125 transition-all duration-1000" />
+      <div className="absolute -bottom-12 -left-12 w-32 h-32 bg-indigo-500/5 blur-[40px] rounded-full group-hover:bg-indigo-400/10 transition-all duration-1000" />
 
-      <div className="flex justify-between items-start gap-3 mb-4 sm:mb-6 relative z-10">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/5 bg-white/5 text-blue-300 shadow-lg transition-all duration-500 group-hover:border-blue-400 group-hover:bg-blue-600 group-hover:text-white sm:h-12 sm:w-12 sm:rounded-2xl sm:group-hover:scale-110 lg:h-14 lg:w-14">
-          {icon}
+      <div className="flex justify-between items-start gap-4 mb-6 sm:mb-8 relative z-10">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.1),rgba(255,255,255,0.05))] text-blue-400 shadow-[0_10px_20px_rgba(0,0,0,0.2)] transition-all duration-500 group-hover:scale-110 group-hover:border-blue-400/50 group-hover:text-blue-300 sm:h-14 sm:w-14 sm:rounded-[1.25rem] lg:h-16 lg:w-16">
+          {React.cloneElement(icon as React.ReactElement, { size: 24, strokeWidth: 2.5 })}
         </div>
         {trend && (
-          <div
-            className={`flex items-center gap-1 rounded-full border px-2 py-1 text-[9px] font-semibold tracking-[0.12em] uppercase ${trend.isUp ? 'border-emerald-500/20 bg-emerald-500/5 text-emerald-300' : 'border-rose-500/20 bg-rose-500/5 text-rose-300'}`}
+          <motion.div
+            initial={{ opacity: 0, x: 10 }}
+            animate={{ opacity: 1, x: 0 }}
+            className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[10px] font-black tracking-[0.1em] uppercase shadow-lg backdrop-blur-md ${trend.isUp ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400' : 'border-rose-500/30 bg-rose-500/10 text-rose-400'}`}
           >
-            {trend.isUp ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+            {trend.isUp ? <TrendingUp size={14} strokeWidth={3} /> : <TrendingDown size={14} strokeWidth={3} />}
             {trend.value}%
+          </motion.div>
+        )}
+      </div>
+
+      <div className="relative z-10 flex flex-col">
+        <h3 className="mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 group-hover:text-slate-400 transition-colors sm:text-[11px]">
+          {title}
+        </h3>
+        <div className="flex items-baseline gap-2">
+          <p className="text-[2.2rem] font-black leading-none tracking-[-0.04em] text-white sm:text-4xl lg:text-5xl drop-shadow-[0_5px_15px_rgba(0,0,0,0.3)]">
+            {value}
+          </p>
+        </div>
+
+        {trend && (
+          <div className="mt-4 flex items-center gap-2 sm:mt-5">
+            <div className={`h-1 w-8 rounded-full ${trend.isUp ? 'bg-emerald-500' : 'bg-rose-500'} opacity-30`} />
+            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 group-hover:text-slate-300 transition-colors">
+              {trend.label}
+            </p>
           </div>
         )}
       </div>
 
-      <div className="relative z-10 flex min-h-[68px] flex-col justify-between">
-        <h3 className="mb-2 max-w-full break-words text-[9px] font-semibold uppercase leading-[1.04] tracking-[0.08em] text-slate-300 sm:mb-3 sm:text-[10px] lg:text-[11px]">
-          {title}
-        </h3>
-        <p className="text-[2rem] font-black leading-none tracking-tight text-white drop-shadow-md sm:text-3xl lg:text-4xl">
-          {value}
-        </p>
-
-        {trend && (
-          <p className="mt-2 text-[9px] font-medium uppercase leading-tight tracking-[0.1em] text-slate-400 sm:mt-3">
-            {trend.label}
-          </p>
-        )}
-      </div>
-
-      {/* Visual Flair Background Icon */}
-      <div className="absolute -bottom-6 -right-6 hidden lg:block opacity-[0.02] text-white scale-[4] pointer-events-none group-hover:opacity-[0.05] group-hover:rotate-12 transition-all duration-700">
-        {icon}
-      </div>
-
       {sparkline && (
-        <div className="mt-8 hidden sm:flex lg:mt-10 h-10 lg:h-12 items-end gap-1 opacity-[0.08] group-hover:opacity-30 transition-all duration-500">
+        <div className="mt-8 flex h-12 items-end gap-1.5 opacity-20 group-hover:opacity-60 transition-all duration-700">
           {sparkline.map((h, i) => (
-            <div
+            <motion.div
               key={i}
-              className="flex-1 bg-blue-500/60 rounded-t-md transition-all duration-1000 h-[var(--bar-h)]"
-              style={{ '--bar-h': `${h}%` } as React.CSSProperties}
+              initial={{ height: 0 }}
+              animate={{ height: `${h}%` }}
+              transition={{ delay: i * 0.05, duration: 0.8 }}
+              className="flex-1 bg-gradient-to-t from-blue-600 to-cyan-400 rounded-t-sm shadow-[0_0_10px_rgba(59,130,246,0.3)]"
             />
           ))}
         </div>
       )}
-    </div>
+
+      {/* Decorative background icon */}
+      <div className="absolute -bottom-10 -right-10 opacity-[0.03] text-white scale-[5] pointer-events-none group-hover:opacity-[0.07] group-hover:rotate-12 group-hover:scale-[5.5] transition-all duration-1000 ease-out">
+        {icon}
+      </div>
+    </motion.div>
   );
 };
 

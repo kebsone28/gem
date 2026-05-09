@@ -1,11 +1,12 @@
-﻿ 
+ 
 import apiClient from '../api/client';
 import type { Household } from '../utils/types';
 
 export const householdService = {
   async getHouseholds(params?: Record<string, string | number | boolean>): Promise<Household[]> {
     const response = await apiClient.get('/households', { params });
-    return response.data;
+    // Le backend renvoie { households, total, pagination }
+    return response.data.households || response.data || [];
   },
 
   async getHouseholdsCount(): Promise<number> {

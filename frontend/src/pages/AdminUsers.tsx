@@ -52,7 +52,7 @@ import {
 
 // Les constantes statiques de sécurité sont gérées par appSecurity
 
-// ─── Config rôles ───────────────────────────────────────────────────────────
+// ─── Config rôles ───────────────────────────────────────────────────
 const ROLE_CONFIG: Record<
   string,
   {
@@ -63,82 +63,103 @@ const ROLE_CONFIG: Record<
     description: string;
   }
 > = {
-  ADMIN_PROQUELEC: {
-    label: 'Administrateur',
+  // CLIENT LSE
+  CLIENT_LSE_SUPERVISEUR: {
+    label: 'Superviseur LSE',
+    color: 'bg-amber-500/10 border-amber-500/50',
+    textColor: 'text-amber-400',
+    icon: UserIcon,
+    description: 'Supervision & Validation',
+  },
+  CLIENT_LSE_TECHNIQUE: {
+    label: 'Technicien LSE',
+    color: 'bg-amber-500/10 border-amber-500/50',
+    textColor: 'text-amber-400',
+    icon: UserIcon,
+    description: 'Validation Technique',
+  },
+  
+  // PROQUELEC/GEM - MAÎTRE D'ŒUVRE
+  PROQUELEC_ADMIN: {
+    label: 'Administrateur Proquelec',
     color: 'bg-indigo-500/10 border-indigo-500/50',
     textColor: 'text-indigo-400',
     icon: ShieldCheck,
     description: 'Accès complet & 2FA',
   },
-  ADMIN: {
-    label: 'Admin Système',
-    color: 'bg-slate-500/10 border-slate-500/50',
-    textColor: 'text-slate-400',
-    icon: ShieldCheck,
-    description: 'Super Administration',
-  },
-  'DIRECTION GÉNÉRALE': {
-    label: 'Direction Générale',
-    color: 'bg-emerald-500/10 border-emerald-500/50',
-    textColor: 'text-emerald-400',
-    icon: Shield,
-    description: 'Finances & Stratégie',
-  },
-  DG_PROQUELEC: {
+  PROQUELEC_DG: {
     label: 'DG Proquelec',
     color: 'bg-emerald-500/10 border-emerald-500/50',
     textColor: 'text-emerald-400',
     icon: Shield,
     description: 'Direction GEM',
   },
-  CLIENT_LSE: {
-    label: 'Client LSE',
-    color: 'bg-amber-500/10 border-amber-500/50',
-    textColor: 'text-amber-400',
-    icon: UserIcon,
-    description: 'Interventions & Suivi',
-  },
-  'CHEF DE CHANTIER': {
-    label: 'Chef de Chantier',
-    color: 'bg-blue-500/10 border-blue-500/50',
-    textColor: 'text-blue-400',
-    icon: Users,
-    description: 'Équipes & Terrain',
-  },
-  CHEF_EQUIPE: {
-    label: "Chef d'Équipe",
-    color: 'bg-blue-500/10 border-blue-500/50',
-    textColor: 'text-blue-400',
-    icon: Users,
-    description: 'Exécution Opérationnelle',
-  },
-  'CHEF DE PROJET': {
+  PROQUELEC_CHEF_PROJET: {
     label: 'Chef de Projet',
     color: 'bg-sky-500/10 border-sky-500/50',
     textColor: 'text-sky-400',
     icon: Briefcase,
     description: 'Gestion de Mission',
   },
-  CHEF_PROJET: {
-    label: 'CP Vision',
-    color: 'bg-sky-500/10 border-sky-500/50',
-    textColor: 'text-sky-400',
-    icon: Briefcase,
-    description: 'Suivi Projets',
+  PROQUELEC_DIRECTION: {
+    label: 'Direction Opérationnelle',
+    color: 'bg-blue-500/10 border-blue-500/50',
+    textColor: 'text-blue-400',
+    icon: Users,
+    description: 'Supervision & Coordination',
   },
-  COMPTABLE: {
+  PROQUELEC_COMPTABLE: {
     label: 'Comptable',
     color: 'bg-rose-500/10 border-rose-500/50',
     textColor: 'text-rose-400',
     icon: Calculator,
     description: 'Finances & Audit',
   },
-  DIRECTEUR: {
-    label: 'Directeur',
+  PROQUELEC_PATRIMOINE: {
+    label: 'Gestion Patrimoine',
     color: 'bg-purple-500/10 border-purple-500/50',
     textColor: 'text-purple-400',
     icon: Award,
-    description: 'Validation Finale',
+    description: 'Actifs & Maintenance',
+  },
+  PROQUELEC_EMPLOYE: {
+    label: 'Employé Proquelec',
+    color: 'bg-blue-500/10 border-blue-500/50',
+    textColor: 'text-blue-400',
+    icon: UserIcon,
+    description: 'Opérations & Reporting',
+  },
+  
+  // SENELEC - SUPERVISEUR NATIONAL
+  SENELEC_SUPERVISEUR: {
+    label: 'Superviseur SENELEC',
+    color: 'bg-cyan-500/10 border-cyan-500/50',
+    textColor: 'text-cyan-400',
+    icon: Shield,
+    description: 'Contrôle Technique National',
+  },
+  SENELEC_CONTROLEUR: {
+    label: 'Contrôleur SENELEC',
+    color: 'bg-cyan-500/10 border-cyan-500/50',
+    textColor: 'text-cyan-400',
+    icon: Shield,
+    description: 'Inspection & Conformité',
+  },
+  
+  // SOUS-TRAITANTS
+  SOUS_TRAITANT_DIRECTEUR: {
+    label: 'Directeur Sous-traitant',
+    color: 'bg-orange-500/10 border-orange-500/50',
+    textColor: 'text-orange-400',
+    icon: Users,
+    description: 'Coordination & Reporting',
+  },
+  SOUS_TRAITANT_EMPLOYE: {
+    label: 'Employé Sous-traitant',
+    color: 'bg-orange-500/10 border-orange-500/50',
+    textColor: 'text-orange-400',
+    icon: UserIcon,
+    description: 'Exécution Terrain',
   },
 };
 
@@ -148,7 +169,7 @@ const emptyForm = (): UserForm => ({
   email: '',
   notificationEmail: '',
   password: '',
-  role: 'CHEF_EQUIPE',
+  role: 'PROQUELEC_EMPLOYE',
   name: '',
   teamId: undefined,
   active: true,
@@ -1065,8 +1086,14 @@ export default function AdminUsers() {
                 </thead>
                 <tbody className="divide-y divide-slate-800/30">
                   {filtered.map((u) => {
-                    const rc = ROLE_CONFIG[u.role as UserRole] || ROLE_CONFIG.CHEF_EQUIPE;
-                    const RoleIcon = rc.icon;
+                    const rc = ROLE_CONFIG[u.role as UserRole] || {
+                      label: 'Utilisateur',
+                      color: 'bg-slate-500/10 border-slate-500/50',
+                      textColor: 'text-slate-400',
+                      icon: UserIcon,
+                      description: 'Utilisateur par défaut',
+                    };
+                    const RoleIcon = rc.icon || UserIcon;
                     return (
                       <tr
                         key={u.id}

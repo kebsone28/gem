@@ -780,6 +780,7 @@ model ChatConversation {
   scopeKey       String?
   createdById    String?
   archivedAt     DateTime?
+  retentionDays  Int               @default(0) // 0 = permanent, 7, 30, 90
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
 
@@ -801,6 +802,7 @@ model ChatParticipant {
   role           String           @default("MEMBER")
   joinedAt       DateTime         @default(now())
   lastReadAt     DateTime?
+  lastClearedAt  DateTime?        // Date avant laquelle les messages sont masqués pour cet utilisateur
 
   conversation   ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -816,6 +818,7 @@ model ChatMessage {
   conversationId String
   senderId       String
   content        String
+  deletedFor     String[]         @default([])
   createdAt      DateTime         @default(now())
   editedAt       DateTime?
 

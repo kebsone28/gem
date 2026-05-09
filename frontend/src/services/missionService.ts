@@ -21,9 +21,9 @@ export interface Mission {
 /**
  * Récupère toutes les missions d'un projet
  */
-export const getMissions = async (projectId?: string): Promise<Mission[]> => {
+export const getMissions = async (params?: { projectId?: string; search?: string; status?: string; limit?: number }): Promise<Mission[]> => {
   try {
-    const response = await api.get('/missions', { params: { projectId } });
+    const response = await api.get('/missions', { params });
     return response.data.missions || [];
   } catch (err) {
     logger.error('Failed to fetch missions:', err);

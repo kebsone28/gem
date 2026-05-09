@@ -53,9 +53,10 @@ export const testKoboConnection = async (req, res) => {
     res.json({ success: true, message: 'Connexion KoBo établie avec succès !' });
   } catch (e) {
     logger.error('[KOBO-TEST] Connection failed:', e.message);
-    res.status(400).json({
+    res.status(e.statusCode || 400).json({
       success: false,
-      error: 'Connexion au serveur Kobo échouée. Vérifiez vos paramètres.',
+      error: 'Connexion au serveur Kobo échouée.',
+      message: e.message
     });
   }
 };

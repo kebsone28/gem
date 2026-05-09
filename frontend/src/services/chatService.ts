@@ -43,6 +43,7 @@ export interface ChatConversation {
   isGlobal: boolean;
   participants: ChatParticipant[];
   lastMessage?: ChatMessage | null;
+  retentionDays?: number;
 }
 
 export interface ChatBootstrapResponse {
@@ -65,6 +66,28 @@ const chatService = {
       `/chat/conversations/${conversationId}/messages`
     );
     return response.data.messages;
+  },
+
+  async clearHistory(conversationId: string) {
+    const response = await apiClient.delete<{ success: boolean; message: string }>(
+      `/chat/conversations/${conversationId}/messages`
+    );
+    return response.data;
+  },
+
+  async clearMyHistory(conversationId: string) {
+    const response = await apiClient.delete<{ success: boolean; message: string }>(
+      `/chat/conversations/${conversationId}/my-history`
+    );
+    return response.data;
+  },
+
+  async updateRetention(conversationId: string, retentionDays: number) {
+    const response = await apiClient.patch<{ success: boolean; retentionDays: number }>(
+      `/chat/conversations/${conversationId}/retention`,
+      { retentionDays }
+    );
+    return response.data;
   },
 
   async createConversation(payload: { participantIds: string[]; name?: string; isPublic?: boolean }) {
@@ -108,6 +131,46 @@ const chatService = {
     return response.data;
   },
 
+  async editMessage(conversationId: string, messageId: string, content: string) {
+    const response = await apiClient.patch<{ message: ChatMessage }>(
+      `/chat/conversations/${conversationId}/messages/${messageId}`,
+      { content }
+    );
+    return response.data.message;
+  },
+
+  async deleteMessageForMe(conversationId: string, messageId: string) {
+    const response = await apiClient.delete<{ success: boolean; messageId: string }>(
+      `/chat/conversations/${conversationId}/messages/${messageId}/me`
+    );
+    return response.data;
+  },
+
+  async resolveEntity(type: string, id: string) {
+    const response = await apiClient.get<{
+      title: string;
+      subtitle: string;
+      status?: string;
+      link: string;
+    }>('/chat/resolve', { params: { type, id } });
+    return response.data;
+  },
+
+  async markAsRead(conversationId: string) {
+    const response = await apiClient.post<{ success: boolean }>(
+      `/chat/conversations/${conversationId}/read`
+    );
+    return response.data;
+  },
+
+  async uploadFile(file: File) {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await apiClient.post<{ url: string; key: string }>('/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
 };
 
 export default chatService;

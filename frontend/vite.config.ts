@@ -28,7 +28,7 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
+      includeAssets: ['logo-proquelec.png'],
       manifest: {
         name: 'PROQUELEC — GEM SaaS',
         short_name: 'PROQUELEC',

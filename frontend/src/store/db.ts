@@ -44,10 +44,31 @@ export interface AppSecurity {
   updatedAt: string;
 }
 
+export interface UserModuleAccess {
+  id?: number;
+  userId: string;
+  moduleId: string;
+  enabled: boolean;
+  assignedAt: string;
+  assignedBy: string;
+}
+
+export interface ProjectAssignment {
+  id?: number;
+  projectId: number;
+  userId: string;
+  role: string;
+  assignedAt: Date;
+  assignedBy: string;
+  permissions: string[];
+  canSwitch: boolean;
+  lastAccessed: Date;
+}
+
 export class ProquelecDatabase extends Dexie {
   organizations!: Table<{ id: string; name: string }>;
   users!: Table<{ id: string; email: string; name: string; role: string }>;
-  /** projects stored locally using the Project interface above */
+  /** projects stored locally using Project interface above */
   projects!: Table<Project>;
   zones!: Table<{ id: string; name: string; projectId: string; region?: string }>;
   households!: Table<Household>;
@@ -66,29 +87,42 @@ export class ProquelecDatabase extends Dexie {
   }>;
   map_tiles!: Table<{
     url: string;
-    blob: Blob; // Or ArrayBuffer
     timestamp: number;
     zoom: number;
   }>;
-  audit_logs!: Table<AuditLog>;
   ai_learning_logs!: Table<{
     id?: number;
     query: string;
     userId: string;
     role: string;
-    timestamp: Date;
-    context?: string;
+    timestamp: number;
+  }>;
+  user_feedback!: Table<{
+    id?: number;
+    query: string;
+    response: string;
+    rating: 'positive' | 'negative' | 'neutral';
+    userId: string;
+    role: string;
+    timestamp: number;
+    reason?: string;
+    improvedAnswer?: string;
+  }>;
+  audit_logs!: Table<{
+    id?: number;
+    userId: string;
+    action: string;
+    timestamp: number;
   }>;
   pvs!: Table<{
-    id: string;
+    id?: number;
     householdId: string;
     projectId: string;
     type: string;
-    content: string;
-    createdBy: string;
     createdAt: string;
-    metadata?: Record<string, unknown>;
   }>;
+  user_modules_access!: Table<UserModuleAccess>;
+  projectAssignments!: Table<ProjectAssignment>;
 
   constructor() {
     super('ProquelecDB');
@@ -131,7 +165,7 @@ export class ProquelecDatabase extends Dexie {
     });
 
     // Version 6 — missions
-    this.version(6).stores({
+    this.version(8).stores({
       missions: 'id, projectId, orderNumber, startDate, endDate',
       inventory: 'id, projectId, category, name',
       expenses: 'id, projectId, category, date',
@@ -144,6 +178,7 @@ export class ProquelecDatabase extends Dexie {
       teams: 'id, organizationId, name, type, specialty',
       sync_logs: '++id, timestamp, action',
       app_security: 'key, updatedAt',
+      user_modules_access: '++id, userId, moduleId',
     });
 
     // Version 7 — File d'attente de synchronisation hors-ligne
@@ -307,6 +342,33 @@ export class ProquelecDatabase extends Dexie {
       syncOutbox: '++id, status, timestamp',
       favorites: '++id, projectId, householdId, createdAt',
       map_tiles: 'url, timestamp, zoom',
+      projectAssignments: '++id, projectId, userId, role, assignedAt',
+      user_modules_access: '++id, userId, moduleId',
+    });
+
+    // Version 15 — AI Auto-Training System (Feedback utilisateur)
+    this.version(15).stores({
+      user_feedback: '++id, query, userId, role, rating, timestamp',
+      notifications: 'id, type, projectId, missionId, archived, read, createdAt, dedupKey',
+      pvs: 'id, householdId, projectId, type, createdAt',
+      ai_learning_logs: '++id, query, userId, role, timestamp',
+      audit_logs: 'id, userId, action, timestamp',
+      missions: 'id, projectId, orderNumber, startDate, endDate',
+      inventory: 'id, projectId, category, name',
+      expenses: 'id, projectId, category, date',
+      organizations: 'id, name',
+      users: 'id, organizationId, email, role',
+      projects: 'id, organizationId, name, status, version',
+      zones: 'id, projectId, organizationId, name, version',
+      households: 'id, projectId, zoneId, organizationId, status, version',
+      grappes: 'id, projectId, region',
+      teams: 'id, organizationId, name, type, specialty',
+      sync_logs: '++id, timestamp, action',
+      app_security: 'key, updatedAt',
+      syncOutbox: '++id, status, timestamp',
+      favorites: '++id, projectId, householdId, createdAt',
+      map_tiles: 'url, timestamp, zoom',
+      projectAssignments: '++id, projectId, userId, role, assignedAt',
     });
   }
 }

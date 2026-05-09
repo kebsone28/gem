@@ -1262,136 +1262,83 @@ export default function Planning() {
                   </div>
                 </div>
 
-                <div className="space-y-3">
-                  {workflowStages.map((stage) => (
-                    <div
+                <div className="space-y-4">
+                  {workflowStages.map((stage, idx) => (
+                    <motion.div
                       key={stage.key}
-                      className={`rounded-2xl border px-4 py-4 ${
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: idx * 0.1 }}
+                      className={`group relative rounded-3xl border p-5 transition-all hover:scale-[1.01] ${
                         stage.atRisk
-                          ? 'border-rose-500/20 bg-rose-950/10'
-                          : 'border-white/5 bg-slate-950/30'
+                          ? 'border-rose-500/30 bg-[linear-gradient(110deg,rgba(244,63,94,0.1),rgba(15,23,42,0.6))]'
+                          : 'border-white/10 bg-[linear-gradient(110deg,rgba(15,23,42,0.8),rgba(2,6,23,0.9))] hover:border-white/20'
                       }`}
                     >
-                      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                        <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <h4 className="text-sm font-semibold text-white">{stage.label}</h4>
-                            <span
-                              className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${
-                                stage.atRisk
-                                  ? 'bg-rose-500/15 text-rose-300'
-                                  : 'bg-emerald-500/15 text-emerald-300'
-                              }`}
-                            >
-                              {stage.atRisk ? 'Capacité insuffisante' : 'Capacité alignée'}
-                            </span>
+                      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.03),transparent)] pointer-events-none" />
+                      
+                      <div className="relative flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-3">
+                            <h4 className="text-lg font-black tracking-tight text-white uppercase">{stage.label}</h4>
+                            <StatusBadge 
+                              status={stage.atRisk ? 'danger' : 'success'} 
+                              label={stage.atRisk ? 'Capacité insuffisante' : 'Flux Optimal'} 
+                            />
                           </div>
-                          <p className="mt-1 text-sm text-slate-400">
-                            {stage.teamLabel}: {stage.teamCount} active(s) / {stage.requiredTeams}{' '}
-                            requise(s)
-                            {stage.details ? ` · ${stage.details}` : ''}
+                          <p className="mt-2 text-sm font-medium text-slate-400 group-hover:text-slate-300 transition-colors">
+                            <span className="text-blue-400 font-bold">{stage.teamLabel}</span> : {stage.teamCount} actives / <span className="text-white">{stage.requiredTeams}</span> requises
+                            {stage.details ? <span className="mx-2 opacity-30">|</span> : ''}
+                            {stage.details}
                           </p>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-3 lg:grid-cols-6">
-                          <div>
-                            <div className="text-[10px] uppercase tracking-wide text-slate-500">
-                              Capacité/jour
+                        <div className="grid grid-cols-2 gap-4 lg:grid-cols-7 xl:gap-6">
+                          {[
+                            { label: 'Capacité/j', value: stage.dailyCapacity || 0 },
+                            { label: 'Cadence/eq', value: stage.ratePerTeam },
+                            { label: 'Progression', value: `${stage.progress}%`, accent: true },
+                            { label: 'Durée Cible', value: `${stage.workingDays} j` },
+                            { label: 'Horizon', value: stage.projectedWorkingDays === null ? 'BLOQUÉ' : `${stage.projectedWorkingDays} j`, danger: stage.projectedWorkingDays === null },
+                            { label: 'Couverture', value: stage.key === 'FORMATION' ? `${stage.teamCount}/${stage.requiredTeams}` : `${stage.projectCapacity}/${stage.householdsCount}` },
+                            { label: 'Fenêtre', value: `J${stage.startDay} → J${stage.endDay}`, highlight: true },
+                          ].map((stat, i) => (
+                            <div key={i} className="min-w-0">
+                              <div className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-500 mb-1">
+                                {stat.label}
+                              </div>
+                              <div className={`text-sm font-black tracking-tight ${stat.accent ? 'text-blue-400' : stat.danger ? 'text-rose-500' : stat.highlight ? 'text-indigo-300' : 'text-white'}`}>
+                                {stat.value}
+                              </div>
                             </div>
-                            <div className="text-sm font-semibold text-white">
-                              {stage.dailyCapacity || 0}
-                            </div>
-                          </div>
-                          <div>
-                            <div className="text-[10px] uppercase tracking-wide text-slate-500">
-                              Cadence / équipe
-                            </div>
-                            <div className="text-sm font-semibold text-white">
-                              {stage.ratePerTeam}
-                            </div>
-                          </div>
-                          <div>
-                            <div className="text-[10px] uppercase tracking-wide text-slate-500">
-                              Progression
-                            </div>
-                            <div className="text-sm font-semibold text-white">
-                              {stage.progress}%
-                            </div>
-                          </div>
-                          <div>
-                            <div className="text-[10px] uppercase tracking-wide text-slate-500">
-                              Durée cible
-                            </div>
-                            <div className="text-sm font-semibold text-white">
-                              {stage.workingDays} j
-                            </div>
-                          </div>
-                          <div>
-                            <div className="text-[10px] uppercase tracking-wide text-slate-500">
-                              Horizon projeté
-                            </div>
-                            <div className="text-sm font-semibold text-white">
-                              {stage.projectedWorkingDays === null
-                                ? 'Bloqué'
-                                : `${stage.projectedWorkingDays} j`}
-                            </div>
-                          </div>
-                          <div>
-                            <div className="text-[10px] uppercase tracking-wide text-slate-500">
-                              Couverture projet
-                            </div>
-                            <div className="text-sm font-semibold text-white">
-                              {stage.key === 'FORMATION'
-                                ? `${stage.teamCount}/${stage.requiredTeams} équipes`
-                                : `${stage.projectCapacity}/${stage.householdsCount}`}
-                            </div>
-                          </div>
-                          <div>
-                            <div className="text-[10px] uppercase tracking-wide text-slate-500">
-                              Fenêtre cible
-                            </div>
-                            <div className="text-sm font-semibold text-white">
-                              J{stage.startDay} → J{stage.endDay}
-                            </div>
-                          </div>
+                          ))}
                         </div>
                       </div>
 
-                      <div className="mt-4">
-                        <div className="mb-1 flex items-center justify-between text-xs">
-                          <span className="text-slate-400">
-                            {stage.completedCount}/
-                            {stage.key === 'FORMATION'
-                              ? Math.max(stage.requiredTeams, 1)
-                              : stage.householdsCount}{' '}
-                            {stage.progressLabel}
-                          </span>
-                          <span className="font-medium text-white">{stage.progress}%</span>
-                        </div>
-                        <div className="h-2 overflow-hidden rounded-full bg-slate-800">
-                          <div
-                            className={`h-full rounded-full ${
-                              stage.atRisk ? 'bg-rose-500' : 'bg-cyan-500'
-                            }`}
-                            style={
-                              {
-                                '--progress': `${Math.min(stage.progress, 100)}%`,
-                              } as React.CSSProperties
-                            }
-                          />
-                        </div>
-                        <div className="mt-2 text-[11px] text-slate-500">
-                          Reste {stage.remainingHouseholds}{' '}
-                          {stage.key === 'FORMATION'
-                            ? 'équipe(s) à rendre opérationnelle(s)'
-                            : 'ménage(s) à traiter'}
-                          .
-                          {stage.projectedWorkingDays === null
-                            ? ' Aucune équipe active sur cette étape.'
-                            : ` Au rythme actuel, cette étape demande ${stage.projectedWorkingDays} jour(s) ouvrés.`}
+                      <div className="mt-6">
+                        <ProgressBar 
+                          label={stage.progressLabel} 
+                          percentage={stage.progress} 
+                          count={stage.key === 'FORMATION' ? `${stage.completedCount}/${Math.max(stage.requiredTeams, 1)}` : `${stage.completedCount}/${stage.householdsCount}`}
+                          status={stage.atRisk ? 'danger' : 'success'}
+                        />
+                        <div className="mt-2 flex items-center justify-between">
+                           <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">
+                            Reste {stage.remainingHouseholds} {stage.key === 'FORMATION' ? 'unités opérationnelles' : 'ménages'}
+                          </p>
+                          <div className="h-1 flex-1 mx-4 bg-white/5 rounded-full overflow-hidden">
+                             <motion.div 
+                               initial={{ width: 0 }}
+                               animate={{ width: '100%' }}
+                               className={`h-full ${stage.atRisk ? 'bg-rose-500/20' : 'bg-emerald-500/20'}`} 
+                             />
+                          </div>
+                          <p className="text-[10px] font-black text-blue-400/60 uppercase">
+                            {stage.projectedWorkingDays === null ? '⚠️ Blocage' : `Échéance estimée: ${stage.projectedWorkingDays} j`}
+                          </p>
                         </div>
                       </div>
-                    </div>
+                    </motion.div>
                   ))}
                 </div>
               </div>
@@ -2173,88 +2120,84 @@ export default function Planning() {
                       </p>
                     </div>
                   ) : (
-                    <div className="overflow-auto">
+                    <div className="overflow-auto custom-scrollbar">
                       <div className="min-w-full sm:min-w-[1240px]">
-                        <div className="flex border-b border-white/5 bg-slate-950/40">
-                          <div className="w-[320px] shrink-0 border-r border-white/5 px-4 py-3">
-                            <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">
-                              Corps métier planifiés
+                        <div className="flex sticky top-0 z-30 border-b border-white/10 bg-slate-900/90 backdrop-blur-xl">
+                          <div className="w-[320px] shrink-0 border-r border-white/10 px-6 py-4">
+                            <div className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-400/70">
+                              Lignes de pilotage
                             </div>
                           </div>
                           <div
                             className="grid"
                             style={
                               {
-                                '--grid-cols': `repeat(${ganttDays.length}, minmax(44px, 44px))`,
+                                '--grid-cols': `repeat(${ganttDays.length}, minmax(48px, 48px))`,
                               } as React.CSSProperties
                             }
                           >
                             {ganttDays.map((day) => (
                               <div
                                 key={day.toISOString()}
-                                className={`border-r border-white/5 px-1 py-3 text-center ${isToday(day) ? 'bg-blue-500/10' : ''}`}
+                                className={`border-r border-white/5 px-1 py-4 text-center transition-colors ${isToday(day) ? 'bg-blue-500/20' : ''}`}
                               >
-                                <div className="text-[10px] font-black uppercase tracking-tight text-slate-500">
+                                <div className="text-[9px] font-black uppercase tracking-widest text-slate-500">
                                   {format(day, 'EEE', { locale: fr })}
                                 </div>
                                 <div
-                                  className={`mt-1 text-xs font-semibold ${isToday(day) ? 'text-blue-300' : 'text-white'}`}
+                                  className={`mt-1 text-[11px] font-black ${isToday(day) ? 'text-blue-300' : 'text-slate-300'}`}
                                 >
-                                  {format(day, 'd')}
+                                  {format(day, 'dd')}
                                 </div>
                               </div>
                             ))}
                           </div>
                         </div>
 
-                        {ganttTeamRows.map((row) => (
-                          <div
+                        {ganttTeamRows.map((row, idx) => (
+                          <motion.div
                             key={row.id}
-                            className="flex border-b border-white/5 last:border-b-0"
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: idx * 0.05 }}
+                            className="flex border-b border-white/5 hover:bg-white/[0.02] transition-colors group"
                           >
-                            <div className="w-[320px] shrink-0 border-r border-white/5 px-4 py-4 bg-white/[0.015]">
-                              <div className="flex items-start justify-between gap-3">
+                            <div className="w-[320px] shrink-0 border-r border-white/5 px-6 py-5 bg-slate-950/20 relative overflow-hidden">
+                              <div className="absolute inset-y-0 left-0 w-1 opacity-0 group-hover:opacity-100 transition-opacity" style={{ backgroundColor: row.fillColor }} />
+                              
+                              <div className="flex items-start justify-between gap-3 relative z-10">
                                 <div className="min-w-0">
-                                  <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">
-                                    {row.kind === 'formation' ? 'Étape initiale' : 'Corps métier'}
+                                  <div className="text-[9px] font-black uppercase tracking-widest text-slate-500">
+                                    {row.kind === 'formation' ? 'INITIATION' : 'UNITÉ MÉTIER'}
                                   </div>
-                                  <div className="mt-1 text-sm font-semibold text-white">
+                                  <div className="mt-1 text-sm font-black text-white truncate group-hover:text-blue-300 transition-colors">
                                     {row.teamName}
                                   </div>
-                                  <div className="mt-1 text-xs text-slate-400">{row.label}</div>
-                                  <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
-                                    <span>
-                                      {format(row.effectiveStart, 'dd MMM', { locale: fr })}
-                                    </span>
-                                    <span>→</span>
-                                    <span>
-                                      {format(row.effectiveEnd, 'dd MMM', { locale: fr })}
-                                    </span>
-                                    <span>•</span>
-                                    <span>{planningMode === 'manual' ? 'manuel' : 'auto'}</span>
-                                  </div>
+                                  <div className="mt-1 text-[11px] font-bold text-slate-500 uppercase tracking-tight">{row.label}</div>
                                 </div>
-                                <span
-                                  className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-semibold ${row.chipClass}`}
-                                >
-                                  {row.phase ? PHASE_LABELS[row.phase] : row.label}
-                                </span>
+                                <StatusBadge 
+                                  status={row.atRisk ? 'danger' : row.status === 'virtual' ? 'info' : 'success'}
+                                  label={row.phase ? PHASE_LABELS[row.phase] : row.label}
+                                />
                               </div>
-                              <div className="mt-3 flex items-center justify-between text-[11px] text-slate-400">
-                                <span>
-                                  {row.teamCount}/{row.requiredTeams} eq.
-                                </span>
-                                <span className={getPlanningRowStatusClass(row)}>
-                                  {getPlanningRowStatusLabel(row)}
-                                </span>
+                              
+                              <div className="mt-4 flex items-center justify-between gap-2 relative z-10">
+                                <div className="flex items-center gap-1.5">
+                                   <div className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: row.fillColor }} />
+                                   <span className="text-[10px] font-black text-slate-400 uppercase">{row.teamCount}/{row.requiredTeams} EQ.</span>
+                                </div>
+                                <div className="text-[10px] font-black text-slate-500">
+                                   {format(row.effectiveStart, 'dd/MM')} → {format(row.effectiveEnd, 'dd/MM')}
+                                </div>
                               </div>
                             </div>
+
                             <div className="relative">
                               <div
                                 className="grid"
                                 style={
                                   {
-                                    '--grid-cols': `repeat(${ganttDays.length}, minmax(44px, 44px))`,
+                                    '--grid-cols': `repeat(${ganttDays.length}, minmax(48px, 48px))`,
                                   } as React.CSSProperties
                                 }
                               >
@@ -2266,47 +2209,50 @@ export default function Planning() {
                                   return (
                                     <div
                                       key={`${row.id}-${day.toISOString()}`}
-                                      className={`relative flex h-[74px] items-end justify-center border-r border-white/5 pb-2 ${isToday(day) ? 'bg-blue-500/5' : ''} ${inSpan ? 'bg-white/[0.02]' : ''}`}
+                                      className={`relative flex h-[82px] items-center justify-center border-r border-white/[0.03] ${isToday(day) ? 'bg-blue-500/5' : ''} ${inSpan ? 'bg-white/[0.01]' : ''}`}
                                     >
-                                      {inSpan && (
-                                        <div
-                                          className="absolute inset-x-1 bottom-1 top-1 rounded-lg"
-                                          style={
-                                            {
-                                              '--bg-color': row.fillColor,
-                                              '--opacity': 0.1,
-                                            } as React.CSSProperties
-                                          }
-                                        />
+                                      {inSpan && dayIndex === row.firstActiveIndex && (
+                                         <div className="absolute inset-y-2 left-0 right-0 z-0 bg-white/[0.02] pointer-events-none" 
+                                              style={{ width: `${row.visibleSpanDays * 48}px` }} />
                                       )}
                                     </div>
                                   );
                                 })}
                               </div>
+
                               {row.isVisibleOnWindow && row.visibleSpanDays > 0 && (
-                                <div
-                                  className="absolute left-0 top-1/2 flex h-10 -translate-y-1/2 items-center overflow-hidden rounded-xl border px-3 shadow-lg"
+                                <motion.div
+                                  initial={{ opacity: 0, scaleX: 0 }}
+                                  animate={{ opacity: 1, scaleX: 1 }}
+                                  transition={{ delay: 0.3 + idx * 0.05, duration: 0.8, ease: "circOut" }}
+                                  className="absolute top-1/2 -translate-y-1/2 z-20 flex h-10 items-center overflow-hidden rounded-xl border border-white/10 shadow-[0_10px_25px_rgba(0,0,0,0.4)] px-3 origin-left hover:scale-[1.02] hover:z-30 transition-transform cursor-pointer"
                                   style={
                                     {
-                                      '--left': `${row.firstActiveIndex * 44 + 4}px`,
-                                      '--progress': `${Math.max(row.visibleSpanDays * 44 - 8, 92)}px`,
-                                      '--bg-color': `${row.fillColor}33`,
-                                      '--border-color': `${row.fillColor}66`,
+                                      left: `${row.firstActiveIndex * 48 + 4}px`,
+                                      width: `${Math.max(row.visibleSpanDays * 48 - 8, 100)}px`,
+                                      background: `linear-gradient(90deg, ${row.fillColor}dd, ${row.fillColor}99)`,
+                                      borderColor: `${row.fillColor}aa`,
                                     } as React.CSSProperties
                                   }
                                 >
-                                  <div className="flex w-full items-center justify-between gap-2 text-white">
-                                    <span className="truncate text-[11px] font-semibold">
+                                  {/* Glass shine on the bar */}
+                                  <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent pointer-events-none" />
+                                  
+                                  <div className="flex w-full items-center justify-between gap-2 text-slate-950 mix-blend-overlay font-black uppercase relative z-10">
+                                    <span className="truncate text-[10px] tracking-tight">
                                       {row.teamName}
                                     </span>
-                                    <span className="shrink-0 text-[10px] font-black">
-                                      {format(row.effectiveStart, 'dd/MM', { locale: fr })}
+                                    <span className="shrink-0 text-[9px] opacity-80">
+                                      {row.progress}%
                                     </span>
                                   </div>
-                                </div>
+                                  
+                                  {/* Progress fill within the bar */}
+                                  <div className="absolute bottom-0 left-0 h-1 bg-white/40" style={{ width: `${row.progress}%` }} />
+                                </motion.div>
                               )}
                             </div>
-                          </div>
+                          </motion.div>
                         ))}
                       </div>
                     </div>

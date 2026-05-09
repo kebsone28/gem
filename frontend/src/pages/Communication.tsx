@@ -1,3 +1,4 @@
+/* GEM Communication Module - v2.1.1 */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * GEM Chat — Messagerie d'équipe opérationnelle
@@ -11,6 +12,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import {
   ArrowLeft,
+  AlertTriangle,
   Bell,
   BellOff,
   Check,
@@ -58,7 +60,12 @@ import {
   BarChart2,
   CalendarRange,
   HelpCircle,
+  Play,
+  Pause,
   StopCircle,
+  Settings2,
+  Trash2,
+  UserMinus,
 } from 'lucide-react';
 import { PageContainer, LoadingState } from '../components/layout';
 import { useAuth } from '../contexts/AuthContext';
@@ -108,6 +115,7 @@ interface PinnedMessageEntry {
 const EMOJI_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🔥', '✅', '👀'];
 
 const QUICK_COMMANDS = [
+  { cmd: '/ménage', desc: 'Chercher un ménage (Nom ou N°)', icon: <Users2 size={14} /> },
   { cmd: '/mission', desc: 'Lier une mission', icon: <Flag size={14} /> },
   { cmd: '/status', desc: 'Diffuser un statut terrain', icon: <Zap size={14} /> },
   { cmd: '/alert', desc: 'Envoyer une alerte', icon: <Bell size={14} /> },
@@ -569,11 +577,32 @@ const MessageContextMenu = memo(
               },
             ]
             : []),
+          ...(isOwn
+            ? [
+              {
+                icon: <Edit3 size={15} />,
+                label: 'Modifier',
+                action: () => {
+                  onEdit();
+                  onClose();
+                },
+              },
+            ]
+            : []),
+          {
+            icon: <Trash size={15} />,
+            label: 'Supprimer pour moi',
+            action: () => {
+              onDeleteForMe();
+              onClose();
+            },
+            danger: true,
+          },
           ...(isOwn || isAdmin
             ? [
               {
-                icon: <Trash size={15} />,
-                label: 'Supprimer',
+                icon: <Trash2 size={15} />,
+                label: 'Supprimer pour tous',
                 action: () => {
                   onDelete();
                   onClose();
@@ -600,6 +629,140 @@ const MessageContextMenu = memo(
 );
 MessageContextMenu.displayName = 'MessageContextMenu';
 
+/** Smart Context Card for internal GEM links (Households, Missions, etc.) */
+const GemContextCard = memo(({ type, id }: { type: string; id: string }) => {
+  const [data, setData] = useState<{ title: string; subtitle: string; status?: string; link: string } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    let active = true;
+    chatService.resolveEntity(type, id)
+      .then(res => { if (active) setData(res); })
+      .catch(() => { })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [type, id]);
+
+  if (loading) return (
+    <div className="mt-2 p-3 bg-white/5 border border-white/10 rounded-xl flex items-center gap-3 animate-pulse">
+      <div className="h-10 w-10 bg-white/10 rounded-lg shrink-0" />
+      <div className="flex-1 space-y-2">
+        <div className="h-3 bg-white/10 rounded w-2/3" />
+        <div className="h-2 bg-white/10 rounded w-1/2" />
+      </div>
+    </div>
+  );
+
+  if (!data) return null;
+
+  const Icon = type === 'household' ? Users2 : type === 'mission' ? Flag : Info;
+  const statusColor = data.status === 'COMPLETED' || data.status === 'VALIDATED'
+    ? 'text-emerald-400 bg-emerald-500/10'
+    : data.status === 'IN_PROGRESS'
+      ? 'text-amber-400 bg-amber-500/10'
+      : 'text-slate-400 bg-white/5';
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 5 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="mt-2 p-3 bg-slate-900/60 backdrop-blur-md border border-white/10 rounded-xl flex items-center gap-3 hover:border-indigo-500/40 transition-all cursor-pointer group"
+      onClick={() => navigate(data.link)}
+    >
+      <div className={`h-10 w-10 rounded-lg flex items-center justify-center shrink-0 ${type === 'household' ? 'bg-indigo-500/20 text-indigo-400' : 'bg-rose-500/20 text-rose-400'}`}>
+        <Icon size={20} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-[13px] font-bold text-white truncate">{data.title}</p>
+          {data.status && (
+            <span className={`text-[9px] font-black uppercase tracking-tighter px-1.5 py-0.5 rounded ${statusColor}`}>
+              {data.status}
+            </span>
+          )}
+        </div>
+        <p className="text-[11px] text-slate-500 truncate">{data.subtitle}</p>
+      </div>
+      <ChevronRight size={14} className="text-slate-700 group-hover:text-indigo-400 transition-colors" />
+    </motion.div>
+  );
+});
+GemContextCard.displayName = 'GemContextCard';
+
+/** Specialized audio player for voice messages */
+const ChatAudioPlayer = memo(({ url, duration }: { url: string; duration?: number }) => {
+  const [playing, setPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    // Pre-load audio
+    const audio = new Audio(url);
+    audio.preload = 'auto';
+    audio.onended = () => {
+      setPlaying(false);
+      setProgress(0);
+      setCurrentTime(0);
+    };
+    audio.ontimeupdate = () => {
+      if (audio.duration) {
+        setProgress((audio.currentTime / audio.duration) * 100);
+        setCurrentTime(audio.currentTime);
+      }
+    };
+    audioRef.current = audio;
+
+    return () => {
+      audio.pause();
+      audio.src = '';
+      audioRef.current = null;
+    };
+  }, [url]);
+
+  const togglePlay = () => {
+    if (!audioRef.current) return;
+    if (playing) {
+      audioRef.current.pause();
+    } else {
+      audioRef.current.play().catch(e => console.warn('[AUDIO_PLAY_ERROR]', e));
+    }
+    setPlaying(!playing);
+  };
+
+  const formatTime = (s: number) => {
+    const min = Math.floor(s / 60);
+    const sec = Math.floor(s % 60);
+    return `${min}:${sec.toString().padStart(2, '0')}`;
+  };
+
+  return (
+    <div className="flex items-center gap-3 py-2 min-w-[240px] bg-white/5 rounded-2xl px-3 border border-white/5">
+      <button
+        onClick={togglePlay}
+        className="h-9 w-9 shrink-0 rounded-full bg-indigo-500 text-white flex items-center justify-center hover:bg-indigo-400 transition-all shadow-lg shadow-indigo-500/20"
+      >
+        {playing ? <Pause size={18} fill="currentColor" /> : <Play size={18} className="ml-0.5" fill="currentColor" />}
+      </button>
+      <div className="flex-1 space-y-1">
+        <div className="flex justify-between items-center text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+          <span>{formatTime(currentTime)}</span>
+          <span>{duration ? formatTime(duration) : '--:--'}</span>
+        </div>
+        <div className="relative h-1.5 bg-white/10 rounded-full overflow-hidden">
+          <motion.div
+            className="absolute inset-y-0 left-0 bg-indigo-400 rounded-full"
+            style={{ width: `${progress}%` }}
+            transition={{ type: 'spring', bounce: 0, duration: 0.2 }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+});
+ChatAudioPlayer.displayName = 'ChatAudioPlayer';
+
 /** Full message bubble with all features */
 const MessageBubble = memo(
   ({
@@ -617,8 +780,11 @@ const MessageBubble = memo(
     onReply,
     onReact,
     onDelete,
+    onDeleteForMe,
     onPin,
     onStar,
+    onEdit,
+    conversation,
   }: {
     msg: ChatMessage;
     prevMsg?: ChatMessage;
@@ -633,9 +799,12 @@ const MessageBubble = memo(
     showName: boolean;
     onReply: (msg: ChatMessage) => void;
     onReact: (messageId: string, emoji: string) => void;
-    onDelete: (msg: ChatMessage) => void;
+    onDelete: (messageId: string) => void;
+    onDeleteForMe: (messageId: string) => void;
     onPin: (msg: ChatMessage) => void;
     onStar: (msg: ChatMessage) => void;
+    onEdit: (msg: ChatMessage) => void;
+    conversation: ChatConversation;
   }) => {
     const [showMenu, setShowMenu] = useState(false);
     const [menuPos, setMenuPos] = useState({ x: 0, y: 0 });
@@ -643,7 +812,15 @@ const MessageBubble = memo(
     const [hovered, setHovered] = useState(false);
     const bubbleRef = useRef<HTMLDivElement>(null);
 
-    const { replyBlock, actualContent } = useMemo(
+    const hasFile = isJson(msg.content);
+    const fileData = hasFile ? JSON.parse(msg.content) : null;
+    const actualContent = hasFile ? '' : msg.content;
+
+    // Detection of GEM-Links
+    const householdMatch = msg.content.match(/households\/([a-f0-9-]{36})/i);
+    const missionMatch = msg.content.match(/missions\/([a-f0-9-]{36})/i);
+
+    const { replyBlock, actualContent: replyExtracted } = useMemo(
       () => extractReplyFromContent(msg.content),
       [msg.content]
     );
@@ -653,12 +830,6 @@ const MessageBubble = memo(
       setMenuPos({ x: e.clientX, y: e.clientY });
       setShowMenu(true);
     }, []);
-
-    const handleCopy = useCallback(() => {
-      navigator.clipboard
-        .writeText(actualContent)
-        .then(() => toast.success('Copié !', { duration: 1500 }));
-    }, [actualContent]);
 
     const groupEnd = !nextMsg || nextMsg.senderId !== msg.senderId;
 
@@ -751,14 +922,19 @@ const MessageBubble = memo(
                 msg={msg}
                 isOwn={isOwn}
                 isAdmin={isAdmin}
-                canPin={isAdmin}
+                canPin={true}
                 onClose={() => setShowMenu(false)}
                 onReply={() => onReply(msg)}
                 onReact={(e) => onReact(msg.id, e)}
-                onCopy={handleCopy}
+                onCopy={() => {
+                  navigator.clipboard.writeText(replyExtracted);
+                  toast.success('Copié !');
+                }}
                 onPin={() => onPin(msg)}
                 onStar={() => onStar(msg)}
-                onDelete={() => onDelete(msg)}
+                onEdit={() => onEdit(msg)}
+                onDelete={() => onDelete(msg.id)}
+                onDeleteForMe={() => onDeleteForMe(msg.id)}
               />
             )}
           </AnimatePresence>
@@ -795,22 +971,72 @@ const MessageBubble = memo(
               </div>
             )}
 
-            {/* Content with markdown */}
+            {/* Content with markdown or media */}
             <div className="text-[14.5px] leading-relaxed break-words whitespace-pre-wrap pr-10 pb-1 font-normal">
-              {renderMarkdown(actualContent)}
+              {hasFile ? (
+                <>
+                  {fileData.type === 'image' && (
+                    <img src={fileData.url} alt={fileData.name} className="max-w-full rounded-lg my-1 cursor-pointer" onClick={() => window.open(fileData.url, '_blank')} />
+                  )}
+                  {fileData.type === 'audio' && (
+                    <ChatAudioPlayer url={fileData.url} duration={fileData.duration} />
+                  )}
+                  {fileData.type === 'file' && (
+                    <a href={fileData.url} target="_blank" rel="noreferrer" className="flex items-center gap-3 bg-white/5 p-2.5 rounded-xl border border-white/10 hover:bg-white/10 transition-colors my-1">
+                      <FileText size={20} className="text-indigo-300" />
+                      <div className="min-w-0">
+                        <p className="text-[12px] font-bold truncate">{fileData.name}</p>
+                        <p className="text-[10px] opacity-50">{(fileData.size / 1024).toFixed(1)} KB</p>
+                      </div>
+                    </a>
+                  )}
+                </>
+              ) : (
+                <>
+                  {actualContent && (
+                    <div className="relative pr-2">
+                      {renderMarkdown(actualContent)}
+                      {msg.editedAt && (
+                        <span className="text-[9px] text-slate-500 italic block mt-1">
+                          (modifié)
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* GEM Context Cards */}
+                  {householdMatch && (
+                    <GemContextCard type="household" id={householdMatch[1]} />
+                  )}
+                  {missionMatch && (
+                    <GemContextCard type="mission" id={missionMatch[1]} />
+                  )}
+                </>
+              )}
             </div>
 
-            {/* Timestamp + edited */}
+            {/* Timestamp + Read Status */}
             <div className="flex items-center justify-end gap-1.5 mt-0.5">
-              {msg.editedAt && (
-                <span className={`text-[10px] ${isOwn ? 'text-indigo-300/70' : 'text-slate-500'}`}>
-                  modifié
-                </span>
-              )}
               <span className={`text-[10px] ${isOwn ? 'text-indigo-300/80' : 'text-slate-500'}`}>
                 {formatTime(msg.createdAt)}
               </span>
-              {isOwn && <CheckCheck size={12} className="text-indigo-300/80" />}
+              {isOwn && (
+                <div title="Statut de lecture">
+                  {(() => {
+                    const readers = conversation?.participants?.filter(p =>
+                      p.userId !== msg.senderId &&
+                      p.lastReadAt &&
+                      new Date(p.lastReadAt).getTime() >= new Date(msg.createdAt).getTime()
+                    ) || [];
+                    const isReadByAll = readers.length >= (conversation?.participants?.length || 1) - 1;
+                    const isReadBySome = readers.length > 0;
+
+                    if (isReadByAll) return <CheckCheck size={12} className="text-emerald-400" />;
+                    if (isReadBySome) return <CheckCheck size={12} className="text-indigo-300" />;
+                    return <Check size={12} className="text-indigo-300/50" />;
+                  })()}
+                </div>
+              )}
             </div>
           </div>
 
@@ -940,6 +1166,9 @@ const GemChatComposer = memo(
     replyTo,
     onSend,
     onCancelReply,
+    editingMessage,
+    onCancelEdit,
+    onSaveEdit,
   }: {
     disabled: boolean;
     conversationId: string;
@@ -947,25 +1176,45 @@ const GemChatComposer = memo(
     replyTo: ReplyContext | null;
     onSend: (content: string) => Promise<void>;
     onCancelReply: () => void;
+    editingMessage: ChatMessage | null;
+    onCancelEdit: () => void;
+    onSaveEdit: (id: string, content: string) => Promise<void>;
   }) => {
     const [text, setText] = useState('');
     const [sending, setSending] = useState(false);
+
+    useEffect(() => {
+      if (editingMessage) {
+        setText(editingMessage.content);
+        if (textareaRef.current) {
+          textareaRef.current.focus();
+          // Adjust height
+          setTimeout(() => {
+            if (textareaRef.current) {
+              textareaRef.current.style.height = 'auto';
+              textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 150)}px`;
+            }
+          }, 0);
+        }
+      } else {
+        setText('');
+      }
+    }, [editingMessage]);
     const [mentionQuery, setMentionQuery] = useState<string | null>(null);
     const [commandQuery, setCommandQuery] = useState<string | null>(null);
+    const [householdQuery, setHouseholdQuery] = useState<string | null>(null);
+    const [missionQuery, setMissionQuery] = useState<string | null>(null);
+    const [foundHouseholds, setFoundHouseholds] = useState<any[]>([]);
+    const [foundMissions, setFoundMissions] = useState<any[]>([]);
+    const [searchingHouseholds, setSearchingHouseholds] = useState(false);
+    const [searchingMissions, setSearchingMissions] = useState(false);
+    const [showActionMenu, setShowActionMenu] = useState(false);
     const [recording, setRecording] = useState(false);
     const [recordingTime, setRecordingTime] = useState(0);
+    const recordingTimeRef = useRef(0);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const recordingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-    const audioChunksRef = useRef<Blob[]>([]);
-
-    const stopMediaRecorder = useCallback(() => {
-      if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-        mediaRecorderRef.current.stop();
-      }
-      mediaRecorderRef.current?.stream.getTracks().forEach((t) => t.stop());
-    }, []);
 
     // Emit typing events
     useEffect(() => {
@@ -978,85 +1227,8 @@ const GemChatComposer = memo(
     useEffect(() => {
       return () => {
         if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current);
-        stopMediaRecorder();
       };
-    }, [stopMediaRecorder]);
-
-    const handleToggleRecording = async () => {
-      if (recording) {
-        setRecording(false);
-        if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current);
-        stopMediaRecorder();
-      } else {
-        try {
-          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-          const mediaRecorder = new MediaRecorder(stream);
-          mediaRecorderRef.current = mediaRecorder;
-          audioChunksRef.current = [];
-
-          mediaRecorder.ondataavailable = (e) => {
-            if (e.data.size > 0) audioChunksRef.current.push(e.data);
-          };
-
-          mediaRecorder.onstop = () => {
-            if (audioChunksRef.current.length > 0) {
-              const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-              const reader = new FileReader();
-              reader.onloadend = () => {
-                const base64Audio = reader.result as string;
-                void onSend(`[AUDIO:Audio_Vocal.webm|${base64Audio}]`);
-              };
-              reader.readAsDataURL(audioBlob);
-            }
-            setRecordingTime(0);
-          };
-
-          mediaRecorder.start();
-          setRecording(true);
-          setRecordingTime(0);
-          recordingIntervalRef.current = setInterval(() => {
-            setRecordingTime((t) => t + 1);
-          }, 1000);
-        } catch (err) {
-          console.error('Microphone access denied', err);
-          toast.error('Accès au microphone refusé.');
-        }
-      }
-    };
-
-    const cancelRecording = () => {
-      setRecording(false);
-      setRecordingTime(0);
-      if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current);
-      if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-        audioChunksRef.current = []; // Prevent onstop from sending
-        mediaRecorderRef.current.stop();
-      }
-      mediaRecorderRef.current?.stream.getTracks().forEach((t) => t.stop());
-    };
-
-    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      setSending(true);
-
-      const reader = new FileReader();
-      reader.onload = () => {
-        const base64 = reader.result as string;
-        let type = 'FILE';
-        if (file.type.startsWith('image/')) type = 'IMAGE';
-        else if (file.type.startsWith('audio/')) type = 'AUDIO';
-
-        void onSend(`[${type}:${file.name}|${base64}]`);
-        setSending(false);
-        if (fileInputRef.current) fileInputRef.current.value = '';
-      };
-      reader.onerror = () => {
-        setSending(false);
-        toast.error('Erreur de lecture du fichier.');
-      };
-      reader.readAsDataURL(file);
-    };
+    }, []);
 
     const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       const val = e.target.value;
@@ -1068,18 +1240,81 @@ const GemChatComposer = memo(
       // Check for @mention
       const cursorPos = e.target.selectionStart;
       const textBefore = val.slice(0, cursorPos);
+
       const mentionMatch = textBefore.match(/@(\w*)$/);
+      const householdCmdMatch = textBefore.match(/\/m[eé]nage\s+(.*)$/i);
+      const missionCmdMatch = textBefore.match(/\/mission\s+(.*)$/i);
+
       if (mentionMatch) {
         setMentionQuery(mentionMatch[1]);
         setCommandQuery(null);
-      } else if (val.startsWith('/') && !val.includes(' ')) {
-        setCommandQuery(val.slice(1));
+        setHouseholdQuery(null);
+        setMissionQuery(null);
+      } else if (householdCmdMatch) {
+        setHouseholdQuery(householdCmdMatch[1]);
         setMentionQuery(null);
+        setCommandQuery(null);
+        setMissionQuery(null);
+      } else if (missionCmdMatch) {
+        setMissionQuery(missionCmdMatch[1]);
+        setMentionQuery(null);
+        setCommandQuery(null);
+        setHouseholdQuery(null);
+      } else if (val.startsWith('/') && !val.includes(' ')) {
+        const cmd = val.slice(1).toLowerCase();
+        setCommandQuery(cmd);
+        setMentionQuery(null);
+        setHouseholdQuery(null);
+        setMissionQuery(null);
       } else {
         setMentionQuery(null);
         setCommandQuery(null);
+        setHouseholdQuery(null);
+        setMissionQuery(null);
       }
     };
+
+    // Household search effect
+    useEffect(() => {
+      if (!householdQuery || householdQuery.length < 2) {
+        setFoundHouseholds([]);
+        setSearchingHouseholds(false);
+        return;
+      }
+      setSearchingHouseholds(true);
+      const timer = setTimeout(async () => {
+        try {
+          const results = await householdService.getHouseholds({ search: householdQuery, limit: 5 });
+          setFoundHouseholds(results);
+        } catch (e) {
+          console.error('[HOUSEHOLD_SEARCH_ERROR]', e);
+        } finally {
+          setSearchingHouseholds(false);
+        }
+      }, 300);
+      return () => clearTimeout(timer);
+    }, [householdQuery]);
+
+    // Mission search effect
+    useEffect(() => {
+      if (!missionQuery || missionQuery.length < 2) {
+        setFoundMissions([]);
+        setSearchingMissions(false);
+        return;
+      }
+      setSearchingMissions(true);
+      const timer = setTimeout(async () => {
+        try {
+          const results = await missionService.getMissions({ search: missionQuery, limit: 5 });
+          setFoundMissions(results);
+        } catch (e) {
+          console.error('[MISSION_SEARCH_ERROR]', e);
+        } finally {
+          setSearchingMissions(false);
+        }
+      }, 300);
+      return () => clearTimeout(timer);
+    }, [missionQuery]);
 
     const handleMentionSelect = (user: ChatUserSummary) => {
       const cursorPos = textareaRef.current?.selectionStart || text.length;
@@ -1092,23 +1327,155 @@ const GemChatComposer = memo(
     };
 
     const handleCommandSelect = (cmd: string) => {
-      setText(cmd + ' ');
+      if (cmd === 'menage' || cmd === 'ménage' || cmd === '/menage' || cmd === '/ménage') {
+        setText('/ménage ');
+      } else {
+        setText((cmd.startsWith('/') ? cmd : `/${cmd}`) + ' ');
+      }
       setCommandQuery(null);
       textareaRef.current?.focus();
     };
 
-    const handleSend = async () => {
-      const content = text.trim();
+    const handleHouseholdSelect = (h: any) => {
+      const link = `${window.location.origin}/households/${h.id}`;
+      const replaced = text.replace(/\/m[eé]nage\s+.*$/i, link);
+      setText(replaced);
+      setHouseholdQuery(null);
+      setFoundHouseholds([]);
+      textareaRef.current?.focus();
+    };
+
+    const handleMissionSelect = (m: any) => {
+      const link = `${window.location.origin}/missions/${m.id}`;
+      const replaced = text.replace(/\/mission\s+.*$/i, link);
+      setText(replaced);
+      setMissionQuery(null);
+      setFoundMissions([]);
+      textareaRef.current?.focus();
+    };
+
+    const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+
+    const handleToggleRecording = async () => {
+      if (disabled) return;
+
+      if (!recording) {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          const recorder = new MediaRecorder(stream);
+          const chunks: Blob[] = [];
+
+          recorder.ondataavailable = (e) => {
+            if (e.data.size > 0) chunks.push(e.data);
+          };
+
+          recorder.onstop = async () => {
+            const finalTime = recordingTimeRef.current; // Use Ref to avoid closure issues
+            const audioBlob = new Blob(chunks, { type: 'audio/webm' });
+            const file = new File([audioBlob], 'vocal.webm', { type: 'audio/webm' });
+
+            try {
+              setSending(true);
+              const { url } = await chatService.uploadFile(file);
+              const fileInfo = JSON.stringify({
+                type: 'audio',
+                url,
+                name: 'Message vocal',
+                duration: finalTime
+              });
+              await handleSend(fileInfo);
+            } catch (err) {
+              console.error('[VOICE_SEND_ERROR]', err);
+              toast.error("Échec de l'envoi du vocal.");
+            } finally {
+              setSending(false);
+              setRecordingTime(0);
+            }
+          };
+
+          setMediaRecorder(recorder);
+          recorder.start();
+          setRecording(true);
+          setRecordingTime(0);
+          recordingTimeRef.current = 0;
+          recordingIntervalRef.current = setInterval(() => {
+            setRecordingTime(p => p + 1);
+            recordingTimeRef.current += 1;
+          }, 1000);
+        } catch (err) {
+          console.error('[VOICE_REC_ERROR]', err);
+          toast.error("Impossible d'accéder au micro.");
+        }
+      } else {
+        if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current);
+        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+          mediaRecorder.stop();
+          mediaRecorder.stream.getTracks().forEach(track => track.stop());
+        }
+        setRecording(false);
+      }
+    };
+
+    const cancelRecording = () => {
+      if (mediaRecorder) {
+        mediaRecorder.onstop = null; // Prevent sending
+        mediaRecorder.stop();
+        mediaRecorder.stream.getTracks().forEach(track => track.stop());
+      }
+      setRecording(false);
+    };
+
+    const [isUrgent, setIsUrgent] = useState(false);
+
+    const handleSend = async (customContent?: string) => {
+      let content = customContent || text.trim();
       if (!content || disabled || sending) return;
+
+      if (editingMessage && !customContent) {
+        await onSaveEdit(editingMessage.id, content);
+        return;
+      }
+
+      if (isUrgent && !customContent) {
+        content = `🚨 **URGENT** : ${content}`;
+      }
+
       setSending(true);
       try {
         const finalContent = replyTo ? buildReplyContent(replyTo, content) : content;
         await onSend(finalContent);
         setText('');
+        setIsUrgent(false);
         if (textareaRef.current) textareaRef.current.style.height = 'auto';
         onCancelReply();
       } finally {
         setSending(false);
+        setShowActionMenu(false);
+      }
+    };
+
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file || disabled) return;
+
+      try {
+        setSending(true);
+        const { url } = await chatService.uploadFile(file);
+
+        const fileInfo = JSON.stringify({
+          type: file.type.startsWith('image/') ? 'image' : file.type.startsWith('audio/') ? 'audio' : 'file',
+          url,
+          name: file.name,
+          size: file.size
+        });
+
+        await handleSend(fileInfo);
+      } catch (err) {
+        console.error('[CHAT_UPLOAD_ERROR]', err);
+        toast.error("Échec de l'envoi du fichier.");
+      } finally {
+        setSending(false);
+        if (fileInputRef.current) fileInputRef.current.value = '';
       }
     };
 
@@ -1145,6 +1512,192 @@ const GemChatComposer = memo(
                 title="Annuler la réponse"
               >
                 <X size={14} />
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Edit preview */}
+        <AnimatePresence>
+          {editingMessage && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="flex items-start gap-3 px-4 py-2.5 border-b border-white/8 bg-amber-900/20"
+            >
+              <div className="flex-1 pl-3 border-l-2 border-amber-500 min-w-0">
+                <p className="text-[11px] font-semibold text-amber-400">Modification du message</p>
+                <p className="text-[12px] text-slate-400 truncate">{editingMessage.content}</p>
+              </div>
+              <button
+                onClick={onCancelEdit}
+                className="text-slate-500 hover:text-white transition-colors mt-0.5"
+                title="Annuler la modification"
+              >
+                <X size={14} />
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Household search results */}
+        <AnimatePresence>
+          {(foundHouseholds.length > 0 || searchingHouseholds) && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 8 }}
+              className="absolute bottom-full mb-1 left-4 right-4 bg-slate-800 border border-white/10 rounded-2xl overflow-hidden shadow-2xl z-50"
+            >
+              <div className="p-2 border-b border-white/5 bg-white/5 flex items-center justify-between">
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Recherche ménage (Nom ou N°)</p>
+                {searchingHouseholds && <div className="h-2 w-2 bg-indigo-500 rounded-full animate-ping" />}
+              </div>
+              
+              {searchingHouseholds && foundHouseholds.length === 0 && (
+                <div className="px-4 py-3 text-[12px] text-slate-500 italic">Recherche en cours...</div>
+              )}
+
+              {foundHouseholds.length === 0 && !searchingHouseholds && (
+                <div className="px-4 py-3 text-[12px] text-slate-500 italic">Aucun ménage trouvé pour "{householdQuery}"</div>
+              )}
+              {foundHouseholds.map((h) => (
+                <button
+                  key={h.id}
+                  onClick={() => handleHouseholdSelect(h)}
+                  className="flex items-center gap-3 w-full px-4 py-2.5 hover:bg-slate-700 transition-colors text-left"
+                >
+                  <div className="h-8 w-8 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center shrink-0">
+                    <Users2 size={16} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-[13px] font-bold text-white truncate">{h.chefPrenom} {h.chefNom}</p>
+                      <span className="text-[10px] bg-white/10 px-1.5 rounded font-mono text-slate-300">#{h.numeroordre}</span>
+                    </div>
+                    <p className="text-[11px] text-slate-400 truncate">{h.village || h.zone || 'Localisation inconnue'}</p>
+                  </div>
+                </button>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Mission search results */}
+        <AnimatePresence>
+          {(foundMissions.length > 0 || searchingMissions) && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 8 }}
+              className="absolute bottom-full mb-1 left-4 right-4 bg-slate-800 border border-white/10 rounded-2xl overflow-hidden shadow-2xl z-50"
+            >
+              <div className="p-2 border-b border-white/5 bg-white/5 flex items-center justify-between">
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Recherche mission</p>
+                {searchingMissions && <div className="h-2 w-2 bg-rose-500 rounded-full animate-ping" />}
+              </div>
+              
+              {searchingMissions && foundMissions.length === 0 && (
+                <div className="px-4 py-3 text-[12px] text-slate-500 italic">Recherche mission...</div>
+              )}
+
+              {foundMissions.length === 0 && !searchingMissions && (
+                <div className="px-4 py-3 text-[12px] text-slate-500 italic">Aucune mission trouvée</div>
+              )}
+              {foundMissions.map((m) => (
+                <button
+                  key={m.id}
+                  onClick={() => handleMissionSelect(m)}
+                  className="flex items-center gap-3 w-full px-4 py-2.5 hover:bg-slate-700 transition-colors text-left"
+                >
+                  <div className="h-8 w-8 rounded-lg bg-rose-500/20 text-rose-400 flex items-center justify-center shrink-0">
+                    <Flag size={16} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-[13px] font-bold text-white truncate">{m.title}</p>
+                      <span className="text-[9px] bg-white/10 px-1.5 rounded font-bold text-slate-400 uppercase tracking-tighter">{m.status}</span>
+                    </div>
+                    <p className="text-[11px] text-slate-400 truncate">{new Date(m.startDate).toLocaleDateString()} · {m.zone?.name || 'Sans zone'}</p>
+                  </div>
+                </button>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Action Menu (Plus Button Popup) */}
+        <AnimatePresence>
+          {showActionMenu && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="absolute bottom-full mb-4 left-4 w-72 bg-slate-900/90 backdrop-blur-xl border border-white/10 rounded-3xl overflow-hidden shadow-2xl z-[60] p-3 grid grid-cols-2 gap-2"
+            >
+              <div className="col-span-2 px-2 pb-1">
+                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Actions opérationnelles</p>
+              </div>
+              
+              <button 
+                onClick={() => handleCommandSelect('/ménage')}
+                className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-white/5 hover:bg-indigo-500/20 border border-white/5 transition-all group"
+              >
+                <div className="h-10 w-10 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Users2 size={20} />
+                </div>
+                <span className="text-[11px] font-bold text-white">Ménage</span>
+              </button>
+
+              <button 
+                onClick={() => handleCommandSelect('/mission')}
+                className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-white/5 hover:bg-rose-500/20 border border-white/5 transition-all group"
+              >
+                <div className="h-10 w-10 rounded-xl bg-rose-500/20 text-rose-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Flag size={20} />
+                </div>
+                <span className="text-[11px] font-bold text-white">Mission</span>
+              </button>
+
+              <button 
+                onClick={() => handleCommandSelect('/alert')}
+                className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-white/5 hover:bg-orange-500/20 border border-white/5 transition-all group"
+              >
+                <div className="h-10 w-10 rounded-xl bg-orange-500/20 text-orange-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Bell size={20} />
+                </div>
+                <span className="text-[11px] font-bold text-white">Alerte</span>
+              </button>
+
+              <button 
+                onClick={() => handleCommandSelect('/status')}
+                className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-white/5 hover:bg-emerald-500/20 border border-white/5 transition-all group"
+              >
+                <div className="h-10 w-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Zap size={20} />
+                </div>
+                <span className="text-[11px] font-bold text-white">Status</span>
+              </button>
+
+              <button 
+                onClick={() => handleCommandSelect('/urgent')}
+                className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-white/5 hover:bg-red-500/20 border border-white/5 transition-all group"
+              >
+                <div className="h-10 w-10 rounded-xl bg-red-500/20 text-red-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <AlertTriangle size={20} />
+                </div>
+                <span className="text-[11px] font-bold text-white">Urgent</span>
+              </button>
+
+              <button 
+                onClick={() => handleCommandSelect('/rapport')}
+                className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-white/5 hover:bg-cyan-500/20 border border-white/5 transition-all group"
+              >
+                <div className="h-10 w-10 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <FileText size={20} />
+                </div>
+                <span className="text-[11px] font-bold text-white">Rapport</span>
               </button>
             </motion.div>
           )}
@@ -1207,13 +1760,37 @@ const GemChatComposer = memo(
         {/* Main composer row */}
         <div className="flex items-end gap-2 px-3 py-3">
           {/* Attachment */}
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setShowActionMenu(!showActionMenu)}
+              className={`p-2.5 rounded-xl transition-all ${
+                showActionMenu 
+                  ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/30' 
+                  : 'bg-white/5 text-slate-400 hover:text-white hover:bg-slate-800'
+              }`}
+              title="Actions rapides"
+            >
+              <Plus size={18} className={showActionMenu ? 'rotate-45' : ''} />
+            </button>
+
+            <button
+              disabled={disabled || recording}
+              title="Joindre un fichier"
+              onClick={() => fileInputRef.current?.click()}
+              className="p-2.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors disabled:opacity-40"
+            >
+              <Paperclip size={18} />
+            </button>
+          </div>
+
           <button
             disabled={disabled || recording}
-            title="Joindre un fichier"
-            onClick={() => fileInputRef.current?.click()}
-            className="p-2.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors disabled:opacity-40"
+            title="Marquer comme urgent"
+            onClick={() => setIsUrgent(!isUrgent)}
+            className={`p-2.5 rounded-xl transition-colors disabled:opacity-40 ${isUrgent ? 'bg-rose-500/20 text-rose-500' : 'text-slate-400 hover:text-rose-400 hover:bg-slate-800'}`}
           >
-            <Paperclip size={18} />
+            <Zap size={18} fill={isUrgent ? 'currentColor' : 'none'} />
           </button>
           <input
             type="file"
@@ -1231,11 +1808,31 @@ const GemChatComposer = memo(
                 animate={{ opacity: 1, scale: 1 }}
                 className="flex-1 flex items-center gap-3 bg-slate-800 rounded-2xl border border-rose-500/30 px-4 h-[46px] w-full overflow-hidden"
               >
-                <div className="h-2.5 w-2.5 rounded-full bg-rose-500 animate-pulse shrink-0" />
-                <span className="text-rose-400 text-sm font-medium font-mono tabular-nums shrink-0">
-                  {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, '0')}
-                </span>
-                <span className="text-slate-400 text-[13px] flex-1 truncate ml-2">Enregistrement audio...</span>
+                <div className="flex items-center gap-1 shrink-0">
+                  <div className="h-2 w-2 rounded-full bg-rose-500 animate-pulse" />
+                  <span className="text-rose-400 text-sm font-bold font-mono tabular-nums w-12 text-center">
+                    {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, '0')}
+                  </span>
+                </div>
+
+                {/* Waveform animation */}
+                <div className="flex-1 flex items-center justify-center gap-0.5 h-6">
+                  {[...Array(12)].map((_, i) => (
+                    <motion.div
+                      key={i}
+                      animate={{
+                        height: [4, 16, 4],
+                      }}
+                      transition={{
+                        repeat: Infinity,
+                        duration: 0.6,
+                        delay: i * 0.05
+                      }}
+                      className="w-1 bg-indigo-500/40 rounded-full"
+                    />
+                  ))}
+                </div>
+
                 <button
                   onClick={cancelRecording}
                   className="text-slate-500 hover:text-rose-400 transition-colors p-1"
@@ -1257,6 +1854,7 @@ const GemChatComposer = memo(
                   }
                   if (e.key === 'Escape') {
                     onCancelReply();
+                    onCancelEdit();
                     setMentionQuery(null);
                     setCommandQuery(null);
                   }
@@ -1351,6 +1949,7 @@ export default function Communication() {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [showInfo, setShowInfo] = useState(false);
   const [socketVersion, setSocketVersion] = useState(0);
+  const [editingMessage, setEditingMessage] = useState<ChatMessage | null>(null);
 
   // ── Enhanced features state ───────────────────────────
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
@@ -1588,22 +2187,25 @@ export default function Communication() {
       const isActive =
         msg.conversationId === activeConversationId && document.visibilityState === 'visible';
 
-      if (!isActive && msg.senderId !== user?.id) {
+      if (msg.senderId !== user?.id) {
         setUnreadCounts((c) => ({ ...c, [msg.conversationId]: (c[msg.conversationId] || 0) + 1 }));
-        if (soundEnabled) {
-          try {
-            const a = new Audio(
-              'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA'
-            );
-            a.volume = 0.3;
-            a.play().catch(() => { });
-          } catch { }
+
+        if (!isActive) {
+          if (soundEnabled) {
+            try {
+              const a = new Audio(
+                'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA'
+              );
+              a.volume = 0.3;
+              a.play().catch(() => { });
+            } catch { }
+          }
+          toast(`${msg.sender.name}: ${msg.content.slice(0, 50)}`, {
+            icon: '💬',
+            duration: 3000,
+            id: `msg-${msg.id}`,
+          });
         }
-        toast(`${msg.sender.name}: ${msg.content.slice(0, 50)}`, {
-          icon: '💬',
-          duration: 3000,
-          id: `msg-${msg.id}`,
-        });
       }
 
       setMessagesByConversation((c) => {
@@ -1623,7 +2225,7 @@ export default function Communication() {
       setTypingUsers((prev) => ({
         ...prev,
         [msg.conversationId]: (prev[msg.conversationId] || []).filter(
-          (t) => t.userId !== msg.senderId
+          (t) => t.senderId !== msg.senderId
         ),
       }));
     };
@@ -1689,6 +2291,22 @@ export default function Communication() {
       );
     };
 
+    const onRead = (p: { conversationId: string; userId: string }) => {
+      setConversations((prev) =>
+        prev.map((c) => {
+          if (c.id === p.conversationId) {
+            return {
+              ...c,
+              participants: c.participants.map((part) =>
+                part.userId === p.userId ? { ...part, lastReadAt: new Date().toISOString() } : part
+              ),
+            };
+          }
+          return c;
+        })
+      );
+    };
+
     socket.on('chat:presence', onPresence);
     socket.on('chat:conversation:new', onConversation);
     socket.on('chat:message:new', onMessage);
@@ -1696,6 +2314,7 @@ export default function Communication() {
     socket.on('chat:message:deleted', onMsgDeleted);
     socket.on('chat:user:block-state', onBlockState);
     socket.on('chat:conversation:deleted', onConvDeleted);
+    socket.on('chat:conversation:read', onRead);
 
     return () => {
       socket.off('chat:presence', onPresence);
@@ -1705,8 +2324,20 @@ export default function Communication() {
       socket.off('chat:message:deleted', onMsgDeleted);
       socket.off('chat:user:block-state', onBlockState);
       socket.off('chat:conversation:deleted', onConvDeleted);
+      socket.off('chat:conversation:read', onRead);
     };
   }, [activeConversationId, socketVersion, user?.id, soundEnabled]);
+
+  // Mark as read when conversation becomes active or new message arrives
+  useEffect(() => {
+    if (activeConversationId && activeConversation) {
+      const hasUnread = (unreadCounts[activeConversationId] || 0) > 0;
+      if (hasUnread) {
+        void chatService.markAsRead(activeConversationId);
+        setUnreadCounts((c) => ({ ...c, [activeConversationId]: 0 }));
+      }
+    }
+  }, [activeConversationId, activeMessages.length, activeConversation, unreadCounts]);
 
   // ── Actions ────────────────────────────────────────────
   const getConvLabel = useCallback(
@@ -1729,7 +2360,7 @@ export default function Communication() {
     [user?.id]
   );
 
-  const handleSend = useCallback(
+  const handleSendMessage = useCallback(
     async (content: string) => {
       if (!activeConversationId) return;
       try {
@@ -1756,6 +2387,52 @@ export default function Communication() {
     [activeConversationId]
   );
 
+  const handleEditMessage = useCallback(async (messageId: string, content: string) => {
+    if (!activeConversationId) return;
+    try {
+      const updated = await chatService.editMessage(activeConversationId, messageId, content);
+      setMessagesByConversation((prev) => {
+        const list = prev[activeConversationId] || [];
+        return {
+          ...prev,
+          [activeConversationId]: list.map((m) => (m.id === messageId ? updated : m)),
+        };
+      });
+      setEditingMessage(null);
+      toast.success('Message modifié.');
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error || 'Impossible de modifier.');
+    }
+  }, [activeConversationId]);
+
+  const handleDeleteMessage = useCallback(async (messageId: string) => {
+    if (!activeConversationId || !window.confirm('Supprimer ce message pour tous ?')) return;
+    try {
+      await chatService.deleteMessage(activeConversationId, messageId);
+      toast.success('Message supprimé.');
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error || 'Impossible de supprimer.');
+    }
+  }, [activeConversationId]);
+
+  const handleDeleteMessageForMe = useCallback(async (messageId: string) => {
+    if (!activeConversationId) return;
+    try {
+      await chatService.deleteMessageForMe(activeConversationId, messageId);
+      setMessagesByConversation((prev) => {
+        const list = prev[activeConversationId] || [];
+        return {
+          ...prev,
+          [activeConversationId]: list.filter((m) => m.id !== messageId),
+        };
+      });
+      toast.success('Masqué pour vous.');
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error || 'Impossible de masquer.');
+    }
+  }, [activeConversationId]);
+
+
   const handleReact = useCallback(
     (messageId: string, emoji: string) => {
       if (!user?.id) return;
@@ -1781,7 +2458,6 @@ export default function Communication() {
   const handleReply = useCallback((msg: ChatMessage) => {
     const { actualContent } = extractReplyFromContent(msg.content);
     setReplyTo({ messageId: msg.id, senderName: msg.sender.name, preview: actualContent });
-    document.getElementById('gem-composer')?.focus();
   }, []);
 
   const handleStar = useCallback((msg: ChatMessage) => {
@@ -1801,15 +2477,6 @@ export default function Communication() {
       pinnedAt: Date.now(),
     });
     toast.success('Message épinglé', { duration: 2000 });
-  }, []);
-
-  const handleDelete = useCallback(async (msg: ChatMessage) => {
-    if (!window.confirm('Supprimer ce message ?')) return;
-    try {
-      await chatService.deleteMessage(msg.conversationId, msg.id);
-    } catch (e: any) {
-      toast.error(e?.response?.data?.error || 'Impossible de supprimer.');
-    }
   }, []);
 
   const handleOpenDirect = useCallback(async (targetId: string) => {
@@ -1891,6 +2558,44 @@ export default function Communication() {
     },
     [isAdmin]
   );
+
+  const handleClearHistory = useCallback(async () => {
+    if (!activeConversationId) return;
+    if (!window.confirm("Voulez-vous vraiment vider l'historique complet pour TOUS les participants ? Cette action est irréversible.")) return;
+
+    try {
+      await chatService.clearHistory(activeConversationId);
+      setMessagesByConversation(prev => ({ ...prev, [activeConversationId]: [] }));
+      toast.success("L'historique a été vidé pour tous.");
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error || "Erreur lors du nettoyage.");
+    }
+  }, [activeConversationId]);
+
+  const handleClearMyHistory = useCallback(async () => {
+    if (!activeConversationId) return;
+    if (!window.confirm("Voulez-vous vider votre propre historique ? Les messages resteront visibles pour les autres participants.")) return;
+
+    try {
+      await chatService.clearMyHistory(activeConversationId);
+      setMessagesByConversation(prev => ({ ...prev, [activeConversationId]: [] }));
+      toast.success("Votre vue a été nettoyée.");
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error || "Erreur lors du nettoyage.");
+    }
+  }, [activeConversationId]);
+
+  const handleUpdateRetention = useCallback(async (days: number) => {
+    if (!activeConversationId) return;
+    try {
+      await chatService.updateRetention(activeConversationId, days);
+      setConversations(prev => prev.map(c => c.id === activeConversationId ? { ...c, retentionDays: days } : c));
+      toast.success(`Rétention mise à jour : ${days === 0 ? 'Permanent' : days + ' jours'}`);
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error || "Erreur lors de la mise à jour.");
+    }
+  }, [activeConversationId]);
+
 
   // ══════════════════════════════════════════════════════
   // RENDER
@@ -2282,6 +2987,64 @@ export default function Communication() {
                   >
                     <Info size={16} />
                   </button>
+
+                  {/* Menu Options de nettoyage */}
+                  <div className="relative group/menu">
+                    <button className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors">
+                      <Settings2 size={16} />
+                    </button>
+
+                    <div className="absolute top-full right-0 mt-1 w-56 bg-slate-800 border border-white/10 rounded-xl shadow-2xl opacity-0 invisible group-hover/menu:opacity-100 group-hover/menu:visible transition-all z-[100] overflow-hidden">
+                      <div className="p-2 border-b border-white/5 bg-white/5">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Options de nettoyage</p>
+                      </div>
+
+                      <button
+                        onClick={handleClearMyHistory}
+                        className="flex items-center gap-3 w-full px-4 py-2.5 text-left text-[12.5px] text-slate-300 hover:bg-slate-700 hover:text-white transition-colors"
+                      >
+                        <UserMinus size={14} className="text-amber-400" />
+                        Vider pour mon compte
+                      </button>
+
+                      {isAdmin && (
+                        <button
+                          onClick={handleClearHistory}
+                          className="flex items-center gap-3 w-full px-4 py-2.5 text-left text-[12.5px] text-rose-400 hover:bg-rose-500/10 transition-colors"
+                        >
+                          <Trash2 size={14} />
+                          Vider pour tous (Admin)
+                        </button>
+                      )}
+
+                      <div className="p-2 border-t border-white/5 bg-white/5">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Rétention automatique</p>
+                      </div>
+
+                      {[
+                        { label: 'Permanent', days: 0 },
+                        { label: '7 jours', days: 7 },
+                        { label: '30 jours', days: 30 },
+                        { label: '90 jours', days: 90 },
+                      ].map((opt) => (
+                        <button
+                          key={opt.days}
+                          onClick={() => handleUpdateRetention(opt.days)}
+                          className={`flex items-center justify-between w-full px-4 py-2 text-left text-[12px] transition-colors ${activeConversation.retentionDays === opt.days
+                              ? 'bg-indigo-600/20 text-indigo-400 font-bold'
+                              : 'text-slate-400 hover:bg-slate-700 hover:text-white'
+                            }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <Clock size={12} />
+                            {opt.label}
+                          </div>
+                          {activeConversation.retentionDays === opt.days && <Check size={12} />}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
                   {!activeConversation.isGlobal && (
                     <button
                       onClick={() => void handleDeleteConv(activeConversation.id)}
@@ -2358,6 +3121,19 @@ export default function Communication() {
               </AnimatePresence>
 
               {/* ── Messages ── */}
+              {('Notification' in window) && Notification.permission !== 'granted' && (
+                <div className="bg-amber-500/10 border-b border-amber-500/20 px-4 py-2 flex items-center justify-between z-20 shrink-0">
+                  <div className="flex items-center gap-2 text-amber-200 text-[11px]">
+                    <span>⚠️ Notifications de bureau désactivées.</span>
+                  </div>
+                  <button
+                    onClick={() => Notification.requestPermission().then(() => window.location.reload())}
+                    className="text-[10px] bg-amber-500 text-amber-950 px-2 py-1 rounded font-bold hover:bg-amber-400 transition-colors"
+                  >
+                    ACTIVER
+                  </button>
+                </div>
+              )}
               <div
                 ref={chatContainerRef}
                 className="flex-1 overflow-y-auto py-2 z-10 scroll-smooth [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/10"
@@ -2415,9 +3191,12 @@ export default function Communication() {
                             showName={showName}
                             onReply={handleReply}
                             onReact={handleReact}
-                            onDelete={handleDelete}
+                            onDelete={handleDeleteMessage}
+                            onDeleteForMe={handleDeleteMessageForMe}
+                            onEdit={setEditingMessage}
                             onPin={handlePin}
                             onStar={handleStar}
+                            conversation={activeConversation!}
                           />
                         </Fragment>
                       );
@@ -2461,8 +3240,11 @@ export default function Communication() {
                   conversationId={activeConversationId}
                   users={users}
                   replyTo={replyTo}
-                  onSend={handleSend}
+                  onSend={handleSendMessage}
                   onCancelReply={() => setReplyTo(null)}
+                  editingMessage={editingMessage}
+                  onCancelEdit={() => setEditingMessage(null)}
+                  onSaveEdit={handleEditMessage}
                 />
               </div>
             </div>

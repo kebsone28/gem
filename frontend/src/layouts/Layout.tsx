@@ -28,9 +28,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const isTerrainImmersive =
     location.pathname === '/terrain' || location.pathname === '/communication';
-  // Sur /communication on cache entièrement la sidebar pour que le chat
+  // Sur /communication et /home on cache entièrement la sidebar pour que le chat
   // occupe tout l'écran sans décalage ni barre latérale de navigation.
-  const hideSidebar = location.pathname === '/communication';
+  const hideSidebar = location.pathname === '/communication' || location.pathname === '/home';
   const [sidebarMode, setSidebarMode] = useState<'wide' | 'compact' | 'rail'>(() => {
     if (typeof window === 'undefined') return 'wide';
     const storedMode = window.localStorage.getItem('gem-sidebar-mode');
