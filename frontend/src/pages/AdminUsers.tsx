@@ -515,7 +515,7 @@ export default function AdminUsers() {
   const roleStats = Object.entries(ROLE_CONFIG).map(([role, cfg]) => ({
     ...cfg,
     role,
-    count: users.filter((u: User) => u.role === role).length,
+    count: users.filter((u: User) => normalizeRole(u.role) === role).length,
   }));
 
   const isAdminDelete = deleteTarget?.role === 'ADMIN_PROQUELEC';
@@ -1086,12 +1086,13 @@ export default function AdminUsers() {
                 </thead>
                 <tbody className="divide-y divide-slate-800/30">
                   {filtered.map((u) => {
-                    const rc = ROLE_CONFIG[u.role as UserRole] || {
-                      label: 'Utilisateur',
+                    const normalized = normalizeRole(u.role);
+                    const rc = (normalized && ROLE_CONFIG[normalized]) || {
+                      label: u.role || 'Utilisateur',
                       color: 'bg-slate-500/10 border-slate-500/50',
                       textColor: 'text-slate-400',
                       icon: UserIcon,
-                      description: 'Utilisateur par défaut',
+                      description: 'Rôle système hérité',
                     };
                     const RoleIcon = rc.icon || UserIcon;
                     return (
