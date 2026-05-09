@@ -159,6 +159,7 @@ export const PERMISSIONS = {
   UTILISER_IA: 'utiliser_ia',
   GERER_MEMOIRE_IA: 'gerer_memoire_ia',
   VOIR_METRIQUES_IA: 'voir_metriques_ia',
+  CONFIGURER_MOTEUR_IA: 'configurer_moteur_ia',
 
   // --- SIMULATION ---
   VOIR_SIMULATION: 'voir_simulation',
@@ -457,6 +458,7 @@ export const PERMISSION_LABELS: Record<string, string> = {
   [PERMISSIONS.UTILISER_IA]: 'Accès Assistant Wanekoo',
   [PERMISSIONS.GERER_MEMOIRE_IA]: 'Gérer Personnalité IA',
   [PERMISSIONS.VOIR_METRIQUES_IA]: 'Consommation & Coûts IA',
+  [PERMISSIONS.CONFIGURER_MOTEUR_IA]: 'Configuration Technique Moteur IA',
 
   // Simulation
   [PERMISSIONS.VOIR_SIMULATION]: 'Accès Simulation',

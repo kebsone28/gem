@@ -290,8 +290,8 @@ export default function Sidebar() {
         to: '/admin/ai-config',
         icon: Brain,
         label: 'Configuration IA',
-        title: 'Configuration du cerveau IA et auto-entraînement',
-        visible: isMaster,
+        title: 'Configuration du cerveau IA, modes et auto-entraînement souverain',
+        permission: PERMISSIONS.CONFIGURER_MOTEUR_IA,
         category: 'SYSTÈME',
       },
       {

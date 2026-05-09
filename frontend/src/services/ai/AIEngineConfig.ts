@@ -17,10 +17,15 @@ export interface AIEngineSettings {
   provider: AIProvider;
   /** Clé API si nécessaire (ex: Anthropic) */
   apiKey: string;
-  /** Activer l'IA sur les questions techniques (en plus du référentiel) */
-  enrichTechnical: boolean;
-  /** Activer l'IA sur les analyses DG/décision */
-  enrichDecision: boolean;
+  
+  // Nouveaux réglages unifiés (ex-GEMAICore)
+  enableAutoTraining: boolean;
+  enableResponseEnrichment: boolean;
+  enableLearningMetrics: boolean;
+  enableUserFeedback: boolean;
+  maxTrainingSuggestions: number;
+  confidenceThreshold: number;
+
   /** Conserver l'historique multi-tours dans le fallback */
   enableConversationMemory: boolean;
   /** Nombre max d'échanges gardés en mémoire de session */
@@ -36,13 +41,20 @@ const CONFIG_KEY = 'gem_mint_ai_engine_config';
 
 const DEFAULT_CONFIG: AIEngineSettings = {
   mode: 'HYBRID_RULES_FIRST',
-  provider: 'LOCAL_OLLAMA', // Par défaut sur votre moteur privé
+  provider: 'LOCAL_OLLAMA',
   apiKey: '',
-  enrichTechnical: true,
-  enrichDecision: true,
+  
+  // Valeurs par défaut unifiées
+  enableAutoTraining: true,
+  enableResponseEnrichment: true,
+  enableLearningMetrics: true,
+  enableUserFeedback: true,
+  maxTrainingSuggestions: 50,
+  confidenceThreshold: 0.7,
+
   enableConversationMemory: true,
   maxHistoryTurns: 15,
-  timeoutMs: 8000, // Légèrement augmenté pour Ollama local si CPU chargé
+  timeoutMs: 8000,
 };
 
 /** Charger la configuration active (avec valeurs par défaut) */

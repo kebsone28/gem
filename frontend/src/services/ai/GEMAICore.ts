@@ -1,8 +1,4 @@
-/**
- * 🧠 GEMAICore - Cerveau centralisé de l'IA pour le système GEM
- * Orchestre tous les services IA et gère l'intelligence globale du système
- */
-
+import { getAIEngineConfig, saveAIEngineConfig, type AIEngineSettings } from './AIEngineConfig';
 import type { User } from '../../utils/types';
 import type { AIResponse, AIState } from './MissionSageService';
 import { missionSageService } from './MissionSageService';
@@ -25,14 +21,8 @@ export type { TrainingSuggestion, LearningMetric, UserFeedback };
 // TYPES DU CERVEAU IA
 // ─────────────────────────────────────────────
 
-export interface GEMAICoreConfig {
-  enableAutoTraining: boolean;
-  enableResponseEnrichment: boolean;
-  enableLearningMetrics: boolean;
-  enableUserFeedback: boolean;
-  maxTrainingSuggestions: number;
-  confidenceThreshold: number;
-}
+// On utilise désormais AIEngineSettings de AIEngineConfig.ts
+export type GEMAICoreConfig = AIEngineSettings;
 
 export interface GEMAIState {
   isThinking: boolean;
@@ -73,21 +63,10 @@ export interface GEMAIResponse {
 // ─────────────────────────────────────────────
 
 export class GEMAICore {
-  private config: GEMAICoreConfig;
   private state: GEMAIState;
   private initialized: boolean = false;
 
-  constructor(config: Partial<GEMAICoreConfig> = {}) {
-    this.config = {
-      enableAutoTraining: true,
-      enableResponseEnrichment: true,
-      enableLearningMetrics: true,
-      enableUserFeedback: true,
-      maxTrainingSuggestions: 50,
-      confidenceThreshold: 0.7,
-      ...config,
-    };
-
+  constructor() {
     this.state = {
       isThinking: false,
       lastQuery: '',
@@ -111,16 +90,17 @@ export class GEMAICore {
   async initialize(): Promise<void> {
     if (this.initialized) return;
 
+    const config = getAIEngineConfig();
     try {
       // Charger les métriques et suggestions initiales
       const [metrics, suggestions, learningStatus] = await Promise.all([
-        this.config.enableLearningMetrics ? learningMetricsService.getWeeklyTrends() : [],
-        this.config.enableAutoTraining ? autoTrainingSystem.generateAllSuggestions() : [],
+        config.enableLearningMetrics ? learningMetricsService.getWeeklyTrends() : [],
+        config.enableAutoTraining ? autoTrainingSystem.generateAllSuggestions() : [],
         autoTrainingSystem.getLearningStatus(),
       ]);
 
       this.state.metrics = metrics;
-      this.state.trainingSuggestions = suggestions.slice(0, this.config.maxTrainingSuggestions);
+      this.state.trainingSuggestions = suggestions.slice(0, config.maxTrainingSuggestions);
       this.state.learningStatus = learningStatus;
 
       this.initialized = true;
@@ -135,6 +115,7 @@ export class GEMAICore {
 
   async processRequest(request: GEMAIRequest): Promise<GEMAIResponse> {
     const { query, user, context, options = {} } = request;
+    const config = getAIEngineConfig();
 
     this.state.isThinking = true;
     this.state.lastQuery = query;
@@ -151,7 +132,7 @@ export class GEMAICore {
       let enrichedResponse = baseResponse;
       let enriched = false;
       
-      if (this.config.enableResponseEnrichment && options.enableEnrichment !== false) {
+      if (config.enableResponseEnrichment && options.enableEnrichment !== false) {
         enrichedResponse = enrichResponse(baseResponse, {
           roleUtilisateur: user?.role,
           moduleActif: options.domain,
@@ -163,7 +144,7 @@ export class GEMAICore {
       const confidence = this.calculateConfidence(enrichedResponse, user);
 
       // 4. Enregistrer l'apprentissage si activé
-      if (this.config.enableAutoTraining && options.enableTraining !== false) {
+      if (config.enableAutoTraining && options.enableTraining !== false) {
         await this.recordLearning(query, enrichedResponse, user);
       }
 
@@ -171,7 +152,7 @@ export class GEMAICore {
       const suggestions = this.getRelevantSuggestions(query, enrichedResponse.domaine);
 
       // 6. Obtenir les métriques actuelles
-      const metrics = this.config.enableLearningMetrics 
+      const metrics = config.enableLearningMetrics 
         ? await learningMetricsService.calculateDailyMetrics()
         : undefined;
 
@@ -203,7 +184,8 @@ export class GEMAICore {
     user: User | null,
     reason?: string
   ): Promise<void> {
-    if (!this.config.enableUserFeedback || !user) return;
+    const config = getAIEngineConfig();
+    if (!config.enableUserFeedback || !user) return;
 
     await userFeedbackService.recordFeedback(
       query,
@@ -237,10 +219,11 @@ export class GEMAICore {
   // ─────────────────────────────────────────────
 
   async generateTrainingSuggestions(): Promise<TrainingSuggestion[]> {
-    if (!this.config.enableAutoTraining) return [];
+    const config = getAIEngineConfig();
+    if (!config.enableAutoTraining) return [];
 
     const suggestions = await autoTrainingSystem.generateAllSuggestions();
-    this.state.trainingSuggestions = suggestions.slice(0, this.config.maxTrainingSuggestions);
+    this.state.trainingSuggestions = suggestions.slice(0, config.maxTrainingSuggestions);
     
     return this.state.trainingSuggestions;
   }
@@ -295,7 +278,8 @@ export class GEMAICore {
   // ─────────────────────────────────────────────
 
   async getMetrics(): Promise<LearningMetric[]> {
-    if (!this.config.enableLearningMetrics) return [];
+    const config = getAIEngineConfig();
+    if (!config.enableLearningMetrics) return [];
 
     const metrics = await learningMetricsService.getWeeklyTrends();
     this.state.metrics = metrics;
@@ -347,11 +331,12 @@ export class GEMAICore {
   }
 
   getConfig(): GEMAICoreConfig {
-    return { ...this.config };
+    return getAIEngineConfig();
   }
 
   updateConfig(newConfig: Partial<GEMAICoreConfig>): void {
-    this.config = { ...this.config, ...newConfig };
+    // On utilise l'email système ou admin pour la trace
+    saveAIEngineConfig(newConfig, 'system@gem-saas.com');
   }
 
   reset(): void {

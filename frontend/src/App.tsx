@@ -485,9 +485,9 @@ function App() {
               path="/admin/ai-config"
               element={
                 <ProtectedRoute>
-                  <MasterAdminRoute>
+                  <PermissionRoute permission={PERMISSIONS.CONFIGURER_MOTEUR_IA}>
                     <AdminAIConfig />
-                  </MasterAdminRoute>
+                  </PermissionRoute>
                 </ProtectedRoute>
               }
             />

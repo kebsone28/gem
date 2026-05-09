@@ -30,6 +30,7 @@ import AIEngineAdminPanel from './AIEngineAdminPanel';
 import AIPremiumMessage from './AIPremiumMessage';
 import AITrainingStudio from './AITrainingStudio';
 import { isMasterAdminEmail } from '../../utils/roleUtils';
+import { hasPermission, PERMISSIONS } from '../../utils/permissions';
 import ChatInterface from './MissionMentor/ChatInterface';
 import InputBar from './MissionMentor/InputBar';
 import VoiceControls from './MissionMentor/VoiceControls';
@@ -85,8 +86,7 @@ export const MissionMentor: React.FC<MissionMentorProps> = ({
     }),
     [stats, auditLogs, households, teams, regionalSummaries]
   );
-  const canManageAI =
-    typedUser?.role === 'ADMIN_PROQUELEC' || typedUser?.role === 'ADMIN' || isMasterAdminEmail(typedUser?.email);
+  const canManageAI = hasPermission(user, PERMISSIONS.CONFIGURER_MOTEUR_IA);
 
   const speakResponse = (message: string) => {
     if (isMuted || !('speechSynthesis' in window)) return;
