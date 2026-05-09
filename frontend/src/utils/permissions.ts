@@ -1,146 +1,38 @@
 
 /**
  * 🔐 Moteur de Sécurité & IAM Enterprise - GEM SAAS
- * Phase 4 : Audit Engine & Industrialisation
+ * Phase 5 : Security Alerting & Proactive Monitoring
  */
 
-// 1️⃣ RÉFÉRENTIEL DES TENANTS
-export const TENANTS = {
-  PROQUELEC: 'proquelec',
-  SENELEC: 'senelec',
-  CLIENT_LSE: 'client_lse',
-  GEM: 'gem',
-} as const;
+import { securityAlertService } from '../services/securityAlertService';
 
-export type TenantId = (typeof TENANTS)[keyof typeof TENANTS];
+// 🛡️ Import des types (Découplage pour éviter les dépendances circulaires)
+import type { 
+  AuthUser, 
+  PolicyResponse, 
+  PolicyReasonType, 
+  UserRole, 
+  TenantId, 
+  SecurityResource, 
+  Mission 
+} from './security/types';
 
-// 2️⃣ RÉFÉRENTIEL DES RÔLES GÉNÉRIQUES
-export const AppRole = {
-  PLATFORM_ADMIN: 'PLATFORM_ADMIN', // Super Admin GEM (Tous tenants)
-  ADMIN: 'ADMIN',                 // Admin Entreprise (Un seul tenant)
-  DG: 'DG',
-  CHEF_PROJET: 'CHEF_PROJET',
-  DIRECTION: 'DIRECTION',
-  COMPTABLE: 'COMPTABLE',
-  PATRIMOINE: 'PATRIMOINE',
-  SUPERVISEUR: 'SUPERVISEUR',
-  CONTROLEUR: 'CONTROLEUR',
-  EMPLOYE: 'EMPLOYE',
-} as const;
+// 📦 Import des constantes
+import { 
+  PERMISSIONS, 
+  AppRole, 
+  PolicyReason,
+  LEGACY_MAPPING, 
+  ROLE_ALIASES 
+} from './security/types';
 
-export type UserRole = (typeof AppRole)[keyof typeof AppRole];
+// 1️⃣ PONT DE MIGRATION & REVERSE MAPPING (O(1))
+const REVERSE_LEGACY_MAPPING: Record<string, string> = Object.entries(LEGACY_MAPPING).reduce((acc, [key, val]) => { acc[val] = key; return acc; }, {} as Record<string, string>);
 
-/**
- * 👤 Interface Utilisateur Authentifié
- */
-export interface AuthUser {
-  id: string;
-  email: string;
-  tenantId: TenantId | string;
-  role: UserRole | string;
-  isPlatformAdmin?: boolean;
-  permissions?: string[];
-  scopes?: {
-    regions?: string[];
-    projects?: string[];
-    villages?: string[];
-    teams?: string[];
-  };
-}
+// 2️⃣ CACHE ENGINE
+const PERMS_CACHE = new Map<string, Set<string>>();
 
-/**
- * 🏷️ Ressources Métiers Sécurisées
- */
-export interface SecurityResource {
-  id: string;
-  tenantId: string;
-  regionId?: string;
-  projectId?: string;
-  createdBy?: string;
-  status?: string;
-}
-
-export interface Mission extends SecurityResource {
-  status: 'draft' | 'validated' | 'approved' | 'rejected' | 'archived';
-}
-
-/**
- * 📝 Moteur de Réponses & Raisons
- */
-export const PolicyReason = {
-  MISSING_PERMISSION: 'MISSING_PERMISSION',
-  TENANT_MISMATCH: 'TENANT_MISMATCH',
-  REGION_MISMATCH: 'REGION_MISMATCH',
-  PROJECT_MISMATCH: 'PROJECT_MISMATCH',
-  STATUS_LOCKED: 'STATUS_LOCKED',
-  NOT_OWNER: 'NOT_OWNER',
-  EXPIRED: 'EXPIRED',
-} as const;
-
-export type PolicyReasonType = (typeof PolicyReason)[keyof typeof PolicyReason];
-
-export interface PolicyResponse {
-  allowed: boolean;
-  reason?: PolicyReasonType;
-  message?: string;
-}
-
-// Helpers de réponse standardisés
-export const allow = (): PolicyResponse => ({ allowed: true });
-export const deny = (reason: PolicyReasonType, message: string): PolicyResponse => ({
-  allowed: false,
-  reason,
-  message,
-});
-
-// 3️⃣ REGISTRY DES PERMISSIONS (NAMESPACED)
-export const PERMISSIONS = {
-  MISSIONS_READ: 'missions.read',
-  MISSIONS_CREATE: 'missions.create',
-  MISSIONS_UPDATE: 'missions.update',
-  MISSIONS_DELETE: 'missions.delete',
-  MISSIONS_VALIDATE: 'missions.validate',
-  MISSIONS_APPROVE: 'missions.approve',
-  MISSIONS_PLANNING: 'missions.planning',
-  TERRAIN_READ: 'terrain.read',
-  TERRAIN_WRITE: 'terrain.write',
-  TERRAIN_TERMINAL: 'terrain.terminal',
-  TERRAIN_REJECT: 'terrain.reject',
-  TERRAIN_ZONES: 'terrain.zones',
-  TERRAIN_MENAGES: 'terrain.menages',
-  FINANCE_READ: 'finance.read',
-  FINANCE_MANAGE: 'finance.manage',
-  FINANCE_PAYMENTS: 'finance.payments',
-  FINANCE_EXPORT: 'finance.export',
-  FINANCE_REPORTS: 'finance.reports',
-  LOGISTIQUE_READ: 'logistique.read',
-  LOGISTIQUE_MANAGE: 'logistique.manage',
-  SYSTEM_USERS: 'system.users',
-  SYSTEM_ROLES: 'system.roles',
-  SYSTEM_AUDIT: 'system.audit',
-  SYSTEM_SYNC: 'system.sync',
-  SYSTEM_CONFIG: 'system.config',
-  SYSTEM_EXPORT: 'system.export',
-  SYSTEM_MESSAGES: 'system.messages',
-  UI_MAP: 'ui.map',
-  UI_CHAT: 'ui.chat',
-  UI_ALERTS: 'ui.alerts',
-  UI_TRAINING: 'ui.training',
-  UI_PROJECTS: 'ui.projects',
-  UI_TEAMS: 'ui.teams',
-  UI_DASHBOARD: 'ui.dashboard',
-  IA_USE: 'ia.use',
-  IA_METRICS: 'ia.metrics',
-  IA_SIMULATION: 'ia.simulation',
-  DOCS_READ: 'docs.read',
-  DOCS_CONFIDENTIAL: 'docs.confidential',
-  DOCS_PV: 'docs.pv',
-} as const;
-
-// ATOMIC PERMISSIONS FILTER (Super Admin logic)
-const ALL_ATOMIC_PERMISSIONS = Object.values(PERMISSIONS).filter(p => p.includes('.'));
-
-// 4️⃣ MATRICE DES RÔLES
+// 3️⃣ MATRICE DES RÔLES
 export const PERMISSION_GROUPS = {
   SOCLE_COMMUN: [PERMISSIONS.UI_MAP, PERMISSIONS.UI_CHAT, PERMISSIONS.UI_ALERTS, PERMISSIONS.UI_TRAINING],
   MISSION_VIEWER: [PERMISSIONS.MISSIONS_READ, PERMISSIONS.UI_PROJECTS, PERMISSIONS.TERRAIN_READ],
@@ -148,6 +40,8 @@ export const PERMISSION_GROUPS = {
   FINANCE_ADMIN: [PERMISSIONS.FINANCE_READ, PERMISSIONS.FINANCE_MANAGE, PERMISSIONS.FINANCE_PAYMENTS, PERMISSIONS.FINANCE_EXPORT],
   SUPERVISOR_PACK: [PERMISSIONS.MISSIONS_VALIDATE, PERMISSIONS.DOCS_PV, PERMISSIONS.SYSTEM_AUDIT],
 };
+
+const ALL_ATOMIC_PERMISSIONS = Object.values(PERMISSIONS).filter(p => p.includes('.'));
 
 export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
   [AppRole.PLATFORM_ADMIN]: ALL_ATOMIC_PERMISSIONS,
@@ -162,30 +56,17 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
   [AppRole.CONTROLEUR]: [...PERMISSION_GROUPS.SOCLE_COMMUN, ...PERMISSION_GROUPS.MISSION_VIEWER, PERMISSIONS.MISSIONS_VALIDATE, PERMISSIONS.TERRAIN_REJECT],
 };
 
-// 5️⃣ PONT DE MIGRATION & REVERSE MAPPING (O(1))
-export const LEGACY_MAPPING: Record<string, string> = {
-  'voir_missions': PERMISSIONS.MISSIONS_READ, 'creer_mission': PERMISSIONS.MISSIONS_CREATE, 'modifier_mission': PERMISSIONS.MISSIONS_UPDATE, 'valider_mission': PERMISSIONS.MISSIONS_VALIDATE, 'approuver_mission': PERMISSIONS.MISSIONS_APPROVE, 'voir_finances': PERMISSIONS.FINANCE_READ, 'voir_paiements': PERMISSIONS.FINANCE_PAYMENTS, 'voir_carte': PERMISSIONS.UI_MAP, 'acces_chat': PERMISSIONS.UI_CHAT, 'voir_alertes': PERMISSIONS.UI_ALERTS, 'voir_formations': PERMISSIONS.UI_TRAINING, 'voir_projets': PERMISSIONS.UI_PROJECTS, 'voir_equipes': PERMISSIONS.UI_TEAMS, 'utiliser_ia': PERMISSIONS.IA_USE,
-};
-
-const REVERSE_LEGACY_MAPPING: Record<string, string> = Object.entries(LEGACY_MAPPING).reduce((acc, [key, val]) => { acc[val] = key; return acc; }, {} as Record<string, string>);
-
-// 6️⃣ HELPERS & CACHE ENGINE
-const PERMS_CACHE = new Map<string, Set<string>>();
-
+// 4️⃣ HELPERS & SECURITY ENGINE
 export const normalizeRole = (role?: string): UserRole | null => {
   if (!role) return null;
   const upper = role.trim().toUpperCase();
   if (Object.values(AppRole).includes(upper as any)) return upper as UserRole;
-  const ROLE_ALIASES: any = { PROQUELEC_ADMIN: AppRole.ADMIN, PROQUELEC_DG: AppRole.DG, SENELEC_SUPERVISEUR: AppRole.SUPERVISEUR, CLIENT_LSE_SUPERVISEUR: AppRole.SUPERVISEUR };
   return ROLE_ALIASES[upper] || null;
 };
 
 export const sameTenant = (user: AuthUser, resource: SecurityResource): boolean => user.tenantId === resource.tenantId;
 export const isPlatformAdmin = (user: AuthUser): boolean => user?.isPlatformAdmin === true || normalizeRole(user?.role) === AppRole.PLATFORM_ADMIN;
 
-/**
- * ⚡ RBAC Engine (Optimisé avec Cache & Reverse Mapping)
- */
 export const hasPermission = (user: AuthUser, permission: string | string[]): boolean => {
   if (!user) return false;
   if (isPlatformAdmin(user)) return true;
@@ -204,11 +85,11 @@ export const hasPermission = (user: AuthUser, permission: string | string[]): bo
   return Array.isArray(permission) ? permission.some(p => check(p)) : check(permission);
 };
 
-// 7️⃣ SCOPE HELPERS
+// 5️⃣ SCOPE HELPERS
 export const hasRegionAccess = (user: AuthUser, regionId?: string) => !regionId || !user.scopes?.regions?.length || user.scopes.regions.includes(regionId);
 export const hasProjectAccess = (user: AuthUser, projectId?: string) => !projectId || !user.scopes?.projects?.length || user.scopes.projects.includes(projectId);
 
-// 8️⃣ AUDIT ENGINE (IAM TRACEABILITY)
+// 6️⃣ AUDIT ENGINE
 export interface AuditEvent {
   actorId: string;
   tenantId: string;
@@ -220,13 +101,18 @@ export interface AuditEvent {
   timestamp: Date;
 }
 
-export const auditLog = (event: AuditEvent) => {
-  // Prêt pour DB/IndexedDB ou API Backend
+export const auditLog = (event: AuditEvent, user?: AuthUser) => {
   console.log(`[AUDIT] ${event.allowed ? '✅' : '❌'} User:${event.actorId} | Action:${event.action} | Res:${event.resourceType}:${event.resourceId} | Reason:${event.reason || 'OK'}`);
-  // Ici : add to local Dexie audit store
+  
+  if (!event.allowed && user) {
+    securityAlertService.trackFailure(user, event.action, event.resourceId, event.reason);
+  }
 };
 
-// 9️⃣ POLICY ENGINE (ABAC & WORKFLOW)
+// 7️⃣ POLICY ENGINE
+export const allow = (): PolicyResponse => ({ allowed: true });
+export const deny = (reason: PolicyReasonType, message: string): PolicyResponse => ({ allowed: false, reason, message });
+
 export const canViewMission = (user: AuthUser, mission: Mission): PolicyResponse => {
   const result = ((): PolicyResponse => {
     if (!hasPermission(user, PERMISSIONS.MISSIONS_READ)) return deny(PolicyReason.MISSING_PERMISSION, 'Droit de lecture requis.');
@@ -237,7 +123,7 @@ export const canViewMission = (user: AuthUser, mission: Mission): PolicyResponse
     return allow();
   })();
 
-  auditLog({ actorId: user.id, tenantId: user.tenantId, action: PERMISSIONS.MISSIONS_READ, resourceType: 'mission', resourceId: mission.id, allowed: result.allowed, reason: result.reason, timestamp: new Date() });
+  auditLog({ actorId: user.id, tenantId: user.tenantId, action: PERMISSIONS.MISSIONS_READ, resourceType: 'mission', resourceId: mission.id, allowed: result.allowed, reason: result.reason, timestamp: new Date() }, user);
   return result;
 };
 
@@ -250,11 +136,47 @@ export const canEditMission = (user: AuthUser, mission: Mission): PolicyResponse
     return allow();
   })();
 
-  auditLog({ actorId: user.id, tenantId: user.tenantId, action: PERMISSIONS.MISSIONS_UPDATE, resourceType: 'mission', resourceId: mission.id, allowed: result.allowed, reason: result.reason, timestamp: new Date() });
+  auditLog({ actorId: user.id, tenantId: user.tenantId, action: PERMISSIONS.MISSIONS_UPDATE, resourceType: 'mission', resourceId: mission.id, allowed: result.allowed, reason: result.reason, timestamp: new Date() }, user);
   return result;
 };
 
-// 🔟 LEGACY & LABELS
-export const ROLES = AppRole;
-export const isMasterAdmin = isPlatformAdmin;
-export const PERMISSION_LABELS: Record<string, string> = { [PERMISSIONS.MISSIONS_READ]: 'Voir Missions', [PERMISSIONS.FINANCE_READ]: 'Finances', [PERMISSIONS.IA_USE]: 'Assistant IA' };
+// 8️⃣ LEGACY EXPORTS
+export { PERMISSIONS, AppRole as ROLES, isPlatformAdmin as isMasterAdmin };
+export const PERMISSION_LABELS: Record<string, string> = {
+  [PERMISSIONS.SYSTEM_USERS]: 'Gestion des Comptes',
+  [PERMISSIONS.SYSTEM_CONFIG]: 'Paramètres Système',
+  [PERMISSIONS.SYSTEM_AUDIT]: 'Historique (Audit Logs)',
+  [PERMISSIONS.SYSTEM_MESSAGES]: 'Diffuser Message Global',
+  [PERMISSIONS.SYSTEM_EXPORT]: 'Exports Système Massifs',
+  [PERMISSIONS.MISSIONS_READ]: 'Voir Registre Missions',
+  [PERMISSIONS.MISSIONS_CREATE]: 'Créer Missions',
+  [PERMISSIONS.MISSIONS_UPDATE]: 'Modifier Missions',
+  [PERMISSIONS.MISSIONS_VALIDATE]: 'Validation Opérationnelle',
+  [PERMISSIONS.MISSIONS_APPROVE]: 'Approbation Finale (DG)',
+  [PERMISSIONS.MISSIONS_DELETE]: 'Supprimer Missions',
+  [PERMISSIONS.MISSIONS_PLANNING]: 'Planning (Gantt)',
+  [PERMISSIONS.UI_TEAMS]: 'Voir & Gérer les Équipes',
+  [PERMISSIONS.FINANCE_READ]: 'Tableau de bord Finances',
+  [PERMISSIONS.FINANCE_MANAGE]: 'Gestion des Budgets',
+  [PERMISSIONS.FINANCE_PAYMENTS]: 'Suivi des Paiements',
+  [PERMISSIONS.FINANCE_EXPORT]: 'Exports de Données',
+  [PERMISSIONS.FINANCE_REPORTS]: 'Rapports Financiers',
+  [PERMISSIONS.UI_MAP]: 'Carte Interactive',
+  [PERMISSIONS.TERRAIN_ZONES]: 'Gestion Zones/Grappes',
+  [PERMISSIONS.TERRAIN_MENAGES]: 'Gestion des Ménages',
+  [PERMISSIONS.TERRAIN_TERMINAL]: 'Terminal Collecte Kobo',
+  [PERMISSIONS.TERRAIN_REJECT]: 'Rejeter Dossier Kobo',
+  [PERMISSIONS.UI_PROJECTS]: 'Registre des Projets',
+  [PERMISSIONS.UI_DASHBOARD]: 'Personnaliser Dashboard',
+  [PERMISSIONS.LOGISTIQUE_READ]: 'État des Stocks',
+  [PERMISSIONS.LOGISTIQUE_MANAGE]: 'Mouvements & Logistique',
+  [PERMISSIONS.DOCS_PV]: 'Génération des PV',
+  [PERMISSIONS.DOCS_CONFIDENTIAL]: 'Voir Docs Confidentiels',
+  [PERMISSIONS.UI_TRAINING]: 'Accès Sessions Formation',
+  [PERMISSIONS.UI_CHAT]: 'Utiliser la Messagerie',
+  [PERMISSIONS.UI_ALERTS]: 'Consulter les Alertes',
+  [PERMISSIONS.SYSTEM_SYNC]: 'Logs de Synchronisation',
+  [PERMISSIONS.IA_USE]: 'Assistant Wanekoo',
+  [PERMISSIONS.IA_METRICS]: 'Consommation & Coûts IA',
+  [PERMISSIONS.IA_SIMULATION]: 'Scénarios de Simulation',
+};
