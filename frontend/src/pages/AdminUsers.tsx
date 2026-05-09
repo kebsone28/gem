@@ -182,7 +182,7 @@ const FEATURE_PACKS: Record<
     color: 'text-sky-400',
     bg: 'bg-sky-400/10',
     border: 'border-sky-400/20',
-    desc: 'Planning & Cadrage',
+    desc: 'Gestion des missions (Ordres de Mission, Cadrage, Planning)',
     permissions: [
       PERMISSIONS.VOIR_MISSIONS,
       PERMISSIONS.CREER_MISSION,
@@ -196,7 +196,7 @@ const FEATURE_PACKS: Record<
     color: 'text-emerald-400',
     bg: 'bg-emerald-400/10',
     border: 'border-emerald-400/20',
-    desc: 'Rapports Terrain',
+    desc: 'Suivi financier, paiements, rapports terrain et logistique',
     permissions: [
       PERMISSIONS.VOIR_RAPPORTS_TERRAIN,
       PERMISSIONS.VOIR_FINANCES,
@@ -210,7 +210,7 @@ const FEATURE_PACKS: Record<
     color: 'text-purple-400',
     bg: 'bg-purple-400/10',
     border: 'border-purple-400/20',
-    desc: 'Validations Métier',
+    desc: 'Validations finales, PV de réception et documents confidentiels',
     permissions: [
       PERMISSIONS.VALIDER_MISSION,
       PERMISSIONS.APPROUVER_MISSION,
@@ -1785,6 +1785,9 @@ export default function AdminUsers() {
                                         >
                                           {pack.label}
                                         </span>
+                                        <p className={`text-[8px] mt-1 text-center font-medium leading-tight px-1 ${isActive ? 'text-white/60' : 'text-slate-600'}`}>
+                                          {pack.desc}
+                                        </p>
                                       </button>
                                     );
                                   })}
