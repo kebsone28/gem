@@ -29,7 +29,7 @@ import type { AuditLog, Household, Team } from '../../utils/types';
 import AIEngineAdminPanel from './AIEngineAdminPanel';
 import AIPremiumMessage from './AIPremiumMessage';
 import AITrainingStudio from './AITrainingStudio';
-import { isMasterAdminEmail } from '../../utils/roleUtils';
+
 import { hasPermission, PERMISSIONS } from '../../utils/permissions';
 import ChatInterface from './MissionMentor/ChatInterface';
 import InputBar from './MissionMentor/InputBar';

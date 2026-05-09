@@ -44,7 +44,7 @@ import {
 import './Cahier.css';
 import logger from '../utils/logger';
 import { isTeamAvailableForAllocation } from '../services/planningAllocation';
-import { isMasterAdminEmail } from '../utils/roleUtils';
+import { usePermissions } from '../hooks/usePermissions';
 
 // Import centralized design system
 import { PageContainer, PageHeader, ContentArea, ActionBar } from '@components';
@@ -722,12 +722,8 @@ const ROLE_TO_TRADE_MAPPING: Record<string, string> = {
 
 export default function Cahier() {
   const { user } = useAuth();
-  const isAdmin =
-    (user?.role || '').includes('ADMIN') ||
-    (user?.role || '').includes('DG') ||
-    (user?.role || '').includes('DIRECTEUR') ||
-    isMasterAdminEmail(user?.email) ||
-    user?.role === 'CLIENT_LSE';
+  const { peut, PERMISSIONS } = usePermissions();
+  const isAdmin = peut(PERMISSIONS.MODIFIER_TEMPLATES);
 
   const { project, updateProject } = useProject();
   const { teams: allTeams } = useTeams(project?.id);

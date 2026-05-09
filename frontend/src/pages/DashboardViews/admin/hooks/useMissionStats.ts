@@ -1,5 +1,5 @@
-﻿import { useState, useEffect, useCallback } from 'react';
-import { isMasterAdminEmail } from '../../../../utils/roleUtils';
+import { useState, useEffect, useCallback } from 'react';
+import { hasPermission, PERMISSIONS } from '../../../../utils/permissions';
 import type { MissionStats } from '../../../../services/missionStatsService';
 import { missionStatsService } from '../../../../services/missionStatsService';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -17,9 +17,7 @@ export function useMissionStats(user: Record<string, unknown> | null, projectId:
 
   const fetchStats = useCallback(async () => {
     if (!user) return;
-    const isMaster =
-      isMasterAdminEmail(user.email as string | null) ||
-      (user.role as string | undefined) === 'ADMIN_PROQUELEC';
+    const isMaster = hasPermission(user as any, PERMISSIONS.GERER_PARAMETRES);
     const data = isMaster
       ? await missionStatsService.getGlobalStats()
       : await missionStatsService.getUserStats(user.email as string, user.id as string);

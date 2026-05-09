@@ -18,7 +18,7 @@ import { toast } from 'react-hot-toast';
 import logger from '../utils/logger';
 import * as missionApprovalService from '../services/missionApprovalService';
 import * as missionService from '../services/missionService';
-import { normalizeMissionApprovalRole, isMasterAdminEmail } from '../utils/roleUtils';
+import { normalizeMissionApprovalRole } from '../utils/roleUtils';
 
 // Services & Store
 import { generateMissionOrderPDF } from '../services/missionOrderGenerator';
@@ -163,7 +163,7 @@ export default function MissionOrder() {
   const savedMissions = useMemo(() => {
     // FILTRAGE STRICT : Chaque utilisateur ne voit que ses propres créations
     // On conserve un accès pour l'administrateur système 'admingem' par sécurité
-    const isSystemAdmin = isMasterAdminEmail(user?.email);
+    const isSystemAdmin = peut(PERMISSIONS.GERER_PARAMETRES);
 
     if (isSystemAdmin) return allMissions;
 

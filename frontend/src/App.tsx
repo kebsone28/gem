@@ -17,7 +17,7 @@ import { Toaster } from 'react-hot-toast';
 import { useWebSockets } from './hooks/useWebSockets';
 import { PERMISSIONS, ROLES, hasPermission, normalizeRole } from './utils/permissions';
 import GlobalMissionMentor from './components/ia/GlobalMissionMentor';
-import { isMasterAdminEmail } from './utils/roleUtils';
+
 
 function lazyWithRetry<T extends React.ComponentType<Record<string, never>>>(
   importer: () => Promise<{ default: T }>,
@@ -136,16 +136,6 @@ const RoleRoute = ({
   if (!user) return <Navigate to="/login" replace />;
   const role = normalizeRole(user.role);
   if (!role || !allowedRoles.includes(role)) {
-    return <Navigate to="/dashboard" replace />;
-  }
-  return <>{children}</>;
-};
-
-const MasterAdminRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user } = useAuth();
-  if (!user) return <Navigate to="/login" replace />;
-  const isMaster = user.role === 'ADMIN_PROQUELEC' || isMasterAdminEmail(user.email);
-  if (!isMaster) {
     return <Navigate to="/dashboard" replace />;
   }
   return <>{children}</>;

@@ -35,7 +35,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import apiClient from '../../api/client';
-import { isMasterAdminEmail } from '../../utils/roleUtils';
+
 import { hasPermission, PERMISSIONS } from '../../utils/permissions';
 
 interface Props {
