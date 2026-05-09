@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { normalizeRole, ROLES } from '../utils/permissions';
+import { normalizeRole, ROLES, isPlatformAdmin } from '../utils/permissions';
 import { useProjectSelector } from '../hooks/useProjectSelector';
 import {
   Building,
@@ -55,10 +55,11 @@ export default function Home() {
   const normalizedRole = normalizeRole(user?.role || '');
   
   // Déterminer si l'utilisateur est admin ou DG pour voir tous les projets
-  const isAdminOrDG = normalizedRole === ROLES.PROQUELEC_ADMIN || normalizedRole === ROLES.PROQUELEC_DG;
+  // 🛡️ Phase 5 : Utilisation de isPlatformAdmin pour le bypass total
+  const isGlobalAdmin = isPlatformAdmin(user) || normalizedRole === ROLES.ADMIN || normalizedRole === ROLES.DG;
   
   // Pour admin/DG : tous les projets, pour autres : seulement les projets assignés
-  const availableProjects = isAdminOrDG ? projects : filteredProjects;
+  const availableProjects = isGlobalAdmin ? projects : filteredProjects;
 
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showNotifications, setShowNotifications] = useState(false);
@@ -79,24 +80,20 @@ export default function Home() {
 
   const getRoleColor = (role: string) => {
     switch (role) {
-      case ROLES.PROQUELEC_ADMIN:
-      case ROLES.PROQUELEC_DG:
+      case ROLES.PLATFORM_ADMIN:
+      case ROLES.ADMIN:
+      case ROLES.DG:
         return 'bg-purple-500/10 border-purple-500/20 text-purple-400';
-      case ROLES.PROQUELEC_CHEF_PROJET:
+      case ROLES.CHEF_PROJET:
         return 'bg-blue-500/10 border-blue-500/20 text-blue-400';
-      case ROLES.PROQUELEC_COMPTABLE:
+      case ROLES.COMPTABLE:
         return 'bg-green-500/10 border-green-500/20 text-green-400';
-      case ROLES.PROQUELEC_PATRIMOINE:
+      case ROLES.PATRIMOINE:
         return 'bg-orange-500/10 border-orange-500/20 text-orange-400';
-      case ROLES.CLIENT_LSE_SUPERVISEUR:
-      case ROLES.CLIENT_LSE_TECHNIQUE:
-        return 'bg-cyan-500/10 border-cyan-500/20 text-cyan-400';
-      case ROLES.SENELEC_SUPERVISEUR:
-      case ROLES.SENELEC_CONTROLEUR:
+      case ROLES.SUPERVISEUR:
         return 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400';
-      case ROLES.SOUS_TRAITANT_DIRECTEUR:
-      case ROLES.SOUS_TRAITANT_EMPLOYE:
-        return 'bg-amber-500/10 border-amber-500/20 text-amber-400';
+      case ROLES.CONTROLEUR:
+        return 'bg-cyan-500/10 border-cyan-500/20 text-cyan-400';
       default:
         return 'bg-slate-500/10 border-slate-500/20 text-slate-400';
     }
@@ -351,10 +348,10 @@ export default function Home() {
               >
                 <div className="flex items-center justify-between mb-4">
                   <Target size={24} className="text-blue-400" />
-                  <span className="text-2xl font-black text-white">{isAdminOrDG ? projects.length : availableProjects.length}</span>
+                  <span className="text-2xl font-black text-white">{isGlobalAdmin ? projects.length : availableProjects.length}</span>
                 </div>
                 <h3 className="text-sm font-medium text-slate-300">
-                  {isAdminOrDG ? 'Projets Totaux' : 'Mes Projets'}
+                  {isGlobalAdmin ? 'Projets Totaux' : 'Mes Projets'}
                 </h3>
               </motion.div>
 
@@ -365,7 +362,7 @@ export default function Home() {
                 <div className="flex items-center justify-between mb-4">
                   <Activity size={24} className="text-emerald-400" />
                   <span className="text-2xl font-black text-white">
-                    {isAdminOrDG ? projects.filter(p => p.status === 'active').length : availableProjects.filter(p => p.status === 'active').length}
+                    {isGlobalAdmin ? projects.filter(p => p.status === 'active').length : availableProjects.filter(p => p.status === 'active').length}
                   </span>
                 </div>
                 <h3 className="text-sm font-medium text-slate-300">Projets Actifs</h3>
@@ -378,11 +375,11 @@ export default function Home() {
                 <div className="flex items-center justify-between mb-4">
                   <Users size={24} className="text-purple-400" />
                   <span className="text-2xl font-black text-white">
-                    {isAdminOrDG ? projects.filter(p => !p.isArchived).length : availableProjects.filter(p => !p.isArchived).length}
+                    {isGlobalAdmin ? projects.filter(p => !p.isArchived).length : availableProjects.filter(p => !p.isArchived).length}
                   </span>
                 </div>
                 <h3 className="text-sm font-medium text-slate-300">
-                  {isAdminOrDG ? 'Projets Disponibles' : 'Projets Accessibles'}
+                  {isGlobalAdmin ? 'Projets Disponibles' : 'Projets Accessibles'}
                 </h3>
               </motion.div>
 
@@ -393,7 +390,7 @@ export default function Home() {
                 <div className="flex items-center justify-between mb-4">
                   <Clock size={24} className="text-amber-400" />
                   <span className="text-2xl font-black text-white">
-                    {isAdminOrDG ? projects.filter(p => p.status === 'planning').length : availableProjects.filter(p => p.status === 'planning').length}
+                    {isGlobalAdmin ? projects.filter(p => p.status === 'planning').length : availableProjects.filter(p => p.status === 'planning').length}
                   </span>
                 </div>
                 <h3 className="text-sm font-medium text-slate-300">En Planification</h3>
@@ -490,7 +487,7 @@ export default function Home() {
               <p className="text-slate-400 mb-8">
                 Vous n'avez accès à aucun projet pour le moment.
               </p>
-              {normalizedRole === ROLES.PROQUELEC_ADMIN || normalizedRole === ROLES.PROQUELEC_DG ? (
+              {isGlobalAdmin ? (
                 <button
                   onClick={() => navigate('/admin/project-creation')}
                   className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-500 transition-all mx-auto"

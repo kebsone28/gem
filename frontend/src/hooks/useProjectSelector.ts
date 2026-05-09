@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../store/db';
-import { modulesManagementService } from '../services/modulesManagementService';
+import { hasPermission, PERMISSIONS, isPlatformAdmin } from '../utils/permissions';
 import logger from '../utils/logger';
 import toast from 'react-hot-toast';
 
@@ -51,8 +51,7 @@ export function useProjectSelector() {
   // Vérifier si l'utilisateur a accès aux projets
   const canAccessProjects = useMemo(() => {
     if (!user) return false;
-    const permissions = user.permissions || [];
-    return permissions.includes('voir_projets') || permissions.includes('acceder_projets');
+    return isPlatformAdmin(user) || hasPermission(user, PERMISSIONS.UI_PROJECTS);
   }, [user]);
 
   // Charger les projets
@@ -85,9 +84,14 @@ export function useProjectSelector() {
       setProjects(activeProjects);
       setUserAssignments(assignments);
 
-      // Sélectionner automatiquement le premier projet si aucun n'est sélectionné
+      // Sélectionner automatiquement le projet
       if (!selectedProject && activeProjects.length > 0) {
-        const firstAccessibleProject = assignments.find(a => a.canSwitch)?.projectId || activeProjects[0]?.id;
+        // 🥇 Priorité 1 : Projet Kobo Global
+        const globalProject = activeProjects.find(p => p.name.toLowerCase().includes('global') || p.name.toLowerCase().includes('kobo'));
+        
+        // 🥈 Priorité 2 : Premier projet accessible
+        const firstAccessibleProject = globalProject?.id || assignments.find(a => a.canSwitch)?.projectId || activeProjects[0]?.id;
+        
         if (firstAccessibleProject) {
           setSelectedProject(firstAccessibleProject);
         }
