@@ -1743,9 +1743,11 @@ export default function AdminUsers() {
                           </div>
                         ) : (
                           <div className="space-y-6 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar p-1">
-                            {/* 🚀 QUICK PACKS FOR DG OR SIMILAR ROLES */}
-                            {(form.role === 'PROQUELEC_DG' || form.role === 'DG') && (
-                              <div className="space-y-3">
+                            {/* 🚀 QUICK PACKS FOR MANAGEMENT ROLES */}
+                            {(normalizeRole(form.role) === 'PROQUELEC_DG' || 
+                              normalizeRole(form.role) === 'PROQUELEC_CHEF_PROJET' ||
+                              normalizeRole(form.role) === 'PROQUELEC_DIRECTION') && (
+                              <div className="space-y-3 mb-6">
                                 <h5 className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em] pl-1 border-l-2 border-indigo-500 leading-none">
                                   ⚡ Pilotage par Modules (Unifié)
                                 </h5>
