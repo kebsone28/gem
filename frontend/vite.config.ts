@@ -228,7 +228,16 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    include: ['qrcode'],
+    include: [
+      'qrcode',
+      'lodash/debounce',
+      'react-window',
+      'react-virtualized-auto-sizer',
+      'jspdf',
+      'jspdf-autotable',
+      'framer-motion',
+      'lucide-react'
+    ],
   },
   resolve: {
     alias: {
