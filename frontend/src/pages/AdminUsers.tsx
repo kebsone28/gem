@@ -218,6 +218,21 @@ const FEATURE_PACKS: Record<
       PERMISSIONS.VOIR_DOCUMENTS_CONFIDENTIELS,
     ],
   },
+  global: {
+    label: 'Pilotage Global',
+    icon: Layout,
+    color: 'text-indigo-400',
+    bg: 'bg-indigo-400/10',
+    border: 'border-indigo-400/20',
+    desc: 'Supervision globale : Projets, Équipes, Audit et Synchronisation',
+    permissions: [
+      PERMISSIONS.VOIR_PROJETS,
+      PERMISSIONS.VOIR_EQUIPES,
+      PERMISSIONS.VOIR_AUDIT_LOGS,
+      PERMISSIONS.VOIR_SYNCHRO,
+      PERMISSIONS.VOIR_ALERTES,
+    ],
+  },
 };
 
 type UserForm = Omit<User, 'id' | 'createdAt'>;
@@ -1751,7 +1766,7 @@ export default function AdminUsers() {
                                 <h5 className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em] pl-1 border-l-2 border-indigo-500 leading-none">
                                   ⚡ Pilotage par Modules (Unifié)
                                 </h5>
-                                <div className="grid grid-cols-3 gap-3">
+                                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                                   {Object.entries(FEATURE_PACKS).map(([id, pack]) => {
                                     const currentRole =
                                       normalizeRole(form.role) || (form.role as PermissionUserRole);
