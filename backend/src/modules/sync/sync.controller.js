@@ -38,12 +38,31 @@ export const pullChanges = async (req, res) => {
         const lastSync = since ? new Date(since) : new Date(0);
 
         // Fetch all changes for this organization since last sync
-        const projects = await prisma.project.findMany({
+        const rawProjects = await prisma.project.findMany({
             where: {
                 organizationId,
                 updatedAt: { gt: lastSync }
             }
         });
+
+        const { email, id: userId, role: userRole } = req.user;
+        const isGlobalAdmin = email === 'admingem' || userRole === 'ADMIN' || userRole === 'DG' || userRole === 'ADMIN_PROQUELEC' || userRole === 'DG_PROQUELEC';
+
+        // 🛡️ Extraire assignedUsers de config et filtrer pour le frontend
+        let projects = rawProjects.map(p => {
+            const config = p.config || {};
+            return {
+                ...p,
+                assignedUsers: config.assignedUsers || []
+            };
+        });
+
+        if (!isGlobalAdmin) {
+            projects = projects.filter(p => 
+                (p.assignedUsers || []).includes(userId) || 
+                (p.assignedUsers || []).includes(email)
+            );
+        }
 
         const rawHouseholds = await prisma.household.findMany({
             where: {
@@ -164,7 +183,11 @@ export const pushChanges = async (req, res) => {
                             budget: budget ? String(budget) : serverProject?.budget,
                             duration: duration !== undefined ? parseInt(duration) : serverProject?.duration,
                             totalHouses: totalHouses !== undefined ? parseInt(totalHouses) : serverProject?.totalHouses,
-                            config: pConfig ? { ...(serverProject?.config || {}), ...pConfig } : serverProject?.config,
+                            config: { 
+                                ...(serverProject?.config || {}), 
+                                ...(pConfig || {}),
+                                assignedUsers: p.assignedUsers || serverProject?.config?.assignedUsers || []
+                            },
                             updatedAt: new Date(),
                             version: (parseInt(version) || serverProject?.version || 1) + 1
                         },
@@ -176,7 +199,10 @@ export const pushChanges = async (req, res) => {
                             budget: budget ? String(budget) : "0",
                             duration: parseInt(duration) || 0,
                             totalHouses: parseInt(totalHouses) || 0,
-                            config: pConfig || {},
+                            config: {
+                                ...(pConfig || {}),
+                                assignedUsers: p.assignedUsers || []
+                            },
                             version: 1
                         }
                     });

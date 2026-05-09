@@ -64,22 +64,35 @@ export function useProjectSelector() {
     }
 
     try {
-      // Charger les projets depuis IndexedDB
-      const dbProjects = await db.projects.toArray();
-      // Pour l'instant, simuler les assignments depuis les données des projets
-      const assignments: ProjectAssignment[] = dbProjects.map(project => ({
-        projectId: project.id,
-        userId: user.id,
-        role: 'manager', // Par défaut
-        assignedAt: project.createdAt,
-        assignedBy: 'system',
-        permissions: ['view', 'edit'],
-        canSwitch: true,
-        lastAccessed: new Date(),
-      }));
+      // Charger tous les projets depuis IndexedDB
+      const allDbProjects = await db.projects.toArray();
+      
+      // Déterminer le rôle
+      const nRole = normalizeRole(user.role);
+      const isGlobalAdmin = isPlatformAdmin(user) || nRole === ROLES.ADMIN || nRole === ROLES.DG;
 
-      // Filtrer les projets archivés
-      const activeProjects = dbProjects.filter(p => !p.isArchived);
+      // 🛡️ Filtrage de visibilité Enterprise
+      const accessibleProjects = isGlobalAdmin 
+        ? allDbProjects 
+        : allDbProjects.filter(p => (p.assignedUsers || []).includes(user.id) || (p.assignedUsers || []).includes(user.email));
+
+      // Créer les assignments réels ou simulés pour la navigation
+      const assignments: ProjectAssignment[] = accessibleProjects.map(project => {
+        const isAssigned = (project.assignedUsers || []).includes(user.id) || (project.assignedUsers || []).includes(user.email);
+        return {
+          projectId: project.id,
+          userId: user.id,
+          role: isGlobalAdmin ? 'admin' : 'member',
+          assignedAt: project.createdAt,
+          assignedBy: 'system',
+          permissions: isGlobalAdmin ? ['all'] : ['view'],
+          canSwitch: isGlobalAdmin || isAssigned,
+          lastAccessed: new Date(),
+        };
+      });
+
+      // Filtrer les projets archivés pour la vue principale
+      const activeProjects = accessibleProjects.filter(p => !p.isArchived);
 
       setProjects(activeProjects);
       setUserAssignments(assignments);

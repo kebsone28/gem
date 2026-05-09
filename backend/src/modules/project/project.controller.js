@@ -20,7 +20,7 @@ export const getProjects = async (req, res) => {
   try {
     const { organizationId } = req.user;
 
-    const projects = await prisma.project.findMany({
+    const rawProjects = await prisma.project.findMany({
       where: {
         organizationId,
         deletedAt: null,
@@ -40,6 +40,24 @@ export const getProjects = async (req, res) => {
         updatedAt: 'desc',
       },
     });
+
+    const { email, id: userId, role: userRole } = req.user;
+    
+    // 🛡️ Déterminer si l'utilisateur est un Admin Global ou DG
+    const isGlobalAdmin = email === 'admingem' || userRole === 'ADMIN' || userRole === 'DG' || userRole === 'ADMIN_PROQUELEC' || userRole === 'DG_PROQUELEC';
+
+    let projects = rawProjects.map(p => ({
+      ...p,
+      assignedUsers: (p.config || {}).assignedUsers || []
+    }));
+
+    // 🔒 Filtrage de sécurité : Seuls les projets assignés pour les autres
+    if (!isGlobalAdmin) {
+      projects = projects.filter(p => 
+        (p.assignedUsers || []).includes(userId) || 
+        (p.assignedUsers || []).includes(email)
+      );
+    }
 
     res.json({ projects });
   } catch (error) {
@@ -77,7 +95,12 @@ export const getProjectById = async (req, res) => {
       return res.status(404).json({ error: 'Project not found' });
     }
 
-    res.json(project);
+    const enrichedProject = {
+      ...project,
+      assignedUsers: (project.config || {}).assignedUsers || []
+    };
+
+    res.json(enrichedProject);
   } catch (error) {
     console.error('Get project error:', error);
     res.status(500).json({ error: 'Server error while fetching project' });
@@ -108,7 +131,10 @@ export const createProject = async (req, res) => {
         budget: budget || 0,
         duration: duration || 12,
         totalHouses: totalHouses || 0,
-        config: config || {},
+        config: {
+          ...(config || {}),
+          assignedUsers: req.body.assignedUsers || []
+        },
         organizationId,
         updatedById: userId,
       },
@@ -160,7 +186,14 @@ export const updateProject = async (req, res) => {
 
     const updatedProject = await prisma.project.update({
       where: { id },
-      data: updateData,
+      data: {
+        ...updateData,
+        config: config !== undefined ? {
+          ...(project.config || {}),
+          ...config,
+          assignedUsers: req.body.assignedUsers !== undefined ? req.body.assignedUsers : (project.config?.assignedUsers || [])
+        } : project.config
+      },
     });
 
     // Audit Log

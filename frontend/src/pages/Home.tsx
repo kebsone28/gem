@@ -54,12 +54,11 @@ export default function Home() {
 
   const normalizedRole = normalizeRole(user?.role || '');
   
-  // Déterminer si l'utilisateur est admin ou DG pour voir tous les projets
-  // 🛡️ Phase 5 : Utilisation de isPlatformAdmin pour le bypass total
+  // 🛡️ Déterminer si l'utilisateur est admin ou DG pour l'UI (stats, boutons)
   const isGlobalAdmin = isPlatformAdmin(user) || normalizedRole === ROLES.ADMIN || normalizedRole === ROLES.DG;
   
-  // Pour admin/DG : tous les projets, pour autres : seulement les projets assignés
-  const availableProjects = isGlobalAdmin ? projects : filteredProjects;
+  // La liste des projets est déjà filtrée à la source par useProjectSelector
+  const availableProjects = filteredProjects;
 
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showNotifications, setShowNotifications] = useState(false);
@@ -540,7 +539,7 @@ export default function Home() {
                       </span>
                     </div>
                     <div className="text-sm text-slate-400">
-                      {Math.round(project.progress)}%
+                      {Math.round(project.progress || 0)}%
                     </div>
                   </div>
 
@@ -548,7 +547,7 @@ export default function Home() {
                   <div className="w-full h-2 bg-slate-700 rounded-full overflow-hidden mb-4">
                     <div
                       className="h-full bg-gradient-to-r from-blue-500 to-purple-600 transition-all duration-500"
-                      style={{ width: `${project.progress}%` }}
+                      style={{ width: `${project.progress || 0}%` }}
                     />
                   </div>
 
