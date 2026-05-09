@@ -38,6 +38,7 @@ import {
   ROLES,
   type UserRole,
 } from '../utils/permissions';
+import { useProject } from '../contexts/ProjectContext';
 import { NotificationCenter } from './layout';
 import { organizationService } from '../services/organizationService';
 
