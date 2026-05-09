@@ -232,6 +232,16 @@ export default function Home() {
             backgroundPosition: '0 0, 0 0, 0 0'
           }}
         />
+
+        {/* Dynamic Glow for Mascot */}
+        <motion.div 
+          animate={{ 
+            opacity: [0.1, 0.2, 0.1],
+            scale: [1, 1.1, 1]
+          }}
+          transition={{ duration: 4, repeat: Infinity }}
+          className="absolute top-20 right-20 w-[500px] h-[500px] bg-blue-500/10 rounded-full blur-[100px] z-0"
+        />
       </div>
             {/* Header Premium */}
       <header className="bg-slate-900/80 backdrop-blur-xl border-b border-slate-800 sticky top-0 z-50">
@@ -324,17 +334,66 @@ export default function Home() {
       {/* Hero Section */}
       <section className="px-6 py-12 relative z-10">
         <div className="max-w-7xl mx-auto relative">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center mb-12"
-          >
-            <h1 className="text-5xl font-black text-white mb-4">
-              Bienvenue sur <span className="bg-gradient-to-r from-blue-400 to-purple-600 bg-clip-text text-transparent">GEM SAAS</span>
-            </h1>
-            <p className="text-xl text-slate-400 mb-8">
-              Sélectionnez un projet pour accéder à votre espace de travail personnalisé
-            </p>
+          <div className="flex flex-col lg:flex-row items-center gap-12 mb-12">
+            <motion.div
+              initial={{ opacity: 0, x: -30 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="text-left flex-1"
+            >
+              <h1 className="text-5xl lg:text-7xl font-black text-white mb-6 leading-tight">
+                Bienvenue sur <br />
+                <span className="bg-gradient-to-r from-blue-400 via-purple-500 to-emerald-400 bg-clip-text text-transparent">
+                  GEM SAAS
+                </span>
+              </h1>
+              <p className="text-xl text-slate-400 mb-8 max-w-2xl leading-relaxed">
+                Votre tour de contrôle intelligente pour une gestion de projets d'excellence. 
+                Sélectionnez votre espace de travail et pilotez vos performances en temps réel.
+              </p>
+            </motion.div>
+
+            {/* Mascot Container */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8, x: 30 }}
+              animate={{ opacity: 1, scale: 1, x: 0 }}
+              className="relative hidden lg:block"
+            >
+              {/* Floating Animation for Mascot */}
+              <motion.div
+                animate={{ 
+                  y: [0, -20, 0],
+                }}
+                transition={{ 
+                  duration: 6, 
+                  repeat: Infinity,
+                  ease: "easeInOut"
+                }}
+                className="relative z-10"
+              >
+                <img 
+                  src="/assets/mascot.png" 
+                  alt="GEM Mascot" 
+                  className="w-80 h-auto drop-shadow-[0_20px_50px_rgba(59,130,246,0.3)]"
+                />
+              </motion.div>
+
+              {/* Welcome Bubble */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 1 }}
+                className="absolute -top-12 -left-12 bg-white/10 backdrop-blur-md border border-white/20 p-4 rounded-2xl shadow-2xl max-w-[200px] z-20"
+              >
+                <p className="text-sm font-medium text-white italic">
+                  "Bonjour {user.name.split(' ')[0]}, ravi de vous revoir ! Prêt à accomplir de grandes choses aujourd'hui ?"
+                </p>
+                <div className="absolute bottom-[-8px] right-8 w-4 h-4 bg-white/10 backdrop-blur-md border-r border-b border-white/20 rotate-45" />
+              </motion.div>
+
+              {/* Decorative elements behind mascot */}
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-blue-600/20 rounded-full blur-[60px] -z-10" />
+            </motion.div>
+          </div>
 
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12 relative z-10">
