@@ -163,6 +163,63 @@ const ROLE_CONFIG: Record<
   },
 };
 
+// ─── Unification des Modules Métier ──────────────────────────────────────────
+const FEATURE_PACKS: Record<
+  string,
+  {
+    label: string;
+    icon: any;
+    color: string;
+    bg: string;
+    border: string;
+    desc: string;
+    permissions: string[];
+  }
+> = {
+  prep: {
+    label: 'Stratégie',
+    icon: FileText,
+    color: 'text-sky-400',
+    bg: 'bg-sky-400/10',
+    border: 'border-sky-400/20',
+    desc: 'Planning & Cadrage',
+    permissions: [
+      PERMISSIONS.VOIR_MISSIONS,
+      PERMISSIONS.CREER_MISSION,
+      PERMISSIONS.MODIFIER_MISSION,
+      PERMISSIONS.GERER_PLANNING,
+    ],
+  },
+  report: {
+    label: 'Exécution',
+    icon: CheckIcon,
+    color: 'text-emerald-400',
+    bg: 'bg-emerald-400/10',
+    border: 'border-emerald-400/20',
+    desc: 'Rapports Terrain',
+    permissions: [
+      PERMISSIONS.VOIR_RAPPORTS_TERRAIN,
+      PERMISSIONS.VOIR_FINANCES,
+      PERMISSIONS.VOIR_PAIEMENTS,
+      PERMISSIONS.VOIR_LOGISTIQUE,
+    ],
+  },
+  approval: {
+    label: 'Approbations',
+    icon: ShieldIcon,
+    color: 'text-purple-400',
+    bg: 'bg-purple-400/10',
+    border: 'border-purple-400/20',
+    desc: 'Validations Métier',
+    permissions: [
+      PERMISSIONS.VALIDER_MISSION,
+      PERMISSIONS.APPROUVER_MISSION,
+      PERMISSIONS.GERER_PV,
+      PERMISSIONS.VOIR_DOCUMENTS_CONFIDENTIELS,
+    ],
+  },
+};
+
 type UserForm = Omit<User, 'id' | 'createdAt'>;
 
 const emptyForm = (): UserForm => ({
@@ -323,6 +380,28 @@ export default function AdminUsers() {
       } else {
         return { ...f, permissions: [...current, p] };
       }
+    });
+  };
+
+  const toggleFeaturePack = (packId: string) => {
+    const pack = FEATURE_PACKS[packId];
+    if (!pack) return;
+
+    setForm((f: any) => {
+      const currentRole = normalizeRole(f.role) || (f.role as PermissionUserRole);
+      const isAuto = f.permissions === null || f.permissions === undefined;
+      const current = isAuto ? ROLE_PERMISSIONS[currentRole] || [] : f.permissions;
+
+      // Si toutes les perms du pack sont déjà là, on les retire toutes
+      // Sinon, on s'assure qu'elles y sont toutes
+      const hasAll = pack.permissions.every((p) => current.includes(p));
+      let next;
+      if (hasAll) {
+        next = current.filter((p) => !pack.permissions.includes(p));
+      } else {
+        next = Array.from(new Set([...current, ...pack.permissions]));
+      }
+      return { ...f, permissions: next };
     });
   };
 
@@ -1663,60 +1742,143 @@ export default function AdminUsers() {
                             </div>
                           </div>
                         ) : (
-                          <div className="grid grid-cols-1 gap-6 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar bg-slate-950/50 p-4 rounded-2xl border border-slate-800">
-                            {permissionGroups.map((group) => (
-                              <div key={group.title} className="space-y-3">
-                                <h5 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] pl-1 border-l-2 border-slate-700 leading-none">
-                                  {group.title}
+                          <div className="space-y-6 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar p-1">
+                            {/* 🚀 QUICK PACKS FOR DG OR SIMILAR ROLES */}
+                            {(form.role === 'PROQUELEC_DG' || form.role === 'DG') && (
+                              <div className="space-y-3">
+                                <h5 className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em] pl-1 border-l-2 border-indigo-500 leading-none">
+                                  ⚡ Pilotage par Modules (Unifié)
                                 </h5>
-                                <div className="grid grid-cols-1 gap-2">
-                                  {group.keys.map((key) => {
-                                    const value = (PERMISSIONS as any)[key];
-                                    if (!value) return null;
-
+                                <div className="grid grid-cols-3 gap-3">
+                                  {Object.entries(FEATURE_PACKS).map(([id, pack]) => {
                                     const currentRole =
                                       normalizeRole(form.role) || (form.role as PermissionUserRole);
-                                    const isChecked =
-                                      form.permissions === null || form.permissions === undefined
-                                        ? (ROLE_PERMISSIONS[currentRole] || []).includes(value)
-                                        : form.permissions.includes(value);
+                                    const isAuto =
+                                      form.permissions === null || form.permissions === undefined;
+                                    const current = isAuto
+                                      ? ROLE_PERMISSIONS[currentRole] || []
+                                      : form.permissions;
+                                    const isActive = pack.permissions.every((p) =>
+                                      current.includes(p)
+                                    );
 
-                                    const label = PERMISSION_LABELS[value] || value;
                                     return (
-                                      <label
-                                        key={key}
-                                        className={`flex items-center gap-3 p-2.5 rounded-xl border cursor-pointer transition-all ${
-                                          isChecked
-                                            ? 'bg-emerald-500/10 border-emerald-500/30'
-                                            : 'bg-slate-900/50 border-slate-800/50 hover:border-slate-700'
+                                      <button
+                                        key={id}
+                                        type="button"
+                                        onClick={() => toggleFeaturePack(id)}
+                                        className={`flex flex-col items-center justify-center p-4 rounded-2xl border transition-all ${
+                                          isActive
+                                            ? `${pack.bg} ${pack.border} shadow-lg`
+                                            : 'bg-slate-950 border-slate-800 opacity-60 grayscale hover:grayscale-0'
                                         }`}
                                       >
-                                        <input
-                                          type="checkbox"
-                                          className="hidden"
-                                          checked={isChecked}
-                                          onChange={() => togglePermission(value)}
-                                        />
                                         <div
-                                          className={`w-4 h-4 flex items-center justify-center rounded border transition-all ${
-                                            isChecked
-                                              ? 'bg-emerald-500 border-emerald-500 text-white'
-                                              : 'border-slate-600'
-                                          }`}
+                                          className={`w-8 h-8 rounded-lg flex items-center justify-center mb-2 ${isActive ? pack.color : 'text-slate-600'}`}
                                         >
-                                          {isChecked && <CheckCircle2 size={12} />}
+                                          <pack.icon size={18} />
                                         </div>
                                         <span
-                                          className={`text-xs font-medium ${isChecked ? 'text-emerald-400' : form.permissions === null || form.permissions === undefined ? 'text-slate-500 italic' : 'text-slate-400'}`}
+                                          className={`text-[10px] font-black uppercase tracking-tight ${isActive ? 'text-white' : 'text-slate-500'}`}
                                         >
-                                          {label}
+                                          {pack.label}
                                         </span>
-                                      </label>
+                                      </button>
                                     );
                                   })}
                                 </div>
                               </div>
-                            ))}
+                            )}
+
+                            <div className="grid grid-cols-1 gap-6 bg-slate-950/50 p-4 rounded-2xl border border-slate-800">
+                              {permissionGroups.map((group) => (
+                                <div key={group.title} className="space-y-3">
+                                  <h5 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] pl-1 border-l-2 border-slate-700 leading-none">
+                                    {group.title}
+                                  </h5>
+                                  <div className="grid grid-cols-1 gap-2">
+                                    {group.keys.map((key) => {
+                                      const value = (PERMISSIONS as any)[key];
+                                      if (!value) return null;
+
+                                      const currentRole =
+                                        normalizeRole(form.role) ||
+                                        (form.role as PermissionUserRole);
+                                      const isAuto =
+                                        form.permissions === null || form.permissions === undefined;
+                                      const roleHasIt = (ROLE_PERMISSIONS[currentRole] || []).includes(
+                                        value
+                                      );
+                                      const isChecked = isAuto ? roleHasIt : form.permissions.includes(value);
+
+                                      const label = PERMISSION_LABELS[value] || value;
+                                      return (
+                                        <label
+                                          key={key}
+                                          className={`flex items-center justify-between p-2.5 rounded-xl border cursor-pointer transition-all ${
+                                            isChecked
+                                              ? 'bg-emerald-500/10 border-emerald-500/30'
+                                              : 'bg-slate-900/50 border-slate-800/50 hover:border-slate-700'
+                                          }`}
+                                        >
+                                          <div className="flex items-center gap-3">
+                                            <input
+                                              type="checkbox"
+                                              className="hidden"
+                                              checked={isChecked}
+                                              onChange={() => togglePermission(value)}
+                                            />
+                                            <div
+                                              className={`w-4 h-4 flex items-center justify-center rounded border transition-all ${
+                                                isChecked
+                                                  ? 'bg-emerald-500 border-emerald-500 text-white'
+                                                  : 'border-slate-600'
+                                              }`}
+                                            >
+                                              {isChecked && <CheckCircle2 size={12} />}
+                                            </div>
+                                            <div className="flex flex-col">
+                                              <span
+                                                className={`text-xs font-bold ${isChecked ? 'text-emerald-400' : isAuto ? 'text-slate-500 italic' : 'text-slate-400'}`}
+                                              >
+                                                {label}
+                                              </span>
+                                              <span className="text-[8px] text-slate-600 uppercase font-bold tracking-widest">
+                                                {key}
+                                              </span>
+                                            </div>
+                                          </div>
+
+                                          {/* ORIGIN INDICATOR */}
+                                          <div className="flex items-center gap-2">
+                                            {roleHasIt && (
+                                              <span
+                                                title="Inclus par défaut dans le rôle"
+                                                className={`text-[8px] px-2 py-0.5 rounded-full border font-black uppercase tracking-widest ${
+                                                  isChecked && isAuto
+                                                    ? 'bg-indigo-500/10 border-indigo-500/30 text-indigo-400'
+                                                    : 'bg-slate-800 border-slate-700 text-slate-600'
+                                                }`}
+                                              >
+                                                Rôle
+                                              </span>
+                                            )}
+                                            {!isAuto && isChecked && !roleHasIt && (
+                                              <span
+                                                title="Ajouté manuellement pour cet utilisateur"
+                                                className="text-[8px] px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 font-black uppercase tracking-widest"
+                                              >
+                                                Forcé
+                                              </span>
+                                            )}
+                                          </div>
+                                        </label>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
                           </div>
                         )}
                       </>
