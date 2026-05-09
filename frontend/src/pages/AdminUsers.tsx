@@ -34,6 +34,7 @@ import {
   normalizeRole,
   type UserRole as PermissionUserRole,
 } from '../utils/permissions';
+import { useNavigate } from 'react-router-dom';
 import { userService } from '../services/userService';
 import { organizationService } from '../services/organizationService';
 import { auditService } from '../services/auditService';
