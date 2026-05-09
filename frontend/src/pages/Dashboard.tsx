@@ -1,4 +1,4 @@
-﻿import { useEffect } from 'react';
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { normalizeRole, ROLES } from '../utils/permissions';
@@ -28,11 +28,6 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-slate-950">
-      {/* Sélecteur de projet en haut */}
-      <div className="p-6 pb-0">
-        <ProjectSelector />
-      </div>
-      
       {/* Dashboard selon le rôle normalisé */}
       {(() => {
         switch (normalizedRole) {

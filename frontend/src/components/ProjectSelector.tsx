@@ -34,7 +34,7 @@ interface ProjectSelectorProps {
 export default function ProjectSelector({ 
   className = '', 
   onProjectChange,
-  showUserManagement = true,
+  showUserManagement = false,
   compact = false 
 }: ProjectSelectorProps) {
   const projectSelectorData = useProjectSelector();
@@ -283,7 +283,7 @@ export default function ProjectSelector({
                         {project.status}
                       </span>
                       <span className="mx-2">•</span>
-                      <span>{Math.round(project.progress)}%</span>
+                      <span>{Math.round(project.progress || 0)}%</span>
                     </div>
                   </div>
 
