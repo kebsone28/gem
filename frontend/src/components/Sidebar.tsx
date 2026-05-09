@@ -36,7 +36,6 @@ import { motion } from 'framer-motion';
 import {
   normalizeRole,
   ROLES,
-  isMasterAdmin,
   type UserRole,
 } from '../utils/permissions';
 import { useProject } from '../contexts/ProjectContext';
@@ -52,7 +51,7 @@ export default function Sidebar() {
   const { forceSync } = useSync();
   // En SaaS, on simule l'état de sync (le store Dexie est géré par BackgroundServices)
   const isSyncing = false;
-  const { peut, PERMISSIONS } = usePermissions();
+  const { peut, isAdmin, PERMISSIONS } = usePermissions();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [sidebarMode, setSidebarMode] = useState<'wide' | 'compact' | 'rail'>(() => {
     if (typeof window === 'undefined') return 'wide';
@@ -63,25 +62,20 @@ export default function Sidebar() {
 
   // 1️⃣ Normalisation et bypass sécurisé via helpers
   const nRole = useMemo(() => normalizeRole(user?.role), [user?.role]);
-  const isMaster = useMemo(() => isMasterAdmin(user), [user]);
+  const isMaster = isAdmin;
   const canAccessCharges = useMemo(
-    () => isMaster || nRole === ROLES.ADMIN || nRole === ROLES.DG || nRole === ROLES.COMPTABLE,
+    () => isMaster || nRole === ROLES.PROQUELEC_ADMIN || nRole === ROLES.PROQUELEC_DG || nRole === ROLES.PROQUELEC_COMPTABLE,
     [isMaster, nRole]
   );
   const missionLabel = 'Missions';
   const roleLabels = useMemo<Partial<Record<UserRole, string>>>(() => ({
-    [ROLES.ADMIN]: 'Admin',
-    [ROLES.ADMIN_ALT]: 'Admin',
-    [ROLES.DG]: 'Direction générale',
-    [ROLES.DG_ALT]: 'Direction générale',
-    [ROLES.DIRECTEUR]: 'Direction générale',
-    [ROLES.CLIENT_LSE]: 'Client LSE',
-    [ROLES.CHEF_EQUIPE]: "Chef d'équipe",
-    [ROLES.CHEF_CHANTIER]: "Chef d'équipe",
-    [ROLES.CHEF]: "Chef d'équipe",
-    [ROLES.CHEF_PROJET]: 'Chef de projet',
-    [ROLES.CHEF_PROJET_ALT]: 'Chef de projet',
-    [ROLES.COMPTABLE]: 'Comptable',
+    [ROLES.PROQUELEC_ADMIN]: 'Admin',
+    [ROLES.PROQUELEC_DG]: 'Direction générale',
+    [ROLES.CLIENT_LSE_SUPERVISEUR]: 'Client LSE',
+    [ROLES.CLIENT_LSE_TECHNIQUE]: 'Client LSE',
+    [ROLES.PROQUELEC_DIRECTION]: "Chef d'équipe",
+    [ROLES.PROQUELEC_CHEF_PROJET]: 'Chef de projet',
+    [ROLES.PROQUELEC_COMPTABLE]: 'Comptable',
   }), []);
   const roleDisplay = (nRole && roleLabels[nRole]) || user?.role || 'Utilisateur';
   const organizationName = (user?.organizationConfig as any)?.branding?.organizationName || 'GEM SAAS';
