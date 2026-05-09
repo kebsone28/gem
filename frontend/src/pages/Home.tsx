@@ -558,24 +558,24 @@ export default function Home() {
                   <div className="flex items-center justify-between text-xs text-slate-500">
                     <div className="flex items-center gap-2">
                       <Users size={14} />
-                      <span>{project.assignedUsers.length} utilisateur{project.assignedUsers.length > 1 ? 's' : ''}</span>
+                      <span>{(project.assignedUsers || []).length} utilisateur{(project.assignedUsers || []).length > 1 ? 's' : ''}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Clock size={14} />
-                      <span>Modifié {new Date(project.updatedAt).toLocaleDateString('fr-FR')}</span>
+                      <span>Modifié {project.updatedAt ? new Date(project.updatedAt).toLocaleDateString('fr-FR') : 'N/A'}</span>
                     </div>
                   </div>
 
-                  {project.tags.length > 0 && (
+                  {(project.tags || []).length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-3">
-                      {project.tags.slice(0, 3).map((tag, tagIndex) => (
+                      {(project.tags || []).slice(0, 3).map((tag, tagIndex) => (
                         <span key={tagIndex} className="px-2 py-1 bg-slate-800 rounded text-xs text-slate-300">
                           {tag}
                         </span>
                       ))}
-                      {project.tags.length > 3 && (
+                      {(project.tags || []).length > 3 && (
                         <span className="px-2 py-1 bg-slate-800 rounded text-xs text-slate-500">
-                          +{project.tags.length - 3}
+                          +{(project.tags || []).length - 3}
                         </span>
                       )}
                     </div>

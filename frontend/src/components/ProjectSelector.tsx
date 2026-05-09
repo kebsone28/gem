@@ -305,30 +305,30 @@ export default function ProjectSelector({
                 {/* Tags et priorité */}
                 <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-700/50">
                   <div className="flex items-center gap-2">
-                    {project.tags.length > 0 && (
+                    {(project.tags || []).length > 0 && (
                       <div className="flex gap-1">
-                        {project.tags.slice(0, 3).map((tag, tagIndex) => (
+                        {(project.tags || []).slice(0, 3).map((tag, tagIndex) => (
                           <span key={tagIndex} className="px-2 py-1 bg-slate-700 rounded text-xs text-slate-300">
                             {tag}
                           </span>
                         ))}
-                        {project.tags.length > 3 && (
-                          <span className="text-xs text-slate-500">+{project.tags.length - 3}</span>
+                        {(project.tags || []).length > 3 && (
+                          <span className="text-xs text-slate-500">+{(project.tags || []).length - 3}</span>
                         )}
                       </div>
                     )}
                     
-                    <span className={`px-2 py-1 rounded-full text-xs ${getPriorityColor(project.priority)}`}>
-                      {project.priority}
+                    <span className={`px-2 py-1 rounded-full text-xs ${getPriorityColor(project.priority || 'medium')}`}>
+                      {project.priority || 'medium'}
                     </span>
                   </div>
                   
                   <div className="text-xs text-slate-500">
                     {project.startDate && (
-                      <span>Début: {project.startDate.toLocaleDateString('fr-FR')}</span>
+                      <span>Début: {new Date(project.startDate).toLocaleDateString('fr-FR')}</span>
                     )}
                     {project.endDate && (
-                      <span className="ml-3">Fin: {project.endDate.toLocaleDateString('fr-FR')}</span>
+                      <span className="ml-3">Fin: {new Date(project.endDate).toLocaleDateString('fr-FR')}</span>
                     )}
                   </div>
                 </div>
@@ -362,7 +362,7 @@ export default function ProjectSelector({
             <div className="space-y-3">
               {projects
                 .filter(p => p.id === selectedProject)
-                .flatMap(p => p.assignedUsers)
+                .flatMap(p => p.assignedUsers || [])
                 .map((userId, index) => (
                   <div key={userId} className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg">
                     <div className="flex items-center gap-3">
