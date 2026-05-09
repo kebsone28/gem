@@ -451,7 +451,6 @@ export default function Home() {
                 <h3 className="text-sm font-medium text-slate-300">En Planification</h3>
               </motion.div>
             </div>
-          </motion.div>
 
           {/* Search and Filters */}
           <div className="flex flex-col md:flex-row gap-4 mb-8 relative z-10">
