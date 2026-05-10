@@ -1992,10 +1992,8 @@ export default function AdminUsers() {
                                 </div>
                               ))}
                             </div>
-                          </div>
-                        )}
-                      </>
-                    );
+                        </div>
+                      );
                   })()}
                   <p className="mt-3 text-[10px] text-slate-500 flex items-start gap-2 italic">
                     <AlertTriangle size={12} className="mt-0.5 text-amber-500" />
