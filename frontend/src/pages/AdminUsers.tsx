@@ -1505,9 +1505,7 @@ export default function AdminUsers() {
                     Rôle *
                   </label>
                   <div className="grid grid-cols-2 gap-3">
-                    {(
-                      Object.entries(ROLE_CONFIG) as [UserRole, (typeof ROLE_CONFIG)[UserRole]][]
-                    }).map(([role, cfg]) => {
+                    {Object.entries(ROLE_CONFIG).map(([role, cfg]) => {
                       const isImmutable =
                         form.role === 'ADMIN_PROQUELEC' || isMasterAdminEmail(form.email);
                       return (
