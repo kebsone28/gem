@@ -1,6 +1,7 @@
 import { db } from '../store/db';
 import { auditService } from './auditService';
 import logger from '../utils/logger';
+import apiClient from '../api/client';
 
 // Types pour la gestion des modules
 export interface ModuleConfig {
@@ -199,19 +200,29 @@ class ModulesManagementService {
   // Récupérer la configuration globale des modules
   async getGlobalModulesConfig(): Promise<Record<string, ModuleConfig>> {
     try {
-      const config = localStorage.getItem(this.MODULES_KEY);
-      if (config) {
-        return JSON.parse(config);
+      // Priorité 1 : API backend (source de vérité)
+      try {
+        const response = await apiClient.get('/api/admin/modules/config');
+        const config = response.data?.config || {};
+        // Cache dans localStorage pour offline
+        localStorage.setItem(this.MODULES_KEY, JSON.stringify(config));
+        return config;
+      } catch (apiErr) {
+        logger.warn('[ModulesManagementService] API indisponible, fallback localStorage', apiErr);
+        // Priorité 2 : localStorage (fallback)
+        const config = localStorage.getItem(this.MODULES_KEY);
+        if (config) {
+          return JSON.parse(config);
+        }
+
+        // Priorité 3 : config par défaut
+        const defaultConfig: Record<string, ModuleConfig> = {};
+        AVAILABLE_MODULES.forEach((module) => {
+          defaultConfig[module.id] = module;
+        });
+        localStorage.setItem(this.MODULES_KEY, JSON.stringify(defaultConfig));
+        return defaultConfig;
       }
-
-      // Configuration par défaut
-      const defaultConfig: Record<string, ModuleConfig> = {};
-      AVAILABLE_MODULES.forEach((module) => {
-        defaultConfig[module.id] = module;
-      });
-
-      await this.setGlobalModulesConfig(defaultConfig);
-      return defaultConfig;
     } catch (error) {
       logger.error('[ModulesManagementService] Error loading global modules config:', error);
       throw error;
@@ -221,6 +232,14 @@ class ModulesManagementService {
   // Sauvegarder la configuration globale des modules
   async setGlobalModulesConfig(config: Record<string, ModuleConfig>): Promise<void> {
     try {
+      // Sauvegarder sur le backend (source de vérité)
+      try {
+        await apiClient.post('/api/admin/modules/config', { config });
+        logger.info('[ModulesManagementService] Global modules config saved to backend');
+      } catch (apiErr) {
+        logger.warn('[ModulesManagementService] Failed to save to backend, using localStorage', apiErr);
+      }
+      // Toujours sauvegarder en cache local pour offline
       localStorage.setItem(this.MODULES_KEY, JSON.stringify(config));
       logger.info('[ModulesManagementService] Global modules config updated');
     } catch (error) {

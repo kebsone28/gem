@@ -25,10 +25,10 @@ import { normalizeRole } from '../utils/permissions';
 import { AppRole } from '../utils/security/types';
 import {
   generateRapportAvancement,
-  generateRapportFinancier,
   generateRapportLogistique,
   generateRapportKobo,
 } from '../services/reportGenerator';
+import { exportFinancialPDF } from '../services/exportService';
 
 // Import centralized design system
 import {
@@ -183,16 +183,12 @@ export default function Reports() {
       ],
       handler: async () => {
         if (!canViewFinances) return;
-        generateRapportFinancier({
-          devisReport: finances.devis?.report || [],
-          totalPlanned: finances.devis?.totalPlanned || 0,
-          totalReal: finances.devis?.totalReal || 0,
-          globalMargin: finances.devis?.globalMargin || 0,
-          marginPct: finances.devis?.marginPct || 0,
-          ceiling: finances.devis?.ceiling || 300823750,
-          stats: finances.stats,
-          projectName: project?.name || 'Projet GEM',
-        });
+        await exportFinancialPDF(
+          finances.devis?.report || [],
+          finances.devis || {},
+          finances.stats,
+          project?.name || 'Projet GEM'
+        );
       },
     },
     {
@@ -477,19 +473,14 @@ export default function Reports() {
                 <button
                   onClick={() => {
                     if (includeFinancial && canViewFinances) {
-                      run('global', () => {
-                        generateRapportFinancier({
-                          devisReport: finances.devis?.report || [],
-                          totalPlanned: finances.devis?.totalPlanned || 0,
-                          totalReal: finances.devis?.totalReal || 0,
-                          globalMargin: finances.devis?.globalMargin || 0,
-                          marginPct: finances.devis?.marginPct || 0,
-                          ceiling: finances.devis?.ceiling || 300823750,
-                          stats: finances.stats,
-                          projectName: project?.name || 'Projet GEM',
-                        });
-                        return Promise.resolve();
-                      });
+                      run('global', () =>
+                        exportFinancialPDF(
+                          finances.devis?.report || [],
+                          finances.devis || {},
+                          finances.stats,
+                          project?.name || 'Projet GEM'
+                        )
+                      );
                     } else {
                       run('global', () => {
                         generateRapportAvancement({ households, zones, userName: user?.name });
