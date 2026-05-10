@@ -8,7 +8,7 @@ import {
   Plus,
   Trash2,
   ShieldCheck,
-  Shield,
+  Shield as ShieldIcon,
   User as UserIcon,
   Eye,
   EyeOff,
@@ -16,13 +16,15 @@ import {
   X,
   Search,
   Lock,
-  CheckCircle2,
+  CheckCircle2 as CheckIcon,
   AlertTriangle,
-  RefreshCw,
+  RefreshCcw,
   Briefcase,
   Calculator,
   Award,
-  RefreshCcw,
+  Settings as SettingsIcon,
+  Layout,
+  FileText,
 } from 'lucide-react';
 import { appSecurity } from '../services/appSecurity';
 import { useAuth } from '../contexts/AuthContext';
@@ -32,8 +34,8 @@ import {
   PERMISSIONS,
   ROLE_PERMISSIONS,
   normalizeRole,
-  type UserRole as PermissionUserRole,
 } from '../utils/permissions';
+import type { UserRole as PermissionUserRole } from '../utils/security/types';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { userService } from '../services/userService';
@@ -43,13 +45,6 @@ import projectService from '../services/projectService';
 import adminPermissionsService from '../services/adminPermissionsService';
 import logger from '../utils/logger';
 import { isMasterAdminEmail } from '../utils/roleUtils';
-import {
-  Settings as SettingsIcon,
-  Layout,
-  FileText,
-  CheckCircle2 as CheckIcon,
-  Shield as ShieldIcon,
-} from 'lucide-react';
 
 // Les constantes statiques de sécurité sont gérées par appSecurity
 
