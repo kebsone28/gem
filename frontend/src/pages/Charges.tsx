@@ -1,5 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-unused-vars */
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import {
   Download,
   RefreshCcw,
@@ -21,15 +20,17 @@ import { motion, AnimatePresence } from 'framer-motion';
 import SparklineChart from '../components/finances/SparklineChart';
 import { useTheme } from '../contexts/ThemeContext';
 import { useProject } from '../contexts/ProjectContext';
+import { useNavigate } from 'react-router-dom';
 import { exportFinancialPDF } from '../services/exportService';
 import { Database } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-import { PageContainer, Section, DESIGN_TOKENS, COMMON_CLASSES } from '../components';
+import { PageContainer, Section, COMMON_CLASSES } from '../components';
 
 export default function Charges() {
   const { isLoading, stats, devis, project, toggleClientProvidesMaterials } = useFinances();
   const { refreshProjects } = useProject();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'overview' | 'devis' | 'dotations' | 'inventory'>(
     'overview'
   );
@@ -234,9 +235,8 @@ export default function Charges() {
               EXPORTER PDF
             </button>
             <button
-              disabled
-              title="Fonctionnalité disponible bientôt"
-              className={`flex items-center justify-center gap-2 px-8 py-4 rounded-2xl font-black text-xs transition-all border opacity-50 cursor-not-allowed ${isDarkMode ? 'bg-indigo-500/20 text-white border-white/10' : 'bg-slate-800 text-white border-slate-700'}`}
+              onClick={() => navigate('/simulation')}
+              className={`${COMMON_CLASSES.btnSecondary} flex items-center justify-center gap-2 px-8 py-4 rounded-2xl font-black text-xs transition-all hover:scale-105`}
             >
               EXPLORER LES SCÉNARIOS
               <ArrowUpRight size={14} />
