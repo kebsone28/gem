@@ -50,7 +50,6 @@ export default function ProjectSelector({
 
   const [showUsers, setShowUsers] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
-  const [editingAssignment, setEditingAssignment] = useState<string | null>(null);
 
   const handleProjectChange = (projectId: string | null) => {
     switchProject(projectId || '');

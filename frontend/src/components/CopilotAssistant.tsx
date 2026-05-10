@@ -79,7 +79,7 @@ export default function CopilotAssistant() {
         toast.success(response.data.message, { id: 'agent-exec' });
         setChat(prev => [...prev, { role: 'assistant', content: `✅ ${response.data.message}` }]);
       }
-    } catch (error) {
+    } catch {
       toast.error("Échec de l'exécution", { id: 'agent-exec' });
     }
   };
