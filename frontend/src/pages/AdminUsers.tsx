@@ -687,14 +687,32 @@ export default function AdminUsers() {
   };
 
   // ─── Role stats ──────────────────────────────────────────────────────────
+  // Build a lookup: for each ROLE_CONFIG key, what raw role values map to it?
+  // We do NOT use normalizeRole() on the config key because multiple config keys
+  // may normalize to the same AppRole (e.g. PROQUELEC_DG and PROQUELEC_ADMIN → DG).
+  // Instead, we match exact role strings including all known aliases.
+  const ROLE_ALIASES_REVERSE: Record<string, string[]> = {};
+  // For each ROLE_CONFIG key, collect all raw role values that should be counted under it.
+  // A user role belongs to a config key if: u.role === roleKey OR the alias of u.role maps to roleKey.
   const roleStats = Object.entries(ROLE_CONFIG).map(([roleKey, cfg]) => ({
     ...cfg,
     role: roleKey,
     count: users.filter((u: User) => {
-      // Comparer le rôle brut ou normalisé pour correspondre à la clé de ROLE_CONFIG
-      const nUserRole = normalizeRole(u.role);
+      // Direct match (e.g. user.role = "PROQUELEC_ADMIN", key = "PROQUELEC_ADMIN")
+      if (u.role === roleKey) return true;
+      // Alias match: the user has a legacy role that is an alias OF this config key
+      // e.g. user.role = "ADMIN_PROQUELEC", key = "PROQUELEC_ADMIN"
+      // We check: is there any ROLE_ALIAS entry where alias key === u.role AND value === normalizeRole(roleKey)?
       const nConfigRole = normalizeRole(roleKey);
-      return nUserRole === nConfigRole || u.role === roleKey;
+      const nUserRole = normalizeRole(u.role);
+      // Only match if they normalize to the same AppRole AND no OTHER ROLE_CONFIG key is a closer direct match
+      if (nUserRole && nConfigRole && nUserRole === nConfigRole) {
+        // Ensure no other config key matches u.role exactly (avoid double-counting)
+        const hasExactMatch = Object.keys(ROLE_CONFIG).some(k => k !== roleKey && k === u.role);
+        if (hasExactMatch) return false;
+        return true;
+      }
+      return false;
     }).length,
   }));
 
