@@ -70,6 +70,17 @@ export const isPlatformAdmin = (user: AuthUser): boolean =>
   normalizeRole(user?.role) === AppRole.PLATFORM_ADMIN ||
   user?.email === 'admingem'; // 🔑 God Mode historique (Bypass de secours)
 
+export const invalidatePermissionsCache = (userId?: string) => {
+  if (userId) {
+    // Supprime toutes les entrées commençant par l'ID utilisateur
+    for (const key of PERMS_CACHE.keys()) {
+      if (key.startsWith(`${userId}_`)) PERMS_CACHE.delete(key);
+    }
+  } else {
+    PERMS_CACHE.clear();
+  }
+};
+
 export const hasPermission = (user: AuthUser, permission: string | string[]): boolean => {
   if (!user) return false;
   if (isPlatformAdmin(user)) return true;

@@ -34,6 +34,7 @@ import {
   PERMISSIONS,
   ROLE_PERMISSIONS,
   normalizeRole,
+  invalidatePermissionsCache,
 } from '../utils/permissions';
 import type { UserRole as PermissionUserRole } from '../utils/security/types';
 import { useNavigate } from 'react-router-dom';
@@ -285,16 +286,34 @@ export default function AdminUsers() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [u, t, p] = await Promise.all([
+      const results = await Promise.allSettled([
         userService.getUsers(),
         db.teams.toArray(),
         projectService.getProjects(),
       ]);
-      setUsers(u);
-      setTeams(t);
-      setProjects(p);
+
+      if (results[0].status === 'fulfilled') {
+        setUsers(results[0].value);
+      } else {
+        toast.error("Échec du chargement des utilisateurs");
+        logger.error('[AdminUsers] Load users failed', results[0].reason);
+      }
+
+      if (results[1].status === 'fulfilled') {
+        setTeams(results[1].value);
+      } else {
+        logger.warn('[AdminUsers] Load teams from Dexie failed', results[1].reason);
+      }
+
+      if (results[2].status === 'fulfilled') {
+        setProjects(results[2].value);
+      } else {
+        toast.error("Échec du chargement des projets");
+        logger.error('[AdminUsers] Load projects failed', results[2].reason);
+      }
     } catch (err) {
-      toast.error('Erreur lors du chargement des données');
+      toast.error('Erreur critique lors du chargement des données');
+      logger.error('[AdminUsers] Critical load failure', err);
     } finally {
       setLoading(false);
     }
@@ -439,10 +458,20 @@ export default function AdminUsers() {
 
   // ─── Save (create / update) ───────────────────────────────────────────────
   const saveUser = async () => {
-    if (!form.email.trim() || (!editId && !form.password?.trim()) || !form.name.trim()) {
+    const trimmedEmail = form.email.trim();
+    const trimmedName = form.name.trim();
+
+    if (!trimmedEmail || (!editId && !form.password?.trim()) || !trimmedName) {
       toast.error('Tous les champs obligatoires doivent être remplis.');
       return;
     }
+    
+    const finalForm = {
+      ...form,
+      email: trimmedEmail,
+      name: trimmedName,
+    };
+
     if (!editId && (form.password?.length ?? 0) < 6) {
       toast.error('Le mot de passe doit faire au moins 6 caractères.');
       return;
@@ -452,20 +481,20 @@ export default function AdminUsers() {
       if (editId) {
         // Find existing user to log changes
         const oldUser = users.find((u) => u.id === editId);
-        await userService.updateUser(editId, form);
+        await userService.updateUser(editId, finalForm);
 
         if (user) {
           auditService.logAction(
             user,
             'Modification Utilisateur',
             'UTILISATEURS',
-            `A modifié le compte de "${form.name}" (${form.email}). Rôle: ${oldUser?.role} -> ${form.role}`,
+            `A modifié le compte de "${trimmedName}" (${trimmedEmail}). Rôle: ${oldUser?.role} -> ${form.role}`,
             'info'
           );
         }
-        toast.success(`✏️  Compte "${form.name}" mis à jour sur le serveur.`);
+        toast.success(`✏️  Compte "${trimmedName}" mis à jour sur le serveur.`);
       } else {
-        const newUser = await userService.createUser(form);
+        const newUser = await userService.createUser(finalForm);
         finalUserId = newUser.id;
         if (user) {
           auditService.logAction(
@@ -481,6 +510,7 @@ export default function AdminUsers() {
 
       // ── Update Project Assignments ──
       if (finalUserId) {
+        invalidatePermissionsCache(finalUserId);
         const assignedIds = (form as any).assignedProjectIds || [];
         const updatePromises = projects.map(async (p) => {
           const currentAssigned = p.config?.assignedUsers || [];
@@ -501,7 +531,17 @@ export default function AdminUsers() {
             });
           }
         });
-        await Promise.all(updatePromises);
+        
+        // Wait for all assignments with a timeout to prevent hanging UI
+        try {
+          await Promise.race([
+            Promise.all(updatePromises),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Délai d\'assignation dépassé')), 10000))
+          ]);
+        } catch (assignError: any) {
+          logger.warn('[AdminUsers] Project assignment partially failed or timed out', assignError);
+          toast.error("Certaines assignations de projets n'ont pas pu être finalisées");
+        }
       }
 
       setShowForm(false);
