@@ -648,10 +648,15 @@ export default function AdminUsers() {
   };
 
   // ─── Role stats ──────────────────────────────────────────────────────────
-  const roleStats = Object.entries(ROLE_CONFIG).map(([role, cfg]) => ({
+  const roleStats = Object.entries(ROLE_CONFIG).map(([roleKey, cfg]) => ({
     ...cfg,
-    role,
-    count: users.filter((u: User) => normalizeRole(u.role) === role).length,
+    role: roleKey,
+    count: users.filter((u: User) => {
+      // Comparer le rôle brut ou normalisé pour correspondre à la clé de ROLE_CONFIG
+      const nUserRole = normalizeRole(u.role);
+      const nConfigRole = normalizeRole(roleKey);
+      return nUserRole === nConfigRole || u.role === roleKey;
+    }).length,
   }));
 
   const isAdminDelete = deleteTarget?.role === 'ADMIN_PROQUELEC';
@@ -1648,112 +1653,86 @@ export default function AdminUsers() {
                       {
                         title: '🛡️ Administration & Sécurité',
                         keys: [
-                          'GERER_UTILISATEURS',
-                          'GERER_PARAMETRES',
-                          'VOIR_AUDIT_LOGS',
-                          'EXPORTER_AUDIT_LOGS',
-                          'ACCES_GOD_MODE',
-                          'VOIR_DIAGNOSTIC',
-                          'MODIFIER_TEMPLATES',
-                          'DIFFUSER_MESSAGE_SYSTEME',
-                          'GENERER_CLES_API',
-                          'GERER_WEBHOOKS',
+                          'SYSTEM_USERS',
+                          'SYSTEM_ROLES',
+                          'SYSTEM_CONFIG',
+                          'SYSTEM_AUDIT',
+                          'SYSTEM_SYNC',
+                          'SYSTEM_EXPORT',
+                          'SYSTEM_MESSAGES',
                         ],
                       },
                       {
                         title: '🚀 Missions (Ordres de Mission)',
                         keys: [
-                          'VOIR_MISSIONS',
-                          'CREER_MISSION',
-                          'MODIFIER_MISSION',
-                          'VALIDER_MISSION',
-                          'APPROUVER_MISSION',
-                          'SUPPRIMER_MISSION',
-                          'ARCHIVER_MISSION',
-                          'PURGER_MISSIONS',
-                          'CONFIGURER_WORKFLOW',
+                          'MISSIONS_READ',
+                          'MISSIONS_CREATE',
+                          'MISSIONS_UPDATE',
+                          'MISSIONS_VALIDATE',
+                          'MISSIONS_APPROVE',
+                          'MISSIONS_DELETE',
+                          'MISSIONS_PLANNING',
                         ],
                       },
                       {
                         title: '👥 Équipes & Organisation',
                         keys: [
-                          'VOIR_EQUIPES',
-                          'CREER_EQUIPE',
-                          'MODIFIER_EQUIPE',
-                          'SUPPRIMER_EQUIPE',
+                          'UI_TEAMS',
                         ],
                       },
                       {
                         title: '💰 Finances & Budgets',
                         keys: [
-                          'VOIR_FINANCES',
-                          'GERER_BUDGETS',
-                          'VOIR_PAIEMENTS',
-                          'EXPORTER_COMPTABILITE',
-                          'REINITIALISER_STATISTIQUES',
+                          'FINANCE_READ',
+                          'FINANCE_MANAGE',
+                          'FINANCE_PAYMENTS',
+                          'FINANCE_EXPORT',
+                          'FINANCE_REPORTS',
                         ],
                       },
                       {
                         title: '🗺️ Terrain & Cartographie',
                         keys: [
-                          'VOIR_CARTE',
-                          'MODIFIER_CARTE',
-                          'GERER_ZONES',
-                          'GERER_MENAGES',
-                          'VALIDER_INSTALLATION',
-                          'REJETER_DOSSIER',
+                          'UI_MAP',
+                          'TERRAIN_READ',
+                          'TERRAIN_WRITE',
+                          'TERRAIN_TERMINAL',
+                          'TERRAIN_REJECT',
+                          'TERRAIN_ZONES',
+                          'TERRAIN_MENAGES',
                         ],
                       },
                       {
                         title: '📁 Projets & Planning',
                         keys: [
-                          'VOIR_PROJETS',
-                          'CREER_PROJET',
-                          'MODIFIER_PROJET',
-                          'SUPPRIMER_PROJET',
-                          'ARCHIVER_PROJET',
-                          'GERER_PLANNING',
-                          'MODIFIER_VUES_TABLEAUX_BORD',
+                          'UI_PROJECTS',
+                          'UI_DASHBOARD',
                         ],
                       },
                       {
                         title: '📦 Logistique & Kobo',
                         keys: [
-                          'VOIR_LOGISTIQUE',
-                          'GERER_STOCK',
-                          'ACCES_TERMINAL_KOBO',
-                          'CONFIGURER_KOBO',
+                          'LOGISTIQUE_READ',
+                          'LOGISTIQUE_MANAGE',
                         ],
                       },
                       {
                         title: '📊 Rapports & Documents',
                         keys: [
-                          'VOIR_RAPPORTS_TERRAIN',
-                          'VOIR_RAPPORTS_FINANCIERS',
-                          'GERER_PV',
-                          'EXPORTER_DONNEES',
-                          'VOIR_DOCUMENTS_CONFIDENTIELS',
-                          'SUPPRIMER_DOCUMENTS',
+                          'DOCS_READ',
+                          'DOCS_CONFIDENTIAL',
+                          'DOCS_PV',
                         ],
                       },
-                      { title: '🎓 Formations', keys: ['VOIR_FORMATIONS', 'GERER_FORMATIONS'] },
+                      { title: '🎓 Formations', keys: ['UI_TRAINING'] },
                       {
                         title: '💬 Communication',
-                        keys: ['ACCES_CHAT', 'MODERER_CHAT', 'ENVOYER_SMS_MASSIF'],
-                      },
-                      {
-                        title: '🔔 Alertes & Notifications',
-                        keys: ['VOIR_ALERTES', 'CONFIGURER_ALERTES'],
-                      },
-                      {
-                        title: '🔄 Synchronisation & Offline',
-                        keys: ['VOIR_SYNCHRO', 'GERER_CONFLITS'],
+                        keys: ['UI_CHAT', 'UI_ALERTS'],
                       },
                       {
                         title: '🤖 Intelligence Artificielle',
-                        keys: ['UTILISER_IA', 'GERER_MEMOIRE_IA', 'VOIR_METRIQUES_IA'],
+                        keys: ['IA_USE', 'IA_METRICS', 'IA_SIMULATION'],
                       },
-                      { title: '🧪 Simulation', keys: ['VOIR_SIMULATION', 'LANCER_SIMULATION'] },
                     ];
                     const totalPermissions = permissionGroups.reduce(
                       (acc, g) => acc + g.keys.length,
