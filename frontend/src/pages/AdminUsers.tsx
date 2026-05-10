@@ -55,7 +55,7 @@ const ROLE_CONFIG: Record<
     label: string;
     color: string;
     textColor: string;
-    icon: typeof Shield;
+    icon: typeof ShieldIcon;
     description: string;
   }
 > = {
