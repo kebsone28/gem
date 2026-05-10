@@ -1,11 +1,11 @@
-﻿ 
+ 
 import apiClient from '../api/client';
 import type { Project } from '../utils/types';
 
 export const projectService = {
   getProjects: async (): Promise<Project[]> => {
     const res = await apiClient.get('/projects');
-    return res.data;
+    return res.data.projects || res.data;
   },
 
   getProject: async (id: string): Promise<Project> => {
