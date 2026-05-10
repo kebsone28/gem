@@ -11,7 +11,7 @@ import { hasPermission, PERMISSIONS } from '../utils/permissions';
 export default function AdminAIConfig() {
   const { user } = useAuth();
 
-  const isAuthorized = hasPermission(user, PERMISSIONS.CONFIGURER_MOTEUR_IA);
+  const isAuthorized = hasPermission(user as any, PERMISSIONS.IA_CONFIG);
 
   if (!isAuthorized) {
     return (
@@ -28,10 +28,11 @@ export default function AdminAIConfig() {
   }
 
   // On passe typedUser pour respecter le contrat d'interface de AIEngineAdminPanel
+  if (!user) return null;
   const typedUser = {
     role: user.role || 'USER',
     email: user.email || '',
-    displayName: user.displayName
+    displayName: user.name,
   };
 
   return <AIEngineAdminPanel user={typedUser} standalone={true} />;

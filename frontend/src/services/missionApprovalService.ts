@@ -250,7 +250,7 @@ export const canApproveMissionStep = (
   if (!normalizedRole) return false;
 
   if (
-    (normalizedRole === 'DIRECTEUR' || normalizedRole === 'DG_PROQUELEC') &&
+    (normalizedRole === 'DIRECTEUR') &&
     normalizedStepRole === 'DIRECTEUR'
   )
     return true;

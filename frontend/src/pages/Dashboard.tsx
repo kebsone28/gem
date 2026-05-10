@@ -7,10 +7,7 @@ import ClientDashboard from './DashboardViews/ClientDashboard';
 import TeamDashboard from './DashboardViews/TeamDashboard';
 import ProjectManagerDashboard from './DashboardViews/ProjectManagerDashboard';
 import AccountingDashboard from './DashboardViews/AccountingDashboard';
-import SenelecDashboard from './DashboardViews/SenelecDashboard';
-import SubcontractorDashboard from './DashboardViews/SubcontractorDashboard';
 import AssetManagementDashboard from './DashboardViews/AssetManagementDashboard';
-import ProjectSelector from '../components/ProjectSelector';
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -31,35 +28,34 @@ export default function Dashboard() {
       {/* Dashboard selon le rôle normalisé */}
       {(() => {
         switch (normalizedRole) {
-          case ROLES.PROQUELEC_ADMIN:
-          case ROLES.PROQUELEC_DG:
-          case ROLES.PROQUELEC_DIRECTION:
+          // Admin & Direction (accès complet)
+          case ROLES.ADMIN: // ADMIN_PROQUELEC
+          case ROLES.DIRECTEUR: // DG_PROQUELEC, PROQUELEC_DG, PROQUELEC_DIRECTION, Sous-traitant directeur
+          case ROLES.PLATFORM_ADMIN:
             return <AdminDashboard />;
-          
-          case ROLES.CLIENT_LSE_SUPERVISEUR:
-          case ROLES.CLIENT_LSE_TECHNIQUE:
+
+          // Superviseurs LSE / Clients
+          case ROLES.SUPERVISEUR: // CLIENT_LSE_SUPERVISEUR, SENELEC_SUPERVISEUR
+          case ROLES.CONTROLEUR: // CLIENT_LSE_TECHNIQUE, SENELEC_CONTROLEUR
             return <ClientDashboard />;
-          
-          case ROLES.PROQUELEC_CHEF_PROJET:
+
+          // Chef de projet
+          case ROLES.CHEF_PROJET: // PROQUELEC_CHEF_PROJET
             return <ProjectManagerDashboard />;
-          
-          case ROLES.PROQUELEC_COMPTABLE:
+
+          // Comptable
+          case ROLES.COMPTABLE: // PROQUELEC_COMPTABLE
             return <AccountingDashboard />;
-          
-          case ROLES.PROQUELEC_PATRIMOINE:
+
+          // Gestion patrimoine
+          case ROLES.PATRIMOINE: // PROQUELEC_PATRIMOINE
             return <AssetManagementDashboard />;
-          
-          case ROLES.PROQUELEC_EMPLOYE:
+
+          // Employés terrain / Sous-traitants employés
+          case ROLES.EMPLOYE: // PROQUELEC_EMPLOYE, SOUS_TRAITANT_EMPLOYE
+          case ROLES.CHEF_EQUIPE:
             return <TeamDashboard />;
-          
-          case ROLES.SENELEC_SUPERVISEUR:
-          case ROLES.SENELEC_CONTROLEUR:
-            return <SenelecDashboard />;
-          
-          case ROLES.SOUS_TRAITANT_DIRECTEUR:
-          case ROLES.SOUS_TRAITANT_EMPLOYE:
-            return <SubcontractorDashboard />;
-          
+
           default:
             return <AdminDashboard />;
         }

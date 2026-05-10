@@ -6,7 +6,8 @@ import autoTable from 'jspdf-autotable';
 // Utility helpers  (jsPDF-safe: NO Unicode thin-spaces from Intl)
 // ─────────────────────────────────────────────────────────────────
 // Helper for plain numbers with dots as thousands separator (jsPDF-safe)
-const num = (n: number): string => {
+export const num = (n: number): string => {
+  if (n === undefined || n === null) return '0';
   const s = Math.round(n).toString();
   const parts: string[] = [];
   for (let i = s.length; i > 0; i -= 3) parts.unshift(s.slice(Math.max(0, i - 3), i));
@@ -35,7 +36,7 @@ const resolveName = (h: {
 };
 
 // Format a number with dots as thousands separator (FCFA)
-const fmt = (n: number): string => {
+export const fmtFCFA = (n: number): string => {
   return num(n) + ' FCFA';
 };
 const pct = (n: number) => n.toFixed(1) + '%';
@@ -329,7 +330,7 @@ export function generateRapportAvancement(data: {
   });
 
   drawFooter(doc);
-  doc.save(`Rapport_Avancement_${new Date().toISOString().split('T')[0]}.pdf`);
+  doc.save(`Rapport_Avancement_${(projectName || 'GEM').replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -367,10 +368,10 @@ export function generateRapportFinancier(data: {
   y = drawKpiRow(
     doc,
     [
-      { label: 'Budget Plafond', value: fmt(ceiling), color: INDIGO },
-      { label: 'Total Prévu', value: fmt(totalPlanned), color: INDIGO },
-      { label: 'Total Réel', value: fmt(totalReal), color: totalReal > totalPlanned ? RED : GREEN },
-      { label: 'Marge Globale', value: fmt(globalMargin), color: globalMargin >= 0 ? GREEN : RED },
+      { label: 'Budget Plafond', value: fmtFCFA(ceiling), color: INDIGO },
+      { label: 'Total Prévu', value: fmtFCFA(totalPlanned), color: INDIGO },
+      { label: 'Total Réel', value: fmtFCFA(totalReal), color: totalReal > totalPlanned ? RED : GREEN },
+      { label: 'Marge Globale', value: fmtFCFA(globalMargin), color: globalMargin >= 0 ? GREEN : RED },
       { label: 'Taux Marge (%)', value: pct(marginPct), color: marginPct >= 0 ? GREEN : RED },
     ],
     y
@@ -396,10 +397,10 @@ export function generateRapportFinancier(data: {
   y = drawKpiRow(
     doc,
     [
-      { label: 'Équipes Techniques', value: fmt(stats?.teams ?? 0), color: INDIGO },
-      { label: 'Logistique', value: fmt(stats?.logistics ?? 0), color: AMBER },
-      { label: 'Matériaux', value: fmt(stats?.materials ?? 0), color: GREEN },
-      { label: 'Supervision', value: fmt(stats?.supervision ?? 0), color: GRAY },
+      { label: 'Équipes Techniques', value: fmtFCFA(stats?.teams ?? 0), color: INDIGO },
+      { label: 'Logistique', value: fmtFCFA(stats?.logistics ?? 0), color: AMBER },
+      { label: 'Matériaux', value: fmtFCFA(stats?.materials ?? 0), color: GREEN },
+      { label: 'Supervision', value: fmtFCFA(stats?.supervision ?? 0), color: GRAY },
     ],
     y
   );
@@ -411,11 +412,11 @@ export function generateRapportFinancier(data: {
     item.label,
     item.region,
     `${item.qty} / ${item.rq ?? item.qty}`,
-    Math.round(item.unit).toString() + ' FCFA',
-    fmt(item.planned),
-    fmt(item.realTotal),
+    fmtFCFA(item.unit),
+    fmtFCFA(item.planned),
+    fmtFCFA(item.realTotal),
     {
-      content: fmt(item.margin),
+      content: fmtFCFA(item.margin),
       styles: { textColor: item.margin >= 0 ? [5, 150, 105] : [220, 38, 38], fontStyle: 'bold' },
     },
   ]);
@@ -440,14 +441,14 @@ export function generateRapportFinancier(data: {
   doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
   doc.text(
-    `TOTAL — Prévu: ${fmt(totalPlanned)}  |  Réel: ${fmt(totalReal)}  |  Marge: ${fmt(globalMargin)} (${pct(marginPct)})`,
+    `TOTAL — Prévu: ${fmtFCFA(totalPlanned)}  |  Réel: ${fmtFCFA(totalReal)}  |  Marge: ${fmtFCFA(globalMargin)} (${pct(marginPct)})`,
     w / 2,
     finalY + 6.5,
     { align: 'center' }
   );
 
   drawFooter(doc);
-  doc.save(`Analyse_Economique_${new Date().toISOString().split('T')[0]}.pdf`);
+  doc.save(`Analyse_Economique_${(projectName || 'GEM').replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -554,7 +555,7 @@ export function generateRapportKobo(data: {
   });
 
   drawFooter(doc);
-  doc.save(`Rapport_Kobo_${new Date().toISOString().split('T')[0]}.pdf`);
+  doc.save(`Rapport_Kobo_GEM_${new Date().toISOString().split('T')[0]}.pdf`);
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -649,5 +650,5 @@ export function generateRapportLogistique(data: { households: any[]; zones?: any
   });
 
   drawFooter(doc);
-  doc.save(`Bilan_Logistique_${new Date().toISOString().split('T')[0]}.pdf`);
+  doc.save(`Bilan_Logistique_GEM_${new Date().toISOString().split('T')[0]}.pdf`);
 }

@@ -9,7 +9,10 @@ import { usePermissions } from '../../hooks/usePermissions';
 import { useLabels } from '../../contexts/LabelsContext';
 import { missionStatsService } from '../../services/missionStatsService';
 import { useAuth } from '../../contexts/AuthContext';
-import { ConsoleSettings, type ConsoleSettingsConfig } from '../../components/admin/ConsoleSettings';
+import {
+  ConsoleSettings,
+  type ConsoleSettingsConfig,
+} from '../../components/admin/ConsoleSettings';
 import { useConsoleLayout } from '../../hooks/useConsoleLayout';
 import { organizationService } from '../../services/organizationService';
 import { ROLES, normalizeRole } from '../../utils/permissions';
@@ -54,17 +57,21 @@ export default function AdminDashboard() {
 
   const [orgConfig, setOrgConfig] = useState<any>(null);
   const nRole = useMemo(() => normalizeRole(user?.role), [user?.role]);
-  const isDG = nRole === ROLES.PROQUELEC_DG;
+  const isDG = nRole === ROLES.DIRECTEUR;
 
   useEffect(() => {
-    organizationService.getConfig().then(setOrgConfig).catch(() => {});
+    organizationService
+      .getConfig()
+      .then(setOrgConfig)
+      .catch(() => {});
   }, []);
 
   // ── CONSOLE CUSTOMIZATION ──
-  const [consoleSettings, setConsoleSettings] = useState<ConsoleSettingsConfig>(DEFAULT_CONSOLE_SETTINGS);
+  const [consoleSettings, setConsoleSettings] =
+    useState<ConsoleSettingsConfig>(DEFAULT_CONSOLE_SETTINGS);
   useConsoleLayout(consoleSettings);
 
-  const canViewReports = peut(PERMISSIONS.VOIR_RAPPORTS_TERRAIN) || peut(PERMISSIONS.VOIR_RAPPORTS_FINANCIERS);
+  const canViewReports = peut(PERMISSIONS.TERRAIN_READ) || peut(PERMISSIONS.FINANCE_READ);
   const projectId = project?.id || '';
 
   // ── BUSINESS HOOKS ──
@@ -74,14 +81,18 @@ export default function AdminDashboard() {
     refresh: refreshKPI,
     localZonesCount,
   } = useDashboardData(projectId, canViewReports);
-  const { stats: missionStats, missions, refresh: refreshMissions } = useMissionStats(user as any, projectId);
+  const {
+    stats: missionStats,
+    missions,
+    refresh: refreshMissions,
+  } = useMissionStats(user as any, projectId);
   const { activities, refresh: refreshMonitoring } = useMonitoring(canViewReports);
   const { feedActivities, refresh: refreshAudit } = useAuditLogs(activities);
   const {
-    households: aiHouseholds,
-    teams: aiTeams,
-    auditLogs: aiAuditLogs,
-    regionalSummaries: aiRegionalSummaries,
+    households: _aiHouseholds,
+    teams: _aiTeams,
+    auditLogs: _aiAuditLogs,
+    regionalSummaries: _aiRegionalSummaries,
     refresh: refreshAIContext,
   } = useServerAIContext(projectId, canViewReports);
 
@@ -100,12 +111,13 @@ export default function AdminDashboard() {
   const lastSyncLabel = isSyncing
     ? 'maintenant'
     : feedActivities[0]?.time || activities[0]?.time || 'recemment';
-  const missionsDone = (missionStats?.totalCertified ?? metrics.totalArchived ?? 0);
+  const missionsDone = missionStats?.totalCertified ?? metrics.totalArchived ?? 0;
   const missionsInProgress = Math.max(
     0,
     (missionStats?.totalMissions ?? 0) - (missionStats?.totalCertified ?? 0)
   );
-  const errorCount = (metrics.problemHouseholds ?? 0) + (metrics.actionRequired ?? 0) + (metrics.incidentsHSE ?? 0);
+  const errorCount =
+    (metrics.problemHouseholds ?? 0) + (metrics.actionRequired ?? 0) + (metrics.incidentsHSE ?? 0);
   const exportAvailable = Boolean(missionStats && missionStats.totalMissions >= 0);
   const koboConnected = canViewReports && Boolean(projectId);
   const situationItems = [
@@ -134,7 +146,7 @@ export default function AdminDashboard() {
     },
     {
       label: 'Conformite terrain',
-      value: (metrics.conforme ?? 0),
+      value: metrics.conforme ?? 0,
       helper: `${metrics.nonConforme ?? 0} non conforme(s), ${metrics.incidentsHSE ?? 0} incident(s) HSE`,
       tone: 'border-emerald-500/20 bg-emerald-500/10 text-emerald-200',
       icon: CheckCircle2,
@@ -164,199 +176,213 @@ export default function AdminDashboard() {
   return (
     <>
       <PageContainer className="min-h-screen bg-slate-950 text-white selection:bg-blue-500/30">
-      {/* Background Gradient */}
-      <div className="absolute top-0 left-0 w-full h-[500px] bg-gradient-to-b from-blue-600/10 via-blue-600/5 to-transparent pointer-events-none" />
+        {/* Background Gradient */}
+        <div className="absolute top-0 left-0 w-full h-[500px] bg-gradient-to-b from-blue-600/10 via-blue-600/5 to-transparent pointer-events-none" />
 
-      <PageHeader
-        title="CONSOLE D'ADMINISTRATION"
-        subtitle="Système de pilotage stratégique Haute-Performance"
-        icon={<ShieldCheck size={28} className="text-blue-400 drop-shadow-[0_0_8px_rgba(96,165,250,0.5)]" />}
-        className="relative z-10 pt-10 pb-8 sm:pt-12 sm:pb-10"
-      />
+        <PageHeader
+          title="CONSOLE D'ADMINISTRATION"
+          subtitle="Système de pilotage stratégique Haute-Performance"
+          icon={
+            <ShieldCheck
+              size={28}
+              className="text-blue-400 drop-shadow-[0_0_8px_rgba(96,165,250,0.5)]"
+            />
+          }
+          className="relative z-10 pt-10 pb-8 sm:pt-12 sm:pb-10"
+        />
 
-      <ContentArea padding="none" className="bg-transparent border-none shadow-none relative z-10">
-        <div className="space-y-5 px-3 pb-28 sm:space-y-7 sm:px-6 sm:pb-24 lg:space-y-9 lg:px-10 xl:px-12">
-          {/* Header & Main Actions */}
-          <DashboardHeader
-            projectName={project?.name || ''}
-            isSyncing={isSyncing}
-            isLoading={isMetricsLoading}
-            onSync={handleSync}
-            onExportCompta={handleExportCompta}
-            projectProgress={metrics.progressPercent}
-            missionsDone={missionsDone}
-            missionsInProgress={missionsInProgress}
-            errorCount={errorCount}
-            syncHealth={metrics.syncHealth}
-            lastSyncLabel={lastSyncLabel}
-            koboConnected={koboConnected}
-            exportAvailable={exportAvailable}
-          />
+        <ContentArea
+          padding="none"
+          className="bg-transparent border-none shadow-none relative z-10"
+        >
+          <div className="space-y-5 px-3 pb-28 sm:space-y-7 sm:px-6 sm:pb-24 lg:space-y-9 lg:px-10 xl:px-12">
+            {/* Header & Main Actions */}
+            <DashboardHeader
+              projectName={project?.name || ''}
+              isSyncing={isSyncing}
+              isLoading={isMetricsLoading}
+              onSync={handleSync}
+              onExportCompta={handleExportCompta}
+              projectProgress={metrics.progressPercent}
+              missionsDone={missionsDone}
+              missionsInProgress={missionsInProgress}
+              errorCount={errorCount}
+              syncHealth={metrics.syncHealth}
+              lastSyncLabel={lastSyncLabel}
+              koboConnected={koboConnected}
+              exportAvailable={exportAvailable}
+            />
 
-          {/* 🎯 DG QUICK ACCESS MODULES */}
-          {isDG && orgConfig?.mission_panels_dg && orgConfig.mission_panels_dg.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-              {[
-                {
-                  id: 'prep',
-                  label: 'Stratégie',
-                  desc: 'Planning & Cadrage',
-                  icon: FileText,
-                  color: 'text-sky-400',
-                  bg: 'bg-sky-400/10',
-                  border: 'border-sky-400/20',
-                  tab: 'prep'
-                },
-                {
-                  id: 'report',
-                  label: 'Exécution',
-                  desc: 'Rapports Terrain',
-                  icon: CheckCircle,
-                  color: 'text-emerald-400',
-                  bg: 'bg-emerald-400/10',
-                  border: 'border-emerald-400/20',
-                  tab: 'report'
-                },
-                {
-                  id: 'approval',
-                  label: 'Approbations',
-                  desc: 'Validations Métier',
-                  icon: Shield,
-                  color: 'text-purple-400',
-                  bg: 'bg-purple-400/10',
-                  border: 'border-purple-400/20',
-                  tab: 'approval'
-                }
-              ].filter(m => orgConfig.mission_panels_dg.includes(m.id)).map((module) => (
-                <button
-                  key={module.id}
-                  onClick={() => navigate(`/admin/mission?tab=${module.tab}`)}
-                  className={`flex flex-col items-start p-6 rounded-3xl border ${module.border} ${module.bg} transition-all hover:scale-[1.02] active:scale-[0.98] group relative overflow-hidden`}
-                >
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-3xl group-hover:bg-white/10 transition-colors" />
-                  <div className={`p-3 rounded-2xl mb-4 ${module.bg} ${module.color} ring-1 ring-white/10`}>
-                    <module.icon size={24} />
+            {/* 🎯 DG QUICK ACCESS MODULES */}
+            {isDG && orgConfig?.mission_panels_dg && orgConfig.mission_panels_dg.length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                {[
+                  {
+                    id: 'prep',
+                    label: 'Stratégie',
+                    desc: 'Planning & Cadrage',
+                    icon: FileText,
+                    color: 'text-sky-400',
+                    bg: 'bg-sky-400/10',
+                    border: 'border-sky-400/20',
+                    tab: 'prep',
+                  },
+                  {
+                    id: 'report',
+                    label: 'Exécution',
+                    desc: 'Rapports Terrain',
+                    icon: CheckCircle,
+                    color: 'text-emerald-400',
+                    bg: 'bg-emerald-400/10',
+                    border: 'border-emerald-400/20',
+                    tab: 'report',
+                  },
+                  {
+                    id: 'approval',
+                    label: 'Approbations',
+                    desc: 'Validations Métier',
+                    icon: Shield,
+                    color: 'text-purple-400',
+                    bg: 'bg-purple-400/10',
+                    border: 'border-purple-400/20',
+                    tab: 'approval',
+                  },
+                ]
+                  .filter((m) => orgConfig.mission_panels_dg.includes(m.id))
+                  .map((module) => (
+                    <button
+                      key={module.id}
+                      onClick={() => navigate(`/admin/mission?tab=${module.tab}`)}
+                      className={`flex flex-col items-start p-6 rounded-3xl border ${module.border} ${module.bg} transition-all hover:scale-[1.02] active:scale-[0.98] group relative overflow-hidden`}
+                    >
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-3xl group-hover:bg-white/10 transition-colors" />
+                      <div
+                        className={`p-3 rounded-2xl mb-4 ${module.bg} ${module.color} ring-1 ring-white/10`}
+                      >
+                        <module.icon size={24} />
+                      </div>
+                      <h3 className="text-lg font-black uppercase tracking-tight text-white">
+                        {module.label}
+                      </h3>
+                      <p className="text-sm text-slate-400 mt-1 font-medium">{module.desc}</p>
+                      <div
+                        className={`mt-4 text-[10px] font-black uppercase tracking-[0.2em] ${module.color} flex items-center gap-2`}
+                      >
+                        Accéder au module
+                        <span className="w-1 h-1 rounded-full bg-current animate-pulse" />
+                      </div>
+                    </button>
+                  ))}
+              </div>
+            )}
+
+            <section className="rounded-[1.55rem] border border-white/8 bg-[linear-gradient(180deg,rgba(15,23,42,0.76),rgba(2,6,23,0.88))] p-4 shadow-[0_18px_50px_rgba(2,6,23,0.22)] sm:rounded-[1.9rem] sm:p-5">
+              <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                <div className="min-w-0 xl:max-w-[340px]">
+                  <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">
+                    Situation du jour
                   </div>
-                  <h3 className="text-lg font-black uppercase tracking-tight text-white">{module.label}</h3>
-                  <p className="text-sm text-slate-400 mt-1 font-medium">{module.desc}</p>
-                  <div className={`mt-4 text-[10px] font-black uppercase tracking-[0.2em] ${module.color} flex items-center gap-2`}>
-                    Accéder au module
-                    <span className="w-1 h-1 rounded-full bg-current animate-pulse" />
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
-
-          <section className="rounded-[1.55rem] border border-white/8 bg-[linear-gradient(180deg,rgba(15,23,42,0.76),rgba(2,6,23,0.88))] p-4 shadow-[0_18px_50px_rgba(2,6,23,0.22)] sm:rounded-[1.9rem] sm:p-5">
-            <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-              <div className="min-w-0 xl:max-w-[340px]">
-                <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">
-                  Situation du jour
+                  <h2 className="mt-2 text-lg font-black tracking-tight text-white sm:text-xl">
+                    Lecture executive du terrain
+                  </h2>
+                  <p className="mt-2 text-sm leading-relaxed text-slate-400">
+                    Vue compacte pour juger la tension operationnelle, la cadence mission et la
+                    conformite sans quitter la console.
+                  </p>
                 </div>
-                <h2 className="mt-2 text-lg font-black tracking-tight text-white sm:text-xl">
-                  Lecture executive du terrain
-                </h2>
-                <p className="mt-2 text-sm leading-relaxed text-slate-400">
-                  Vue compacte pour juger la tension operationnelle, la cadence mission et la conformite sans quitter la console.
-                </p>
-              </div>
 
-              <div className="grid flex-1 gap-3 md:grid-cols-3">
-                {situationItems.map(({ label, value, helper, tone, icon: Icon }) => (
-                  <div key={label} className={`rounded-[1.25rem] border p-4 ${tone}`}>
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <div className="text-[10px] font-black uppercase tracking-[0.16em] opacity-80">
-                          {label}
+                <div className="grid flex-1 gap-3 md:grid-cols-3">
+                  {situationItems.map(({ label, value, helper, tone, icon: Icon }) => (
+                    <div key={label} className={`rounded-[1.25rem] border p-4 ${tone}`}>
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="text-[10px] font-black uppercase tracking-[0.16em] opacity-80">
+                            {label}
+                          </div>
+                          <div className="mt-2 text-2xl font-black tracking-tight text-white">
+                            {value}
+                          </div>
                         </div>
-                        <div className="mt-2 text-2xl font-black tracking-tight text-white">
-                          {value}
+                        <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-black/10">
+                          <Icon size={18} />
                         </div>
                       </div>
-                      <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-black/10">
-                        <Icon size={18} />
-                      </div>
+                      <p className="mt-3 text-xs leading-relaxed text-slate-300">{helper}</p>
                     </div>
-                    <p className="mt-3 text-xs leading-relaxed text-slate-300">
-                      {helper}
-                    </p>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
+
+              <div className="mt-4 border-t border-white/6 pt-4">
+                <div className="flex flex-wrap gap-2">
+                  {topPriorities.map((item) => (
+                    <span
+                      key={item}
+                      className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[11px] font-semibold text-slate-300"
+                    >
+                      {item}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </section>
+
+            {/* Level 1: Core Progress */}
+            <GlobalProgressCard metrics={metrics} isLoading={isMetricsLoading} />
+
+            {/* Team Production Performance */}
+            <div className="pt-1 sm:pt-4">
+              <TeamPerformance
+                teamStats={metrics.breakdown.byTeam}
+                productionRates={project?.config?.productionRates}
+              />
             </div>
 
-            <div className="mt-4 border-t border-white/6 pt-4">
-              <div className="flex flex-wrap gap-2">
-                {topPriorities.map((item) => (
-                  <span
-                    key={item}
-                    className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[11px] font-semibold text-slate-300"
-                  >
-                    {item}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </section>
+            {/* Operational Performance & Teams */}
+            <OperationalSection metrics={metrics} zonesCount={localZonesCount} />
 
-          {/* Level 1: Core Progress */}
-          <GlobalProgressCard metrics={metrics} isLoading={isMetricsLoading} />
-
-          {/* Team Production Performance */}
-          <div className="pt-1 sm:pt-4">
-            <TeamPerformance
-              teamStats={metrics.breakdown.byTeam}
-              productionRates={project?.config?.productionRates}
+            {/* Strategic KPIs */}
+            <KPISection
+              metrics={metrics}
+              missionStats={missionStats}
+              householdLabel={getLabel('household.plural')}
+              isLoading={isMetricsLoading}
             />
+
+            {/* Compliance & Regulation */}
+            <ComplianceSection metrics={metrics} />
+
+            {/* Infrastructure Control & Live Activity */}
+            <ControlPanel
+              metrics={metrics}
+              feedActivities={feedActivities}
+              missions={missions}
+              isLoading={isMetricsLoading}
+            />
+
+            {/* Secondary Nav / Data Access */}
+            <footer className="grid grid-cols-1 gap-4 border-t border-white/5 pt-6 sm:grid-cols-2 sm:gap-5 sm:pt-10 relative z-10">
+              <FooterButton
+                onClick={() => navigate('/rapports')}
+                label="CENTRE DE DONNÉES"
+                title="Exporter Rapport Global"
+                Icon={BarChart3}
+              />
+              <FooterButton
+                onClick={() => navigate('/admin/users')}
+                label="ACCÈS IDENTITÉS"
+                title="Console de Gestion Utilisateurs"
+                Icon={Users}
+              />
+            </footer>
           </div>
+        </ContentArea>
+      </PageContainer>
 
-          {/* Operational Performance & Teams */}
-          <OperationalSection metrics={metrics} zonesCount={localZonesCount} />
-
-          {/* Strategic KPIs */}
-          <KPISection
-            metrics={metrics}
-            missionStats={missionStats}
-            householdLabel={getLabel('household.plural')}
-            isLoading={isMetricsLoading}
-          />
-
-          {/* Compliance & Regulation */}
-          <ComplianceSection metrics={metrics} />
-
-          {/* Infrastructure Control & Live Activity */}
-          <ControlPanel
-            metrics={metrics}
-            feedActivities={feedActivities}
-            missions={missions}
-            isLoading={isMetricsLoading}
-          />
-
-          {/* Secondary Nav / Data Access */}
-          <footer className="grid grid-cols-1 gap-4 border-t border-white/5 pt-6 sm:grid-cols-2 sm:gap-5 sm:pt-10 relative z-10">
-            <FooterButton
-              onClick={() => navigate('/rapports')}
-              label="CENTRE DE DONNÉES"
-              title="Exporter Rapport Global"
-              Icon={BarChart3}
-            />
-            <FooterButton
-              onClick={() => navigate('/admin/users')}
-              label="ACCÈS IDENTITÉS"
-              title="Console de Gestion Utilisateurs"
-              Icon={Users}
-            />
-          </footer>
-        </div>
-      </ContentArea>
-
-    </PageContainer>
-
-    {/* Console Settings Panel - Outside PageContainer for fixed positioning */}
-    <ConsoleSettings onSettingsChange={setConsoleSettings} />
-  </>
-);
+      {/* Console Settings Panel - Outside PageContainer for fixed positioning */}
+      <ConsoleSettings onSettingsChange={setConsoleSettings} />
+    </>
+  );
 }
 
 // ── UTILS ──
@@ -378,8 +404,12 @@ const FooterButton = ({ onClick, label, title, Icon }: FooterButtonProps) => (
       <Icon size={20} className="text-blue-400 transition-colors group-hover:text-white" />
     </div>
     <div className="text-left">
-      <p className="text-[0.58rem] font-black uppercase tracking-[0.16em] text-slate-500 group-hover:text-blue-400 sm:text-[0.68rem] sm:tracking-[0.22em]">{label}</p>
-      <p className="mt-1 text-[0.84rem] font-black uppercase tracking-[-0.02em] text-white sm:text-[0.95rem]">{title}</p>
+      <p className="text-[0.58rem] font-black uppercase tracking-[0.16em] text-slate-500 group-hover:text-blue-400 sm:text-[0.68rem] sm:tracking-[0.22em]">
+        {label}
+      </p>
+      <p className="mt-1 text-[0.84rem] font-black uppercase tracking-[-0.02em] text-white sm:text-[0.95rem]">
+        {title}
+      </p>
     </div>
   </button>
 );

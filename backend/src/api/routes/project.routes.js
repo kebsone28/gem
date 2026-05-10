@@ -9,7 +9,8 @@ import {
     triggerRecalculateGrappes,
     resetProjectData,
     deployServerUpdate,
-    dbMaintenance
+    dbMaintenance,
+    assignUserToProjects
 } from '../../modules/project/project.controller.js';
 import { authProtect } from '../middlewares/auth.js';
 import { verifierPermission, verifierAssignation } from '../../middleware/verifierPermission.js';
@@ -25,6 +26,7 @@ router.get('/:id', getProjectById);
 router.get('/:id/bordereau', getProjectBordereau);
 router.post('/:id/recalculate-grappes', triggerRecalculateGrappes);
 router.post('/:id/reset-data', verifierPermission(PERMISSIONS.SUPPRIMER_PROJET), resetProjectData);
+router.post('/assign-user', verifierPermission(PERMISSIONS.CREER_PROJET), assignUserToProjects);
 router.post('/', verifierPermission(PERMISSIONS.CREER_PROJET), createProject);
 router.patch('/:id', verifierPermission(PERMISSIONS.MODIFIER_CARTE), verifierAssignation('projet'), updateProject);
 router.delete('/:id', verifierPermission(PERMISSIONS.SUPPRIMER_PROJET), verifierAssignation('projet'), deleteProject);

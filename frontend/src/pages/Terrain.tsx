@@ -717,7 +717,7 @@ const Terrain: React.FC = () => {
     [households]
   );
 
-  const peutVoirDataHub = peut(PERMISSIONS.GERER_UTILISATEURS) || user?.role === 'ADMIN_PROQUELEC';
+  const peutVoirDataHub = peut(PERMISSIONS.SYSTEM_USERS) || user?.role === 'ADMIN_PROQUELEC';
 
   return (
     <div
@@ -760,7 +760,7 @@ const Terrain: React.FC = () => {
                       showLegend={terrainFeatures.statusLegend && showLegend}
                       onZoneClick={handleZoneClick}
                       grappesConfig={grappesConfig}
-                      readOnly={!peut(PERMISSIONS.MODIFIER_CARTE)}
+                      readOnly={!peut(PERMISSIONS.TERRAIN_WRITE)}
                       userLocation={userLocation}
                       onHouseholdDrop={updateHouseholdLocation}
                       favorites={localFavorites}
@@ -829,7 +829,9 @@ const Terrain: React.FC = () => {
         statusOptions={terrainStatusOptions}
         project={project}
         onSync={handleManualSync}
-        onOpenDataHub={() => { window.location.href = '/settings?tab=datahub'; }}
+        onOpenDataHub={() => {
+          window.location.href = '/settings?tab=datahub';
+        }}
         viewMode={viewMode}
         onViewModeChange={setViewMode}
         onRecenter={handleRecenterOnUser}

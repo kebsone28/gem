@@ -14,26 +14,20 @@ import {
   ArrowLeft,
   AlertTriangle,
   Bell,
-  BellOff,
   Check,
   CheckCheck,
   ChevronDown,
   ChevronRight,
-  Circle,
   Clock,
   Copy,
   Edit3,
   FileText,
   Flag,
-  Forward,
   Globe2,
-  Hash,
   Info,
   Lock,
   Mic,
-  MicOff,
   Paperclip,
-  Phone,
   Pin,
   Plus,
   Reply,
@@ -45,14 +39,12 @@ import {
   Star,
   Trash,
   Users2,
-  Video,
   Volume2,
   VolumeX,
   X,
   Zap,
   MessageSquare,
   MessagesSquare,
-  ChevronUp,
   AtSign,
   Command,
   LayoutGrid,
@@ -72,13 +64,27 @@ import { useAuth } from '../contexts/AuthContext';
 import { usePermissions } from '../hooks/usePermissions';
 import { PERMISSIONS } from '../utils/permissions';
 import { getSocketInstance } from '../hooks/useWebSockets';
-import { useProject } from '../contexts/ProjectContext';
+
 import chatService, {
   type ChatConversation,
   type ChatMessage,
   type ChatUserSummary,
   type ChatBootstrapResponse,
 } from '../services/chatService';
+import * as missionService from '../services/missionService';
+import apiClient from '../api/client';
+
+// Inline household search service (no dedicated frontend service file)
+const householdService = {
+  getHouseholds: async (params: { search?: string; limit?: number }) => {
+    try {
+      const response = await apiClient.get('/households', { params });
+      return response.data?.households || response.data || [];
+    } catch {
+      return [];
+    }
+  },
+};
 
 // ══════════════════════════════════════════════════════
 // TYPES & INTERFACES
@@ -165,15 +171,12 @@ function formatDateSeparator(value: string): string {
   return d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
 }
 
-function isSameDay(a: string, b: string): boolean {
-  return new Date(a).toDateString() === new Date(b).toDateString();
-}
-
 /** Very simple markdown-like rendering */
 function renderMarkdown(text: string): React.ReactNode[] {
   const parts: React.ReactNode[] = [];
   // Split on bold **text**, italic *text*, code `text`, strikethrough ~~text~~, replies and attachments
-  const regex = /(\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`|~~(.+?)~~|\[reply:([^\]]+)\]|\[(IMAGE|AUDIO|FILE):([^|]+)\|([^\]]+)\])/g;
+  const regex =
+    /(\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`|~~(.+?)~~|\[reply:([^\]]+)\]|\[(IMAGE|AUDIO|FILE):([^|]+)\|([^\]]+)\])/g;
   let lastIndex = 0;
   let match;
 
@@ -198,7 +201,8 @@ function renderMarkdown(text: string): React.ReactNode[] {
           {match[5]}
         </del>
       );
-    else if (match[7]) { // This is IMAGE/AUDIO/FILE
+    else if (match[7]) {
+      // This is IMAGE/AUDIO/FILE
       const type = match[7];
       const filename = match[8];
       const dataUrl = match[9];
@@ -206,7 +210,11 @@ function renderMarkdown(text: string): React.ReactNode[] {
       if (type === 'IMAGE') {
         parts.push(
           <div key={match.index} className="mt-2 mb-1">
-            <img src={dataUrl} alt={filename} className="max-w-full rounded-lg max-h-64 object-contain shadow-sm border border-white/10" />
+            <img
+              src={dataUrl}
+              alt={filename}
+              className="max-w-full rounded-lg max-h-64 object-contain shadow-sm border border-white/10"
+            />
             <p className="text-[10px] opacity-70 mt-1">{filename}</p>
           </div>
         );
@@ -219,11 +227,18 @@ function renderMarkdown(text: string): React.ReactNode[] {
         );
       } else {
         parts.push(
-          <a key={match.index} href={dataUrl} download={filename} className="flex items-center gap-2 mt-2 mb-1 p-2.5 bg-black/20 rounded-xl hover:bg-black/30 transition-colors border border-white/5 w-fit">
+          <a
+            key={match.index}
+            href={dataUrl}
+            download={filename}
+            className="flex items-center gap-2 mt-2 mb-1 p-2.5 bg-black/20 rounded-xl hover:bg-black/30 transition-colors border border-white/5 w-fit"
+          >
             <div className="bg-indigo-500/20 p-1.5 rounded-lg text-indigo-300 shrink-0">
               <Paperclip size={16} />
             </div>
-            <span className="text-[13px] font-medium underline truncate max-w-[200px]">{filename}</span>
+            <span className="text-[13px] font-medium underline truncate max-w-[200px]">
+              {filename}
+            </span>
           </a>
         );
       }
@@ -476,7 +491,6 @@ const MessageContextMenu = memo(
   ({
     x,
     y,
-    msg,
     isOwn,
     isAdmin,
     canPin,
@@ -487,6 +501,8 @@ const MessageContextMenu = memo(
     onPin,
     onStar,
     onDelete,
+    onEdit,
+    onDeleteForMe,
   }: {
     x: number;
     y: number;
@@ -501,6 +517,8 @@ const MessageContextMenu = memo(
     onPin: () => void;
     onStar: () => void;
     onDelete: () => void;
+    onEdit: () => void;
+    onDeleteForMe: () => void;
   }) => {
     const menuRef = useRef<HTMLDivElement>(null);
 
@@ -567,27 +585,27 @@ const MessageContextMenu = memo(
           },
           ...(canPin
             ? [
-              {
-                icon: <Pin size={15} />,
-                label: 'Épingler',
-                action: () => {
-                  onPin();
-                  onClose();
+                {
+                  icon: <Pin size={15} />,
+                  label: 'Épingler',
+                  action: () => {
+                    onPin();
+                    onClose();
+                  },
                 },
-              },
-            ]
+              ]
             : []),
           ...(isOwn
             ? [
-              {
-                icon: <Edit3 size={15} />,
-                label: 'Modifier',
-                action: () => {
-                  onEdit();
-                  onClose();
+                {
+                  icon: <Edit3 size={15} />,
+                  label: 'Modifier',
+                  action: () => {
+                    onEdit();
+                    onClose();
+                  },
                 },
-              },
-            ]
+              ]
             : []),
           {
             icon: <Trash size={15} />,
@@ -600,16 +618,16 @@ const MessageContextMenu = memo(
           },
           ...(isOwn || isAdmin
             ? [
-              {
-                icon: <Trash2 size={15} />,
-                label: 'Supprimer pour tous',
-                action: () => {
-                  onDelete();
-                  onClose();
+                {
+                  icon: <Trash2 size={15} />,
+                  label: 'Supprimer pour tous',
+                  action: () => {
+                    onDelete();
+                    onClose();
+                  },
+                  danger: true,
                 },
-                danger: true,
-              },
-            ]
+              ]
             : []),
         ].map((item) => (
           <button
@@ -631,37 +649,51 @@ MessageContextMenu.displayName = 'MessageContextMenu';
 
 /** Smart Context Card for internal GEM links (Households, Missions, etc.) */
 const GemContextCard = memo(({ type, id }: { type: string; id: string }) => {
-  const [data, setData] = useState<{ title: string; subtitle: string; status?: string; link: string } | null>(null);
+  const [data, setData] = useState<{
+    title: string;
+    subtitle: string;
+    status?: string;
+    link: string;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
     let active = true;
-    chatService.resolveEntity(type, id)
-      .then(res => { if (active) setData(res); })
-      .catch(() => { })
-      .finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
+    chatService
+      .resolveEntity(type, id)
+      .then((res) => {
+        if (active) setData(res);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
   }, [type, id]);
 
-  if (loading) return (
-    <div className="mt-2 p-3 bg-white/5 border border-white/10 rounded-xl flex items-center gap-3 animate-pulse">
-      <div className="h-10 w-10 bg-white/10 rounded-lg shrink-0" />
-      <div className="flex-1 space-y-2">
-        <div className="h-3 bg-white/10 rounded w-2/3" />
-        <div className="h-2 bg-white/10 rounded w-1/2" />
+  if (loading)
+    return (
+      <div className="mt-2 p-3 bg-white/5 border border-white/10 rounded-xl flex items-center gap-3 animate-pulse">
+        <div className="h-10 w-10 bg-white/10 rounded-lg shrink-0" />
+        <div className="flex-1 space-y-2">
+          <div className="h-3 bg-white/10 rounded w-2/3" />
+          <div className="h-2 bg-white/10 rounded w-1/2" />
+        </div>
       </div>
-    </div>
-  );
+    );
 
   if (!data) return null;
 
   const Icon = type === 'household' ? Users2 : type === 'mission' ? Flag : Info;
-  const statusColor = data.status === 'COMPLETED' || data.status === 'VALIDATED'
-    ? 'text-emerald-400 bg-emerald-500/10'
-    : data.status === 'IN_PROGRESS'
-      ? 'text-amber-400 bg-amber-500/10'
-      : 'text-slate-400 bg-white/5';
+  const statusColor =
+    data.status === 'COMPLETED' || data.status === 'VALIDATED'
+      ? 'text-emerald-400 bg-emerald-500/10'
+      : data.status === 'IN_PROGRESS'
+        ? 'text-amber-400 bg-amber-500/10'
+        : 'text-slate-400 bg-white/5';
 
   return (
     <motion.div
@@ -670,21 +702,28 @@ const GemContextCard = memo(({ type, id }: { type: string; id: string }) => {
       className="mt-2 p-3 bg-slate-900/60 backdrop-blur-md border border-white/10 rounded-xl flex items-center gap-3 hover:border-indigo-500/40 transition-all cursor-pointer group"
       onClick={() => navigate(data.link)}
     >
-      <div className={`h-10 w-10 rounded-lg flex items-center justify-center shrink-0 ${type === 'household' ? 'bg-indigo-500/20 text-indigo-400' : 'bg-rose-500/20 text-rose-400'}`}>
+      <div
+        className={`h-10 w-10 rounded-lg flex items-center justify-center shrink-0 ${type === 'household' ? 'bg-indigo-500/20 text-indigo-400' : 'bg-rose-500/20 text-rose-400'}`}
+      >
         <Icon size={20} />
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2">
           <p className="text-[13px] font-bold text-white truncate">{data.title}</p>
           {data.status && (
-            <span className={`text-[9px] font-black uppercase tracking-tighter px-1.5 py-0.5 rounded ${statusColor}`}>
+            <span
+              className={`text-[9px] font-black uppercase tracking-tighter px-1.5 py-0.5 rounded ${statusColor}`}
+            >
               {data.status}
             </span>
           )}
         </div>
         <p className="text-[11px] text-slate-500 truncate">{data.subtitle}</p>
       </div>
-      <ChevronRight size={14} className="text-slate-700 group-hover:text-indigo-400 transition-colors" />
+      <ChevronRight
+        size={14}
+        className="text-slate-700 group-hover:text-indigo-400 transition-colors"
+      />
     </motion.div>
   );
 });
@@ -726,7 +765,7 @@ const ChatAudioPlayer = memo(({ url, duration }: { url: string; duration?: numbe
     if (playing) {
       audioRef.current.pause();
     } else {
-      audioRef.current.play().catch(e => console.warn('[AUDIO_PLAY_ERROR]', e));
+      audioRef.current.play().catch((e) => console.warn('[AUDIO_PLAY_ERROR]', e));
     }
     setPlaying(!playing);
   };
@@ -743,7 +782,11 @@ const ChatAudioPlayer = memo(({ url, duration }: { url: string; duration?: numbe
         onClick={togglePlay}
         className="h-9 w-9 shrink-0 rounded-full bg-indigo-500 text-white flex items-center justify-center hover:bg-indigo-400 transition-all shadow-lg shadow-indigo-500/20"
       >
-        {playing ? <Pause size={18} fill="currentColor" /> : <Play size={18} className="ml-0.5" fill="currentColor" />}
+        {playing ? (
+          <Pause size={18} fill="currentColor" />
+        ) : (
+          <Play size={18} className="ml-0.5" fill="currentColor" />
+        )}
       </button>
       <div className="flex-1 space-y-1">
         <div className="flex justify-between items-center text-[9px] font-bold text-slate-400 uppercase tracking-widest">
@@ -763,19 +806,27 @@ const ChatAudioPlayer = memo(({ url, duration }: { url: string; duration?: numbe
 });
 ChatAudioPlayer.displayName = 'ChatAudioPlayer';
 
+/** Checks if a string is a valid JSON file/media payload */
+function isJson(str: string): boolean {
+  if (!str || typeof str !== 'string' || !str.startsWith('{')) return false;
+  try {
+    const parsed = JSON.parse(str);
+    return typeof parsed === 'object' && parsed !== null && ('type' in parsed || 'url' in parsed);
+  } catch {
+    return false;
+  }
+}
+
 /** Full message bubble with all features */
 const MessageBubble = memo(
   ({
     msg,
-    prevMsg,
     nextMsg,
     isOwn,
     isAdmin,
     currentUserId,
     reactions,
     starred,
-    pinned,
-    showAvatar,
     showName,
     onReply,
     onReact,
@@ -943,10 +994,11 @@ const MessageBubble = memo(
           <div
             ref={bubbleRef}
             onContextMenu={handleContextMenu}
-            className={`relative rounded-[20px] px-4 py-2.5 shadow-sm cursor-default select-text transition-all ${isOwn
-              ? 'bg-indigo-600 text-white rounded-tr-none shadow-indigo-500/10'
-              : 'bg-slate-800 text-slate-100 rounded-tl-none border border-white/5'
-              } ${hovered ? 'shadow-md brightness-110' : ''}`}
+            className={`relative rounded-[20px] px-4 py-2.5 shadow-sm cursor-default select-text transition-all ${
+              isOwn
+                ? 'bg-indigo-600 text-white rounded-tr-none shadow-indigo-500/10'
+                : 'bg-slate-800 text-slate-100 rounded-tl-none border border-white/5'
+            } ${hovered ? 'shadow-md brightness-110' : ''}`}
           >
             {/* Starred indicator */}
             {starred && (
@@ -976,17 +1028,29 @@ const MessageBubble = memo(
               {hasFile ? (
                 <>
                   {fileData.type === 'image' && (
-                    <img src={fileData.url} alt={fileData.name} className="max-w-full rounded-lg my-1 cursor-pointer" onClick={() => window.open(fileData.url, '_blank')} />
+                    <img
+                      src={fileData.url}
+                      alt={fileData.name}
+                      className="max-w-full rounded-lg my-1 cursor-pointer"
+                      onClick={() => window.open(fileData.url, '_blank')}
+                    />
                   )}
                   {fileData.type === 'audio' && (
                     <ChatAudioPlayer url={fileData.url} duration={fileData.duration} />
                   )}
                   {fileData.type === 'file' && (
-                    <a href={fileData.url} target="_blank" rel="noreferrer" className="flex items-center gap-3 bg-white/5 p-2.5 rounded-xl border border-white/10 hover:bg-white/10 transition-colors my-1">
+                    <a
+                      href={fileData.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-3 bg-white/5 p-2.5 rounded-xl border border-white/10 hover:bg-white/10 transition-colors my-1"
+                    >
                       <FileText size={20} className="text-indigo-300" />
                       <div className="min-w-0">
                         <p className="text-[12px] font-bold truncate">{fileData.name}</p>
-                        <p className="text-[10px] opacity-50">{(fileData.size / 1024).toFixed(1)} KB</p>
+                        <p className="text-[10px] opacity-50">
+                          {(fileData.size / 1024).toFixed(1)} KB
+                        </p>
                       </div>
                     </a>
                   )}
@@ -1005,12 +1069,8 @@ const MessageBubble = memo(
                   )}
 
                   {/* GEM Context Cards */}
-                  {householdMatch && (
-                    <GemContextCard type="household" id={householdMatch[1]} />
-                  )}
-                  {missionMatch && (
-                    <GemContextCard type="mission" id={missionMatch[1]} />
-                  )}
+                  {householdMatch && <GemContextCard type="household" id={householdMatch[1]} />}
+                  {missionMatch && <GemContextCard type="mission" id={missionMatch[1]} />}
                 </>
               )}
             </div>
@@ -1023,12 +1083,15 @@ const MessageBubble = memo(
               {isOwn && (
                 <div title="Statut de lecture">
                   {(() => {
-                    const readers = conversation?.participants?.filter(p =>
-                      p.userId !== msg.senderId &&
-                      p.lastReadAt &&
-                      new Date(p.lastReadAt).getTime() >= new Date(msg.createdAt).getTime()
-                    ) || [];
-                    const isReadByAll = readers.length >= (conversation?.participants?.length || 1) - 1;
+                    const readers =
+                      conversation?.participants?.filter(
+                        (p: any) =>
+                          p.userId !== msg.senderId &&
+                          p.lastReadAt &&
+                          new Date(p.lastReadAt).getTime() >= new Date(msg.createdAt).getTime()
+                      ) || [];
+                    const isReadByAll =
+                      readers.length >= (conversation?.participants?.length || 1) - 1;
                     const isReadBySome = readers.length > 0;
 
                     if (isReadByAll) return <CheckCheck size={12} className="text-emerald-400" />;
@@ -1099,12 +1162,13 @@ const ConversationInfoPanel = memo(
           {/* Conversation icon */}
           <div className="flex flex-col items-center gap-3">
             <div
-              className={`h-20 w-20 rounded-full flex items-center justify-center text-4xl shadow-xl ${conversation.isGlobal
-                ? 'bg-rose-500/20'
-                : conversation.type === 'GROUP'
-                  ? 'bg-violet-500/20'
-                  : 'bg-emerald-500/20'
-                }`}
+              className={`h-20 w-20 rounded-full flex items-center justify-center text-4xl shadow-xl ${
+                conversation.isGlobal
+                  ? 'bg-rose-500/20'
+                  : conversation.type === 'GROUP'
+                    ? 'bg-violet-500/20'
+                    : 'bg-emerald-500/20'
+              }`}
             >
               {conversation.isGlobal ? (
                 <Globe2 size={36} className="text-rose-400" />
@@ -1284,7 +1348,10 @@ const GemChatComposer = memo(
       setSearchingHouseholds(true);
       const timer = setTimeout(async () => {
         try {
-          const results = await householdService.getHouseholds({ search: householdQuery, limit: 5 });
+          const results = await householdService.getHouseholds({
+            search: householdQuery,
+            limit: 5,
+          });
           setFoundHouseholds(results);
         } catch (e) {
           console.error('[HOUSEHOLD_SEARCH_ERROR]', e);
@@ -1381,7 +1448,7 @@ const GemChatComposer = memo(
                 type: 'audio',
                 url,
                 name: 'Message vocal',
-                duration: finalTime
+                duration: finalTime,
               });
               await handleSend(fileInfo);
             } catch (err) {
@@ -1399,7 +1466,7 @@ const GemChatComposer = memo(
           setRecordingTime(0);
           recordingTimeRef.current = 0;
           recordingIntervalRef.current = setInterval(() => {
-            setRecordingTime(p => p + 1);
+            setRecordingTime((p) => p + 1);
             recordingTimeRef.current += 1;
           }, 1000);
         } catch (err) {
@@ -1410,7 +1477,7 @@ const GemChatComposer = memo(
         if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current);
         if (mediaRecorder && mediaRecorder.state !== 'inactive') {
           mediaRecorder.stop();
-          mediaRecorder.stream.getTracks().forEach(track => track.stop());
+          mediaRecorder.stream.getTracks().forEach((track) => track.stop());
         }
         setRecording(false);
       }
@@ -1420,7 +1487,7 @@ const GemChatComposer = memo(
       if (mediaRecorder) {
         mediaRecorder.onstop = null; // Prevent sending
         mediaRecorder.stop();
-        mediaRecorder.stream.getTracks().forEach(track => track.stop());
+        mediaRecorder.stream.getTracks().forEach((track) => track.stop());
       }
       setRecording(false);
     };
@@ -1463,10 +1530,14 @@ const GemChatComposer = memo(
         const { url } = await chatService.uploadFile(file);
 
         const fileInfo = JSON.stringify({
-          type: file.type.startsWith('image/') ? 'image' : file.type.startsWith('audio/') ? 'audio' : 'file',
+          type: file.type.startsWith('image/')
+            ? 'image'
+            : file.type.startsWith('audio/')
+              ? 'audio'
+              : 'file',
           url,
           name: file.name,
-          size: file.size
+          size: file.size,
         });
 
         await handleSend(fileInfo);
@@ -1482,8 +1553,8 @@ const GemChatComposer = memo(
     const filteredUsers =
       mentionQuery !== null
         ? users
-          .filter((u) => u.name.toLowerCase().startsWith(mentionQuery.toLowerCase()))
-          .slice(0, 5)
+            .filter((u) => u.name.toLowerCase().startsWith(mentionQuery.toLowerCase()))
+            .slice(0, 5)
         : [];
 
     const filteredCommands =
@@ -1551,16 +1622,24 @@ const GemChatComposer = memo(
               className="absolute bottom-full mb-1 left-4 right-4 bg-slate-800 border border-white/10 rounded-2xl overflow-hidden shadow-2xl z-50"
             >
               <div className="p-2 border-b border-white/5 bg-white/5 flex items-center justify-between">
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Recherche ménage (Nom ou N°)</p>
-                {searchingHouseholds && <div className="h-2 w-2 bg-indigo-500 rounded-full animate-ping" />}
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                  Recherche ménage (Nom ou N°)
+                </p>
+                {searchingHouseholds && (
+                  <div className="h-2 w-2 bg-indigo-500 rounded-full animate-ping" />
+                )}
               </div>
-              
+
               {searchingHouseholds && foundHouseholds.length === 0 && (
-                <div className="px-4 py-3 text-[12px] text-slate-500 italic">Recherche en cours...</div>
+                <div className="px-4 py-3 text-[12px] text-slate-500 italic">
+                  Recherche en cours...
+                </div>
               )}
 
               {foundHouseholds.length === 0 && !searchingHouseholds && (
-                <div className="px-4 py-3 text-[12px] text-slate-500 italic">Aucun ménage trouvé pour "{householdQuery}"</div>
+                <div className="px-4 py-3 text-[12px] text-slate-500 italic">
+                  Aucun ménage trouvé pour "{householdQuery}"
+                </div>
               )}
               {foundHouseholds.map((h) => (
                 <button
@@ -1573,10 +1652,16 @@ const GemChatComposer = memo(
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
-                      <p className="text-[13px] font-bold text-white truncate">{h.chefPrenom} {h.chefNom}</p>
-                      <span className="text-[10px] bg-white/10 px-1.5 rounded font-mono text-slate-300">#{h.numeroordre}</span>
+                      <p className="text-[13px] font-bold text-white truncate">
+                        {h.chefPrenom} {h.chefNom}
+                      </p>
+                      <span className="text-[10px] bg-white/10 px-1.5 rounded font-mono text-slate-300">
+                        #{h.numeroordre}
+                      </span>
                     </div>
-                    <p className="text-[11px] text-slate-400 truncate">{h.village || h.zone || 'Localisation inconnue'}</p>
+                    <p className="text-[11px] text-slate-400 truncate">
+                      {h.village || h.zone || 'Localisation inconnue'}
+                    </p>
                   </div>
                 </button>
               ))}
@@ -1594,16 +1679,24 @@ const GemChatComposer = memo(
               className="absolute bottom-full mb-1 left-4 right-4 bg-slate-800 border border-white/10 rounded-2xl overflow-hidden shadow-2xl z-50"
             >
               <div className="p-2 border-b border-white/5 bg-white/5 flex items-center justify-between">
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Recherche mission</p>
-                {searchingMissions && <div className="h-2 w-2 bg-rose-500 rounded-full animate-ping" />}
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                  Recherche mission
+                </p>
+                {searchingMissions && (
+                  <div className="h-2 w-2 bg-rose-500 rounded-full animate-ping" />
+                )}
               </div>
-              
+
               {searchingMissions && foundMissions.length === 0 && (
-                <div className="px-4 py-3 text-[12px] text-slate-500 italic">Recherche mission...</div>
+                <div className="px-4 py-3 text-[12px] text-slate-500 italic">
+                  Recherche mission...
+                </div>
               )}
 
               {foundMissions.length === 0 && !searchingMissions && (
-                <div className="px-4 py-3 text-[12px] text-slate-500 italic">Aucune mission trouvée</div>
+                <div className="px-4 py-3 text-[12px] text-slate-500 italic">
+                  Aucune mission trouvée
+                </div>
               )}
               {foundMissions.map((m) => (
                 <button
@@ -1617,9 +1710,13 @@ const GemChatComposer = memo(
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-[13px] font-bold text-white truncate">{m.title}</p>
-                      <span className="text-[9px] bg-white/10 px-1.5 rounded font-bold text-slate-400 uppercase tracking-tighter">{m.status}</span>
+                      <span className="text-[9px] bg-white/10 px-1.5 rounded font-bold text-slate-400 uppercase tracking-tighter">
+                        {m.status}
+                      </span>
                     </div>
-                    <p className="text-[11px] text-slate-400 truncate">{new Date(m.startDate).toLocaleDateString()} · {m.zone?.name || 'Sans zone'}</p>
+                    <p className="text-[11px] text-slate-400 truncate">
+                      {new Date(m.startDate).toLocaleDateString()} · {m.zone?.name || 'Sans zone'}
+                    </p>
                   </div>
                 </button>
               ))}
@@ -1637,10 +1734,12 @@ const GemChatComposer = memo(
               className="absolute bottom-full mb-4 left-4 w-72 bg-slate-900/90 backdrop-blur-xl border border-white/10 rounded-3xl overflow-hidden shadow-2xl z-[60] p-3 grid grid-cols-2 gap-2"
             >
               <div className="col-span-2 px-2 pb-1">
-                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Actions opérationnelles</p>
+                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                  Actions opérationnelles
+                </p>
               </div>
-              
-              <button 
+
+              <button
                 onClick={() => handleCommandSelect('/ménage')}
                 className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-white/5 hover:bg-indigo-500/20 border border-white/5 transition-all group"
               >
@@ -1650,7 +1749,7 @@ const GemChatComposer = memo(
                 <span className="text-[11px] font-bold text-white">Ménage</span>
               </button>
 
-              <button 
+              <button
                 onClick={() => handleCommandSelect('/mission')}
                 className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-white/5 hover:bg-rose-500/20 border border-white/5 transition-all group"
               >
@@ -1660,7 +1759,7 @@ const GemChatComposer = memo(
                 <span className="text-[11px] font-bold text-white">Mission</span>
               </button>
 
-              <button 
+              <button
                 onClick={() => handleCommandSelect('/alert')}
                 className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-white/5 hover:bg-orange-500/20 border border-white/5 transition-all group"
               >
@@ -1670,7 +1769,7 @@ const GemChatComposer = memo(
                 <span className="text-[11px] font-bold text-white">Alerte</span>
               </button>
 
-              <button 
+              <button
                 onClick={() => handleCommandSelect('/status')}
                 className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-white/5 hover:bg-emerald-500/20 border border-white/5 transition-all group"
               >
@@ -1680,7 +1779,7 @@ const GemChatComposer = memo(
                 <span className="text-[11px] font-bold text-white">Status</span>
               </button>
 
-              <button 
+              <button
                 onClick={() => handleCommandSelect('/urgent')}
                 className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-white/5 hover:bg-red-500/20 border border-white/5 transition-all group"
               >
@@ -1690,7 +1789,7 @@ const GemChatComposer = memo(
                 <span className="text-[11px] font-bold text-white">Urgent</span>
               </button>
 
-              <button 
+              <button
                 onClick={() => handleCommandSelect('/rapport')}
                 className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-white/5 hover:bg-cyan-500/20 border border-white/5 transition-all group"
               >
@@ -1765,8 +1864,8 @@ const GemChatComposer = memo(
               type="button"
               onClick={() => setShowActionMenu(!showActionMenu)}
               className={`p-2.5 rounded-xl transition-all ${
-                showActionMenu 
-                  ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/30' 
+                showActionMenu
+                  ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/30'
                   : 'bg-white/5 text-slate-400 hover:text-white hover:bg-slate-800'
               }`}
               title="Actions rapides"
@@ -1811,7 +1910,8 @@ const GemChatComposer = memo(
                 <div className="flex items-center gap-1 shrink-0">
                   <div className="h-2 w-2 rounded-full bg-rose-500 animate-pulse" />
                   <span className="text-rose-400 text-sm font-bold font-mono tabular-nums w-12 text-center">
-                    {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, '0')}
+                    {Math.floor(recordingTime / 60)}:
+                    {(recordingTime % 60).toString().padStart(2, '0')}
                   </span>
                 </div>
 
@@ -1826,7 +1926,7 @@ const GemChatComposer = memo(
                       transition={{
                         repeat: Infinity,
                         duration: 0.6,
-                        delay: i * 0.05
+                        delay: i * 0.05,
                       }}
                       className="w-1 bg-indigo-500/40 rounded-full"
                     />
@@ -1875,12 +1975,13 @@ const GemChatComposer = memo(
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              onClick={() => recording ? handleToggleRecording() : void handleSend()}
+              onClick={() => (recording ? handleToggleRecording() : void handleSend())}
               disabled={disabled || sending}
-              className={`flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-2xl shadow-lg transition-all disabled:opacity-50 ${recording
-                ? 'bg-emerald-600 text-white shadow-emerald-500/25 hover:bg-emerald-500'
-                : 'bg-indigo-600 text-white shadow-indigo-500/25 hover:bg-indigo-500'
-                }`}
+              className={`flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-2xl shadow-lg transition-all disabled:opacity-50 ${
+                recording
+                  ? 'bg-emerald-600 text-white shadow-emerald-500/25 hover:bg-emerald-500'
+                  : 'bg-indigo-600 text-white shadow-indigo-500/25 hover:bg-indigo-500'
+              }`}
             >
               {sending ? (
                 <div className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
@@ -1930,7 +2031,6 @@ GemChatComposer.displayName = 'GemChatComposer';
 export default function Communication() {
   const { user } = useAuth();
   const { isAdmin, peut } = usePermissions();
-  const { project } = useProject();
 
   // ── Core state ──────────────────────────────────────
   const [bootstrapping, setBootstrapping] = useState(true);
@@ -1949,6 +2049,9 @@ export default function Communication() {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [showInfo, setShowInfo] = useState(false);
   const [socketVersion, setSocketVersion] = useState(0);
+  const [socketConnected, setSocketConnected] = useState(true);
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reconnectAttemptsRef = useRef(0);
   const [editingMessage, setEditingMessage] = useState<ChatMessage | null>(null);
 
   // ── Enhanced features state ───────────────────────────
@@ -2012,7 +2115,9 @@ export default function Communication() {
       }
       const star = localStorage.getItem('gem_chat_starred');
       if (star) setStarred(new Set(JSON.parse(star)));
-    } catch { }
+    } catch {
+      /* noop — localStorage peut être indisponible */
+    }
   }, []);
 
   useEffect(() => {
@@ -2145,9 +2250,45 @@ export default function Communication() {
   }, [activeConversationId, messagesByConversation]);
 
   // ── Socket events ──────────────────────────────────────
+  // ── Socket events + reconnexion automatique avec backoff exponentiel ────────────
   useEffect(() => {
-    const h = () => setSocketVersion((v) => v + 1);
+    const h = () => {
+      setSocketVersion((v) => v + 1);
+      setSocketConnected(true);
+      reconnectAttemptsRef.current = 0;
+    };
     window.addEventListener('socket:ready', h);
+
+    const socket = getSocketInstance();
+    if (socket) {
+      const handleConnect = () => {
+        setSocketConnected(true);
+        reconnectAttemptsRef.current = 0;
+        if (reconnectTimerRef.current) {
+          clearTimeout(reconnectTimerRef.current);
+          reconnectTimerRef.current = null;
+        }
+      };
+      const handleDisconnect = (reason: string) => {
+        setSocketConnected(false);
+        // Ne tenter de reconnexion que sur déconnexion involontaire
+        if (reason === 'io server disconnect' || reason === 'io client disconnect') return;
+        const delay = Math.min(1000 * Math.pow(2, reconnectAttemptsRef.current), 30_000);
+        reconnectAttemptsRef.current += 1;
+        reconnectTimerRef.current = setTimeout(() => {
+          const s = getSocketInstance();
+          if (s && !s.connected) s.connect();
+        }, delay);
+      };
+      socket.on('connect', handleConnect);
+      socket.on('disconnect', handleDisconnect);
+      return () => {
+        window.removeEventListener('socket:ready', h);
+        socket.off('connect', handleConnect);
+        socket.off('disconnect', handleDisconnect);
+        if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
+      };
+    }
     return () => window.removeEventListener('socket:ready', h);
   }, []);
 
@@ -2197,8 +2338,10 @@ export default function Communication() {
                 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA'
               );
               a.volume = 0.3;
-              a.play().catch(() => { });
-            } catch { }
+              a.play().catch(() => {});
+            } catch {
+              /* noop — audio non supporté dans ce contexte */
+            }
           }
           toast(`${msg.sender.name}: ${msg.content.slice(0, 50)}`, {
             icon: '💬',
@@ -2225,7 +2368,7 @@ export default function Communication() {
       setTypingUsers((prev) => ({
         ...prev,
         [msg.conversationId]: (prev[msg.conversationId] || []).filter(
-          (t) => t.senderId !== msg.senderId
+          (t) => t.userId !== msg.senderId
         ),
       }));
     };
@@ -2257,9 +2400,11 @@ export default function Communication() {
       );
       if (p.userId === user.id) {
         setCurrentUserBlocked(p.blocked);
-        p.blocked
-          ? toast.error('Votre accès a été bloqué.')
-          : toast.success('Votre accès a été rétabli.');
+        if (p.blocked) {
+          toast.error('Votre accès a été bloqué.');
+        } else {
+          toast.success('Votre accès a été rétabli.');
+        }
       }
     };
 
@@ -2282,10 +2427,10 @@ export default function Communication() {
         c.map((x) =>
           x.id === p.conversationId
             ? {
-              ...x,
-              lastMessage: p.lastMessage || null,
-              updatedAt: p.lastMessage?.createdAt || x.createdAt,
-            }
+                ...x,
+                lastMessage: p.lastMessage || null,
+                updatedAt: p.lastMessage?.createdAt || x.createdAt,
+              }
             : x
         )
       );
@@ -2387,51 +2532,59 @@ export default function Communication() {
     [activeConversationId]
   );
 
-  const handleEditMessage = useCallback(async (messageId: string, content: string) => {
-    if (!activeConversationId) return;
-    try {
-      const updated = await chatService.editMessage(activeConversationId, messageId, content);
-      setMessagesByConversation((prev) => {
-        const list = prev[activeConversationId] || [];
-        return {
-          ...prev,
-          [activeConversationId]: list.map((m) => (m.id === messageId ? updated : m)),
-        };
-      });
-      setEditingMessage(null);
-      toast.success('Message modifié.');
-    } catch (e: any) {
-      toast.error(e?.response?.data?.error || 'Impossible de modifier.');
-    }
-  }, [activeConversationId]);
+  const handleEditMessage = useCallback(
+    async (messageId: string, content: string) => {
+      if (!activeConversationId) return;
+      try {
+        const updated = await chatService.editMessage(activeConversationId, messageId, content);
+        setMessagesByConversation((prev) => {
+          const list = prev[activeConversationId] || [];
+          return {
+            ...prev,
+            [activeConversationId]: list.map((m) => (m.id === messageId ? updated : m)),
+          };
+        });
+        setEditingMessage(null);
+        toast.success('Message modifié.');
+      } catch (e: any) {
+        toast.error(e?.response?.data?.error || 'Impossible de modifier.');
+      }
+    },
+    [activeConversationId]
+  );
 
-  const handleDeleteMessage = useCallback(async (messageId: string) => {
-    if (!activeConversationId || !window.confirm('Supprimer ce message pour tous ?')) return;
-    try {
-      await chatService.deleteMessage(activeConversationId, messageId);
-      toast.success('Message supprimé.');
-    } catch (e: any) {
-      toast.error(e?.response?.data?.error || 'Impossible de supprimer.');
-    }
-  }, [activeConversationId]);
+  const handleDeleteMessage = useCallback(
+    async (messageId: string) => {
+      if (!activeConversationId || !window.confirm('Supprimer ce message pour tous ?')) return;
+      try {
+        await chatService.deleteMessage(activeConversationId, messageId);
+        toast.success('Message supprimé.');
+      } catch (e: any) {
+        toast.error(e?.response?.data?.error || 'Impossible de supprimer.');
+      }
+    },
+    [activeConversationId]
+  );
 
-  const handleDeleteMessageForMe = useCallback(async (messageId: string) => {
-    if (!activeConversationId) return;
-    try {
-      await chatService.deleteMessageForMe(activeConversationId, messageId);
-      setMessagesByConversation((prev) => {
-        const list = prev[activeConversationId] || [];
-        return {
-          ...prev,
-          [activeConversationId]: list.filter((m) => m.id !== messageId),
-        };
-      });
-      toast.success('Masqué pour vous.');
-    } catch (e: any) {
-      toast.error(e?.response?.data?.error || 'Impossible de masquer.');
-    }
-  }, [activeConversationId]);
-
+  const handleDeleteMessageForMe = useCallback(
+    async (messageId: string) => {
+      if (!activeConversationId) return;
+      try {
+        await chatService.deleteMessageForMe(activeConversationId, messageId);
+        setMessagesByConversation((prev) => {
+          const list = prev[activeConversationId] || [];
+          return {
+            ...prev,
+            [activeConversationId]: list.filter((m) => m.id !== messageId),
+          };
+        });
+        toast.success('Masqué pour vous.');
+      } catch (e: any) {
+        toast.error(e?.response?.data?.error || 'Impossible de masquer.');
+      }
+    },
+    [activeConversationId]
+  );
 
   const handleReact = useCallback(
     (messageId: string, emoji: string) => {
@@ -2463,7 +2616,11 @@ export default function Communication() {
   const handleStar = useCallback((msg: ChatMessage) => {
     setStarred((prev) => {
       const n = new Set(prev);
-      n.has(msg.id) ? n.delete(msg.id) : n.add(msg.id);
+      if (n.has(msg.id)) {
+        n.delete(msg.id);
+      } else {
+        n.add(msg.id);
+      }
       return n;
     });
   }, []);
@@ -2561,41 +2718,55 @@ export default function Communication() {
 
   const handleClearHistory = useCallback(async () => {
     if (!activeConversationId) return;
-    if (!window.confirm("Voulez-vous vraiment vider l'historique complet pour TOUS les participants ? Cette action est irréversible.")) return;
+    if (
+      !window.confirm(
+        "Voulez-vous vraiment vider l'historique complet pour TOUS les participants ? Cette action est irréversible."
+      )
+    )
+      return;
 
     try {
       await chatService.clearHistory(activeConversationId);
-      setMessagesByConversation(prev => ({ ...prev, [activeConversationId]: [] }));
+      setMessagesByConversation((prev) => ({ ...prev, [activeConversationId]: [] }));
       toast.success("L'historique a été vidé pour tous.");
     } catch (e: any) {
-      toast.error(e?.response?.data?.error || "Erreur lors du nettoyage.");
+      toast.error(e?.response?.data?.error || 'Erreur lors du nettoyage.');
     }
   }, [activeConversationId]);
 
   const handleClearMyHistory = useCallback(async () => {
     if (!activeConversationId) return;
-    if (!window.confirm("Voulez-vous vider votre propre historique ? Les messages resteront visibles pour les autres participants.")) return;
+    if (
+      !window.confirm(
+        'Voulez-vous vider votre propre historique ? Les messages resteront visibles pour les autres participants.'
+      )
+    )
+      return;
 
     try {
       await chatService.clearMyHistory(activeConversationId);
-      setMessagesByConversation(prev => ({ ...prev, [activeConversationId]: [] }));
-      toast.success("Votre vue a été nettoyée.");
+      setMessagesByConversation((prev) => ({ ...prev, [activeConversationId]: [] }));
+      toast.success('Votre vue a été nettoyée.');
     } catch (e: any) {
-      toast.error(e?.response?.data?.error || "Erreur lors du nettoyage.");
+      toast.error(e?.response?.data?.error || 'Erreur lors du nettoyage.');
     }
   }, [activeConversationId]);
 
-  const handleUpdateRetention = useCallback(async (days: number) => {
-    if (!activeConversationId) return;
-    try {
-      await chatService.updateRetention(activeConversationId, days);
-      setConversations(prev => prev.map(c => c.id === activeConversationId ? { ...c, retentionDays: days } : c));
-      toast.success(`Rétention mise à jour : ${days === 0 ? 'Permanent' : days + ' jours'}`);
-    } catch (e: any) {
-      toast.error(e?.response?.data?.error || "Erreur lors de la mise à jour.");
-    }
-  }, [activeConversationId]);
-
+  const handleUpdateRetention = useCallback(
+    async (days: number) => {
+      if (!activeConversationId) return;
+      try {
+        await chatService.updateRetention(activeConversationId, days);
+        setConversations((prev) =>
+          prev.map((c) => (c.id === activeConversationId ? { ...c, retentionDays: days } : c))
+        );
+        toast.success(`Rétention mise à jour : ${days === 0 ? 'Permanent' : days + ' jours'}`);
+      } catch (e: any) {
+        toast.error(e?.response?.data?.error || 'Erreur lors de la mise à jour.');
+      }
+    },
+    [activeConversationId]
+  );
 
   // ══════════════════════════════════════════════════════
   // RENDER
@@ -2697,13 +2868,15 @@ export default function Communication() {
                     const isGlobal = conv.isGlobal;
                     const isGroup = conv.type === 'GROUP';
                     // For direct chats, show the other person's avatar
-                    const otherParticipant = !isGlobal && !isGroup
-                      ? conv.participants?.find((p: { userId: string }) => p.userId !== user?.id)
-                      : null;
+                    const otherParticipant =
+                      !isGlobal && !isGroup
+                        ? conv.participants?.find((p: { userId: string }) => p.userId !== user?.id)
+                        : null;
                     const otherUser = otherParticipant
                       ? users.find((u) => u.id === otherParticipant.userId)
                       : null;
-                    const lastMsgPreview = conv.lastMessage?.content?.slice(0, 55) || 'Aucun message';
+                    const lastMsgPreview =
+                      conv.lastMessage?.content?.slice(0, 55) || 'Aucun message';
                     const isLastMine = conv.lastMessage?.senderId === user?.id;
 
                     return (
@@ -2711,10 +2884,11 @@ export default function Communication() {
                         key={conv.id}
                         layout
                         onClick={() => setActiveConversationId(conv.id)}
-                        className={`relative flex items-center gap-3 w-full px-3 py-3 transition-all group ${isActive
-                          ? 'bg-gradient-to-r from-indigo-600/20 to-violet-600/10'
-                          : 'hover:bg-slate-800/50'
-                          }`}
+                        className={`relative flex items-center gap-3 w-full px-3 py-3 transition-all group ${
+                          isActive
+                            ? 'bg-gradient-to-r from-indigo-600/20 to-violet-600/10'
+                            : 'hover:bg-slate-800/50'
+                        }`}
                         title={getConvLabel(conv)}
                       >
                         {/* Active indicator bar */}
@@ -2753,12 +2927,18 @@ export default function Communication() {
                         {/* Text content */}
                         <div className="flex-1 min-w-0 text-left">
                           <div className="flex justify-between items-center mb-0.5">
-                            <span className={`text-[13.5px] truncate leading-tight ${unread ? 'font-bold text-white' : 'font-semibold text-slate-200'
-                              }`}>
+                            <span
+                              className={`text-[13.5px] truncate leading-tight ${
+                                unread ? 'font-bold text-white' : 'font-semibold text-slate-200'
+                              }`}
+                            >
                               {getConvLabel(conv)}
                             </span>
-                            <span className={`text-[10px] shrink-0 ml-2 tabular-nums ${unread ? 'text-indigo-400 font-bold' : 'text-slate-600'
-                              }`}>
+                            <span
+                              className={`text-[10px] shrink-0 ml-2 tabular-nums ${
+                                unread ? 'text-indigo-400 font-bold' : 'text-slate-600'
+                              }`}
+                            >
                               {conv.lastMessage ? formatTime(conv.lastMessage.createdAt) : ''}
                             </span>
                           </div>
@@ -2766,8 +2946,11 @@ export default function Communication() {
                             {isLastMine && (
                               <CheckCheck size={12} className="shrink-0 text-indigo-400" />
                             )}
-                            <span className={`text-[12px] truncate ${unread ? 'text-slate-300' : 'text-slate-500'
-                              }`}>
+                            <span
+                              className={`text-[12px] truncate ${
+                                unread ? 'text-slate-300' : 'text-slate-500'
+                              }`}
+                            >
                               {lastMsgPreview}
                             </span>
                           </div>
@@ -2889,18 +3072,53 @@ export default function Communication() {
                   <LayoutGrid size={14} className="text-white" />
                 </span>
                 <span className="flex-1">Tableau de bord</span>
-                <ChevronRight size={14} className="text-slate-600 group-hover:text-indigo-400 transition-colors" />
+                <ChevronRight
+                  size={14}
+                  className="text-slate-600 group-hover:text-indigo-400 transition-colors"
+                />
               </Link>
             </div>
 
             {/* Quick nav pills */}
             <div className="flex items-center gap-1 px-3 pb-3">
-              {([
-                { to: '/terrain', icon: <Map size={14} />, label: 'Terrain', perm: PERMISSIONS.VOIR_CARTE, color: 'hover:text-emerald-400 hover:bg-emerald-500/10' },
-                { to: '/rapports', icon: <BarChart2 size={14} />, label: 'Rapports', perm: null, color: 'hover:text-blue-400 hover:bg-blue-500/10' },
-                { to: '/planning', icon: <CalendarRange size={14} />, label: 'Planning', perm: PERMISSIONS.VOIR_CARTE, color: 'hover:text-amber-400 hover:bg-amber-500/10' },
-                { to: '/aide', icon: <HelpCircle size={14} />, label: 'Aide', perm: null, color: 'hover:text-rose-400 hover:bg-rose-500/10' },
-              ] as { to: string; icon: React.ReactNode; label: string; perm: string | null; color: string }[])
+              {(
+                [
+                  {
+                    to: '/terrain',
+                    icon: <Map size={14} />,
+                    label: 'Terrain',
+                    perm: PERMISSIONS.UI_MAP,
+                    color: 'hover:text-emerald-400 hover:bg-emerald-500/10',
+                  },
+                  {
+                    to: '/rapports',
+                    icon: <BarChart2 size={14} />,
+                    label: 'Rapports',
+                    perm: null,
+                    color: 'hover:text-blue-400 hover:bg-blue-500/10',
+                  },
+                  {
+                    to: '/planning',
+                    icon: <CalendarRange size={14} />,
+                    label: 'Planning',
+                    perm: PERMISSIONS.UI_MAP,
+                    color: 'hover:text-amber-400 hover:bg-amber-500/10',
+                  },
+                  {
+                    to: '/aide',
+                    icon: <HelpCircle size={14} />,
+                    label: 'Aide',
+                    perm: null,
+                    color: 'hover:text-rose-400 hover:bg-rose-500/10',
+                  },
+                ] as {
+                  to: string;
+                  icon: React.ReactNode;
+                  label: string;
+                  perm: string | null;
+                  color: string;
+                }[]
+              )
                 .filter(({ perm }) => !perm || peut(perm))
                 .map(({ to, icon, label, color }) => (
                   <Link
@@ -2915,7 +3133,6 @@ export default function Communication() {
                 ))}
             </div>
           </div>
-
         </div>
 
         {/* ═══════════════ MAIN CHAT AREA ═══════════════ */}
@@ -2942,12 +3159,13 @@ export default function Communication() {
                     <ArrowLeft size={20} />
                   </button>
                   <div
-                    className={`h-9 w-9 shrink-0 rounded-full flex items-center justify-center ${activeConversation.isGlobal
-                      ? 'bg-rose-500/15 text-rose-400'
-                      : activeConversation.type === 'GROUP'
-                        ? 'bg-violet-500/15 text-violet-400'
-                        : 'bg-emerald-500/15 text-emerald-400'
-                      }`}
+                    className={`h-9 w-9 shrink-0 rounded-full flex items-center justify-center ${
+                      activeConversation.isGlobal
+                        ? 'bg-rose-500/15 text-rose-400'
+                        : activeConversation.type === 'GROUP'
+                          ? 'bg-violet-500/15 text-violet-400'
+                          : 'bg-emerald-500/15 text-emerald-400'
+                    }`}
                   >
                     {activeConversation.isGlobal ? (
                       <Globe2 size={16} />
@@ -2968,6 +3186,16 @@ export default function Communication() {
                     </p>
                   </div>
                 </div>
+
+                {/* Indicateur reconnexion WebSocket */}
+                {!socketConnected && (
+                  <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20 shrink-0">
+                    <div className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
+                    <span className="text-[10px] text-amber-400 font-bold hidden sm:block">
+                      Reconnexion...
+                    </span>
+                  </div>
+                )}
 
                 <div className="flex items-center gap-1 shrink-0">
                   <button
@@ -2996,7 +3224,9 @@ export default function Communication() {
 
                     <div className="absolute top-full right-0 mt-1 w-56 bg-slate-800 border border-white/10 rounded-xl shadow-2xl opacity-0 invisible group-hover/menu:opacity-100 group-hover/menu:visible transition-all z-[100] overflow-hidden">
                       <div className="p-2 border-b border-white/5 bg-white/5">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Options de nettoyage</p>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                          Options de nettoyage
+                        </p>
                       </div>
 
                       <button
@@ -3018,7 +3248,9 @@ export default function Communication() {
                       )}
 
                       <div className="p-2 border-t border-white/5 bg-white/5">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Rétention automatique</p>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                          Rétention automatique
+                        </p>
                       </div>
 
                       {[
@@ -3030,10 +3262,11 @@ export default function Communication() {
                         <button
                           key={opt.days}
                           onClick={() => handleUpdateRetention(opt.days)}
-                          className={`flex items-center justify-between w-full px-4 py-2 text-left text-[12px] transition-colors ${activeConversation.retentionDays === opt.days
+                          className={`flex items-center justify-between w-full px-4 py-2 text-left text-[12px] transition-colors ${
+                            activeConversation.retentionDays === opt.days
                               ? 'bg-indigo-600/20 text-indigo-400 font-bold'
                               : 'text-slate-400 hover:bg-slate-700 hover:text-white'
-                            }`}
+                          }`}
                         >
                           <div className="flex items-center gap-3">
                             <Clock size={12} />
@@ -3121,13 +3354,15 @@ export default function Communication() {
               </AnimatePresence>
 
               {/* ── Messages ── */}
-              {('Notification' in window) && Notification.permission !== 'granted' && (
+              {'Notification' in window && Notification.permission !== 'granted' && (
                 <div className="bg-amber-500/10 border-b border-amber-500/20 px-4 py-2 flex items-center justify-between z-20 shrink-0">
                   <div className="flex items-center gap-2 text-amber-200 text-[11px]">
                     <span>⚠️ Notifications de bureau désactivées.</span>
                   </div>
                   <button
-                    onClick={() => Notification.requestPermission().then(() => window.location.reload())}
+                    onClick={() =>
+                      Notification.requestPermission().then(() => window.location.reload())
+                    }
                     className="text-[10px] bg-amber-500 text-amber-950 px-2 py-1 rounded font-bold hover:bg-amber-400 transition-colors"
                   >
                     ACTIVER
@@ -3162,13 +3397,15 @@ export default function Communication() {
                     {activeMessages.map((msg, i) => {
                       const prev = activeMessages[i - 1];
                       const next = activeMessages[i + 1];
-                      const isOwn = String(msg.senderId) === String(user?.id) || String(msg.sender?.id) === String(user?.id);
+                      const isOwn =
+                        String(msg.senderId) === String(user?.id) ||
+                        String(msg.sender?.id) === String(user?.id);
                       const showName = !isOwn && (!prev || prev.senderId !== msg.senderId);
                       const showAvatar = !prev || prev.senderId !== msg.senderId;
                       const showDate =
                         !prev ||
                         new Date(prev.createdAt).toDateString() !==
-                        new Date(msg.createdAt).toDateString();
+                          new Date(msg.createdAt).toDateString();
 
                       const msgReactions = reactions[msg.id] || [];
                       const isStarred = starred.has(msg.id);

@@ -1,17 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Bot, 
-  Send, 
-  X, 
-  CheckCircle2, 
-  AlertCircle, 
-  Info, 
+import {
+  Bot,
+  Send,
+  X,
   Sparkles,
   RefreshCw,
-  Zap,
-  MapPin,
-  Calendar
+  Zap
 } from 'lucide-react';
 import apiClient from '../api/client';
 import toast from 'react-hot-toast';
@@ -66,7 +61,7 @@ export default function CopilotAssistant() {
         content: response.data.text,
         suggestions: response.data.suggestions
       }]);
-    } catch (error) {
+    } catch {
       toast.error("Erreur de l'assistant");
     } finally {
       setIsTyping(false);

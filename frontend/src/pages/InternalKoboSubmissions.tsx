@@ -236,6 +236,7 @@ const projectSectors = [
 ];
 const projectCountries = ['Senegal', 'Gambie', 'Mali', 'Guinee', 'Autre'];
 const savedDataFiltersStorageKey = 'gem-internal-kobo-saved-data-filters:v1';
+const STORAGE_KEY_FILTERS = 'gem-internal-kobo-filters-v2';
 
 const builderLanguages: Array<{ id: BuilderLanguage; label: string; xlsLabel: string }> = [
   { id: 'fr', label: 'Francais', xlsLabel: 'Francais (fr)' },
@@ -1431,14 +1432,28 @@ export default function InternalKoboSubmissions() {
   const [showTableFieldsPanel, setShowTableFieldsPanel] = useState(false);
   const [isSavingBuilder, setIsSavingBuilder] = useState(false);
   const [importUrl, setImportUrl] = useState('');
-  const [filters, setFilters] = useState<Filters>({
-    q: '',
-    status: '',
-    role: '',
-    syncStatus: '',
-    formKey: '',
-    limit: 100,
-    offset: 0,
+  const [filters, setFilters] = useState<Filters>(() => {
+    const defaultFilters: Filters = {
+      q: '',
+      status: '',
+      role: '',
+      syncStatus: '',
+      formKey: '',
+      limit: 100,
+      offset: 0,
+    };
+    const saved = localStorage.getItem(STORAGE_KEY_FILTERS);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved) as Partial<Filters>;
+        const initial: Filters = { ...defaultFilters, ...parsed };
+        initial.limit = Math.max(initial.limit || 100, 50);
+        return initial;
+      } catch {
+        // Ignore corrupted stored filters
+      }
+    }
+    return defaultFilters;
   });
   const [galleryFieldFilter, setGalleryFieldFilter] = useState('');
   const [selectedGalleryImage, setSelectedGalleryImage] = useState<{
@@ -1499,7 +1514,7 @@ export default function InternalKoboSubmissions() {
     setError('');
     try {
       const cleanFilters = {
-        q: filters.q.trim() || undefined,
+        q: filters.q?.trim() || undefined,
         status: filters.status || undefined,
         role: filters.role || undefined,
         syncStatus: filters.syncStatus || undefined,
@@ -1561,6 +1576,11 @@ export default function InternalKoboSubmissions() {
       JSON.stringify(savedDataFilters.slice(0, 30))
     );
   }, [savedDataFilters]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(STORAGE_KEY_FILTERS, JSON.stringify(filters));
+  }, [filters]);
 
   useEffect(() => {
     setSelectedProjectFormKey((current) => {
@@ -1655,7 +1675,7 @@ export default function InternalKoboSubmissions() {
     setError('');
     try {
       const cleanFilters = {
-        q: filters.q.trim() || undefined,
+        q: filters.q?.trim() || undefined,
         status: filters.status || undefined,
         role: filters.role || undefined,
         syncStatus: filters.syncStatus || undefined,
@@ -2682,12 +2702,48 @@ export default function InternalKoboSubmissions() {
   }, [mappedSubmissions]);
 
   const autoReportBuckets = useMemo(() => {
-    return [] as Array<{
-      title: string;
-      bucket: string;
-      rows: Array<{ key: string; label: string; value: number }>;
-    }>;
-  }, []);
+    if (!submissions.length) return [];
+
+    const byStatus: Record<string, number> = {};
+    const bySyncStatus: Record<string, number> = {};
+    const byRole: Record<string, number> = {};
+
+    submissions.forEach((s) => {
+      byStatus[s.status] = (byStatus[s.status] || 0) + 1;
+      bySyncStatus[s.syncStatus] = (bySyncStatus[s.syncStatus] || 0) + 1;
+      if (s.role) byRole[s.role] = (byRole[s.role] || 0) + 1;
+    });
+
+    return [
+      {
+        title: 'Statut de Soumission',
+        bucket: 'status',
+        rows: Object.entries(byStatus).map(([key, value]) => ({
+          key,
+          label: key.charAt(0).toUpperCase() + key.slice(1),
+          value,
+        })),
+      },
+      {
+        title: 'Etat de Synchronisation',
+        bucket: 'sync',
+        rows: Object.entries(bySyncStatus).map(([key, value]) => ({
+          key,
+          label: key.charAt(0).toUpperCase() + key.slice(1),
+          value,
+        })),
+      },
+      {
+        title: 'Repartition par Role',
+        bucket: 'role',
+        rows: Object.entries(byRole).map(([key, value]) => ({
+          key,
+          label: key,
+          value,
+        })),
+      },
+    ];
+  }, [submissions]);
 
   const deployedProjectForms = importedForms.filter(
     (form) => getProjectStatus(form) === 'deployed'
@@ -3117,7 +3173,7 @@ export default function InternalKoboSubmissions() {
                           onChange={(event) =>
                             setFilters((current) => ({
                               ...current,
-                              limit: Number(event.target.value),
+                              limit: Math.max(Number(event.target.value), 50),
                               offset: 0,
                             }))
                           }
@@ -3515,90 +3571,117 @@ export default function InternalKoboSubmissions() {
             ) : null}
 
             {showLegacyKoboTable && mainTab === 'data' && dataTab === 'table' ? (
-              <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1fr_auto_auto_auto_auto]">
-                <label className="flex h-12 items-center gap-2 rounded-2xl border border-white/10 bg-slate-900/70 px-4">
-                  <Search size={16} className="text-slate-500" />
-                  <input
-                    value={filters.q}
-                    onChange={(event) =>
-                      setFilters((current) => ({ ...current, q: event.target.value, offset: 0 }))
-                    }
-                    placeholder="Numero, menage, telephone, ID recu..."
-                    className="min-w-0 flex-1 bg-transparent text-sm font-semibold text-white outline-none placeholder:text-slate-500"
-                  />
-                </label>
-                <select
-                  value={filters.status}
-                  onChange={(event) =>
-                    setFilters((current) => ({
-                      ...current,
-                      status: event.target.value as Filters['status'],
-                      offset: 0,
-                    }))
-                  }
-                  title="Filtrer par statut"
-                  aria-label="Filtrer par statut"
-                  className="h-12 rounded-2xl border border-white/10 bg-slate-900 px-4 text-xs font-black uppercase tracking-[0.1em] text-white outline-none"
-                >
-                  <option value="">Tous statuts</option>
-                  <option value="draft">Brouillons</option>
-                  <option value="submitted">Soumis</option>
-                  <option value="validated">Valides</option>
-                  <option value="rejected">Rejetes</option>
-                </select>
-                <select
-                  value={filters.role}
-                  onChange={(event) =>
-                    setFilters((current) => ({ ...current, role: event.target.value, offset: 0 }))
-                  }
-                  title="Filtrer par rôle"
-                  aria-label="Filtrer par rôle"
-                  className="h-12 rounded-2xl border border-white/10 bg-slate-900 px-4 text-xs font-black uppercase tracking-[0.1em] text-white outline-none"
-                >
-                  <option value="">Tous roles</option>
-                  {INTERNAL_GEM_CHOICES.roles.map((role) => (
-                    <option key={role.name} value={role.name}>
-                      {role.label}
-                    </option>
+              <>
+                <div className="mb-4 flex flex-wrap items-center gap-2">
+                  <span className="mr-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
+                    Suggestions :
+                  </span>
+                  {[
+                    { label: 'Soucis Terre', q: 'terre' },
+                    { label: 'Surplomb', q: 'surplomb' },
+                    { label: 'Hors Limite', q: 'limite' },
+                    { label: 'Potelet', q: 'potelet' },
+                    { label: 'Senelec', q: 'senelec' },
+                    { label: 'BT / 18-510', q: '18-510' },
+                  ].map((s) => (
+                    <button
+                      key={s.q}
+                      onClick={() => setFilters((prev) => ({ ...prev, q: s.q, offset: 0 }))}
+                      className="rounded-full border border-slate-700/50 bg-slate-800/40 px-3 py-1 text-[10px] font-bold text-slate-300 transition hover:border-cyan-400/50 hover:bg-cyan-400/10 hover:text-cyan-400"
+                    >
+                      {s.label}
+                    </button>
                   ))}
-                </select>
-                <select
-                  value={filters.syncStatus}
-                  onChange={(event) =>
-                    setFilters((current) => ({
-                      ...current,
-                      syncStatus: event.target.value,
-                      offset: 0,
-                    }))
-                  }
-                  title="Filtrer par statut de synchronisation"
-                  aria-label="Filtrer par statut de synchronisation"
-                  className="h-12 rounded-2xl border border-white/10 bg-slate-900 px-4 text-xs font-black uppercase tracking-[0.1em] text-white outline-none"
-                >
-                  <option value="">Sync tous</option>
-                  <option value="synced">Synced</option>
-                  <option value="queued">Queued</option>
-                  <option value="failed">Failed</option>
-                </select>
-                <select
-                  value={filters.limit}
-                  onChange={(event) =>
-                    setFilters((current) => ({
-                      ...current,
-                      limit: Number(event.target.value),
-                      offset: 0,
-                    }))
-                  }
-                  title="Nombre de résultats par page"
-                  aria-label="Nombre de résultats par page"
-                  className="h-12 rounded-2xl border border-white/10 bg-slate-900 px-4 text-xs font-black uppercase tracking-[0.1em] text-white outline-none"
-                >
-                  <option value={50}>50</option>
-                  <option value={100}>100</option>
-                  <option value={250}>250</option>
-                  <option value={500}>500</option>
-                </select>
-              </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1fr_auto_auto_auto_auto]">
+                  <label className="group flex h-12 items-center gap-3 rounded-2xl border border-white/5 bg-white/5 px-4 shadow-inner ring-1 ring-white/10 transition-all focus-within:border-cyan-400/50 focus-within:bg-white/10 focus-within:ring-cyan-400/30">
+                    <Search
+                      size={16}
+                      className="text-slate-500 transition-colors group-focus-within:text-cyan-400"
+                    />
+                    <input
+                      value={filters.q}
+                      onChange={(event) =>
+                        setFilters((current) => ({ ...current, q: event.target.value, offset: 0 }))
+                      }
+                      placeholder="Numero, menage, telephone, ID recu..."
+                      className="min-w-0 flex-1 bg-transparent text-sm font-semibold text-white outline-none placeholder:text-slate-500"
+                    />
+                  </label>
+                  <select
+                    value={filters.status}
+                    onChange={(event) =>
+                      setFilters((current) => ({
+                        ...current,
+                        status: event.target.value as Filters['status'],
+                        offset: 0,
+                      }))
+                    }
+                    title="Filtrer par statut"
+                    aria-label="Filtrer par statut"
+                    className="h-12 rounded-2xl border border-white/10 bg-slate-900 px-4 text-xs font-black uppercase tracking-[0.1em] text-white outline-none"
+                  >
+                    <option value="">Tous statuts</option>
+                    <option value="draft">Brouillons</option>
+                    <option value="submitted">Soumis</option>
+                    <option value="validated">Valides</option>
+                    <option value="rejected">Rejetes</option>
+                  </select>
+                  <select
+                    value={filters.role}
+                    onChange={(event) =>
+                      setFilters((current) => ({ ...current, role: event.target.value, offset: 0 }))
+                    }
+                    title="Filtrer par rôle"
+                    aria-label="Filtrer par rôle"
+                    className="h-12 rounded-2xl border border-white/10 bg-slate-900 px-4 text-xs font-black uppercase tracking-[0.1em] text-white outline-none"
+                  >
+                    <option value="">Tous roles</option>
+                    {INTERNAL_GEM_CHOICES.roles.map((role) => (
+                      <option key={role.name} value={role.name}>
+                        {role.label}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    value={filters.syncStatus}
+                    onChange={(event) =>
+                      setFilters((current) => ({
+                        ...current,
+                        syncStatus: event.target.value,
+                        offset: 0,
+                      }))
+                    }
+                    title="Filtrer par statut de synchronisation"
+                    aria-label="Filtrer par statut de synchronisation"
+                    className="h-12 rounded-2xl border border-white/10 bg-slate-900 px-4 text-xs font-black uppercase tracking-[0.1em] text-white outline-none"
+                  >
+                    <option value="">Sync tous</option>
+                    <option value="synced">Synced</option>
+                    <option value="queued">Queued</option>
+                    <option value="failed">Failed</option>
+                  </select>
+                  <select
+                    value={filters.limit}
+                    onChange={(event) =>
+                      setFilters((current) => ({
+                        ...current,
+                        limit: Number(event.target.value),
+                        offset: 0,
+                      }))
+                    }
+                    title="Nombre de résultats par page"
+                    aria-label="Nombre de résultats par page"
+                    className="h-12 rounded-2xl border border-white/10 bg-slate-900 px-4 text-xs font-black uppercase tracking-[0.1em] text-white outline-none"
+                  >
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                    <option value={250}>250</option>
+                    <option value={500}>500</option>
+                  </select>
+                </div>
+              </>
             ) : null}
 
             {error ? (

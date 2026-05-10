@@ -252,14 +252,18 @@ function usePVAutomation(): PVLogic {
 
       let migratedCount = 0;
       for (const pv of localPVs) {
+        // Legacy Dexie records may carry extra fields (content, createdBy, metadata)
+        // not declared in the current schema — cast to any for safe migration access.
+        const legacy = pv as any;
         await pvService.upsert({
-          id: pv.id,
+          // db.pvs.id is a Dexie auto-increment number; ServerPVRecord.id is string
+          id: legacy.id != null ? String(legacy.id) : undefined,
           householdId: pv.householdId,
           projectId: pv.projectId,
           type: pv.type as PVType,
-          content: pv.content,
-          createdBy: pv.createdBy,
-          metadata: pv.metadata,
+          content: legacy.content ?? undefined,
+          createdBy: legacy.createdBy ?? undefined,
+          metadata: legacy.metadata ?? undefined,
         });
         migratedCount += 1;
       }

@@ -106,6 +106,10 @@ export default function OrganizationSettings() {
   const [isSaving, setIsSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<TabId>('branding');
   const [newEmail, setNewEmail] = useState('');
+  // — Modal "Ajouter une étape de workflow" —
+  const [showAddStepModal, setShowAddStepModal] = useState(false);
+  const [newStepRole, setNewStepRole] = useState('');
+  const [newStepLabel, setNewStepLabel] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -218,24 +222,36 @@ export default function OrganizationSettings() {
     }));
 
   const addWorkflowStep = () => {
-    const role = prompt('Rôle (ex: COMPTABLE) :');
-    const label = prompt('Nom (ex: Validation Comptable) :');
-    if (role && label) {
-      setConfig((prev) => {
-        const wf = prev.workflow || {};
-        const steps = wf.missionSteps || [];
-        return {
-          ...prev,
-          workflow: {
-            ...wf,
-            missionSteps: [
-              ...steps,
-              { role: role.toUpperCase(), label, sequence: steps.length + 1 },
-            ],
-          },
-        };
-      });
+    setNewStepRole('');
+    setNewStepLabel('');
+    setShowAddStepModal(true);
+  };
+
+  const confirmAddWorkflowStep = () => {
+    if (!newStepRole.trim() || !newStepLabel.trim()) {
+      toast.error('Le rôle et le nom sont obligatoires');
+      return;
     }
+    setConfig((prev) => {
+      const wf = prev.workflow || {};
+      const steps = wf.missionSteps || [];
+      return {
+        ...prev,
+        workflow: {
+          ...wf,
+          missionSteps: [
+            ...steps,
+            {
+              role: newStepRole.trim().toUpperCase(),
+              label: newStepLabel.trim(),
+              sequence: steps.length + 1,
+            },
+          ],
+        },
+      };
+    });
+    setShowAddStepModal(false);
+    toast.success('Étape de workflow ajoutée');
   };
 
   const removeWorkflowStep = (i: number) =>
@@ -309,7 +325,7 @@ export default function OrganizationSettings() {
             data-primary-color={primaryColor}
           />
 
-            <div className="relative p-4 sm:p-8 flex flex-col lg:flex-row gap-6 sm:gap-8 items-start lg:items-center">
+          <div className="relative p-4 sm:p-8 flex flex-col lg:flex-row gap-6 sm:gap-8 items-start lg:items-center">
             {/* Logo / Avatar */}
             <div className="relative group flex-shrink-0">
               <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-[1.25rem] sm:rounded-[1.5rem] border-2 border-white/10 bg-slate-800 flex items-center justify-center overflow-hidden shadow-2xl">
@@ -381,8 +397,8 @@ export default function OrganizationSettings() {
               ].map((s) => (
                 <div
                   key={s.label}
-                    className="flex flex-col items-center p-3 sm:p-4 bg-white/5 rounded-2xl border border-white/5 min-w-[80px] hover:bg-white/8 transition-all"
-                  >
+                  className="flex flex-col items-center p-3 sm:p-4 bg-white/5 rounded-2xl border border-white/5 min-w-[80px] hover:bg-white/8 transition-all"
+                >
                   <s.icon size={16} className={`text-${s.color}-400 mb-1`} />
                   <div className="text-lg sm:text-xl font-black text-white">{s.value}</div>
                   <div className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.08em] sm:tracking-widest text-center">
@@ -401,10 +417,10 @@ export default function OrganizationSettings() {
         </motion.div>
 
         {/* ══ MAIN PANEL ══ */}
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 sm:gap-8">
-            {/* Sidebar Tabs */}
-            <div className="lg:col-span-1 space-y-2">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-2 lg:sticky lg:top-[6.5rem]">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 sm:gap-8">
+          {/* Sidebar Tabs */}
+          <div className="lg:col-span-1 space-y-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-2 lg:sticky lg:top-[6.5rem]">
               {TABS.map((tab) => {
                 const active = activeTab === tab.id;
                 return (
@@ -413,31 +429,31 @@ export default function OrganizationSettings() {
                     onClick={() => setActiveTab(tab.id)}
                     className={`w-full flex items-center gap-3 px-4 sm:px-5 py-3 sm:py-4 min-h-[48px] rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-[0.08em] sm:tracking-widest transition-all border ${
                       active
-                      ? `bg-white/10 text-white border-white/10 shadow-xl`
-                      : 'bg-white/3 text-slate-400 border-transparent hover:bg-white/7 hover:text-white'
-                  }`}
-                >
-                  <div
-                    className={`p-1.5 rounded-lg ${active ? `bg-${tab.color}-500/20 text-${tab.color}-400` : 'bg-white/5 text-slate-500'}`}
+                        ? `bg-white/10 text-white border-white/10 shadow-xl`
+                        : 'bg-white/3 text-slate-400 border-transparent hover:bg-white/7 hover:text-white'
+                    }`}
                   >
-                    <tab.icon size={14} />
-                  </div>
-                  <span className="flex-1 text-left">{tab.label}</span>
-                  {active && <ArrowRight size={12} className="opacity-50" />}
+                    <div
+                      className={`p-1.5 rounded-lg ${active ? `bg-${tab.color}-500/20 text-${tab.color}-400` : 'bg-white/5 text-slate-500'}`}
+                    >
+                      <tab.icon size={14} />
+                    </div>
+                    <span className="flex-1 text-left">{tab.label}</span>
+                    {active && <ArrowRight size={12} className="opacity-50" />}
                   </button>
                 );
               })}
-              </div>
+            </div>
 
-              {/* Quick save shortcut */}
-              <div className="pt-4">
-                <button
-                  onClick={handleSave}
-                  disabled={isSaving}
-                  className="w-full flex items-center justify-center gap-2 px-5 py-3 min-h-[48px] bg-blue-600/20 hover:bg-blue-600 border border-blue-600/30 text-blue-400 hover:text-white font-black text-[10px] sm:text-xs uppercase tracking-[0.08em] sm:tracking-widest rounded-2xl transition-all disabled:opacity-50"
-                >
-                  <Save size={14} />
-                  Enregistrer
+            {/* Quick save shortcut */}
+            <div className="pt-4">
+              <button
+                onClick={handleSave}
+                disabled={isSaving}
+                className="w-full flex items-center justify-center gap-2 px-5 py-3 min-h-[48px] bg-blue-600/20 hover:bg-blue-600 border border-blue-600/30 text-blue-400 hover:text-white font-black text-[10px] sm:text-xs uppercase tracking-[0.08em] sm:tracking-widest rounded-2xl transition-all disabled:opacity-50"
+              >
+                <Save size={14} />
+                Enregistrer
               </button>
             </div>
           </div>
@@ -507,7 +523,7 @@ export default function OrganizationSettings() {
                             title="Couleur primaire"
                             value={config.branding?.primaryColor || '#1e90ff'}
                             onChange={(e) => updateBranding('primaryColor', e.target.value)}
-                          className="w-12 h-12 sm:w-14 sm:h-14 cursor-pointer rounded-2xl border-none bg-transparent overflow-hidden flex-shrink-0"
+                            className="w-12 h-12 sm:w-14 sm:h-14 cursor-pointer rounded-2xl border-none bg-transparent overflow-hidden flex-shrink-0"
                           />
                           <input
                             type="text"
@@ -515,7 +531,7 @@ export default function OrganizationSettings() {
                             placeholder="#1e90ff"
                             value={config.branding?.primaryColor || '#1e90ff'}
                             onChange={(e) => updateBranding('primaryColor', e.target.value)}
-                          className="flex-1 bg-slate-800 border border-white/5 rounded-2xl px-4 sm:px-5 py-3 sm:py-4 text-white font-mono text-sm uppercase focus:ring-2 focus:ring-blue-500/30 outline-none"
+                            className="flex-1 bg-slate-800 border border-white/5 rounded-2xl px-4 sm:px-5 py-3 sm:py-4 text-white font-mono text-sm uppercase focus:ring-2 focus:ring-blue-500/30 outline-none"
                           />
                         </div>
 
@@ -807,14 +823,14 @@ export default function OrganizationSettings() {
                         {
                           key: 'koboTerminal' as const,
                           title: 'Terminal KoboToolbox',
-                          desc: 'Activer la synchronisation avec l\'API KoboCollect (Serveurs KoboToolbox externes).',
+                          desc: "Activer la synchronisation avec l'API KoboCollect (Serveurs KoboToolbox externes).",
                           color: 'blue',
                           icon: <Globe size={18} className="text-blue-400" />,
                         },
                         {
                           key: 'useGemCollect' as const,
                           title: 'Saisie Terrain VPS (GEM Toolbox)',
-                          desc: 'Activer le module d\'application terrain natif et indépendant avec soumission directe sur notre serveur.',
+                          desc: "Activer le module d'application terrain natif et indépendant avec soumission directe sur notre serveur.",
                           color: 'emerald',
                           icon: <Zap size={18} className="text-emerald-400" />,
                         },
@@ -843,9 +859,9 @@ export default function OrganizationSettings() {
                           Console Terrain
                         </h4>
                         <InfoBox color="violet" icon={<Lock size={16} />}>
-                          Ces interrupteurs pilotent surtout la visibilité des fonctions terrain pour
-                          les utilisateurs non administrateurs. Les admins conservent leurs outils
-                          avancés pour support et contrôle.
+                          Ces interrupteurs pilotent surtout la visibilité des fonctions terrain
+                          pour les utilisateurs non administrateurs. Les admins conservent leurs
+                          outils avancés pour support et contrôle.
                         </InfoBox>
                         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
                           {TERRAIN_FEATURE_DEFS.map((feature) => (
@@ -939,6 +955,75 @@ export default function OrganizationSettings() {
           </div>
         </div>
       </ContentArea>
+
+      {/* ── Modal : Ajouter une étape de workflow ── */}
+      <AnimatePresence>
+        {showAddStepModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+            onClick={(e) => e.target === e.currentTarget && setShowAddStepModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 16 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 16 }}
+              className="bg-slate-900 border border-slate-700 rounded-3xl p-6 w-full max-w-md shadow-2xl"
+            >
+              <h3 className="text-lg font-black text-white mb-1">Ajouter une étape</h3>
+              <p className="text-xs text-slate-500 mb-5">
+                Nouvelle étape dans le workflow de validation des missions
+              </p>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">
+                    Rôle système *
+                  </label>
+                  <input
+                    autoFocus
+                    value={newStepRole}
+                    onChange={(e) => setNewStepRole(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && confirmAddWorkflowStep()}
+                    placeholder="COMPTABLE"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white font-mono placeholder-slate-600 focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20 outline-none transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">
+                    Nom affiché *
+                  </label>
+                  <input
+                    value={newStepLabel}
+                    onChange={(e) => setNewStepLabel(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && confirmAddWorkflowStep()}
+                    placeholder="Validation Comptable"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-600 focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20 outline-none transition-all"
+                  />
+                </div>
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowAddStepModal(false)}
+                    className="flex-1 py-3 bg-slate-800 text-slate-300 rounded-xl font-bold hover:bg-slate-700 transition-all"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="button"
+                    onClick={confirmAddWorkflowStep}
+                    disabled={!newStepRole.trim() || !newStepLabel.trim()}
+                    className="flex-1 py-3 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl font-black transition-all"
+                  >
+                    Ajouter
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </PageContainer>
   );
 }

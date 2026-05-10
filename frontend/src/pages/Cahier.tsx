@@ -25,6 +25,7 @@ import {
   FileText,
   RefreshCw,
   ClipboardList,
+  ChevronDown,
 } from 'lucide-react';
 import { useAuth } from '@contexts/AuthContext';
 import { useProject } from '@contexts/ProjectContext';
@@ -723,7 +724,7 @@ const ROLE_TO_TRADE_MAPPING: Record<string, string> = {
 export default function Cahier() {
   const { user } = useAuth();
   const { peut, PERMISSIONS } = usePermissions();
-  const isAdmin = peut(PERMISSIONS.MODIFIER_TEMPLATES);
+  const isAdmin = peut(PERMISSIONS.SYSTEM_CONFIG);
 
   const { project, updateProject } = useProject();
   const { teams: allTeams } = useTeams(project?.id);
@@ -736,6 +737,9 @@ export default function Cahier() {
   const [isStrategyEditing, setIsStrategyEditing] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  // Sections avancées (sous-traitance, finances, barèmes, juridique)
+  // Rendu conditionnel — n'est pas dans le DOM si false
+  const [showAdvancedSections, setShowAdvancedSections] = useState(false);
   // Get automated rate for the current role from project settings
   const automatedRate = useMemo(() => {
     if (!project?.config?.costs?.staffRates) return null;
@@ -1526,6 +1530,31 @@ export default function Cahier() {
                   <span>RESET</span>
                 </button>
                 <button
+                  onClick={() => setShowAdvancedSections((v) => !v)}
+                  className={`flex items-center gap-2 px-3 md:px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${
+                    showAdvancedSections
+                      ? 'bg-amber-500/20 border border-amber-500/40 text-amber-400'
+                      : 'bg-slate-800 text-slate-400 hover:text-white'
+                  }`}
+                  title={
+                    showAdvancedSections
+                      ? 'Masquer les sections avancées'
+                      : 'Afficher les sections avancées (Sous-traitance, Finances, Juridique...)'
+                  }
+                >
+                  <ChevronDown
+                    size={14}
+                    className={
+                      showAdvancedSections
+                        ? 'rotate-180 transition-transform'
+                        : 'transition-transform'
+                    }
+                  />
+                  <span className="hidden md:inline">
+                    {showAdvancedSections ? 'Moins' : 'Avancé'}
+                  </span>
+                </button>
+                <button
                   onClick={exportAllWord}
                   className="flex items-center gap-2 px-3 md:px-4 py-2 bg-blue-600 rounded-lg text-xs font-black uppercase tracking-widest text-white hover:bg-blue-700 transition-all shadow-lg"
                 >
@@ -2251,7 +2280,7 @@ export default function Cahier() {
                       </div>
                     </CahierSection>
 
-                    <div className="hidden">
+                    {showAdvancedSections && (
                       <CahierSection
                         title="Dispositions Relatives à la Sous-traitance"
                         color="#eab308"
@@ -2283,9 +2312,9 @@ export default function Cahier() {
                           )}
                         </div>
                       </CahierSection>
-                    </div>
+                    )}
 
-                    <div className="hidden">
+                    {showAdvancedSections && (
                       <CahierSection
                         title="Dispositions Financières, Cautions & Garanties"
                         color="#f59e0b"
@@ -2322,9 +2351,9 @@ export default function Cahier() {
                           )}
                         </div>
                       </CahierSection>
-                    </div>
+                    )}
 
-                    <div className="hidden">
+                    {showAdvancedSections && (
                       <CahierSection title="Configurations & Barèmes Contractuels" color="#10b981">
                         <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-6">
                           {isEditing ? (
@@ -2517,9 +2546,9 @@ export default function Cahier() {
                           )}
                         </div>
                       </CahierSection>
-                    </div>
+                    )}
 
-                    <div className="hidden">
+                    {showAdvancedSections && (
                       <CahierSection title="Juridique & Responsabilité" color="#a855f7">
                         <div className="bg-purple-500/5 border border-purple-500/20 rounded-xl p-4 mb-8">
                           <ul className="space-y-3">
@@ -2539,7 +2568,7 @@ export default function Cahier() {
                           </ul>
                         </div>
                       </CahierSection>
-                    </div>
+                    )}
                   </section>
                 </div>
 
@@ -2638,7 +2667,11 @@ export default function Cahier() {
                 )}
 
                 {/* SECTION INNOVATION FULL WIDTH */}
-                <div className="hidden mt-12 pt-12 border-t border-slate-800">
+                <div
+                  className={
+                    showAdvancedSections ? 'mt-12 pt-12 border-t border-slate-800' : 'hidden'
+                  }
+                >
                   <div className="flex items-center space-x-2 md:space-x-3 mb-8">
                     <div className="w-10 h-10 rounded-xl bg-indigo-500/20 flex items-center justify-center border border-indigo-500/30">
                       <ShieldCheck size={24} className="text-indigo-400" />

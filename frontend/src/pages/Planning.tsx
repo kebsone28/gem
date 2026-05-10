@@ -44,7 +44,14 @@ import { saveAs } from 'file-saver';
 
 import * as XLSX from 'xlsx';
 import { toast } from 'react-hot-toast';
-import { PageContainer, PageHeader, ContentArea, ModulePageShell } from '@components';
+import {
+  PageContainer,
+  PageHeader,
+  ContentArea,
+  ModulePageShell,
+  StatusBadge,
+  ProgressBar,
+} from '@components';
 import {
   DASHBOARD_STICKY_PANEL,
   MODULE_ACCENTS,
@@ -1276,18 +1283,22 @@ export default function Planning() {
                       }`}
                     >
                       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.03),transparent)] pointer-events-none" />
-                      
+
                       <div className="relative flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-3">
-                            <h4 className="text-lg font-black tracking-tight text-white uppercase">{stage.label}</h4>
-                            <StatusBadge 
-                              status={stage.atRisk ? 'danger' : 'success'} 
-                              label={stage.atRisk ? 'Capacité insuffisante' : 'Flux Optimal'} 
+                            <h4 className="text-lg font-black tracking-tight text-white uppercase">
+                              {stage.label}
+                            </h4>
+                            <StatusBadge
+                              status={stage.atRisk ? 'danger' : 'success'}
+                              label={stage.atRisk ? 'Capacité insuffisante' : 'Flux Optimal'}
                             />
                           </div>
                           <p className="mt-2 text-sm font-medium text-slate-400 group-hover:text-slate-300 transition-colors">
-                            <span className="text-blue-400 font-bold">{stage.teamLabel}</span> : {stage.teamCount} actives / <span className="text-white">{stage.requiredTeams}</span> requises
+                            <span className="text-blue-400 font-bold">{stage.teamLabel}</span> :{' '}
+                            {stage.teamCount} actives /{' '}
+                            <span className="text-white">{stage.requiredTeams}</span> requises
                             {stage.details ? <span className="mx-2 opacity-30">|</span> : ''}
                             {stage.details}
                           </p>
@@ -1299,15 +1310,34 @@ export default function Planning() {
                             { label: 'Cadence/eq', value: stage.ratePerTeam },
                             { label: 'Progression', value: `${stage.progress}%`, accent: true },
                             { label: 'Durée Cible', value: `${stage.workingDays} j` },
-                            { label: 'Horizon', value: stage.projectedWorkingDays === null ? 'BLOQUÉ' : `${stage.projectedWorkingDays} j`, danger: stage.projectedWorkingDays === null },
-                            { label: 'Couverture', value: stage.key === 'FORMATION' ? `${stage.teamCount}/${stage.requiredTeams}` : `${stage.projectCapacity}/${stage.householdsCount}` },
-                            { label: 'Fenêtre', value: `J${stage.startDay} → J${stage.endDay}`, highlight: true },
+                            {
+                              label: 'Horizon',
+                              value:
+                                stage.projectedWorkingDays === null
+                                  ? 'BLOQUÉ'
+                                  : `${stage.projectedWorkingDays} j`,
+                              danger: stage.projectedWorkingDays === null,
+                            },
+                            {
+                              label: 'Couverture',
+                              value:
+                                stage.key === 'FORMATION'
+                                  ? `${stage.teamCount}/${stage.requiredTeams}`
+                                  : `${stage.projectCapacity}/${stage.householdsCount}`,
+                            },
+                            {
+                              label: 'Fenêtre',
+                              value: `J${stage.startDay} → J${stage.endDay}`,
+                              highlight: true,
+                            },
                           ].map((stat, i) => (
                             <div key={i} className="min-w-0">
                               <div className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-500 mb-1">
                                 {stat.label}
                               </div>
-                              <div className={`text-sm font-black tracking-tight ${stat.accent ? 'text-blue-400' : stat.danger ? 'text-rose-500' : stat.highlight ? 'text-indigo-300' : 'text-white'}`}>
+                              <div
+                                className={`text-sm font-black tracking-tight ${stat.accent ? 'text-blue-400' : stat.danger ? 'text-rose-500' : stat.highlight ? 'text-indigo-300' : 'text-white'}`}
+                              >
                                 {stat.value}
                               </div>
                             </div>
@@ -1316,25 +1346,32 @@ export default function Planning() {
                       </div>
 
                       <div className="mt-6">
-                        <ProgressBar 
-                          label={stage.progressLabel} 
-                          percentage={stage.progress} 
-                          count={stage.key === 'FORMATION' ? `${stage.completedCount}/${Math.max(stage.requiredTeams, 1)}` : `${stage.completedCount}/${stage.householdsCount}`}
+                        <ProgressBar
+                          label={stage.progressLabel}
+                          percentage={stage.progress}
+                          count={
+                            stage.key === 'FORMATION'
+                              ? `${stage.completedCount}/${Math.max(stage.requiredTeams, 1)}`
+                              : `${stage.completedCount}/${stage.householdsCount}`
+                          }
                           status={stage.atRisk ? 'danger' : 'success'}
                         />
                         <div className="mt-2 flex items-center justify-between">
-                           <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">
-                            Reste {stage.remainingHouseholds} {stage.key === 'FORMATION' ? 'unités opérationnelles' : 'ménages'}
+                          <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">
+                            Reste {stage.remainingHouseholds}{' '}
+                            {stage.key === 'FORMATION' ? 'unités opérationnelles' : 'ménages'}
                           </p>
                           <div className="h-1 flex-1 mx-4 bg-white/5 rounded-full overflow-hidden">
-                             <motion.div 
-                               initial={{ width: 0 }}
-                               animate={{ width: '100%' }}
-                               className={`h-full ${stage.atRisk ? 'bg-rose-500/20' : 'bg-emerald-500/20'}`} 
-                             />
+                            <motion.div
+                              initial={{ width: 0 }}
+                              animate={{ width: '100%' }}
+                              className={`h-full ${stage.atRisk ? 'bg-rose-500/20' : 'bg-emerald-500/20'}`}
+                            />
                           </div>
                           <p className="text-[10px] font-black text-blue-400/60 uppercase">
-                            {stage.projectedWorkingDays === null ? '⚠️ Blocage' : `Échéance estimée: ${stage.projectedWorkingDays} j`}
+                            {stage.projectedWorkingDays === null
+                              ? '⚠️ Blocage'
+                              : `Échéance estimée: ${stage.projectedWorkingDays} j`}
                           </p>
                         </div>
                       </div>
@@ -2163,8 +2200,11 @@ export default function Planning() {
                             className="flex border-b border-white/5 hover:bg-white/[0.02] transition-colors group"
                           >
                             <div className="w-[320px] shrink-0 border-r border-white/5 px-6 py-5 bg-slate-950/20 relative overflow-hidden">
-                              <div className="absolute inset-y-0 left-0 w-1 opacity-0 group-hover:opacity-100 transition-opacity" style={{ backgroundColor: row.fillColor }} />
-                              
+                              <div
+                                className="absolute inset-y-0 left-0 w-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                style={{ backgroundColor: row.fillColor }}
+                              />
+
                               <div className="flex items-start justify-between gap-3 relative z-10">
                                 <div className="min-w-0">
                                   <div className="text-[9px] font-black uppercase tracking-widest text-slate-500">
@@ -2173,21 +2213,35 @@ export default function Planning() {
                                   <div className="mt-1 text-sm font-black text-white truncate group-hover:text-blue-300 transition-colors">
                                     {row.teamName}
                                   </div>
-                                  <div className="mt-1 text-[11px] font-bold text-slate-500 uppercase tracking-tight">{row.label}</div>
+                                  <div className="mt-1 text-[11px] font-bold text-slate-500 uppercase tracking-tight">
+                                    {row.label}
+                                  </div>
                                 </div>
-                                <StatusBadge 
-                                  status={row.atRisk ? 'danger' : row.status === 'virtual' ? 'info' : 'success'}
+                                <StatusBadge
+                                  status={
+                                    row.atRisk
+                                      ? 'danger'
+                                      : row.status === 'virtual'
+                                        ? 'info'
+                                        : 'success'
+                                  }
                                   label={row.phase ? PHASE_LABELS[row.phase] : row.label}
                                 />
                               </div>
-                              
+
                               <div className="mt-4 flex items-center justify-between gap-2 relative z-10">
                                 <div className="flex items-center gap-1.5">
-                                   <div className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: row.fillColor }} />
-                                   <span className="text-[10px] font-black text-slate-400 uppercase">{row.teamCount}/{row.requiredTeams} EQ.</span>
+                                  <div
+                                    className="h-1.5 w-1.5 rounded-full"
+                                    style={{ backgroundColor: row.fillColor }}
+                                  />
+                                  <span className="text-[10px] font-black text-slate-400 uppercase">
+                                    {row.teamCount}/{row.requiredTeams} EQ.
+                                  </span>
                                 </div>
                                 <div className="text-[10px] font-black text-slate-500">
-                                   {format(row.effectiveStart, 'dd/MM')} → {format(row.effectiveEnd, 'dd/MM')}
+                                  {format(row.effectiveStart, 'dd/MM')} →{' '}
+                                  {format(row.effectiveEnd, 'dd/MM')}
                                 </div>
                               </div>
                             </div>
@@ -2212,8 +2266,10 @@ export default function Planning() {
                                       className={`relative flex h-[82px] items-center justify-center border-r border-white/[0.03] ${isToday(day) ? 'bg-blue-500/5' : ''} ${inSpan ? 'bg-white/[0.01]' : ''}`}
                                     >
                                       {inSpan && dayIndex === row.firstActiveIndex && (
-                                         <div className="absolute inset-y-2 left-0 right-0 z-0 bg-white/[0.02] pointer-events-none" 
-                                              style={{ width: `${row.visibleSpanDays * 48}px` }} />
+                                        <div
+                                          className="absolute inset-y-2 left-0 right-0 z-0 bg-white/[0.02] pointer-events-none"
+                                          style={{ width: `${row.visibleSpanDays * 48}px` }}
+                                        />
                                       )}
                                     </div>
                                   );
@@ -2224,7 +2280,11 @@ export default function Planning() {
                                 <motion.div
                                   initial={{ opacity: 0, scaleX: 0 }}
                                   animate={{ opacity: 1, scaleX: 1 }}
-                                  transition={{ delay: 0.3 + idx * 0.05, duration: 0.8, ease: "circOut" }}
+                                  transition={{
+                                    delay: 0.3 + idx * 0.05,
+                                    duration: 0.8,
+                                    ease: 'circOut',
+                                  }}
                                   className="absolute top-1/2 -translate-y-1/2 z-20 flex h-10 items-center overflow-hidden rounded-xl border border-white/10 shadow-[0_10px_25px_rgba(0,0,0,0.4)] px-3 origin-left hover:scale-[1.02] hover:z-30 transition-transform cursor-pointer"
                                   style={
                                     {
@@ -2237,7 +2297,7 @@ export default function Planning() {
                                 >
                                   {/* Glass shine on the bar */}
                                   <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent pointer-events-none" />
-                                  
+
                                   <div className="flex w-full items-center justify-between gap-2 text-slate-950 mix-blend-overlay font-black uppercase relative z-10">
                                     <span className="truncate text-[10px] tracking-tight">
                                       {row.teamName}
@@ -2246,9 +2306,12 @@ export default function Planning() {
                                       {row.progress}%
                                     </span>
                                   </div>
-                                  
+
                                   {/* Progress fill within the bar */}
-                                  <div className="absolute bottom-0 left-0 h-1 bg-white/40" style={{ width: `${row.progress}%` }} />
+                                  <div
+                                    className="absolute bottom-0 left-0 h-1 bg-white/40"
+                                    style={{ width: `${row.progress}%` }}
+                                  />
                                 </motion.div>
                               )}
                             </div>

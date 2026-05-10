@@ -1,4 +1,3 @@
- 
 import React, { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
@@ -17,7 +16,6 @@ import { Toaster } from 'react-hot-toast';
 import { useWebSockets } from './hooks/useWebSockets';
 import { PERMISSIONS, ROLES, hasPermission, normalizeRole } from './utils/permissions';
 import GlobalMissionMentor from './components/ia/GlobalMissionMentor';
-
 
 function lazyWithRetry<T extends React.ComponentType<Record<string, never>>>(
   importer: () => Promise<{ default: T }>,
@@ -57,8 +55,14 @@ const Reports = lazyWithRetry(() => import('./pages/Reports'), 'lazy:reports');
 const Aide = lazyWithRetry(() => import('./pages/Aide'), 'lazy:aide');
 const Bordereau = lazyWithRetry(() => import('./pages/Bordereau'), 'lazy:bordereau');
 const AdminUsers = lazyWithRetry(() => import('./pages/AdminUsers'), 'lazy:admin-users');
-const AdminPermissions = lazyWithRetry(() => import('./pages/AdminPermissions'), 'lazy:admin-permissions');
-const AdminProjectCreation = lazyWithRetry(() => import('./pages/AdminProjectCreation'), 'lazy:admin-project-creation');
+const AdminPermissions = lazyWithRetry(
+  () => import('./pages/AdminPermissions'),
+  'lazy:admin-permissions'
+);
+const AdminProjectCreation = lazyWithRetry(
+  () => import('./pages/AdminProjectCreation'),
+  'lazy:admin-project-creation'
+);
 const DiagnosticSante = lazyWithRetry(() => import('./pages/DiagnosticSante'), 'lazy:diagnostic');
 const SecuritySettings = lazyWithRetry(() => import('./pages/SecuritySettings'), 'lazy:security');
 const MissionOrder = lazyWithRetry(() => import('./pages/MissionOrder'), 'lazy:mission-order');
@@ -75,10 +79,7 @@ const InternalKoboSubmissions = lazyWithRetry(
   () => import('./pages/InternalKoboSubmissions'),
   'lazy:internal-kobo-submissions'
 );
-const GemCollect = lazyWithRetry(
-  () => import('./pages/GemCollect'),
-  'lazy:gem-collect'
-);
+const GemCollect = lazyWithRetry(() => import('./pages/GemCollect'), 'lazy:gem-collect');
 const KoboMappingMaster = lazyWithRetry(
   () => import('./pages/KoboMappingMaster'),
   'lazy:kobo-mapping'
@@ -96,6 +97,7 @@ const PlanningFormation = lazyWithRetry(
 const Alerts = lazyWithRetry(() => import('./pages/Alerts'), 'lazy:alerts');
 const Communication = lazyWithRetry(() => import('./pages/Communication'), 'lazy:communication');
 const AdminAIConfig = lazyWithRetry(() => import('./pages/AdminAIConfig'), 'lazy:admin-ai-config');
+const AdminModules = lazyWithRetry(() => import('./pages/AdminModules'), 'lazy:admin-modules');
 
 // ── Fallback loader ────────────────────────────────────────────────────────
 const PageLoader = () => (
@@ -190,7 +192,7 @@ function App() {
               path="/terrain"
               element={
                 <ProtectedRoute>
-                  <PermissionRoute permission={PERMISSIONS.VOIR_CARTE}>
+                  <PermissionRoute permission={PERMISSIONS.UI_MAP}>
                     <Terrain />
                   </PermissionRoute>
                 </ProtectedRoute>
@@ -201,7 +203,9 @@ function App() {
               path="/cahier"
               element={
                 <ProtectedRoute>
-                  <PermissionRoute permission={[PERMISSIONS.VOIR_RAPPORTS_TERRAIN, PERMISSIONS.VOIR_RAPPORTS_FINANCIERS]}>
+                  <PermissionRoute
+                    permission={[PERMISSIONS.TERRAIN_READ, PERMISSIONS.FINANCE_READ]}
+                  >
                     <Cahier />
                   </PermissionRoute>
                 </ProtectedRoute>
@@ -212,23 +216,20 @@ function App() {
               path="/logistique"
               element={
                 <ProtectedRoute>
-                  <PermissionRoute permission={PERMISSIONS.GERER_LOGISTIQUE}>
+                  <PermissionRoute permission={PERMISSIONS.LOGISTIQUE_MANAGE}>
                     <Logistique />
                   </PermissionRoute>
                 </ProtectedRoute>
               }
             />
 
-            <Route
-              path="/finances"
-              element={<Navigate to="/charges" replace />}
-            />
+            <Route path="/finances" element={<Navigate to="/charges" replace />} />
 
             <Route
               path="/charges"
               element={
                 <ProtectedRoute>
-                  <RoleRoute allowedRoles={[ROLES.ADMIN, ROLES.DG, ROLES.COMPTABLE]}>
+                  <RoleRoute allowedRoles={[ROLES.ADMIN, ROLES.DIRECTEUR, ROLES.COMPTABLE]}>
                     <Charges />
                   </RoleRoute>
                 </ProtectedRoute>
@@ -239,7 +240,7 @@ function App() {
               path="/settings"
               element={
                 <ProtectedRoute>
-                  <PermissionRoute permission={PERMISSIONS.GERER_PARAMETRES}>
+                  <PermissionRoute permission={PERMISSIONS.SYSTEM_CONFIG}>
                     <Settings />
                   </PermissionRoute>
                 </ProtectedRoute>
@@ -250,7 +251,7 @@ function App() {
               path="/simulation"
               element={
                 <ProtectedRoute>
-                  <PermissionRoute permission={PERMISSIONS.VOIR_SIMULATION}>
+                  <PermissionRoute permission={PERMISSIONS.IA_SIMULATION}>
                     <Simulation />
                   </PermissionRoute>
                 </ProtectedRoute>
@@ -270,7 +271,7 @@ function App() {
               path="/bordereau"
               element={
                 <ProtectedRoute>
-                  <PermissionRoute permission={PERMISSIONS.GERER_LOGISTIQUE}>
+                  <PermissionRoute permission={PERMISSIONS.LOGISTIQUE_MANAGE}>
                     <Bordereau />
                   </PermissionRoute>
                 </ProtectedRoute>
@@ -290,7 +291,7 @@ function App() {
               path="/admin/users"
               element={
                 <ProtectedRoute>
-                  <PermissionRoute permission={PERMISSIONS.GERER_UTILISATEURS}>
+                  <PermissionRoute permission={PERMISSIONS.SYSTEM_USERS}>
                     <AdminUsers />
                   </PermissionRoute>
                 </ProtectedRoute>
@@ -301,7 +302,7 @@ function App() {
               path="/admin/security"
               element={
                 <ProtectedRoute>
-                  <PermissionRoute permission={PERMISSIONS.GERER_PARAMETRES}>
+                  <PermissionRoute permission={PERMISSIONS.SYSTEM_CONFIG}>
                     <SecuritySettings />
                   </PermissionRoute>
                 </ProtectedRoute>
@@ -312,7 +313,7 @@ function App() {
               path="/admin/permissions"
               element={
                 <ProtectedRoute>
-                  <PermissionRoute permission={PERMISSIONS.GERER_UTILISATEURS}>
+                  <PermissionRoute permission={PERMISSIONS.SYSTEM_USERS}>
                     <AdminPermissions />
                   </PermissionRoute>
                 </ProtectedRoute>
@@ -323,7 +324,7 @@ function App() {
               path="/admin/diagnostic"
               element={
                 <ProtectedRoute>
-                  <PermissionRoute permission={PERMISSIONS.VOIR_DIAGNOSTIC}>
+                  <PermissionRoute permission={PERMISSIONS.SYSTEM_AUDIT}>
                     <DiagnosticSante />
                   </PermissionRoute>
                 </ProtectedRoute>
@@ -334,7 +335,7 @@ function App() {
               path="/admin/mission"
               element={
                 <ProtectedRoute>
-                  <PermissionRoute permission={PERMISSIONS.CREER_MISSION}>
+                  <PermissionRoute permission={PERMISSIONS.MISSIONS_CREATE}>
                     <MissionOrder />
                   </PermissionRoute>
                 </ProtectedRoute>
@@ -345,7 +346,7 @@ function App() {
               path="/admin/approval"
               element={
                 <ProtectedRoute>
-                  <PermissionRoute permission={PERMISSIONS.VALIDER_MISSION}>
+                  <PermissionRoute permission={PERMISSIONS.MISSIONS_VALIDATE}>
                     <Approbation />
                   </PermissionRoute>
                 </ProtectedRoute>
@@ -356,7 +357,7 @@ function App() {
               path="/admin/kobo-terminal"
               element={
                 <ProtectedRoute>
-                  <PermissionRoute permission={PERMISSIONS.ACCES_TERMINAL_KOBO}>
+                  <PermissionRoute permission={PERMISSIONS.TERRAIN_TERMINAL}>
                     <KoboTerminal />
                   </PermissionRoute>
                 </ProtectedRoute>
@@ -367,7 +368,7 @@ function App() {
               path="/admin/internal-kobo"
               element={
                 <ProtectedRoute>
-                  <PermissionRoute permission={PERMISSIONS.ACCES_TERMINAL_KOBO}>
+                  <PermissionRoute permission={PERMISSIONS.TERRAIN_TERMINAL}>
                     <InternalKoboSubmissions />
                   </PermissionRoute>
                 </ProtectedRoute>
@@ -378,7 +379,7 @@ function App() {
               path="/admin/gem-collect"
               element={
                 <ProtectedRoute>
-                  <PermissionRoute permission={PERMISSIONS.VOIR_CARTE}>
+                  <PermissionRoute permission={PERMISSIONS.UI_MAP}>
                     <GemCollect />
                   </PermissionRoute>
                 </ProtectedRoute>
@@ -389,7 +390,7 @@ function App() {
               path="/admin/kobo-mapping"
               element={
                 <ProtectedRoute>
-                  <PermissionRoute permission={PERMISSIONS.GERER_PARAMETRES}>
+                  <PermissionRoute permission={PERMISSIONS.SYSTEM_CONFIG}>
                     <KoboMappingMaster />
                   </PermissionRoute>
                 </ProtectedRoute>
@@ -400,7 +401,7 @@ function App() {
               path="/admin/organization"
               element={
                 <ProtectedRoute>
-                  <PermissionRoute permission={PERMISSIONS.GERER_PARAMETRES}>
+                  <PermissionRoute permission={PERMISSIONS.SYSTEM_CONFIG}>
                     <OrganizationSettings />
                   </PermissionRoute>
                 </ProtectedRoute>
@@ -411,8 +412,19 @@ function App() {
               path="/admin/pv-automation"
               element={
                 <ProtectedRoute>
-                  <PermissionRoute permission={PERMISSIONS.GERER_PV}>
+                  <PermissionRoute permission={PERMISSIONS.DOCS_PV}>
                     <PVAutomation />
+                  </PermissionRoute>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/admin/modules"
+              element={
+                <ProtectedRoute>
+                  <PermissionRoute permission={PERMISSIONS.SYSTEM_CONFIG}>
+                    <AdminModules />
                   </PermissionRoute>
                 </ProtectedRoute>
               }
@@ -431,7 +443,7 @@ function App() {
               path="/planning"
               element={
                 <ProtectedRoute>
-                  <PermissionRoute permission={PERMISSIONS.VOIR_CARTE}>
+                  <PermissionRoute permission={PERMISSIONS.UI_MAP}>
                     <Planning />
                   </PermissionRoute>
                 </ProtectedRoute>
@@ -442,7 +454,7 @@ function App() {
               path="/planning-formation"
               element={
                 <ProtectedRoute>
-                  <PermissionRoute permission={PERMISSIONS.VOIR_CARTE}>
+                  <PermissionRoute permission={PERMISSIONS.UI_TRAINING}>
                     <PlanningFormation />
                   </PermissionRoute>
                 </ProtectedRoute>
@@ -453,7 +465,7 @@ function App() {
               path="/admin/alerts"
               element={
                 <ProtectedRoute>
-                  <PermissionRoute permission={PERMISSIONS.GERER_PV}>
+                  <PermissionRoute permission={PERMISSIONS.UI_ALERTS}>
                     <Alerts />
                   </PermissionRoute>
                 </ProtectedRoute>
@@ -464,7 +476,7 @@ function App() {
               path="/admin/project-creation"
               element={
                 <ProtectedRoute>
-                  <RoleRoute allowedRoles={[ROLES.ADMIN, ROLES.DG]}>
+                  <RoleRoute allowedRoles={[ROLES.ADMIN, ROLES.DIRECTEUR]}>
                     <AdminProjectCreation />
                   </RoleRoute>
                 </ProtectedRoute>
@@ -475,7 +487,7 @@ function App() {
               path="/admin/ai-config"
               element={
                 <ProtectedRoute>
-                  <PermissionRoute permission={PERMISSIONS.CONFIGURER_MOTEUR_IA}>
+                  <PermissionRoute permission={PERMISSIONS.IA_CONFIG}>
                     <AdminAIConfig />
                   </PermissionRoute>
                 </ProtectedRoute>
@@ -483,7 +495,6 @@ function App() {
             />
 
             <Route path="/mission-order" element={<Navigate to="/admin/mission" replace />} />
-            <Route path="/" element={<Navigate to="/home" replace />} />
             <Route path="*" element={<Navigate to={user ? '/home' : '/login'} replace />} />
           </Routes>
         </Suspense>

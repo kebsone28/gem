@@ -3,12 +3,12 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion';
 import { db } from '../store/db';
 import type { UserRole, User } from '../utils/types';
+import type { Team, Project } from '../utils/types';
 import {
   Users,
   Plus,
   Trash2,
   ShieldCheck,
-  Shield,
   Shield as ShieldIcon,
   User as UserIcon,
   Eye,
@@ -17,10 +17,8 @@ import {
   X,
   Search,
   Lock,
-  CheckCircle2,
   CheckCircle2 as CheckIcon,
   AlertTriangle,
-  RefreshCcw,
   RefreshCcw as RefreshCw,
   Briefcase,
   Calculator,
@@ -32,6 +30,21 @@ import {
 import { appSecurity } from '../services/appSecurity';
 import { useAuth } from '../contexts/AuthContext';
 import { PageContainer, PageHeader, ContentArea, Modal } from '../components';
+// Import des icônes pour le tableau
+import { 
+  MoreVertical, 
+  Trash2 as TrashIcon, 
+  UserPlus, 
+  Key, 
+  Activity, 
+  ShieldAlert,
+  ArrowUpDown,
+  Mail,
+  Calendar as DateIcon,
+  Zap,
+  Globe,
+  Settings as ConfigIcon
+} from 'lucide-react';
 import {
   PERMISSION_LABELS,
   PERMISSIONS,
@@ -39,6 +52,7 @@ import {
   normalizeRole,
   invalidatePermissionsCache,
 } from '../utils/permissions';
+import { AppRole } from '../utils/security/types';
 import type { UserRole as PermissionUserRole } from '../utils/security/types';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -64,73 +78,6 @@ const ROLE_CONFIG: Record<
   }
 > = {
   // CLIENT LSE
-  CLIENT_LSE_SUPERVISEUR: {
-    label: 'Superviseur LSE',
-    color: 'bg-amber-500/10 border-amber-500/50',
-    textColor: 'text-amber-400',
-    icon: UserIcon,
-    description: 'Supervision & Validation',
-  },
-  CLIENT_LSE_TECHNIQUE: {
-    label: 'Technicien LSE',
-    color: 'bg-amber-500/10 border-amber-500/50',
-    textColor: 'text-amber-400',
-    icon: UserIcon,
-    description: 'Validation Technique',
-  },
-  
-  // PROQUELEC/GEM - MAÎTRE D'ŒUVRE
-  PROQUELEC_ADMIN: {
-    label: 'Administrateur Proquelec',
-    color: 'bg-indigo-500/10 border-indigo-500/50',
-    textColor: 'text-indigo-400',
-    icon: ShieldCheck,
-    description: 'Accès complet & 2FA',
-  },
-  PROQUELEC_DG: {
-    label: 'DG Proquelec',
-    color: 'bg-emerald-500/10 border-emerald-500/50',
-    textColor: 'text-emerald-400',
-    icon: ShieldIcon,
-    description: 'Direction GEM',
-  },
-  PROQUELEC_CHEF_PROJET: {
-    label: 'Chef de Projet',
-    color: 'bg-sky-500/10 border-sky-500/50',
-    textColor: 'text-sky-400',
-    icon: Briefcase,
-    description: 'Gestion de Mission',
-  },
-  PROQUELEC_DIRECTION: {
-    label: 'Direction Opérationnelle',
-    color: 'bg-blue-500/10 border-blue-500/50',
-    textColor: 'text-blue-400',
-    icon: Users,
-    description: 'Supervision & Coordination',
-  },
-  PROQUELEC_COMPTABLE: {
-    label: 'Comptable',
-    color: 'bg-rose-500/10 border-rose-500/50',
-    textColor: 'text-rose-400',
-    icon: Calculator,
-    description: 'Finances & Audit',
-  },
-  PROQUELEC_PATRIMOINE: {
-    label: 'Gestion Patrimoine',
-    color: 'bg-purple-500/10 border-purple-500/50',
-    textColor: 'text-purple-400',
-    icon: Award,
-    description: 'Actifs & Maintenance',
-  },
-  PROQUELEC_EMPLOYE: {
-    label: 'Employé Proquelec',
-    color: 'bg-blue-500/10 border-blue-500/50',
-    textColor: 'text-blue-400',
-    icon: UserIcon,
-    description: 'Opérations & Reporting',
-  },
-  
-  // SENELEC - SUPERVISEUR NATIONAL
   SENELEC_SUPERVISEUR: {
     label: 'Superviseur SENELEC',
     color: 'bg-cyan-500/10 border-cyan-500/50',
@@ -145,21 +92,63 @@ const ROLE_CONFIG: Record<
     icon: ShieldIcon,
     description: 'Inspection & Conformité',
   },
-  
-  // SOUS-TRAITANTS
-  SOUS_TRAITANT_DIRECTEUR: {
-    label: 'Directeur Sous-traitant',
-    color: 'bg-orange-500/10 border-orange-500/50',
-    textColor: 'text-orange-400',
-    icon: Users,
-    description: 'Coordination & Reporting',
+
+  // PROQUELEC/GEM - MAÎTRE D'ŒUVRE
+  [AppRole.ADMIN]: {
+    label: 'Administrateur Proquelec',
+    color: 'bg-indigo-500/10 border-indigo-500/50',
+    textColor: 'text-indigo-400',
+    icon: ShieldCheck,
+    description: 'Accès complet & 2FA',
   },
-  SOUS_TRAITANT_EMPLOYE: {
-    label: 'Employé Sous-traitant',
-    color: 'bg-orange-500/10 border-orange-500/50',
-    textColor: 'text-orange-400',
+  [AppRole.DIRECTEUR]: {
+    label: 'DG Proquelec',
+    color: 'bg-emerald-500/10 border-emerald-500/50',
+    textColor: 'text-emerald-400',
+    icon: ShieldIcon,
+    description: 'Direction GEM',
+  },
+  [AppRole.CHEF_PROJET]: {
+    label: 'Chef de Projet',
+    color: 'bg-sky-500/10 border-sky-500/50',
+    textColor: 'text-sky-400',
+    icon: Briefcase,
+    description: 'Gestion de Mission',
+  },
+  [AppRole.COMPTABLE]: {
+    label: 'Comptable',
+    color: 'bg-rose-500/10 border-rose-500/50',
+    textColor: 'text-rose-400',
+    icon: Calculator,
+    description: 'Finances & Audit',
+  },
+  [AppRole.PATRIMOINE]: {
+    label: 'Gestion Patrimoine',
+    color: 'bg-purple-500/10 border-purple-500/50',
+    textColor: 'text-purple-400',
+    icon: Award,
+    description: 'Actifs & Maintenance',
+  },
+  [AppRole.EMPLOYE]: {
+    label: 'Employé Proquelec',
+    color: 'bg-blue-500/10 border-blue-500/50',
+    textColor: 'text-blue-400',
     icon: UserIcon,
-    description: 'Exécution Terrain',
+    description: 'Opérations & Reporting',
+  },
+  [AppRole.SUPERVISEUR]: {
+    label: 'Superviseur / Consultant',
+    color: 'bg-amber-500/10 border-amber-500/50',
+    textColor: 'text-amber-400',
+    icon: UserIcon,
+    description: 'Supervision & Validation',
+  },
+  [AppRole.CONTROLEUR]: {
+    label: 'Contrôleur / Audit',
+    color: 'bg-amber-500/10 border-amber-500/50',
+    textColor: 'text-amber-400',
+    icon: UserIcon,
+    description: 'Validation Technique',
   },
 };
 
@@ -184,10 +173,10 @@ const FEATURE_PACKS: Record<
     border: 'border-sky-400/20',
     desc: 'Gestion des missions (Ordres de Mission, Cadrage, Planning)',
     permissions: [
-      PERMISSIONS.VOIR_MISSIONS,
-      PERMISSIONS.CREER_MISSION,
-      PERMISSIONS.MODIFIER_MISSION,
-      PERMISSIONS.GERER_PLANNING,
+      PERMISSIONS.MISSIONS_READ,
+      PERMISSIONS.MISSIONS_CREATE,
+      PERMISSIONS.MISSIONS_UPDATE,
+      PERMISSIONS.MISSIONS_PLANNING,
     ],
   },
   report: {
@@ -198,10 +187,10 @@ const FEATURE_PACKS: Record<
     border: 'border-emerald-400/20',
     desc: 'Suivi financier, paiements, rapports terrain et logistique',
     permissions: [
-      PERMISSIONS.VOIR_RAPPORTS_TERRAIN,
-      PERMISSIONS.VOIR_FINANCES,
-      PERMISSIONS.VOIR_PAIEMENTS,
-      PERMISSIONS.VOIR_LOGISTIQUE,
+      PERMISSIONS.TERRAIN_READ,
+      PERMISSIONS.FINANCE_READ,
+      PERMISSIONS.FINANCE_PAYMENTS,
+      PERMISSIONS.LOGISTIQUE_READ,
     ],
   },
   approval: {
@@ -212,10 +201,10 @@ const FEATURE_PACKS: Record<
     border: 'border-purple-400/20',
     desc: 'Validations finales, PV de réception et documents confidentiels',
     permissions: [
-      PERMISSIONS.VALIDER_MISSION,
-      PERMISSIONS.APPROUVER_MISSION,
-      PERMISSIONS.GERER_PV,
-      PERMISSIONS.VOIR_DOCUMENTS_CONFIDENTIELS,
+      PERMISSIONS.MISSIONS_VALIDATE,
+      PERMISSIONS.MISSIONS_APPROVE,
+      PERMISSIONS.DOCS_PV,
+      PERMISSIONS.DOCS_CONFIDENTIAL,
     ],
   },
   global: {
@@ -226,11 +215,11 @@ const FEATURE_PACKS: Record<
     border: 'border-indigo-400/20',
     desc: 'Supervision globale : Projets, Équipes, Audit et Synchronisation',
     permissions: [
-      PERMISSIONS.VOIR_PROJETS,
-      PERMISSIONS.VOIR_EQUIPES,
-      PERMISSIONS.VOIR_AUDIT_LOGS,
-      PERMISSIONS.VOIR_SYNCHRO,
-      PERMISSIONS.VOIR_ALERTES,
+      PERMISSIONS.UI_PROJECTS,
+      PERMISSIONS.UI_TEAMS,
+      PERMISSIONS.SYSTEM_AUDIT,
+      PERMISSIONS.SYSTEM_SYNC,
+      PERMISSIONS.UI_ALERTS,
     ],
   },
 };
@@ -243,7 +232,7 @@ const emptyForm = (): UserForm => ({
   email: '',
   notificationEmail: '',
   password: '',
-  role: 'PROQUELEC_EMPLOYE',
+  role: AppRole.EMPLOYE as UserRole,
   name: '',
   teamId: undefined,
   active: true,
@@ -251,6 +240,190 @@ const emptyForm = (): UserForm => ({
   permissions: [],
   assignedProjectIds: [], // New field for UI management
 });
+
+// ─── Composant interne : Table d'affichage ──────────────────────────────────
+interface AdminUsersTableProps {
+  users: User[];
+  search: string;
+  loading: boolean;
+  onEdit: (u: User) => void;
+  onDelete: (u: User) => void;
+  onImpersonate: (u: User) => void;
+  ROLE_CONFIG: any;
+  normalizeRole: (r?: string) => string | null;
+  AppRole: any;
+  isMasterAdminEmail: (e: string) => boolean;
+}
+
+const AdminUsersTable = ({
+  users,
+  search,
+  loading,
+  onEdit,
+  onDelete,
+  onImpersonate,
+  ROLE_CONFIG,
+  normalizeRole,
+  AppRole,
+  isMasterAdminEmail,
+}: AdminUsersTableProps) => {
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-4">
+        <div className="w-12 h-12 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" />
+        <p className="text-slate-500 font-bold animate-pulse uppercase tracking-widest text-[10px]">
+          Synchronisation sécurisée...
+        </p>
+      </div>
+    );
+  }
+
+  const safeUsers = users ?? [];
+  const filtered = safeUsers.filter((u) => {
+    const s = search.toLowerCase();
+    return (
+      u.email.toLowerCase().includes(s) ||
+      (u.name || '').toLowerCase().includes(s) ||
+      (u.role || '').toLowerCase().includes(s)
+    );
+  });
+
+  if (filtered.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-4 text-slate-600">
+        <Users size={32} className="opacity-30" />
+        <p className="text-[10px] font-black uppercase tracking-widest">Aucun utilisateur trouvé</p>
+      </div>
+    );
+  }
+
+
+
+  return (
+    <div className="overflow-x-auto custom-scrollbar">
+      <table className="w-full text-left border-separate border-spacing-y-3">
+        <thead>
+          <tr className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">
+            <th className="px-6 pb-2">Identité & Statut</th>
+            <th className="px-6 pb-2">Rôle Système</th>
+            <th className="px-6 pb-2">Sécurité</th>
+            <th className="px-6 pb-2">Dernière activité</th>
+            <th className="px-6 pb-2 text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {filtered.map((u) => {
+            const nRole = normalizeRole(u.role);
+            const cfg = ROLE_CONFIG[u.role] || ROLE_CONFIG[nRole || ''] || {
+              label: u.role,
+              color: 'bg-slate-500/10 border-slate-500/30',
+              textColor: 'text-slate-400',
+              icon: UserIcon,
+            };
+            const Icon = cfg.icon;
+            const isProtected = nRole === AppRole.ADMIN || isMasterAdminEmail(u.email);
+
+            return (
+              <motion.tr
+                key={u.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="group bg-slate-900/40 hover:bg-slate-800/60 border border-slate-800/50 transition-all"
+              >
+                <td className="px-6 py-4 rounded-l-2xl border-y border-l border-slate-800/50">
+                  <div className="flex items-center gap-4">
+                    <div className={`w-10 h-10 rounded-xl ${cfg.color} flex items-center justify-center flex-shrink-0 border ${cfg.textColor.replace('text-', 'border-')}/20 shadow-lg shadow-black/20`}>
+                      <Icon size={18} className={cfg.textColor} />
+                    </div>
+                    <div>
+                      <div className="font-black text-white text-sm tracking-tight flex items-center gap-2">
+                        {u.name || 'Sans Nom'}
+                        {u.active ? (
+                          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/50" />
+                        ) : (
+                          <div className="w-1.5 h-1.5 rounded-full bg-rose-500 opacity-50" />
+                        )}
+                      </div>
+                      <div className="text-[10px] text-slate-500 font-bold flex items-center gap-1.5 mt-0.5">
+                        <Mail size={10} className="opacity-40" />
+                        {u.email}
+                      </div>
+                    </div>
+                  </div>
+                </td>
+
+                <td className="px-6 py-4 border-y border-slate-800/50">
+                  <span className={`text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg border shadow-sm ${cfg.color} ${cfg.textColor}`}>
+                    {cfg.label}
+                  </span>
+                </td>
+
+                <td className="px-6 py-4 border-y border-slate-800/50">
+                  <div className="flex items-center gap-2">
+                    {u.requires2FA ? (
+                      <div className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-400 border border-indigo-500/20" title="2FA Activé">
+                        <ShieldCheck size={14} />
+                      </div>
+                    ) : (
+                      <div className="p-1.5 rounded-lg bg-slate-800/50 text-slate-600 border border-slate-800" title="Pas de 2FA">
+                        <ShieldIcon size={14} />
+                      </div>
+                    )}
+                    {isProtected && (
+                      <div className="p-1.5 rounded-lg bg-amber-500/10 text-amber-500 border border-amber-500/20" title="Compte Protégé">
+                        <ShieldAlert size={14} />
+                      </div>
+                    )}
+                  </div>
+                </td>
+
+                <td className="px-6 py-4 border-y border-slate-800/50">
+                   <div className="text-[10px] font-bold text-slate-400 flex flex-col gap-0.5">
+                     <span className="flex items-center gap-1.5">
+                       <DateIcon size={10} className="opacity-40" />
+                       Créé le {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '—'}
+                     </span>
+                     {u.id === 'admingem' && (
+                       <span className="text-[8px] text-indigo-500 uppercase font-black">Identité Maître</span>
+                     )}
+                   </div>
+                </td>
+
+                <td className="px-6 py-4 rounded-r-2xl border-y border-r border-slate-800/50 text-right">
+                  <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={() => onImpersonate(u)}
+                      className="p-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/20 transition-all active:scale-90"
+                      title="Prendre l'identité"
+                    >
+                      <Zap size={14} />
+                    </button>
+                    <button
+                      onClick={() => onEdit(u)}
+                      className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-all active:scale-90"
+                      title="Modifier"
+                    >
+                      <Eye size={14} />
+                    </button>
+                    {!isProtected && (
+                      <button
+                        onClick={() => onDelete(u)}
+                        className="p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white border border-rose-500/20 transition-all active:scale-90"
+                        title="Supprimer"
+                      >
+                        <TrashIcon size={14} />
+                      </button>
+                    )}
+                  </div>
+                </td>
+              </motion.tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+};
 
 // ─── Composant principal ─────────────────────────────────────────────────────
 export default function AdminUsers() {
@@ -270,6 +443,7 @@ export default function AdminUsers() {
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState<UserForm>(emptyForm());
   const [showPass, setShowPass] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   // ── Delete modal state ──
   const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
@@ -287,43 +461,6 @@ export default function AdminUsers() {
   });
   const [isSavingConfig, setIsSavingConfig] = useState(false);
 
-  // Load data from API
-  const loadData = async () => {
-    setLoading(true);
-    try {
-      const results = await Promise.allSettled([
-        userService.getUsers(),
-        db.teams.toArray(),
-        projectService.getProjects(),
-      ]);
-
-      if (results[0].status === 'fulfilled') {
-        setUsers(results[0].value);
-      } else {
-        toast.error("Échec du chargement des utilisateurs");
-        logger.error('[AdminUsers] Load users failed', results[0].reason);
-      }
-
-      if (results[1].status === 'fulfilled') {
-        setTeams(results[1].value);
-      } else {
-        logger.warn('[AdminUsers] Load teams from Dexie failed', results[1].reason);
-      }
-
-      if (results[2].status === 'fulfilled') {
-        setProjects(results[2].value);
-      } else {
-        toast.error("Échec du chargement des projets");
-        logger.error('[AdminUsers] Load projects failed', results[2].reason);
-      }
-    } catch (err) {
-      toast.error('Erreur critique lors du chargement des données');
-      logger.error('[AdminUsers] Critical load failure', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const hasFetched = useRef(false);
 
   // ─── Stable loadData (useCallback prevents stale closure in useEffect) ────
@@ -339,7 +476,7 @@ export default function AdminUsers() {
       if (results[0].status === 'fulfilled') {
         setUsers(results[0].value);
       } else {
-        toast.error("Échec du chargement des utilisateurs");
+        toast.error('Échec du chargement des utilisateurs');
         logger.error('[AdminUsers] Load users failed', results[0].reason);
       }
 
@@ -352,7 +489,7 @@ export default function AdminUsers() {
       if (results[2].status === 'fulfilled') {
         setProjects(results[2].value);
       } else {
-        toast.error("Échec du chargement des projets");
+        toast.error('Échec du chargement des projets');
         logger.error('[AdminUsers] Load projects failed', results[2].reason);
       }
     } catch (err) {
@@ -395,7 +532,7 @@ export default function AdminUsers() {
   };
 
   const toggleDGPanel = (panelId: string) => {
-    const current = orgConfig.mission_panels_dg || [];
+    const current = (orgConfig.mission_panels_dg as string[]) || [];
     const next = current.includes(panelId)
       ? current.filter((id: string) => id !== panelId)
       : [...current, panelId];
@@ -427,20 +564,20 @@ export default function AdminUsers() {
     setShowPass(false);
   };
   const openEdit = (u: User) => {
-    const isProtected = u.role === 'ADMIN_PROQUELEC' || isMasterAdminEmail(u.email);
+    const isProtected = normalizeRole(u.role) === AppRole.ADMIN || isMasterAdminEmail(u.email);
     if (isProtected && user?.id !== u.id) {
       toast.error('Impossible de modifier un autre Administrateur Système');
       return;
     }
     setEditId(u.id);
-    
+
     // Compute which projects this user is assigned to
     const userProjects = projects
-      .filter(p => {
-        const assigned = p.config?.assignedUsers || [];
+      .filter((p) => {
+        const assigned = (p.config as any)?.assignedUsers || [];
         return assigned.includes(u.id);
       })
-      .map(p => p.id);
+      .map((p) => p.id);
 
     setForm({
       email: u.email,
@@ -464,7 +601,9 @@ export default function AdminUsers() {
 
       // Si on est en mode Auto (null ou undefined), on part de la base du rôle
       const isAuto = f.permissions === null || f.permissions === undefined;
-      const current = isAuto ? ROLE_PERMISSIONS[currentRole] || [] : f.permissions;
+      const current: string[] = isAuto
+        ? (ROLE_PERMISSIONS[currentRole as keyof typeof ROLE_PERMISSIONS] ?? [])
+        : (f.permissions ?? []);
 
       if (current.includes(p)) {
         return { ...f, permissions: current.filter((x: string) => x !== p) };
@@ -481,12 +620,14 @@ export default function AdminUsers() {
     setForm((f: UserForm) => {
       const currentRole = normalizeRole(f.role) || (f.role as PermissionUserRole);
       const isAuto = f.permissions === null || f.permissions === undefined;
-      const current = isAuto ? ROLE_PERMISSIONS[currentRole] || [] : f.permissions;
+      const current: string[] = isAuto
+        ? (ROLE_PERMISSIONS[currentRole as keyof typeof ROLE_PERMISSIONS] ?? [])
+        : (f.permissions ?? []);
 
       // Si toutes les perms du pack sont déjà là, on les retire toutes
       // Sinon, on s'assure qu'elles y sont toutes
       const hasAll = pack.permissions.every((p) => current.includes(p));
-      let next;
+      let next: string[];
       if (hasAll) {
         next = current.filter((p) => !pack.permissions.includes(p));
       } else {
@@ -499,7 +640,7 @@ export default function AdminUsers() {
   const applyDefaultPermissions = () => {
     // En mettant permissions à undefined, le système repasse automatiquement
     // sur le fallback du RÔLE (comportement par défaut)
-    setForm((f: UserForm) => ({ ...f, permissions: null })); // null tells the server to reset to role defaults
+    setForm((f: UserForm) => ({ ...f, permissions: undefined })); // undefined tells the server to reset to role defaults
     toast(`✅ Compte synchronisé sur les droits par défaut du rôle ${form.role}`, { icon: 'ℹ️' });
   };
 
@@ -512,7 +653,7 @@ export default function AdminUsers() {
       toast.error('Tous les champs obligatoires doivent être remplis.');
       return;
     }
-    
+
     const finalForm = {
       ...form,
       email: trimmedEmail,
@@ -523,6 +664,7 @@ export default function AdminUsers() {
       toast.error('Le mot de passe doit faire au moins 6 caractères.');
       return;
     }
+    setSaving(true);
     try {
       let finalUserId = editId;
       if (editId) {
@@ -559,35 +701,12 @@ export default function AdminUsers() {
       if (finalUserId) {
         invalidatePermissionsCache(finalUserId);
         const assignedIds = form.assignedProjectIds || [];
-        const updatePromises = projects.map(async (p) => {
-          const currentAssigned = p.config?.assignedUsers || [];
-          const isCurrentlyAssigned = currentAssigned.includes(finalUserId);
-          const shouldBeAssigned = assignedIds.includes(p.id);
-
-          if (shouldBeAssigned && !isCurrentlyAssigned) {
-            // Add user to project
-            const nextAssigned = [...currentAssigned, finalUserId];
-            await projectService.updateProject(p.id, {
-              config: { ...p.config, assignedUsers: nextAssigned }
-            });
-          } else if (!shouldBeAssigned && isCurrentlyAssigned) {
-            // Remove user from project
-            const nextAssigned = currentAssigned.filter((id: string) => id !== finalUserId);
-            await projectService.updateProject(p.id, {
-              config: { ...p.config, assignedUsers: nextAssigned }
-            });
-          }
-        });
-        
-        // Wait for all assignments with a timeout to prevent hanging UI
         try {
-          await Promise.race([
-            Promise.all(updatePromises),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('Délai d\'assignation dépassé')), 10000))
-          ]);
+          await projectService.setUserAssignments(finalUserId, assignedIds);
         } catch (assignError) {
-          const errMessage = assignError instanceof Error ? assignError.message : String(assignError);
-          logger.warn('[AdminUsers] Project assignment partially failed or timed out', errMessage);
+          const errMessage =
+            assignError instanceof Error ? assignError.message : String(assignError);
+          logger.warn('[AdminUsers] Project assignment failed', errMessage);
           toast.error("Certaines assignations de projets n'ont pas pu être finalisées");
         }
       }
@@ -595,14 +714,17 @@ export default function AdminUsers() {
       setShowForm(false);
       loadData(); // Refresh list
     } catch (err) {
-      const errMessage = err instanceof Error ? err.message : String(err);
+      const errMessage =
+        (err as any)?.response?.data?.error || (err instanceof Error ? err.message : String(err));
       toast.error(`❌  Erreur: ${errMessage}`);
+    } finally {
+      setSaving(false);
     }
   };
 
   // ─── Open delete modal ────────────────────────────────────────────────────
   const openDelete = (u: User) => {
-    if (isMasterAdminEmail(u.email) || u.role === 'ADMIN_PROQUELEC') {
+    if (isMasterAdminEmail(u.email) || normalizeRole(u.role) === AppRole.ADMIN) {
       toast.error('Impossible de supprimer un compte Administrateur.');
       return;
     }
@@ -619,7 +741,8 @@ export default function AdminUsers() {
   const confirmDelStep1 = async () => {
     if (!deleteTarget) return;
     // Non-admin: require name confirmation before delete
-    const isAdminTarget = deleteTarget.role === 'ADMIN_PROQUELEC' || isMasterAdminEmail(deleteTarget.email);
+    const isAdminTarget =
+      deleteTarget.role === 'ADMIN_PROQUELEC' || isMasterAdminEmail(deleteTarget.email);
     if (!isAdminTarget) {
       if (
         !deleteConfirmedName ||
@@ -648,7 +771,7 @@ export default function AdminUsers() {
       setDelError('Réponse incorrecte. Suppression annulée.');
       return;
     }
-    executeDelete();
+    await executeDelete();
   };
 
   const executeDelete = async () => {
@@ -669,7 +792,8 @@ export default function AdminUsers() {
       setDeleteTarget(null);
       loadData();
     } catch (err) {
-      const errMessage = err instanceof Error ? err.message : String(err);
+      const errMessage =
+        (err as any)?.response?.data?.error || (err instanceof Error ? err.message : String(err));
       toast.error(`❌  Erreur: ${errMessage}`);
     }
   };
@@ -678,6 +802,10 @@ export default function AdminUsers() {
   const toggleActive = async (u: User) => {
     if (isMasterAdminEmail(u.email)) {
       toast.error('Impossible de désactiver le compte Admin principal.');
+      return;
+    }
+    if (normalizeRole(u.role) === AppRole.ADMIN) {
+      toast.error('Impossible de désactiver un compte Administrateur.');
       return;
     }
     const next = !u.active;
@@ -699,7 +827,8 @@ export default function AdminUsers() {
       }
       loadData();
     } catch (err) {
-      const errMessage = err instanceof Error ? err.message : String(err);
+      const errMessage =
+        (err as any)?.response?.data?.error || (err instanceof Error ? err.message : String(err));
       toast.error(`❌  Erreur: ${errMessage}`);
     }
   };
@@ -731,31 +860,52 @@ export default function AdminUsers() {
       setResetTarget(null);
       loadData();
     } catch (err) {
-      const errMessage = err instanceof Error ? err.message : String(err);
+      const errMessage =
+        (err as any)?.response?.data?.error || (err instanceof Error ? err.message : String(err));
       toast.error(`❌  Erreur: ${errMessage}`);
     }
   };
 
   // ─── Role stats (memoized – recomputes only when users list changes) ────────
-  const roleStats = useMemo(
-    () =>
-      Object.entries(ROLE_CONFIG).map(([roleKey, cfg]) => ({
+  //
+  // PROBLÈME : ROLE_CONFIG utilise des clés préfixées (ex: "PROQUELEC_ADMIN"),
+  // mais l'API retourne des rôles bruts (ex: "ADMIN", "DG", "CHEF_PROJET").
+  // La correction consiste à tester le match APRÈS avoir retiré le préfixe.
+  const roleStats = useMemo(() => {
+    // Retire le préfixe organisationnel pour obtenir la valeur brute comparable
+    const stripOrgPrefix = (key: string) =>
+      key
+        .replace(/^PROQUELEC_/, '')
+        .replace(/^SENELEC_/, '')
+        .replace(/^SOUS_TRAITANT_/, '')
+        .replace(/^CLIENT_LSE_/, '');
+
+    return Object.entries(ROLE_CONFIG).map(([roleKey, cfg]) => {
+      const strippedKey = stripOrgPrefix(roleKey);
+
+      return {
         ...cfg,
         role: roleKey,
         count: users.filter((u: User) => {
-          if (u.role === roleKey) return true;
-          const nConfigRole = normalizeRole(roleKey);
-          const nUserRole = normalizeRole(u.role);
-          if (nUserRole && nConfigRole && nUserRole === nConfigRole) {
-            const hasExactMatch = Object.keys(ROLE_CONFIG).some(k => k !== roleKey && k === u.role);
-            if (hasExactMatch) return false;
-            return true;
-          }
+          const raw = (u.role || '').toUpperCase();
+
+          // 1. Match exact (cas où le rôle DB = clé ROLE_CONFIG ex: 'PROQUELEC_ADMIN')
+          if (raw === roleKey.toUpperCase()) return true;
+
+          // 2. Match après suppression du préfixe org
+          //    ex: raw='ADMIN', strippedKey='ADMIN' ← cas principal
+          if (raw === strippedKey) return true;
+
+          // 3. Match normalisé (gère les variantes: DG_PROQUELEC→DG, etc.)
+          const nUser = normalizeRole(u.role);
+          const nStripped = normalizeRole(strippedKey) || strippedKey;
+          if (nUser && nUser === nStripped) return true;
+
           return false;
         }).length,
-      })),
-    [users]
-  );
+      };
+    });
+  }, [users]);
 
   const isAdminDelete =
     deleteTarget?.role === 'ADMIN_PROQUELEC' || isMasterAdminEmail(deleteTarget?.email ?? '');
@@ -769,7 +919,7 @@ export default function AdminUsers() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[4000] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4"
+            className="fixed inset-0 z-4000 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4"
           >
             <motion.div
               initial={{ scale: 0.9, y: 30 }}
@@ -977,7 +1127,10 @@ export default function AdminUsers() {
                   );
                   toast.success('Matrice mise à jour pour le rôle');
                 } catch (err) {
-                  logger.error('Apply role defaults failed', err instanceof Error ? err.message : String(err));
+                  logger.error(
+                    'Apply role defaults failed',
+                    err instanceof Error ? err.message : String(err)
+                  );
                   toast.error('Erreur lors de la mise à jour de la matrice');
                 } finally {
                   setApplyingRoleDefaults(false);
@@ -1097,7 +1250,7 @@ export default function AdminUsers() {
                   Utilisateurs
                 </h1>
               </div>
-              <p className="text-slate-500 font-bold text-sm md:ml-13">
+              <p className="text-slate-500 font-bold text-sm md:ml-12">
                 {users.length} comptes enregistrés —{' '}
                 <span className="text-emerald-500">
                   {users.filter((u: User) => u.active).length} actifs
@@ -1219,7 +1372,9 @@ export default function AdminUsers() {
                     border: 'border-purple-400/20',
                   },
                 ].map((panel) => {
-                  const isActive = (orgConfig.mission_panels_dg || []).includes(panel.id);
+                  const isActive = ((orgConfig.mission_panels_dg as string[]) || []).includes(
+                    panel.id
+                  );
                   return (
                     <button
                       key={panel.id}
@@ -1299,203 +1454,18 @@ export default function AdminUsers() {
           </motion.div>
 
           {/* User List Section */}
-          <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800/50 rounded-[2.5rem] overflow-hidden shadow-2xl">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-slate-800/50">
-                    <th className="px-8 py-6 text-xs font-black text-slate-500 uppercase tracking-[0.2em]">
-                      Statut
-                    </th>
-                    <th className="px-6 py-6 text-xs font-black text-slate-500 uppercase tracking-[0.2em]">
-                      Utilisateur
-                    </th>
-                    <th className="px-6 py-6 text-xs font-black text-slate-500 uppercase tracking-[0.2em]">
-                      Identifiant
-                    </th>
-                    <th className="px-6 py-6 text-xs font-black text-slate-500 uppercase tracking-[0.2em]">
-                      Rôle
-                    </th>
-                    <th className="px-6 py-6 text-xs font-black text-slate-500 uppercase tracking-[0.2em]">
-                      Accès
-                    </th>
-                    <th className="px-6 py-6 text-xs font-black text-slate-500 uppercase tracking-[0.2em]">
-                      Sécurité
-                    </th>
-                    <th className="px-8 py-6 text-xs font-black text-slate-500 uppercase tracking-[0.2em] text-right">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/30">
-                  {filtered.map((u) => {
-                    const normalized = normalizeRole(u.role);
-                    const rc = (normalized && ROLE_CONFIG[normalized]) || {
-                      label: u.role || 'Utilisateur',
-                      color: 'bg-slate-500/10 border-slate-500/50',
-                      textColor: 'text-slate-400',
-                      icon: UserIcon,
-                      description: 'Rôle système hérité',
-                    };
-                    const RoleIcon = rc.icon || UserIcon;
-                    return (
-                      <tr
-                        key={u.id}
-                        className={`group hover:bg-slate-800/20 transition-colors ${!u.active ? 'opacity-50' : ''}`}
-                      >
-                        <td className="px-8 py-5">
-                          <button
-                            onClick={() => toggleActive(u)}
-                            title={u.active ? 'Désactiver le compte' : 'Activer le compte'}
-                            className={`w-3 h-3 rounded-full transition-all duration-500 ${u.active ? 'bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.5)]' : 'bg-slate-700'}`}
-                          />
-                        </td>
-                        <td className="px-6 py-5">
-                          <div className="flex items-center gap-3">
-                            <div
-                              className={`w-9 h-9 flex items-center justify-center rounded-xl border ${rc.color}`}
-                            >
-                              <RoleIcon size={16} className={rc.textColor} />
-                            </div>
-                            <div>
-                              <div className="text-white font-black text-sm">{u.name}</div>
-                              <div className="text-slate-500 text-xs font-bold uppercase tracking-wider">
-                                {u.createdAt}
-                              </div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-5">
-                          <span className="font-mono text-slate-400 text-xs">@{u.email}</span>
-                        </td>
-                        <td className="px-6 py-5">
-                          <span
-                            className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider border ${rc.color} ${rc.textColor}`}
-                          >
-                            {rc.label}
-                          </span>
-                        </td>
-                        <td className="px-6 py-5">
-                          <div className="flex flex-col">
-                            <span className="text-slate-300 font-bold text-xs">
-                              {u.teamId
-                                ? teams.find((t: Team) => t.id === u.teamId)?.name
-                                : 'Accès Global'}
-                            </span>
-                            <span className="text-slate-600 dark:text-slate-400 text-xs font-medium">
-                              {u.teamId ? 'Équipe de terrain' : 'Administration centrale'}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-5">
-                          <div className="flex items-center gap-3">
-                            <button
-                              onClick={() => openReset(u)}
-                              aria-label="Réinitialiser le mot de passe"
-                              className="flex items-center gap-2 px-3 py-1.5 bg-slate-950/50 border border-slate-800 rounded-lg hover:border-indigo-500/50 transition-all group/pass"
-                            >
-                              <Lock
-                                size={12}
-                                className="text-slate-500 group-hover/pass:text-indigo-400 transition-colors"
-                              />
-                              <span className="text-slate-600 dark:text-slate-400 font-mono text-xs">
-                                ••••••
-                              </span>
-                            </button>
-                            {u.requires2FA && (
-                              <div
-                                className="w-5 h-5 bg-indigo-100 dark:bg-indigo-900/50 border border-indigo-200 dark:border-indigo-600 rounded flex items-center justify-center"
-                                title="2FA Activé"
-                              >
-                                <ShieldCheck
-                                  size={10}
-                                  className="text-indigo-900 dark:text-indigo-100"
-                                />
-                              </div>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-2 py-5">
-                          <div className="flex justify-end gap-1">
-                            <button
-                              onClick={async () => {
-                                try {
-                                  if (user && typeof auditService?.logAction === 'function') {
-                                    await auditService.logAction(
-                                      user,
-                                      'Impersonation Demarree',
-                                      'UTILISATEURS',
-                                      `A demarre la simulation du compte "${u.name}" (${u.email}) - Role: ${u.role}`,
-                                      'warning'
-                                    );
-                                  }
-                                } catch (e) {
-                                  console.warn('[AdminUsers] Audit impersonation failed:', e);
-                                }
-                                impersonate(u);
-                                toast(`🎭 Simulation de "${u.name}" activée`, { icon: 'ℹ️' });
-                              }}
-                              title="Simuler cet accès (God Mode Simulation)"
-                              className="w-9 h-9 flex items-center justify-center bg-indigo-600 text-white hover:bg-white hover:text-indigo-600 shadow-lg shadow-indigo-500/20 transition-all rounded-xl active:scale-90"
-                            >
-                              <span className="text-base" role="img" aria-label="Simuler">
-                                👁️
-                              </span>
-                            </button>
-                            <button
-                              onClick={() => openEdit(u)}
-                              aria-label="Modifier les détails"
-                              className="w-9 h-9 flex items-center justify-center bg-slate-800 text-white hover:bg-slate-700 transition-all rounded-xl active:scale-90 border border-slate-700"
-                            >
-                              <span className="text-base" role="img" aria-label="Modifier">
-                                ✏️
-                              </span>
-                            </button>
-                            <button
-                              onClick={() => openDelete(u)}
-                              aria-label="Supprimer définitivement"
-                              className="w-9 h-9 flex items-center justify-center bg-rose-600/10 text-rose-500 hover:bg-rose-600 hover:text-white border border-rose-500/20 transition-all rounded-xl active:scale-90"
-                            >
-                              <span className="text-base" role="img" aria-label="Supprimer">
-                                🗑️
-                              </span>
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-            {loading ? (
-              <div className="p-20 text-center space-y-4">
-                <div className="w-16 h-16 flex items-center justify-center mx-auto">
-                  <RefreshCcw size={32} className="text-indigo-400 animate-spin" />
-                </div>
-                <div>
-                  <h3 className="text-white font-black">Chargement...</h3>
-                  <p className="text-slate-500 text-sm mt-1">
-                    Récupération des utilisateurs en cours.
-                  </p>
-                </div>
-              </div>
-            ) : filtered.length === 0 ? (
-              <div className="p-20 text-center space-y-4">
-                <div className="w-16 h-16 bg-slate-800/50 border border-slate-700/50 rounded-3xl inline-flex items-center justify-center mb-2">
-                  <Search size={24} className="text-slate-600 dark:text-slate-400" />
-                </div>
-                <div>
-                  <h3 className="text-white font-black">Aucun utilisateur trouvé</h3>
-                  <p className="text-slate-500 text-sm mt-1">
-                    {search
-                      ? `Votre recherche "${search}" n'a donné aucun résultat.`
-                      : 'Commencez par créer votre premier compte utilisateur.'}
-                  </p>
-                </div>
-              </div>
-            ) : null}
-          </div>
+          <AdminUsersTable
+            users={users}
+            search={search}
+            loading={loading}
+            ROLE_CONFIG={ROLE_CONFIG}
+            normalizeRole={normalizeRole}
+            AppRole={AppRole}
+            isMasterAdminEmail={isMasterAdminEmail}
+            onEdit={openEdit}
+            onDelete={openDelete}
+            onImpersonate={(u) => impersonate(u)}
+          />
         </div>
 
         {/* ── Create / Edit Form Drawer ── */}
@@ -1580,7 +1550,9 @@ export default function AdminUsers() {
                     <input
                       type={showPass ? 'text' : 'password'}
                       value={form.password}
-                      onChange={(e) => setForm((f: UserForm) => ({ ...f, password: e.target.value }))}
+                      onChange={(e) =>
+                        setForm((f: UserForm) => ({ ...f, password: e.target.value }))
+                      }
                       placeholder="Min. 6 caractères"
                       title="Mot de passe"
                       autoComplete="new-password"
@@ -1614,7 +1586,7 @@ export default function AdminUsers() {
                           onClick={() =>
                             setForm((f: UserForm) => ({
                               ...f,
-                              role,
+                              role: role as UserRole,
                               teamId: role !== 'CHEF_EQUIPE' ? undefined : f.teamId,
                             }))
                           }
@@ -1624,7 +1596,11 @@ export default function AdminUsers() {
                               : 'bg-slate-950 border-slate-800 text-slate-500 hover:border-slate-700'
                           } ${isImmutable ? 'cursor-not-allowed opacity-80' : ''}`}
                         >
-                          {(() => { const Icon = cfg.icon; return <Icon size={14} /> })()} {cfg.label}
+                          {(() => {
+                            const Icon = cfg.icon;
+                            return <Icon size={14} />;
+                          })()}{' '}
+                          {cfg.label}
                         </button>
                       );
                     })}
@@ -1702,23 +1678,25 @@ export default function AdminUsers() {
                                     : 'border-slate-600'
                                 }`}
                               >
-                                {isAssigned && <CheckCircle2 size={12} />}
+                                {isAssigned && <CheckIcon size={12} />}
                               </div>
                               <div className="flex flex-col">
-                                <span className={`text-xs font-bold ${isAssigned ? 'text-indigo-400' : 'text-slate-400'}`}>
+                                <span
+                                  className={`text-xs font-bold ${isAssigned ? 'text-indigo-400' : 'text-slate-400'}`}
+                                >
                                   {p.name}
                                 </span>
                                 <span className="text-[8px] text-slate-600 uppercase font-bold tracking-widest">
-                                  {p.client || 'Sans Client'}
+                                  {(p as any).client || 'Sans Client'}
                                 </span>
                               </div>
                             </div>
-                            
-                              {isAssigned && (
-                                <span className="text-[8px] px-2 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 font-black uppercase tracking-widest">
-                                  Accès Activé
-                                </span>
-                              )}
+
+                            {isAssigned && (
+                              <span className="text-[8px] px-2 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 font-black uppercase tracking-widest">
+                                Accès Activé
+                              </span>
+                            )}
                           </label>
                         );
                       })
@@ -1730,10 +1708,12 @@ export default function AdminUsers() {
                 </div>
 
                 {/* 2FA (Admin only) */}
-                {form.role === 'ADMIN_PROQUELEC' && (
+                {normalizeRole(form.role) === AppRole.ADMIN && (
                   <label className="flex items-center gap-3 cursor-pointer">
                     <div
-                      onClick={() => setForm((f: UserForm) => ({ ...f, requires2FA: !f.requires2FA }))}
+                      onClick={() =>
+                        setForm((f: UserForm) => ({ ...f, requires2FA: !f.requires2FA }))
+                      }
                       className={`w-10 h-6 rounded-full transition-all flex items-center px-0.5 ${form.requires2FA ? 'bg-indigo-600' : 'bg-slate-700'}`}
                     >
                       <div
@@ -1776,9 +1756,7 @@ export default function AdminUsers() {
                       },
                       {
                         title: '👥 Équipes & Organisation',
-                        keys: [
-                          'UI_TEAMS',
-                        ],
+                        keys: ['UI_TEAMS'],
                       },
                       {
                         title: '💰 Finances & Budgets',
@@ -1804,25 +1782,15 @@ export default function AdminUsers() {
                       },
                       {
                         title: '📁 Projets & Planning',
-                        keys: [
-                          'UI_PROJECTS',
-                          'UI_DASHBOARD',
-                        ],
+                        keys: ['UI_PROJECTS', 'UI_DASHBOARD'],
                       },
                       {
                         title: '📦 Logistique & Kobo',
-                        keys: [
-                          'LOGISTIQUE_READ',
-                          'LOGISTIQUE_MANAGE',
-                        ],
+                        keys: ['LOGISTIQUE_READ', 'LOGISTIQUE_MANAGE'],
                       },
                       {
                         title: '📊 Rapports & Documents',
-                        keys: [
-                          'DOCS_READ',
-                          'DOCS_CONFIDENTIAL',
-                          'DOCS_PV',
-                        ],
+                        keys: ['DOCS_READ', 'DOCS_CONFIDENTIAL', 'DOCS_PV'],
                       },
                       { title: '🎓 Formations', keys: ['UI_TRAINING'] },
                       {
@@ -1847,7 +1815,7 @@ export default function AdminUsers() {
                       .filter((key) => {
                         const value = PERMISSIONS[key as keyof typeof PERMISSIONS];
                         if (!value) return false;
-                        if (form.role === 'ADMIN_PROQUELEC' || isMasterAdminEmail(form.email))
+                        if (normalizeRole(form.role) === AppRole.ADMIN || isMasterAdminEmail(form.email))
                           return true;
                         return form.permissions === null || form.permissions === undefined
                           ? (ROLE_PERMISSIONS[currentRole] || []).includes(value)
@@ -1879,7 +1847,7 @@ export default function AdminUsers() {
                           </div>
 
                           {/* Row 2: Mode Badge + Action Buttons */}
-                          {!(form.role === 'ADMIN_PROQUELEC' || isMasterAdminEmail(form.email)) && (
+                          {!(normalizeRole(form.role) === AppRole.ADMIN || isMasterAdminEmail(form.email)) && (
                             <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-slate-800/50">
                               {form.permissions === null || form.permissions === undefined ? (
                                 <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
@@ -1914,7 +1882,11 @@ export default function AdminUsers() {
                                       normalizeRole(form.role) || (form.role as UserRole);
                                     setForm((f: UserForm) => ({
                                       ...f,
-                                      permissions: [...(ROLE_PERMISSIONS[currentRole] || [])],
+                                      permissions: [
+                                        ...(ROLE_PERMISSIONS[
+                                          currentRole as keyof typeof ROLE_PERMISSIONS
+                                        ] || []),
+                                      ],
                                     }));
                                     toast.success('Permissions du rôle appliquées');
                                   }}
@@ -1925,7 +1897,9 @@ export default function AdminUsers() {
 
                                 <button
                                   type="button"
-                                  onClick={() => setForm((f: UserForm) => ({ ...f, permissions: [] }))}
+                                  onClick={() =>
+                                    setForm((f: UserForm) => ({ ...f, permissions: [] }))
+                                  }
                                   className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] font-black uppercase tracking-widest transition-all active:scale-95"
                                 >
                                   Réinitialiser
@@ -1935,7 +1909,7 @@ export default function AdminUsers() {
                           )}
                         </div>
 
-                        {form.role === 'ADMIN_PROQUELEC' || isMasterAdminEmail(form.email) ? (
+                        {normalizeRole(form.role) === AppRole.ADMIN || isMasterAdminEmail(form.email) ? (
                           <div className="p-6 rounded-[2rem] bg-indigo-500/10 border border-indigo-500/30 flex flex-col items-center text-center gap-3">
                             <div className="w-12 h-12 rounded-2xl bg-indigo-500 flex items-center justify-center text-white shadow-lg shadow-indigo-500/40">
                               <Award size={24} />
@@ -1954,9 +1928,8 @@ export default function AdminUsers() {
                         ) : (
                           <div className="space-y-6 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar p-1">
                             {/* 🚀 QUICK PACKS FOR MANAGEMENT ROLES */}
-                            {(normalizeRole(form.role) === 'PROQUELEC_DG' || 
-                              normalizeRole(form.role) === 'PROQUELEC_CHEF_PROJET' ||
-                              normalizeRole(form.role) === 'PROQUELEC_DIRECTION') && (
+                            {(normalizeRole(form.role) === AppRole.DIRECTEUR ||
+                              normalizeRole(form.role) === AppRole.CHEF_PROJET) && (
                               <div className="space-y-3 mb-6">
                                 <h5 className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em] pl-1 border-l-2 border-indigo-500 leading-none">
                                   ⚡ Pilotage par Modules (Unifié)
@@ -1967,9 +1940,11 @@ export default function AdminUsers() {
                                       normalizeRole(form.role) || (form.role as PermissionUserRole);
                                     const isAuto =
                                       form.permissions === null || form.permissions === undefined;
-                                    const current = isAuto
-                                      ? ROLE_PERMISSIONS[currentRole] || []
-                                      : form.permissions;
+                                    const current: string[] = isAuto
+                                      ? (ROLE_PERMISSIONS[
+                                          currentRole as keyof typeof ROLE_PERMISSIONS
+                                        ] ?? [])
+                                      : (form.permissions ?? []);
                                     const isActive = pack.permissions.every((p) =>
                                       current.includes(p)
                                     );
@@ -1988,14 +1963,19 @@ export default function AdminUsers() {
                                         <div
                                           className={`w-8 h-8 rounded-lg flex items-center justify-center mb-2 ${isActive ? pack.color : 'text-slate-600'}`}
                                         >
-                                          {(() => { const Icon = pack.icon; return <Icon size={18} /> })()}
+                                          {(() => {
+                                            const Icon = pack.icon;
+                                            return <Icon size={18} />;
+                                          })()}
                                         </div>
                                         <span
                                           className={`text-[10px] font-black uppercase tracking-tight ${isActive ? 'text-white' : 'text-slate-500'}`}
                                         >
                                           {pack.label}
                                         </span>
-                                        <p className={`text-[8px] mt-1 text-center font-medium leading-tight px-1 ${isActive ? 'text-white/60' : 'text-slate-600'}`}>
+                                        <p
+                                          className={`text-[8px] mt-1 text-center font-medium leading-tight px-1 ${isActive ? 'text-white/60' : 'text-slate-600'}`}
+                                        >
                                           {pack.desc}
                                         </p>
                                       </button>
@@ -2021,10 +2001,14 @@ export default function AdminUsers() {
                                         (form.role as PermissionUserRole);
                                       const isAuto =
                                         form.permissions === null || form.permissions === undefined;
-                                      const roleHasIt = (ROLE_PERMISSIONS[currentRole] || []).includes(
-                                        value
-                                      );
-                                      const isChecked = isAuto ? roleHasIt : form.permissions.includes(value);
+                                      const roleHasIt = (
+                                        ROLE_PERMISSIONS[
+                                          currentRole as keyof typeof ROLE_PERMISSIONS
+                                        ] || []
+                                      ).includes(value);
+                                      const isChecked = isAuto
+                                        ? roleHasIt
+                                        : (form.permissions ?? []).includes(value);
 
                                       const label = PERMISSION_LABELS[value] || value;
                                       return (
@@ -2050,7 +2034,7 @@ export default function AdminUsers() {
                                                   : 'border-slate-600'
                                               }`}
                                             >
-                                              {isChecked && <CheckCircle2 size={12} />}
+                                              {isChecked && <CheckIcon size={12} />}
                                             </div>
                                             <div className="flex flex-col">
                                               <span
@@ -2130,10 +2114,19 @@ export default function AdminUsers() {
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-black transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/25 active:scale-95"
+                    disabled={saving}
+                    className="flex-1 py-3.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-2xl font-black transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/25 active:scale-95"
                   >
-                    <Save size={16} />{' '}
-                    {editId ? 'Enregistrer les modifications' : 'Créer le compte'}
+                    {saving ? (
+                      <div className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                    ) : (
+                      <Save size={16} />
+                    )}
+                    {saving
+                      ? 'Enregistrement…'
+                      : editId
+                        ? 'Enregistrer les modifications'
+                        : 'Créer le compte'}
                   </button>
                 </div>
               </form>

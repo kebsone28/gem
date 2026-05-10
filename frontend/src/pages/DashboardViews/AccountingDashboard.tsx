@@ -9,7 +9,6 @@ import {
   ShieldCheck,
   DollarSign,
   TrendingUp,
-  TrendingDown,
   FileText,
   Calculator,
   CreditCard,
@@ -20,18 +19,15 @@ import {
   Download,
   Eye,
   CheckCircle2,
-  Clock,
 } from 'lucide-react';
 import { PageContainer, PageHeader, ContentArea } from '../../components';
 import {
   DASHBOARD_ACTION_TILE_PRIMARY,
   DASHBOARD_ACTION_TILE_SECONDARY,
   DASHBOARD_MINI_STAT_CARD,
-  DASHBOARD_PRIMARY_BUTTON,
   DASHBOARD_STICKY_PANEL,
   StatusBadge,
   KPICard,
-  ProgressBar,
 } from '../../components/dashboards/DashboardComponents';
 import { fmtNum } from '../../utils/format';
 
@@ -84,29 +80,31 @@ export default function AccountingDashboard() {
   const households = useLiveQuery(() => db.households.toArray()) || [];
   const teams = useLiveQuery(() => db.teams.toArray()) || [];
 
-  const [selectedView, setSelectedView] = useState<'overview' | 'budget' | 'cashflow' | 'reports' | 'compliance'>('overview');
+  const [selectedView, setSelectedView] = useState<
+    'overview' | 'budget' | 'cashflow' | 'reports' | 'compliance'
+  >('overview');
 
   // Vérification des permissions
-  const canViewFinances = peut(PERMISSIONS.VOIR_FINANCES);
-  const canViewPayments = peut(PERMISSIONS.VOIR_PAIEMENTS);
-  const canExportAccounting = peut(PERMISSIONS.EXPORTER_COMPTABILITE);
-  const canManageLogistics = peut(PERMISSIONS.GERER_LOGISTIQUE);
-  const canViewLogistics = peut(PERMISSIONS.VOIR_LOGISTIQUE);
+  const canViewFinances = peut(PERMISSIONS.FINANCE_READ);
+  const canViewPayments = peut(PERMISSIONS.FINANCE_PAYMENTS);
+  const canExportAccounting = peut(PERMISSIONS.FINANCE_EXPORT);
+  const _canManageLogistics = peut(PERMISSIONS.LOGISTIQUE_MANAGE);
+  const _canViewLogistics = peut(PERMISSIONS.LOGISTIQUE_READ);
 
   // Calcul des métriques budgétaires
   const budgetMetrics: BudgetMetrics = useMemo(() => {
     // Simulation de données budgétaires (à remplacer avec vraies données)
     const totalBudget = 50000000; // 50M FCFA
-    const completedHouseholds = households.filter(h => h.status === 'Terminé').length;
+    const completedHouseholds = households.filter((h) => h.status === 'Terminé').length;
     const totalHouseholds = households.length;
-    const progress = totalHouseholds > 0 ? (completedHouseholds / totalHouseholds) : 0;
-    
+    const progress = totalHouseholds > 0 ? completedHouseholds / totalHouseholds : 0;
+
     const utilizedBudget = totalBudget * progress;
     const remainingBudget = totalBudget - utilizedBudget;
     const utilizationRate = (utilizedBudget / totalBudget) * 100;
     const monthlyBurnRate = totalBudget / 12; // 12 mois de projet
-    const projectedCompletion = progress > 0 ? (totalBudget / (utilizedBudget / progress)) : 0;
-    const budgetVariance = Math.random() * 10 - 5; // -5% à +5%
+    const projectedCompletion = progress > 0 ? totalBudget / (utilizedBudget / progress) : 0;
+    const budgetVariance = utilizationRate > 100 ? -5 : utilizationRate > 80 ? 2 : 0; // déterministe
 
     return {
       totalBudget,
@@ -127,7 +125,7 @@ export default function AccountingDashboard() {
     const netCashFlow = monthlyInflow - monthlyOutflow;
     const cashFlowTrend = netCashFlow > 0 ? 'up' : netCashFlow < 0 ? 'down' : 'stable';
     const workingCapital = currentBalance * 0.3; // 30% en fonds de roulement
-    const liquidityRatio = currentBalance > 0 ? (currentBalance / monthlyOutflow) : 0;
+    const liquidityRatio = currentBalance > 0 ? currentBalance / monthlyOutflow : 0;
 
     return {
       currentBalance,
@@ -167,12 +165,12 @@ export default function AccountingDashboard() {
 
   // Calcul des métriques de conformité
   const complianceMetrics: ComplianceMetrics = useMemo(() => {
-    const auditScore = 85 + Math.random() * 10; // 85-95%
-    const complianceRate = 90 + Math.random() * 8; // 90-98%
-    const pendingAudits = Math.floor(Math.random() * 3);
+    const auditScore = 90; // score fixe — remplacer par API audit réelle
+    const complianceRate = 94; // taux fixe — remplacer par API
+    const pendingAudits = 0; // à brancher sur API
     const validatedTransactions = Math.floor(households.length * 0.95);
     const flaggedTransactions = Math.floor(households.length * 0.05);
-    const lastAuditDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000); // 7 jours
+    const lastAuditDate = new Date(new Date().setDate(new Date().getDate() - 7));
 
     return {
       auditScore,
@@ -192,7 +190,7 @@ export default function AccountingDashboard() {
   const ViewSelector = () => (
     <div className="flex gap-2 p-1 bg-white/5 rounded-xl">
       {[
-        { id: 'overview', label: 'Vue d\'ensemble', icon: BarChart3 },
+        { id: 'overview', label: "Vue d'ensemble", icon: BarChart3 },
         { id: 'budget', label: 'Budget', icon: Calculator },
         { id: 'cashflow', label: 'Trésorerie', icon: CreditCard },
         { id: 'reports', label: 'Rapports', icon: FileText },
@@ -265,7 +263,9 @@ export default function AccountingDashboard() {
                         <Download size={18} />
                       </div>
                       <div>
-                        <p className="text-[11px] font-black uppercase tracking-[0.06em]">Exporter</p>
+                        <p className="text-[11px] font-black uppercase tracking-[0.06em]">
+                          Exporter
+                        </p>
                         <p className="mt-1 text-[12px] text-slate-400">Rapports comptables</p>
                       </div>
                     </div>
@@ -281,7 +281,9 @@ export default function AccountingDashboard() {
                         <CreditCard size={18} />
                       </div>
                       <div>
-                        <p className="text-[11px] font-black uppercase tracking-[0.06em]">Paiements</p>
+                        <p className="text-[11px] font-black uppercase tracking-[0.06em]">
+                          Paiements
+                        </p>
                         <p className="mt-1 text-[12px] text-slate-400">Suivi et validation</p>
                       </div>
                     </div>
@@ -297,7 +299,9 @@ export default function AccountingDashboard() {
                         <Activity size={18} />
                       </div>
                       <div>
-                        <p className="text-[11px] font-black uppercase tracking-[0.06em]">Logistique</p>
+                        <p className="text-[11px] font-black uppercase tracking-[0.06em]">
+                          Logistique
+                        </p>
                         <p className="mt-1 text-[12px] text-slate-400">Coûts et stocks</p>
                       </div>
                     </div>
@@ -313,7 +317,9 @@ export default function AccountingDashboard() {
                         <Eye size={18} />
                       </div>
                       <div>
-                        <p className="text-[11px] font-black uppercase tracking-[0.06em]">Finances</p>
+                        <p className="text-[11px] font-black uppercase tracking-[0.06em]">
+                          Finances
+                        </p>
                         <p className="mt-1 text-[12px] text-blue-100/90">Vue détaillée</p>
                       </div>
                     </div>
@@ -325,15 +331,28 @@ export default function AccountingDashboard() {
               <div className="overflow-x-auto pb-1">
                 <div className="flex min-w-max gap-3">
                   {[
-                    { label: 'Budget utilisé', value: `${budgetMetrics.utilizationRate.toFixed(1)}%`, icon: Calculator },
-                    { label: 'Solde actuel', value: fmtNum(cashFlowMetrics.currentBalance), icon: CreditCard },
-                    { label: 'Marge brute', value: `${financialReports.profitMargin.toFixed(1)}%`, icon: TrendingUp },
-                    { label: 'Score audit', value: `${complianceMetrics.auditScore.toFixed(1)}/100`, icon: CheckCircle2 },
+                    {
+                      label: 'Budget utilisé',
+                      value: `${budgetMetrics.utilizationRate.toFixed(1)}%`,
+                      icon: Calculator,
+                    },
+                    {
+                      label: 'Solde actuel',
+                      value: fmtNum(cashFlowMetrics.currentBalance),
+                      icon: CreditCard,
+                    },
+                    {
+                      label: 'Marge brute',
+                      value: `${financialReports.profitMargin.toFixed(1)}%`,
+                      icon: TrendingUp,
+                    },
+                    {
+                      label: 'Score audit',
+                      value: `${complianceMetrics.auditScore.toFixed(1)}/100`,
+                      icon: CheckCircle2,
+                    },
                   ].map(({ label, value, icon: Icon }) => (
-                    <div
-                      key={label}
-                      className={DASHBOARD_MINI_STAT_CARD}
-                    >
+                    <div key={label} className={DASHBOARD_MINI_STAT_CARD}>
                       <div className="flex items-center gap-3">
                         <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/5 text-blue-300">
                           <Icon size={16} />
@@ -342,7 +361,9 @@ export default function AccountingDashboard() {
                           <p className="text-[10px] font-black uppercase tracking-[0.06em] text-slate-400">
                             {label}
                           </p>
-                          <p className="mt-1 text-xl font-black tracking-tight text-white">{value}</p>
+                          <p className="mt-1 text-xl font-black tracking-tight text-white">
+                            {value}
+                          </p>
                         </div>
                       </div>
                     </div>
@@ -371,7 +392,11 @@ export default function AccountingDashboard() {
                   title="TRÉSORERIE"
                   value={fmtNum(cashFlowMetrics.currentBalance)}
                   icon={<CreditCard size={22} />}
-                  trend={{ value: cashFlowMetrics.netCashFlow, isUp: cashFlowMetrics.cashFlowTrend === 'up', label: 'NET MENSUEL' }}
+                  trend={{
+                    value: cashFlowMetrics.netCashFlow,
+                    isUp: cashFlowMetrics.cashFlowTrend === 'up',
+                    label: 'NET MENSUEL',
+                  }}
                 />
                 <KPICard
                   title="MARGE NETTE"
@@ -401,7 +426,9 @@ export default function AccountingDashboard() {
                           <span className="text-sm text-white">{expense.category}</span>
                         </div>
                         <div className="text-right">
-                          <p className="text-sm font-medium text-white">{fmtNum(expense.amount)} FCFA</p>
+                          <p className="text-sm font-medium text-white">
+                            {fmtNum(expense.amount)} FCFA
+                          </p>
                           <p className="text-xs text-slate-400">{expense.percentage}%</p>
                         </div>
                       </div>
@@ -416,7 +443,9 @@ export default function AccountingDashboard() {
                   <div className="space-y-3">
                     {budgetMetrics.utilizationRate > 80 && (
                       <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
-                        <p className="text-sm text-amber-400">⚠️ Budget utilisé à {budgetMetrics.utilizationRate.toFixed(1)}%</p>
+                        <p className="text-sm text-amber-400">
+                          ⚠️ Budget utilisé à {budgetMetrics.utilizationRate.toFixed(1)}%
+                        </p>
                       </div>
                     )}
                     {cashFlowMetrics.liquidityRatio < 2 && (
@@ -426,14 +455,18 @@ export default function AccountingDashboard() {
                     )}
                     {complianceMetrics.flaggedTransactions > 0 && (
                       <div className="p-3 bg-orange-500/10 border border-orange-500/20 rounded-lg">
-                        <p className="text-sm text-orange-400">📋 {complianceMetrics.flaggedTransactions} transactions à vérifier</p>
+                        <p className="text-sm text-orange-400">
+                          📋 {complianceMetrics.flaggedTransactions} transactions à vérifier
+                        </p>
                       </div>
                     )}
-                    {budgetMetrics.utilizationRate <= 80 && cashFlowMetrics.liquidityRatio >= 2 && complianceMetrics.flaggedTransactions === 0 && (
-                      <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
-                        <p className="text-sm text-emerald-400">✅ Situation financière saine</p>
-                      </div>
-                    )}
+                    {budgetMetrics.utilizationRate <= 80 &&
+                      cashFlowMetrics.liquidityRatio >= 2 &&
+                      complianceMetrics.flaggedTransactions === 0 && (
+                        <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
+                          <p className="text-sm text-emerald-400">✅ Situation financière saine</p>
+                        </div>
+                      )}
                   </div>
                 </div>
               </div>
@@ -451,22 +484,28 @@ export default function AccountingDashboard() {
                 <h3 className="text-[11px] font-black mb-4 flex items-center gap-2 text-blue-300/65 uppercase tracking-[0.08em]">
                   <Calculator size={18} className="text-blue-500" /> Analyse Budgétaire
                 </h3>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <h4 className="text-sm font-medium text-white mb-3">Répartition du Budget</h4>
                     <div className="space-y-3">
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-slate-400">Budget total</span>
-                        <span className="text-sm font-medium text-white">{fmtNum(budgetMetrics.totalBudget)} FCFA</span>
+                        <span className="text-sm font-medium text-white">
+                          {fmtNum(budgetMetrics.totalBudget)} FCFA
+                        </span>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-slate-400">Budget utilisé</span>
-                        <span className="text-sm font-medium text-white">{fmtNum(budgetMetrics.utilizedBudget)} FCFA</span>
+                        <span className="text-sm font-medium text-white">
+                          {fmtNum(budgetMetrics.utilizedBudget)} FCFA
+                        </span>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-slate-400">Budget restant</span>
-                        <span className="text-sm font-medium text-emerald-400">{fmtNum(budgetMetrics.remainingBudget)} FCFA</span>
+                        <span className="text-sm font-medium text-emerald-400">
+                          {fmtNum(budgetMetrics.remainingBudget)} FCFA
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -476,16 +515,23 @@ export default function AccountingDashboard() {
                     <div className="space-y-3">
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-slate-400">Taux d'utilisation</span>
-                        <span className="text-sm font-medium text-white">{budgetMetrics.utilizationRate.toFixed(1)}%</span>
+                        <span className="text-sm font-medium text-white">
+                          {budgetMetrics.utilizationRate.toFixed(1)}%
+                        </span>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-slate-400">Burn rate mensuel</span>
-                        <span className="text-sm font-medium text-white">{fmtNum(budgetMetrics.monthlyBurnRate)} FCFA</span>
+                        <span className="text-sm font-medium text-white">
+                          {fmtNum(budgetMetrics.monthlyBurnRate)} FCFA
+                        </span>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-slate-400">Variance budgétaire</span>
-                        <span className={`text-sm font-medium ${budgetMetrics.budgetVariance > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                          {budgetMetrics.budgetVariance > 0 ? '+' : ''}{budgetMetrics.budgetVariance.toFixed(1)}%
+                        <span
+                          className={`text-sm font-medium ${budgetMetrics.budgetVariance > 0 ? 'text-emerald-400' : 'text-red-400'}`}
+                        >
+                          {budgetMetrics.budgetVariance > 0 ? '+' : ''}
+                          {budgetMetrics.budgetVariance.toFixed(1)}%
                         </span>
                       </div>
                     </div>
@@ -497,7 +543,13 @@ export default function AccountingDashboard() {
                     label="Progression Budgétaire"
                     count={`${fmtNum(budgetMetrics.utilizedBudget)} / ${fmtNum(budgetMetrics.totalBudget)} FCFA`}
                     percentage={budgetMetrics.utilizationRate}
-                    status={budgetMetrics.utilizationRate >= 90 ? 'warning' : budgetMetrics.utilizationRate >= 70 ? 'info' : 'success'}
+                    status={
+                      budgetMetrics.utilizationRate >= 90
+                        ? 'warning'
+                        : budgetMetrics.utilizationRate >= 70
+                          ? 'info'
+                          : 'success'
+                    }
                   />
                 </div>
               </div>
@@ -515,22 +567,28 @@ export default function AccountingDashboard() {
                 <h3 className="text-[11px] font-black mb-4 flex items-center gap-2 text-blue-300/65 uppercase tracking-[0.08em]">
                   <CreditCard size={18} className="text-blue-500" /> Trésorerie et Cash Flow
                 </h3>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <h4 className="text-sm font-medium text-white mb-3">Position Actuelle</h4>
                     <div className="space-y-3">
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-slate-400">Solde actuel</span>
-                        <span className="text-sm font-medium text-white">{fmtNum(cashFlowMetrics.currentBalance)} FCFA</span>
+                        <span className="text-sm font-medium text-white">
+                          {fmtNum(cashFlowMetrics.currentBalance)} FCFA
+                        </span>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-slate-400">Fonds de roulement</span>
-                        <span className="text-sm font-medium text-white">{fmtNum(cashFlowMetrics.workingCapital)} FCFA</span>
+                        <span className="text-sm font-medium text-white">
+                          {fmtNum(cashFlowMetrics.workingCapital)} FCFA
+                        </span>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-slate-400">Ratio de liquidité</span>
-                        <span className="text-sm font-medium text-white">{cashFlowMetrics.liquidityRatio.toFixed(1)} mois</span>
+                        <span className="text-sm font-medium text-white">
+                          {cashFlowMetrics.liquidityRatio.toFixed(1)} mois
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -540,16 +598,23 @@ export default function AccountingDashboard() {
                     <div className="space-y-3">
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-slate-400">Entrées</span>
-                        <span className="text-sm font-medium text-emerald-400">+{fmtNum(cashFlowMetrics.monthlyInflow)} FCFA</span>
+                        <span className="text-sm font-medium text-emerald-400">
+                          +{fmtNum(cashFlowMetrics.monthlyInflow)} FCFA
+                        </span>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-slate-400">Sorties</span>
-                        <span className="text-sm font-medium text-red-400">-{fmtNum(cashFlowMetrics.monthlyOutflow)} FCFA</span>
+                        <span className="text-sm font-medium text-red-400">
+                          -{fmtNum(cashFlowMetrics.monthlyOutflow)} FCFA
+                        </span>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-slate-400">Net mensuel</span>
-                        <span className={`text-sm font-medium ${cashFlowMetrics.netCashFlow > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                          {cashFlowMetrics.netCashFlow > 0 ? '+' : ''}{fmtNum(cashFlowMetrics.netCashFlow)} FCFA
+                        <span
+                          className={`text-sm font-medium ${cashFlowMetrics.netCashFlow > 0 ? 'text-emerald-400' : 'text-red-400'}`}
+                        >
+                          {cashFlowMetrics.netCashFlow > 0 ? '+' : ''}
+                          {fmtNum(cashFlowMetrics.netCashFlow)} FCFA
                         </span>
                       </div>
                     </div>
@@ -570,26 +635,34 @@ export default function AccountingDashboard() {
                 <h3 className="text-[11px] font-black mb-4 flex items-center gap-2 text-blue-300/65 uppercase tracking-[0.08em]">
                   <FileText size={18} className="text-blue-500" /> Rapports Financiers
                 </h3>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <h4 className="text-sm font-medium text-white mb-3">Performance</h4>
                     <div className="space-y-3">
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-slate-400">Revenus générés</span>
-                        <span className="text-sm font-medium text-white">{fmtNum(financialReports.revenueGenerated)} FCFA</span>
+                        <span className="text-sm font-medium text-white">
+                          {fmtNum(financialReports.revenueGenerated)} FCFA
+                        </span>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-slate-400">Coûts opérationnels</span>
-                        <span className="text-sm font-medium text-white">{fmtNum(financialReports.operatingCosts)} FCFA</span>
+                        <span className="text-sm font-medium text-white">
+                          {fmtNum(financialReports.operatingCosts)} FCFA
+                        </span>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-slate-400">Marge brute</span>
-                        <span className="text-sm font-medium text-emerald-400">{fmtNum(financialReports.grossMargin)} FCFA</span>
+                        <span className="text-sm font-medium text-emerald-400">
+                          {fmtNum(financialReports.grossMargin)} FCFA
+                        </span>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-slate-400">Profit net</span>
-                        <span className="text-sm font-medium text-emerald-400">{fmtNum(financialReports.netProfit)} FCFA</span>
+                        <span className="text-sm font-medium text-emerald-400">
+                          {fmtNum(financialReports.netProfit)} FCFA
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -599,7 +672,9 @@ export default function AccountingDashboard() {
                     <div className="space-y-3">
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-slate-400">Marge nette</span>
-                        <span className="text-sm font-medium text-white">{financialReports.profitMargin.toFixed(1)}%</span>
+                        <span className="text-sm font-medium text-white">
+                          {financialReports.profitMargin.toFixed(1)}%
+                        </span>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-slate-400">ROI projet</span>
@@ -627,22 +702,28 @@ export default function AccountingDashboard() {
                 <h3 className="text-[11px] font-black mb-4 flex items-center gap-2 text-blue-300/65 uppercase tracking-[0.08em]">
                   <CheckCircle2 size={18} className="text-blue-500" /> Conformité et Audit
                 </h3>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <h4 className="text-sm font-medium text-white mb-3">Scores de Conformité</h4>
                     <div className="space-y-3">
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-slate-400">Score d'audit</span>
-                        <span className="text-sm font-medium text-white">{complianceMetrics.auditScore.toFixed(1)}/100</span>
+                        <span className="text-sm font-medium text-white">
+                          {complianceMetrics.auditScore.toFixed(1)}/100
+                        </span>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-slate-400">Taux de conformité</span>
-                        <span className="text-sm font-medium text-emerald-400">{complianceMetrics.complianceRate.toFixed(1)}%</span>
+                        <span className="text-sm font-medium text-emerald-400">
+                          {complianceMetrics.complianceRate.toFixed(1)}%
+                        </span>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-slate-400">Dernier audit</span>
-                        <span className="text-sm font-medium text-white">{complianceMetrics.lastAuditDate.toLocaleDateString('fr-FR')}</span>
+                        <span className="text-sm font-medium text-white">
+                          {complianceMetrics.lastAuditDate.toLocaleDateString('fr-FR')}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -652,15 +733,21 @@ export default function AccountingDashboard() {
                     <div className="space-y-3">
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-slate-400">Transactions validées</span>
-                        <span className="text-sm font-medium text-emerald-400">{complianceMetrics.validatedTransactions}</span>
+                        <span className="text-sm font-medium text-emerald-400">
+                          {complianceMetrics.validatedTransactions}
+                        </span>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-slate-400">Transactions signalées</span>
-                        <span className="text-sm font-medium text-amber-400">{complianceMetrics.flaggedTransactions}</span>
+                        <span className="text-sm font-medium text-amber-400">
+                          {complianceMetrics.flaggedTransactions}
+                        </span>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-slate-400">Audits en attente</span>
-                        <span className="text-sm font-medium text-blue-400">{complianceMetrics.pendingAudits}</span>
+                        <span className="text-sm font-medium text-blue-400">
+                          {complianceMetrics.pendingAudits}
+                        </span>
                       </div>
                     </div>
                   </div>

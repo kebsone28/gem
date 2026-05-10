@@ -41,19 +41,19 @@ interface AssetMetrics {
   assetsActifs: number;
   assetsMaintenance: number;
   assetsHorsService: number;
-  
+
   // Valeur patrimoniale
   valeurTotale: number;
   valeurActifs: number;
   amortissementCumule: number;
   valeurNetComptable: number;
-  
+
   // Maintenance
   interventionsPlanifiees: number;
   interventionsUrgentes: number;
   tempsMoyenIntervention: number;
   coutMaintenanceMensuel: number;
-  
+
   // Performance
   tauxDisponibilite: number;
   tauxPanne: number;
@@ -95,38 +95,40 @@ export default function AssetManagementDashboard() {
   const households = useLiveQuery(() => db.households.toArray()) || [];
   const zones = useLiveQuery(() => db.zones.toArray()) || [];
 
-  const [selectedView, setSelectedView] = useState<'overview' | 'assets' | 'maintenance' | 'reports'>('overview');
+  const [selectedView, setSelectedView] = useState<
+    'overview' | 'assets' | 'maintenance' | 'reports'
+  >('overview');
 
   // Vérification des permissions
-  const canViewMissions = peut(PERMISSIONS.VOIR_MISSIONS);
-  const canViewTeams = peut(PERMISSIONS.VOIR_EQUIPES);
-  const canViewAssets = peut(PERMISSIONS.GERER_MENAGES);
-  const canManageLogistics = peut(PERMISSIONS.GERER_LOGISTIQUE);
-  const canViewReports = peut(PERMISSIONS.VOIR_RAPPORTS_TERRAIN);
-  const canExportData = peut(PERMISSIONS.EXPORTER_DONNEES);
+  const canViewMissions = peut(PERMISSIONS.MISSIONS_READ);
+  const canViewTeams = peut(PERMISSIONS.UI_TEAMS);
+  const canViewAssets = peut(PERMISSIONS.TERRAIN_MENAGES);
+  const canManageLogistics = peut(PERMISSIONS.LOGISTIQUE_MANAGE);
+  const canViewReports = peut(PERMISSIONS.TERRAIN_READ);
+  const canExportData = peut(PERMISSIONS.SYSTEM_EXPORT);
 
   // Calcul des métriques patrimoniales
   const assetMetrics: AssetMetrics = useMemo(() => {
     // Simulations des métriques patrimoniales
-    const totalAssets = 150 + Math.floor(Math.random() * 50); // 150-200 actifs
+    const totalAssets = 175; // valeur représentative — à brancher sur API
     const assetsActifs = Math.floor(totalAssets * 0.85); // 85% actifs
-    const assetsMaintenance = Math.floor(totalAssets * 0.10); // 10% en maintenance
+    const assetsMaintenance = Math.floor(totalAssets * 0.1); // 10% en maintenance
     const assetsHorsService = totalAssets - assetsActifs - assetsMaintenance;
-    
-    const valeurTotale = 50000000 + Math.random() * 10000000; // 50-60M FCFA
+
+    const valeurTotale = 55000000; // valeur représentative — à brancher sur API
     const valeurActifs = valeurTotale * 0.85;
     const amortissementCumule = valeurTotale * 0.25; // 25% amortissement
     const valeurNetComptable = valeurTotale - amortissementCumule;
-    
-    const interventionsPlanifiees = 12 + Math.floor(Math.random() * 8); // 12-20/mois
-    const interventionsUrgentes = Math.floor(Math.random() * 3); // 0-3 urgentes
+
+    const interventionsPlanifiees = 16; // valeur représentative
+    const interventionsUrgentes = 1; // valeur représentative
     const tempsMoyenIntervention = 4.5; // heures
-    const coutMaintenanceMensuel = 2500000 + Math.random() * 1000000; // 2.5-3.5M FCFA
-    
-    const tauxDisponibilite = 92 + Math.random() * 6; // 92-98%
+    const coutMaintenanceMensuel = 3000000; // 3M FCFA représentatif
+
+    const tauxDisponibilite = 95; // 95% représentatif
     const tauxPanne = 100 - tauxDisponibilite;
-    const ageMoyenActifs = 3.2 + Math.random() * 2; // 3.2-5.2 ans
-    const efficaciteMaintenance = 88 + Math.random() * 10; // 88-98%
+    const ageMoyenActifs = 4.2; // ans représentatif
+    const efficaciteMaintenance = 93; // 93% représentatif
 
     return {
       totalAssets,
@@ -181,7 +183,7 @@ export default function AssetManagementDashboard() {
       },
       {
         id: '3',
-        nom: 'Kit d\'Outils Électriques KO-003',
+        nom: "Kit d'Outils Électriques KO-003",
         type: 'outillage',
         statut: 'actif',
         localisation: 'Zone B - Dépôt',
@@ -257,7 +259,7 @@ export default function AssetManagementDashboard() {
   const ViewSelector = () => (
     <div className="flex gap-2 p-1 bg-white/5 rounded-xl">
       {[
-        { id: 'overview', label: 'Vue d\'ensemble', icon: BarChart3 },
+        { id: 'overview', label: "Vue d'ensemble", icon: BarChart3 },
         { id: 'assets', label: 'Actifs', icon: Package },
         { id: 'maintenance', label: 'Maintenance', icon: Wrench },
         { id: 'reports', label: 'Rapports', icon: FileText },
@@ -329,7 +331,9 @@ export default function AssetManagementDashboard() {
                         <Package size={18} />
                       </div>
                       <div>
-                        <p className="text-[11px] font-black uppercase tracking-[0.06em]">Inventaire</p>
+                        <p className="text-[11px] font-black uppercase tracking-[0.06em]">
+                          Inventaire
+                        </p>
                         <p className="mt-1 text-[12px] text-slate-400">Gérer les actifs</p>
                       </div>
                     </div>
@@ -345,7 +349,9 @@ export default function AssetManagementDashboard() {
                         <Wrench size={18} />
                       </div>
                       <div>
-                        <p className="text-[11px] font-black uppercase tracking-[0.06em]">Maintenance</p>
+                        <p className="text-[11px] font-black uppercase tracking-[0.06em]">
+                          Maintenance
+                        </p>
                         <p className="mt-1 text-[12px] text-slate-400">Planifier et suivre</p>
                       </div>
                     </div>
@@ -361,7 +367,9 @@ export default function AssetManagementDashboard() {
                         <FileText size={18} />
                       </div>
                       <div>
-                        <p className="text-[11px] font-black uppercase tracking-[0.06em]">Rapports</p>
+                        <p className="text-[11px] font-black uppercase tracking-[0.06em]">
+                          Rapports
+                        </p>
                         <p className="mt-1 text-[12px] text-slate-400">État et analyses</p>
                       </div>
                     </div>
@@ -390,14 +398,23 @@ export default function AssetManagementDashboard() {
                 <div className="flex min-w-max gap-3">
                   {[
                     { label: 'Actifs totaux', value: assetMetrics.totalAssets, icon: Package },
-                    { label: 'Valeur totale', value: fmtNum(assetMetrics.valeurTotale), icon: DollarSign },
-                    { label: 'Disponibilité', value: `${assetMetrics.tauxDisponibilite.toFixed(1)}%`, icon: CheckCircle2 },
-                    { label: 'Maintenance', value: assetMetrics.interventionsPlanifiees, icon: Wrench },
+                    {
+                      label: 'Valeur totale',
+                      value: fmtNum(assetMetrics.valeurTotale),
+                      icon: DollarSign,
+                    },
+                    {
+                      label: 'Disponibilité',
+                      value: `${assetMetrics.tauxDisponibilite.toFixed(1)}%`,
+                      icon: CheckCircle2,
+                    },
+                    {
+                      label: 'Maintenance',
+                      value: assetMetrics.interventionsPlanifiees,
+                      icon: Wrench,
+                    },
                   ].map(({ label, value, icon: Icon }) => (
-                    <div
-                      key={label}
-                      className={DASHBOARD_MINI_STAT_CARD}
-                    >
+                    <div key={label} className={DASHBOARD_MINI_STAT_CARD}>
                       <div className="flex items-center gap-3">
                         <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/5 text-blue-300">
                           <Icon size={16} />
@@ -406,7 +423,9 @@ export default function AssetManagementDashboard() {
                           <p className="text-[10px] font-black uppercase tracking-[0.06em] text-slate-400">
                             {label}
                           </p>
-                          <p className="mt-1 text-xl font-black tracking-tight text-white">{value}</p>
+                          <p className="mt-1 text-xl font-black tracking-tight text-white">
+                            {value}
+                          </p>
                         </div>
                       </div>
                     </div>
@@ -460,21 +479,33 @@ export default function AssetManagementDashboard() {
                   <div className="space-y-3">
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-slate-400">Actifs opérationnels</span>
-                      <span className="text-sm font-medium text-emerald-400">{assetMetrics.assetsActifs}</span>
+                      <span className="text-sm font-medium text-emerald-400">
+                        {assetMetrics.assetsActifs}
+                      </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-slate-400">En maintenance</span>
-                      <span className="text-sm font-medium text-amber-400">{assetMetrics.assetsMaintenance}</span>
+                      <span className="text-sm font-medium text-amber-400">
+                        {assetMetrics.assetsMaintenance}
+                      </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-slate-400">Hors service</span>
-                      <span className="text-sm font-medium text-red-400">{assetMetrics.assetsHorsService}</span>
+                      <span className="text-sm font-medium text-red-400">
+                        {assetMetrics.assetsHorsService}
+                      </span>
                     </div>
                     <ProgressBar
                       label="Taux de disponibilité"
                       count={`${assetMetrics.assetsActifs} / ${assetMetrics.totalAssets} actifs`}
                       percentage={assetMetrics.tauxDisponibilite}
-                      status={assetMetrics.tauxDisponibilite >= 95 ? 'success' : assetMetrics.tauxDisponibilite >= 90 ? 'warning' : 'info'}
+                      status={
+                        assetMetrics.tauxDisponibilite >= 95
+                          ? 'success'
+                          : assetMetrics.tauxDisponibilite >= 90
+                            ? 'warning'
+                            : 'info'
+                      }
                     />
                   </div>
                 </div>
@@ -486,19 +517,27 @@ export default function AssetManagementDashboard() {
                   <div className="space-y-3">
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-slate-400">Efficacité maintenance</span>
-                      <span className="text-sm font-medium text-white">{assetMetrics.efficaciteMaintenance.toFixed(1)}%</span>
+                      <span className="text-sm font-medium text-white">
+                        {assetMetrics.efficaciteMaintenance.toFixed(1)}%
+                      </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-slate-400">Temps moyen intervention</span>
-                      <span className="text-sm font-medium text-white">{assetMetrics.tempsMoyenIntervention} heures</span>
+                      <span className="text-sm font-medium text-white">
+                        {assetMetrics.tempsMoyenIntervention} heures
+                      </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-slate-400">Âge moyen actifs</span>
-                      <span className="text-sm font-medium text-white">{assetMetrics.ageMoyenActifs.toFixed(1)} ans</span>
+                      <span className="text-sm font-medium text-white">
+                        {assetMetrics.ageMoyenActifs.toFixed(1)} ans
+                      </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-slate-400">Interventions urgentes</span>
-                      <span className="text-sm font-medium text-red-400">{assetMetrics.interventionsUrgentes}</span>
+                      <span className="text-sm font-medium text-red-400">
+                        {assetMetrics.interventionsUrgentes}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -519,21 +558,33 @@ export default function AssetManagementDashboard() {
                 </h3>
                 <div className="space-y-3">
                   {assetsData.map((asset) => (
-                    <div key={asset.id} className={`p-4 rounded-lg border ${
-                      asset.statut === 'actif' ? 'bg-emerald-500/10 border-emerald-500/20' :
-                      asset.statut === 'maintenance' ? 'bg-amber-500/10 border-amber-500/20' :
-                      'bg-red-500/10 border-red-500/20'
-                    }`}>
+                    <div
+                      key={asset.id}
+                      className={`p-4 rounded-lg border ${
+                        asset.statut === 'actif'
+                          ? 'bg-emerald-500/10 border-emerald-500/20'
+                          : asset.statut === 'maintenance'
+                            ? 'bg-amber-500/10 border-amber-500/20'
+                            : 'bg-red-500/10 border-red-500/20'
+                      }`}
+                    >
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-2">
-                            <span className={`text-xs px-2 py-1 rounded ${
-                              asset.statut === 'actif' ? 'bg-emerald-500 text-white' :
-                              asset.statut === 'maintenance' ? 'bg-amber-500 text-white' :
-                              'bg-red-500 text-white'
-                            }`}>
-                              {asset.statut === 'actif' ? 'Actif' :
-                               asset.statut === 'maintenance' ? 'Maintenance' : 'Hors service'}
+                            <span
+                              className={`text-xs px-2 py-1 rounded ${
+                                asset.statut === 'actif'
+                                  ? 'bg-emerald-500 text-white'
+                                  : asset.statut === 'maintenance'
+                                    ? 'bg-amber-500 text-white'
+                                    : 'bg-red-500 text-white'
+                              }`}
+                            >
+                              {asset.statut === 'actif'
+                                ? 'Actif'
+                                : asset.statut === 'maintenance'
+                                  ? 'Maintenance'
+                                  : 'Hors service'}
                             </span>
                             <span className="text-sm font-medium text-white">{asset.nom}</span>
                           </div>
@@ -543,8 +594,13 @@ export default function AssetManagementDashboard() {
                           <div className="grid grid-cols-2 gap-3 text-xs text-slate-400">
                             <span>Valeur: {fmtNum(asset.valeurActuelle)}</span>
                             <span>Performance: {asset.performance}%</span>
-                            <span>Acquisition: {asset.dateAcquisition.toLocaleDateString('fr-FR')}</span>
-                            <span>Prochaine maintenance: {asset.prochaineMaintenance?.toLocaleDateString('fr-FR') || 'N/A'}</span>
+                            <span>
+                              Acquisition: {asset.dateAcquisition.toLocaleDateString('fr-FR')}
+                            </span>
+                            <span>
+                              Prochaine maintenance:{' '}
+                              {asset.prochaineMaintenance?.toLocaleDateString('fr-FR') || 'N/A'}
+                            </span>
                           </div>
                         </div>
                       </div>
@@ -568,36 +624,57 @@ export default function AssetManagementDashboard() {
                 </h3>
                 <div className="space-y-3">
                   {maintenanceData.map((maintenance) => (
-                    <div key={maintenance.id} className={`p-4 rounded-lg border ${
-                      maintenance.type === 'urgente' ? 'bg-red-500/10 border-red-500/20' :
-                      maintenance.type === 'corrective' ? 'bg-amber-500/10 border-amber-500/20' :
-                      'bg-blue-500/10 border-blue-500/20'
-                    }`}>
+                    <div
+                      key={maintenance.id}
+                      className={`p-4 rounded-lg border ${
+                        maintenance.type === 'urgente'
+                          ? 'bg-red-500/10 border-red-500/20'
+                          : maintenance.type === 'corrective'
+                            ? 'bg-amber-500/10 border-amber-500/20'
+                            : 'bg-blue-500/10 border-blue-500/20'
+                      }`}
+                    >
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-2">
-                            <span className={`text-xs px-2 py-1 rounded ${
-                              maintenance.type === 'urgente' ? 'bg-red-500 text-white' :
-                              maintenance.type === 'corrective' ? 'bg-amber-500 text-white' :
-                              'bg-blue-500 text-white'
-                            }`}>
-                              {maintenance.type === 'urgente' ? 'Urgente' :
-                               maintenance.type === 'corrective' ? 'Corrective' : 'Préventive'}
+                            <span
+                              className={`text-xs px-2 py-1 rounded ${
+                                maintenance.type === 'urgente'
+                                  ? 'bg-red-500 text-white'
+                                  : maintenance.type === 'corrective'
+                                    ? 'bg-amber-500 text-white'
+                                    : 'bg-blue-500 text-white'
+                              }`}
+                            >
+                              {maintenance.type === 'urgente'
+                                ? 'Urgente'
+                                : maintenance.type === 'corrective'
+                                  ? 'Corrective'
+                                  : 'Préventive'}
                             </span>
-                            <span className={`text-xs px-2 py-1 rounded ${
-                              maintenance.statut === 'terminee' ? 'bg-emerald-500 text-white' :
-                              maintenance.statut === 'en_cours' ? 'bg-blue-500 text-white' :
-                              'bg-slate-500 text-white'
-                            }`}>
-                              {maintenance.statut === 'terminee' ? 'Terminée' :
-                               maintenance.statut === 'en_cours' ? 'En cours' : 'Planifiée'}
+                            <span
+                              className={`text-xs px-2 py-1 rounded ${
+                                maintenance.statut === 'terminee'
+                                  ? 'bg-emerald-500 text-white'
+                                  : maintenance.statut === 'en_cours'
+                                    ? 'bg-blue-500 text-white'
+                                    : 'bg-slate-500 text-white'
+                              }`}
+                            >
+                              {maintenance.statut === 'terminee'
+                                ? 'Terminée'
+                                : maintenance.statut === 'en_cours'
+                                  ? 'En cours'
+                                  : 'Planifiée'}
                             </span>
                             <span className="text-sm font-medium text-white">
-                              {assetsData.find(a => a.id === maintenance.assetId)?.nom}
+                              {assetsData.find((a) => a.id === maintenance.assetId)?.nom}
                             </span>
                           </div>
                           <p className="text-xs text-slate-400 mb-2">
-                            {maintenance.technicien} • {maintenance.date.toLocaleDateString('fr-FR')} • {maintenance.duree} heures
+                            {maintenance.technicien} •{' '}
+                            {maintenance.date.toLocaleDateString('fr-FR')} • {maintenance.duree}{' '}
+                            heures
                           </p>
                           <p className="text-sm text-white mb-2">{maintenance.description}</p>
                           <div className="flex justify-between text-xs text-slate-400">
@@ -645,7 +722,9 @@ export default function AssetManagementDashboard() {
                       <Wrench size={20} className="text-emerald-400" />
                       <div>
                         <p className="text-sm font-medium text-white">Rapport de Maintenance</p>
-                        <p className="text-xs text-slate-400">{maintenanceData.length} interventions</p>
+                        <p className="text-xs text-slate-400">
+                          {maintenanceData.length} interventions
+                        </p>
                       </div>
                     </div>
                   </button>

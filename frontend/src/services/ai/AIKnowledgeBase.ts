@@ -1,4 +1,4 @@
-﻿ 
+ 
 import { KOBO_STANDARDS } from './ElectricianQuran.ts';
 
 export interface AIStateForPrompt {
@@ -10,25 +10,21 @@ export interface AIStateForPrompt {
 const CORE_KNOWLEDGE = [
   'PROQUELEC gère l’électrification de masse au Sénégal via la plateforme GEM-MINT.',
   'GEM-MINT orchestre les missions OM : création, validation par Chef de Projet, certification DG.',
-  'La collecte terrain est réalisée via Kobo Collect et synchronisée par numeroordre.',
-  'La norme applicâble est NS 01-001 pour les installations basse tension (BT ≤ 1000 V).',
-  'Le branchement Senelec doit respecter le coffret en limite de propriété et la hauteur réglementaire.',
-  'Les statuts métier des ménages sont : Non encore installée, Murs, Réseau, Intérieur, Contrôle conforme, Ménage non éligible, Problème.',
-  'Le calcul des indemnités de mission se base sur les coûts de matériel, main-d’œuvre, logistique et barème PROQUELEC.',
-  'Les indemnités sont validées après certification DG et peuvent être consultées par les rôles autorisés.',
-  'La sécurité électrique repose sur DDR, prise terre PE vert/jaune, et protections mécanique PVC.',
-  'Les anomalies à éviter : fils visibles, barrette terre extérieure, poteaux bois pourris.',
-  // NOUVEAUX ÉLÉMENTS TECHNIQUES AJOUTÉS
-  'Le branchement Senelec nécessite impérativement un coffret en limite de propriété avec hublot à 1.60m minimum.',
-  'Les anomalies critiques incluent : poteaux bois pourris, câbles non enterrés, absence de prise terre, fils visibles.',
-  "L'installation intérieure MFR standard comprend : coffret disjoncteur, 3 lampes, 1 prise, interrupteurs en zone couverte.",
-  'La protection mécanique utilise des tubes PVC pour tous les câbless enterrés ou en saillie.',
-  'Le DDR (dispositif de coupure fuite terre) est obligatoire pour toute installation BT ≤ 1000V.',
-  'Les coordonnées GPS doivent être vérifiées sur site avec précision de ±5m pour éviter les erreurs de localisation.',
-  'Le numeroordre est unique par ménage et sert de clé primaire pour la synchronisation Kobo.',
-  'Les missions complexes nécessitent validation hiérarchique : Chef Équipe → Chef Projet → DG.',
-  "Le barème PROQUELEC inclut : matériel électrique, main-d'œuvre spécialisée, logistique terrain, transport.",
-  'Les problèmes de terrain courants : absence de poteau, refus client, coordonnées GPS incorrectes, anomalies techniques.',
+  'La collecte terrain est réalisée via Kobo Collect et synchronisée par numeroordre (clé unique).',
+  'La norme de CONCEPTION est NS 01-001 (BT ≤ 1000 V), équivalente à la NF C 15-100.',
+  'La norme de SÉCURITÉ OPÉRATIONNELLE est la NF C 18-510 (Habilitations, Consignation).',
+  'Le régime de neutre standard au Sénégal est le TT.',
+  'Le branchement Senelec doit respecter le coffret en limite de propriété et la hauteur du hublot à 1.60m.',
+  'La hiérarchie de validation : Agent (MFR) -> Chef de Projet (Validateur) -> DG (Certificateur).',
+  'Les indemnités de mission sont calculées sur le barème : Matériel + Main-d’œuvre + Logistique + Transport.',
+  'La certification DG est le point de bascule pour le paiement des indemnités.',
+];
+
+const LOGIC_RULES = [
+  'VÉRITÉ TERRAIN : Prioriser toujours les données des stats et des logs serveur sur les connaissances générales.',
+  'ZÉRO HALLUCINATION : Ne jamais inventer de lien entre la NF C 18-510 et l electrification rurale.',
+  'DISCERNEMENT : La NS 01-001 dit COMMENT construire. La NF C 18-510 dit COMMENT travailler en sécurité.',
+  'RÔLE : Un Agent reçoit des ordres techniques. Un DG reçoit des analyses stratégiques.',
 ];
 
 const TECHNICAL_SUMMARIES = [
@@ -41,25 +37,12 @@ const TECHNICAL_SUMMARIES = [
     text: 'Coffret disjoncteur dans un couloir couvert, interrupteurs en zone couverte, config standard 3 lampes / 1 prise, câbles armés enterrés.',
   },
   {
-    title: 'Anomalies à éviter',
-    text: 'Fils visibles, câbles extérieurs, barrette terre en dehors du bâtiment, poteau bois pourri, surplombement interdit.',
+    title: 'Norme NF C 18-510',
+    text: 'Sécurité des opérations. Habilitations (B0, B1, B2, BR, BC). Consignation en 5 étapes : Séparation, Condamnation, Identification, VAT, MALT/CC.',
   },
   {
     title: 'Glossaire technique',
     text: 'Partie active = conducteur sous tension, masse = élément touchable pouvant être sous tension, DDR = dispositif de coupure fuite terre, PE = prise terre vert/jaune.',
-  },
-  // NOUVEAUX RÉSUMÉS TECHNIQUES AJOUTÉS
-  {
-    title: 'Sécurité électrique',
-    text: 'DDR obligatoire BT ≤ 1000V, prise terre PE vert/jaune, protection mécanique PVC, absence de masses touchables sous tension.',
-  },
-  {
-    title: 'Synchronisation Kobo',
-    text: 'numeroordre unique par ménage, vérification GPS ±5m, synchronisation automatique, gestion des conflits de données.',
-  },
-  {
-    title: 'Calcul des indemnités',
-    text: "Matériel électrique + main-d'œuvre spécialisée + logistique terrain + transport. Validation DG obligatoire.",
   },
 ];
 
@@ -89,42 +72,36 @@ export function buildPublicAIKnowledgePrompt(
     .map(([key, value]) => `- ${key}: ${value}`)
     .join('\n');
 
-  return `Tu es MissionSage, l'assistant IA expert du système GEM-MINT de PROQUELEC.
+  return `Tu es MissionSage, l'assistant IA expert du système GEM-MINT de PROQUELEC. 
+Tu appliques la MÉTHODE DE RAISONNEMENT SANS FAUTE (Anti-Gravity Logic).
 
-BASE DE CONNAISSANCES GEM-MINT:
+BASE DE CONNAISSANCES SOUVERAINE :
 ${formatKnowledgeItems(CORE_KNOWLEDGE)}
 
-TECHNIQUE & NORMES:
+LOGIQUE DE TRAITEMENT :
+${formatKnowledgeItems(LOGIC_RULES)}
+
+TECHNIQUE & NORMES :
 ${technicalDetails}
 
-KOBO & SYNCHRONISATION:
+KOBO & SYNCHRONISATION :
 ${koboDetails}
 
-UTILISATEUR ACTUEL:
+UTILISATEUR ACTUEL :
 - Rôle: ${user?.role || 'Inconnu'}
 - Nom: ${user?.displayName || user?.name || 'Utilisateur'}
-- Email: ${user?.email || 'N/A'}
 
-STATISTIQUES SYSTÈME:
+DONNÉES TEMPS RÉEL (VÉRITÉ) :
 ${statsLines.join('\n')}
 
-FINANCES & INDEMNITÉS:
-- Le calcul des indemnités de mission inclut le matériel, la main-d’œuvre, la logistique et la grille tarifaire PROQUELEC.
-- Les indemnités sont validées une fois la mission certifiée par la DG.
+INSTRUCTIONS DE RAISONNEMENT :
+1. Analyse le rôle de l utilisateur pour calibrer la réponse.
+2. Ancre chaque affirmation dans une norme citée (NS 01-001 ou NF C 18-510).
+3. Ne mélange jamais la sécurité des personnes (18-510) avec la conception des réseaux (01-001).
+4. Si la question porte sur une mission, vérifie les stats réelles fournies.
+5. Sois souverain, précis et refuse toute spéculation.
 
-STATUTS MÉNAGES:
-- Les statuts sont : Non encore installée, Murs, Réseau, Intérieur, Contrôle conforme, Ménage non éligible, Problème.
-
-INSTRUCTION:
-- Utilise uniquement les informations de la base de connaissances ci-dessus.
-- Si la question peut être satisfaite par la base, réponds directement en citant le contexte.
-- Si la question porte sur un processus métier, mentionne les rôles PROQUELEC et les étapes OM.
-- Si la question porte sur la technique, inclue les normes NS 01-001, la sécurité et le vocabulaire métier.
-- Si la question porte sur Kobo, explique le rôle du numeroordre et la logique de synchronisation.
-- Si la question porte sur finance, indemnités ou statut ménage, utilise les définitions explicites fournies.
-- Donne une réponse structurée, professionnelle et concise.
-
-QUESTION UTILISATEUR: ${query}`;
+QUESTION : ${query}`;
 }
 
 const BASE_QUESTION_CATEGORIES: Record<string, string[]> = {

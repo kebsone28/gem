@@ -40,19 +40,19 @@ interface SubcontractorMetrics {
   qualiteTravaux: number;
   delaisRespectes: number;
   scorePerformance: number;
-  
+
   // Équipes
   personnelActif: number;
   performanceEquipes: number;
   formationNecessaire: number;
   tauxPresence: number;
-  
+
   // Reporting
   rapportsSoumis: number;
   validationsClient: number;
   correctionsRequises: number;
   tempsMoyenSoumission: number;
-  
+
   // Opérationnel
   tachesAssignees: number;
   tachesEnCours: number;
@@ -90,43 +90,46 @@ export default function SubcontractorDashboard() {
   const households = useLiveQuery(() => db.households.toArray()) || [];
   const zones = useLiveQuery(() => db.zones.toArray()) || [];
 
-  const [selectedView, setSelectedView] = useState<'overview' | 'missions' | 'teams' | 'reports'>('overview');
+  const [selectedView, setSelectedView] = useState<'overview' | 'missions' | 'teams' | 'reports'>(
+    'overview'
+  );
 
   // Vérification des permissions
-  const canViewMissions = peut(PERMISSIONS.VOIR_MISSIONS);
-  const canAccessKobo = peut(PERMISSIONS.ACCES_TERMINAL_KOBO);
-  const canViewTeams = peut(PERMISSIONS.VOIR_EQUIPES);
-  const canViewReports = peut(PERMISSIONS.VOIR_RAPPORTS_TERRAIN);
-  const canViewAlerts = peut(PERMISSIONS.VOIR_ALERTES);
-  const canViewSync = peut(PERMISSIONS.VOIR_SYNCHRO);
+  const canViewMissions = peut(PERMISSIONS.MISSIONS_READ);
+  const canAccessKobo = peut(PERMISSIONS.TERRAIN_TERMINAL);
+  const canViewTeams = peut(PERMISSIONS.UI_TEAMS);
+  const canViewReports = peut(PERMISSIONS.TERRAIN_READ);
+  const canViewAlerts = peut(PERMISSIONS.UI_ALERTS);
+  const canViewSync = peut(PERMISSIONS.SYSTEM_SYNC);
 
   // Calcul des métriques sous-traitant
   const subcontractorMetrics: SubcontractorMetrics = useMemo(() => {
-    const total = households.filter(h => h.assignedTeams?.includes(user?.teamId || '')).length;
-    const completed = households.filter(h => 
-      h.assignedTeams?.includes(user?.teamId || '') && h.status === 'Terminé'
+    const total = households.filter((h) => h.assignedTeams?.includes(user?.teamId || '')).length;
+    const completed = households.filter(
+      (h) => h.assignedTeams?.includes(user?.teamId || '') && h.status === 'Terminé'
     ).length;
-    const inProgress = households.filter(h => 
-      h.assignedTeams?.includes(user?.teamId || '') && 
-      !['Non encore installée', 'Terminé', 'Inéligible'].includes(h.status ?? '')
+    const inProgress = households.filter(
+      (h) =>
+        h.assignedTeams?.includes(user?.teamId || '') &&
+        !['Non encore installée', 'Terminé', 'Inéligible'].includes(h.status ?? '')
     ).length;
 
     // Simulations des métriques sous-traitant
     const missionsCompletees = completed;
-    const qualiteTravaux = 88 + Math.random() * 10; // 88-98%
-    const delaisRespectes = 85 + Math.random() * 12; // 85-97%
+    const qualiteTravaux = 93; // valeur représentative — à brancher sur API
+    const delaisRespectes = 91; // valeur représentative — à brancher sur API
     const scorePerformance = (qualiteTravaux + delaisRespectes) / 2;
-    
-    const personnelActif = 8 + Math.floor(Math.random() * 4); // 8-12 personnes
-    const performanceEquipes = 82 + Math.random() * 15; // 82-97%
+
+    const personnelActif = 10; // valeur représentative
+    const performanceEquipes = 89; // valeur représentative
     const formationNecessaire = Math.floor(personnelActif * 0.15); // 15% besoin formation
-    const tauxPresence = 92 + Math.random() * 6; // 92-98%
-    
+    const tauxPresence = 95; // valeur représentative
+
     const rapportsSoumis = Math.floor(total * 0.95);
-    const validationsClient = Math.floor(rapportsSoumis * 0.90);
+    const validationsClient = Math.floor(rapportsSoumis * 0.9);
     const correctionsRequises = rapportsSoumis - validationsClient;
     const tempsMoyenSoumission = 1.5; // jours
-    
+
     const tachesAssignees = total;
     const tachesEnCours = inProgress;
     const tachesTerminees = completed;
@@ -160,8 +163,8 @@ export default function SubcontractorDashboard() {
         titre: 'Installation Zone A - Lot 123',
         zone: 'Zone A',
         statut: 'validee',
-        dateDebut: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-        dateFin: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+        dateDebut: new Date(new Date().setDate(new Date().getDate() - 5)),
+        dateFin: new Date(new Date().setDate(new Date().getDate() - 2)),
         equipe: 'Équipe Alpha',
         progression: 100,
         qualite: 95,
@@ -172,7 +175,7 @@ export default function SubcontractorDashboard() {
         titre: 'Installation Zone B - Lot 456',
         zone: 'Zone B',
         statut: 'en_cours',
-        dateDebut: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+        dateDebut: new Date(new Date().setDate(new Date().getDate() - 3)),
         equipe: 'Équipe Beta',
         progression: 65,
         qualite: 88,
@@ -183,8 +186,8 @@ export default function SubcontractorDashboard() {
         titre: 'Installation Zone C - Lot 789',
         zone: 'Zone C',
         statut: 'requiert_correction',
-        dateDebut: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-        dateFin: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
+        dateDebut: new Date(new Date().setDate(new Date().getDate() - 7)),
+        dateFin: new Date(new Date().setDate(new Date().getDate() - 1)),
         equipe: 'Équipe Gamma',
         progression: 100,
         qualite: 72,
@@ -195,7 +198,7 @@ export default function SubcontractorDashboard() {
         titre: 'Installation Zone D - Lot 101',
         zone: 'Zone D',
         statut: 'en_attente',
-        dateDebut: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000),
+        dateDebut: new Date(new Date().setDate(new Date().getDate() + 1)),
         equipe: 'Équipe Delta',
         progression: 0,
         qualite: 0,
@@ -254,7 +257,7 @@ export default function SubcontractorDashboard() {
   const ViewSelector = () => (
     <div className="flex gap-2 p-1 bg-white/5 rounded-xl">
       {[
-        { id: 'overview', label: 'Vue d\'ensemble', icon: BarChart3 },
+        { id: 'overview', label: "Vue d'ensemble", icon: BarChart3 },
         { id: 'missions', label: 'Missions', icon: Target },
         { id: 'teams', label: 'Équipes', icon: Users },
         { id: 'reports', label: 'Rapports', icon: FileText },
@@ -342,7 +345,9 @@ export default function SubcontractorDashboard() {
                         <Target size={18} />
                       </div>
                       <div>
-                        <p className="text-[11px] font-black uppercase tracking-[0.06em]">Missions</p>
+                        <p className="text-[11px] font-black uppercase tracking-[0.06em]">
+                          Missions
+                        </p>
                         <p className="mt-1 text-[12px] text-slate-400">Voir les tâches</p>
                       </div>
                     </div>
@@ -358,7 +363,9 @@ export default function SubcontractorDashboard() {
                         <Users size={18} />
                       </div>
                       <div>
-                        <p className="text-[11px] font-black uppercase tracking-[0.06em]">Équipes</p>
+                        <p className="text-[11px] font-black uppercase tracking-[0.06em]">
+                          Équipes
+                        </p>
                         <p className="mt-1 text-[12px] text-slate-400">Gérer le personnel</p>
                       </div>
                     </div>
@@ -374,7 +381,9 @@ export default function SubcontractorDashboard() {
                         <FileText size={18} />
                       </div>
                       <div>
-                        <p className="text-[11px] font-black uppercase tracking-[0.06em]">Rapports</p>
+                        <p className="text-[11px] font-black uppercase tracking-[0.06em]">
+                          Rapports
+                        </p>
                         <p className="mt-1 text-[12px] text-blue-100/90">Soumettre et suivre</p>
                       </div>
                     </div>
@@ -386,15 +395,24 @@ export default function SubcontractorDashboard() {
               <div className="overflow-x-auto pb-1">
                 <div className="flex min-w-max gap-3">
                   {[
-                    { label: 'Missions', value: subcontractorMetrics.missionsCompletees, icon: Target },
-                    { label: 'Qualité', value: `${subcontractorMetrics.qualiteTravaux.toFixed(1)}%`, icon: CheckCircle2 },
+                    {
+                      label: 'Missions',
+                      value: subcontractorMetrics.missionsCompletees,
+                      icon: Target,
+                    },
+                    {
+                      label: 'Qualité',
+                      value: `${subcontractorMetrics.qualiteTravaux.toFixed(1)}%`,
+                      icon: CheckCircle2,
+                    },
                     { label: 'Équipes', value: subcontractorMetrics.personnelActif, icon: Users },
-                    { label: 'Performance', value: `${subcontractorMetrics.scorePerformance.toFixed(1)}%`, icon: TrendingUp },
+                    {
+                      label: 'Performance',
+                      value: `${subcontractorMetrics.scorePerformance.toFixed(1)}%`,
+                      icon: TrendingUp,
+                    },
                   ].map(({ label, value, icon: Icon }) => (
-                    <div
-                      key={label}
-                      className={DASHBOARD_MINI_STAT_CARD}
-                    >
+                    <div key={label} className={DASHBOARD_MINI_STAT_CARD}>
                       <div className="flex items-center gap-3">
                         <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/5 text-blue-300">
                           <Icon size={16} />
@@ -403,7 +421,9 @@ export default function SubcontractorDashboard() {
                           <p className="text-[10px] font-black uppercase tracking-[0.06em] text-slate-400">
                             {label}
                           </p>
-                          <p className="mt-1 text-xl font-black tracking-tight text-white">{value}</p>
+                          <p className="mt-1 text-xl font-black tracking-tight text-white">
+                            {value}
+                          </p>
                         </div>
                       </div>
                     </div>
@@ -457,19 +477,27 @@ export default function SubcontractorDashboard() {
                   <div className="space-y-3">
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-slate-400">Score de performance</span>
-                      <span className="text-sm font-medium text-white">{subcontractorMetrics.scorePerformance.toFixed(1)}%</span>
+                      <span className="text-sm font-medium text-white">
+                        {subcontractorMetrics.scorePerformance.toFixed(1)}%
+                      </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-slate-400">Efficacité moyenne</span>
-                      <span className="text-sm font-medium text-white">{subcontractorMetrics.efficaciteMoyenne.toFixed(1)}%</span>
+                      <span className="text-sm font-medium text-white">
+                        {subcontractorMetrics.efficaciteMoyenne.toFixed(1)}%
+                      </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-slate-400">Temps moyen soumission</span>
-                      <span className="text-sm font-medium text-white">{subcontractorMetrics.tempsMoyenSoumission} jours</span>
+                      <span className="text-sm font-medium text-white">
+                        {subcontractorMetrics.tempsMoyenSoumission} jours
+                      </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-slate-400">Validations client</span>
-                      <span className="text-sm font-medium text-emerald-400">{subcontractorMetrics.validationsClient}</span>
+                      <span className="text-sm font-medium text-emerald-400">
+                        {subcontractorMetrics.validationsClient}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -481,17 +509,23 @@ export default function SubcontractorDashboard() {
                   <div className="space-y-3">
                     {subcontractorMetrics.correctionsRequises > 0 && (
                       <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
-                        <p className="text-sm text-amber-400">⚠️ {subcontractorMetrics.correctionsRequises} corrections requises</p>
+                        <p className="text-sm text-amber-400">
+                          ⚠️ {subcontractorMetrics.correctionsRequises} corrections requises
+                        </p>
                       </div>
                     )}
                     {subcontractorMetrics.formationNecessaire > 0 && (
                       <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-                        <p className="text-sm text-blue-400">📚 {subcontractorMetrics.formationNecessaire} personnes en formation</p>
+                        <p className="text-sm text-blue-400">
+                          📚 {subcontractorMetrics.formationNecessaire} personnes en formation
+                        </p>
                       </div>
                     )}
                     {subcontractorMetrics.tachesEnCours > 0 && (
                       <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
-                        <p className="text-sm text-emerald-400">🔄 {subcontractorMetrics.tachesEnCours} tâches en cours</p>
+                        <p className="text-sm text-emerald-400">
+                          🔄 {subcontractorMetrics.tachesEnCours} tâches en cours
+                        </p>
                       </div>
                     )}
                     {subcontractorMetrics.correctionsRequises === 0 && (
@@ -518,41 +552,65 @@ export default function SubcontractorDashboard() {
                 </h3>
                 <div className="space-y-3">
                   {missionsData.map((mission) => (
-                    <div key={mission.id} className={`p-4 rounded-lg border ${
-                      mission.statut === 'validee' ? 'bg-emerald-500/10 border-emerald-500/20' :
-                      mission.statut === 'requiert_correction' ? 'bg-red-500/10 border-red-500/20' :
-                      mission.statut === 'en_cours' ? 'bg-blue-500/10 border-blue-500/20' :
-                      'bg-slate-500/10 border-slate-500/20'
-                    }`}>
+                    <div
+                      key={mission.id}
+                      className={`p-4 rounded-lg border ${
+                        mission.statut === 'validee'
+                          ? 'bg-emerald-500/10 border-emerald-500/20'
+                          : mission.statut === 'requiert_correction'
+                            ? 'bg-red-500/10 border-red-500/20'
+                            : mission.statut === 'en_cours'
+                              ? 'bg-blue-500/10 border-blue-500/20'
+                              : 'bg-slate-500/10 border-slate-500/20'
+                      }`}
+                    >
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-2">
-                            <span className={`text-xs px-2 py-1 rounded ${
-                              mission.statut === 'validee' ? 'bg-emerald-500 text-white' :
-                              mission.statut === 'requiert_correction' ? 'bg-red-500 text-white' :
-                              mission.statut === 'en_cours' ? 'bg-blue-500 text-white' :
-                              'bg-slate-500 text-white'
-                            }`}>
-                              {mission.statut === 'validee' ? 'Validée' :
-                               mission.statut === 'requiert_correction' ? 'Correction requise' :
-                               mission.statut === 'en_cours' ? 'En cours' : 'En attente'}
+                            <span
+                              className={`text-xs px-2 py-1 rounded ${
+                                mission.statut === 'validee'
+                                  ? 'bg-emerald-500 text-white'
+                                  : mission.statut === 'requiert_correction'
+                                    ? 'bg-red-500 text-white'
+                                    : mission.statut === 'en_cours'
+                                      ? 'bg-blue-500 text-white'
+                                      : 'bg-slate-500 text-white'
+                              }`}
+                            >
+                              {mission.statut === 'validee'
+                                ? 'Validée'
+                                : mission.statut === 'requiert_correction'
+                                  ? 'Correction requise'
+                                  : mission.statut === 'en_cours'
+                                    ? 'En cours'
+                                    : 'En attente'}
                             </span>
                             <span className="text-sm font-medium text-white">{mission.titre}</span>
                           </div>
                           <p className="text-xs text-slate-400 mb-2">
-                            {mission.zone} • {mission.equipe} • {mission.dateDebut.toLocaleDateString('fr-FR')}
+                            {mission.zone} • {mission.equipe} •{' '}
+                            {mission.dateDebut.toLocaleDateString('fr-FR')}
                           </p>
                           {mission.progression > 0 && (
                             <ProgressBar
                               label="Progression"
                               percentage={mission.progression}
-                              status={mission.progression >= 80 ? 'success' : mission.progression >= 50 ? 'warning' : 'info'}
+                              status={
+                                mission.progression >= 80
+                                  ? 'success'
+                                  : mission.progression >= 50
+                                    ? 'warning'
+                                    : 'info'
+                              }
                             />
                           )}
                           {mission.qualite > 0 && (
                             <div className="mt-2 flex justify-between text-xs text-slate-400">
                               <span>Qualité: {mission.qualite}%</span>
-                              <span>Rapport: {mission.rapportSoumis ? 'Soumis' : 'En attente'}</span>
+                              <span>
+                                Rapport: {mission.rapportSoumis ? 'Soumis' : 'En attente'}
+                              </span>
                             </div>
                           )}
                         </div>
@@ -577,14 +635,21 @@ export default function SubcontractorDashboard() {
                 </h3>
                 <div className="space-y-4">
                   {teamsData.map((team) => (
-                    <div key={team.id} className="p-4 bg-white/[0.02] rounded-lg border border-white/5">
+                    <div
+                      key={team.id}
+                      className="p-4 bg-white/[0.02] rounded-lg border border-white/5"
+                    >
                       <div className="flex items-center justify-between mb-3">
                         <h4 className="text-sm font-medium text-white">{team.nom}</h4>
-                        <span className={`text-sm font-medium ${
-                          team.performance >= 90 ? 'text-emerald-400' :
-                          team.performance >= 80 ? 'text-amber-400' :
-                          'text-red-400'
-                        }`}>
+                        <span
+                          className={`text-sm font-medium ${
+                            team.performance >= 90
+                              ? 'text-emerald-400'
+                              : team.performance >= 80
+                                ? 'text-amber-400'
+                                : 'text-red-400'
+                          }`}
+                        >
                           {team.performance}%
                         </span>
                       </div>
@@ -597,7 +662,13 @@ export default function SubcontractorDashboard() {
                       <ProgressBar
                         label="Performance"
                         percentage={team.performance}
-                        status={team.performance >= 90 ? 'success' : team.performance >= 80 ? 'warning' : 'info'}
+                        status={
+                          team.performance >= 90
+                            ? 'success'
+                            : team.performance >= 80
+                              ? 'warning'
+                              : 'info'
+                        }
                       />
                     </div>
                   ))}
@@ -638,7 +709,9 @@ export default function SubcontractorDashboard() {
                       <Eye size={20} className="text-emerald-400" />
                       <div>
                         <p className="text-sm font-medium text-white">Historique</p>
-                        <p className="text-xs text-slate-400">{subcontractorMetrics.rapportsSoumis} rapports</p>
+                        <p className="text-xs text-slate-400">
+                          {subcontractorMetrics.rapportsSoumis} rapports
+                        </p>
                       </div>
                     </div>
                   </button>
@@ -650,7 +723,9 @@ export default function SubcontractorDashboard() {
                       <AlertTriangle size={20} className="text-amber-400" />
                       <div>
                         <p className="text-sm font-medium text-white">Corrections</p>
-                        <p className="text-xs text-slate-400">{subcontractorMetrics.correctionsRequises} requises</p>
+                        <p className="text-xs text-slate-400">
+                          {subcontractorMetrics.correctionsRequises} requises
+                        </p>
                       </div>
                     </div>
                   </button>

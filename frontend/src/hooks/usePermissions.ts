@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useAuth } from '../contexts/AuthContext';
-import { PERMISSIONS, hasPermission } from '../utils/permissions';
-import { isMasterAdminEmail, isDirecteurRole } from '../utils/roleUtils';
+import { PERMISSIONS, hasPermission, normalizeRole } from '../utils/permissions';
+import { AppRole } from '../utils/security/types';
+import { isMasterAdminEmail } from '../utils/roleUtils';
 
 /**
  * Hook personnalisé pour gérer les permissions de manière centralisée dans le UI.
@@ -25,32 +26,34 @@ export const usePermissions = () => {
   const peutModifier = (ressource: any): boolean => {
     if (!user) return false;
 
-    // Un Admin peut tout modifier
-    if (user.role === 'ADMIN_PROQUELEC') return true;
+    const nRole = normalizeRole(user.role);
 
-    // Un Chef d'Équipe ne peut modifier que ce qui appartient à son équipe (simulation de logique)
-    if (user.role === 'CHEF_EQUIPE' && ressource.teamId === user.teamId) {
-      return peut(PERMISSIONS.MODIFIER_CARTE);
+    // Un Admin peut tout modifier
+    if (nRole === AppRole.ADMIN) return true;
+
+    // Un Chef d'Équipe ne peut modifier que ce qui appartient à son équipe
+    if (nRole === AppRole.CHEF_EQUIPE && ressource.teamId === (user as any).teamId) {
+      return peut(PERMISSIONS.TERRAIN_WRITE || 'terrain.write');
     }
 
     return false;
   };
 
-  const isAdmin =
-    user?.role === 'ADMIN_PROQUELEC' || user?.role === 'ADMIN' || isMasterAdminEmail(user?.email);
-  const isChefProjet = user?.role === 'CHEF_PROJET';
-  const isDG = isDirecteurRole(user?.role);
+  const nRole = normalizeRole(user?.role);
+  const isAdmin = nRole === AppRole.ADMIN || isMasterAdminEmail(user?.email);
+  const isChefProjet = nRole === AppRole.CHEF_PROJET;
+  const isDirecteur = nRole === AppRole.DIRECTEUR;
 
   return {
     peut,
     peutModifier,
     PERMISSIONS,
-    role: user?.role,
+    role: nRole,
     user,
     isAdmin,
     canEdit: isAdmin || isChefProjet,
-    canManagePV: isAdmin || isChefProjet || isDG,
+    canManagePV: isAdmin || isChefProjet || isDirecteur,
     isChefProjet,
-    isDG,
+    isDG: isDirecteur,
   };
 };

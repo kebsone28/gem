@@ -163,6 +163,48 @@ export default function Simulation() {
     },
   });
 
+  // 🔄 Synchroniser les taux avec le projet si disponibles (Cahier + staffRates directs)
+  useEffect(() => {
+    const rates = project?.config?.costs?.staffRates;
+    if (!rates) return;
+
+    // Mapping Cahier des charges (clés du projet) → clés Simulation
+    const tradeMapping: Record<string, RoleKey> = {
+      macons: 'macon',
+      reseau: 'network',
+      interieur_type1: 'interior',
+      controle: 'controller',
+      // Support clés directes (si Simulation et Cahier sont alignés)
+      macon: 'macon',
+      network: 'network',
+      interior: 'interior',
+      controller: 'controller',
+    };
+
+    let synced = false;
+    setTeamConfigs((prev) => {
+      const next = { ...prev };
+      Object.entries(tradeMapping).forEach(([tradeKey, roleKey]) => {
+        const entry = rates[tradeKey];
+        if (!entry) return;
+        const newRate = typeof entry === 'number' ? entry : entry.amount;
+        const newMode = typeof entry === 'object' ? (entry.mode as any) : prev[roleKey].paymentMode;
+        if (newRate && newRate !== prev[roleKey].rate) {
+          next[roleKey] = {
+            ...next[roleKey],
+            rate: newRate,
+            paymentMode: newMode || next[roleKey].paymentMode,
+          };
+          synced = true;
+        }
+      });
+      return next;
+    });
+    if (synced) {
+      toast.success('Taux mis à jour depuis le cahier des charges', { duration: 2500, icon: '📊' });
+    }
+  }, [project?.id]);
+
   const [isOptimized, setIsOptimized] = useState(false);
   const [optimizedConfigs, setOptimizedConfigs] = useState<Record<RoleKey, TeamConfig> | null>(
     null

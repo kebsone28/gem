@@ -1,15 +1,6 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect } from 'react';
-import {
-  AlertTriangle,
-  AlertCircle,
-  TrendingUp,
-  Settings,
-  Bell,
-  CheckCircle,
-  Clock,
-  Zap,
-} from 'lucide-react';
+import { AlertTriangle, AlertCircle, Settings, Bell, CheckCircle } from 'lucide-react';
 import { PageContainer, PageHeader, ContentArea } from '@components';
 import AlertDashboard from '../components/alerts/AlertDashboard';
 import { useProject } from '../contexts/ProjectContext';

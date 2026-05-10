@@ -39,17 +39,17 @@ interface SupervisionMetrics {
   inspectionsRealisees: number;
   nonConformites: number;
   autorisationsDelivrees: number;
-  
+
   // Qualité
   scoreQualiteGlobal: number;
   auditsRealises: number;
   rapportsValidation: number;
-  
+
   // Réglementaire
   proceduresConformes: number;
   risquesIdentifies: number;
   interventionsUrgentes: number;
-  
+
   // Performance
   tempsMoyenValidation: number;
   tauxReussiteInspection: number;
@@ -82,37 +82,39 @@ export default function SenelecDashboard() {
   const households = useLiveQuery(() => db.households.toArray()) || [];
   const zones = useLiveQuery(() => db.zones.toArray()) || [];
 
-  const [selectedView, setSelectedView] = useState<'overview' | 'inspections' | 'compliance' | 'reports'>('overview');
+  const [selectedView, setSelectedView] = useState<
+    'overview' | 'inspections' | 'compliance' | 'reports'
+  >('overview');
 
   // Vérification des permissions
-  const canViewMissions = peut(PERMISSIONS.VOIR_MISSIONS);
-  const canValidateInstallations = peut(PERMISSIONS.VALIDER_INSTALLATION);
-  const canRejectDossiers = peut(PERMISSIONS.REJETER_DOSSIER);
-  const canManagePV = peut(PERMISSIONS.GERER_PV);
-  const canViewAlerts = peut(PERMISSIONS.VOIR_ALERTES);
+  const canViewMissions = peut(PERMISSIONS.MISSIONS_READ);
+  const canValidateInstallations = peut(PERMISSIONS.MISSIONS_VALIDATE);
+  const canRejectDossiers = peut(PERMISSIONS.TERRAIN_REJECT);
+  const canManagePV = peut(PERMISSIONS.DOCS_PV);
+  const canViewAlerts = peut(PERMISSIONS.UI_ALERTS);
 
   // Calcul des métriques de supervision
   const supervisionMetrics: SupervisionMetrics = useMemo(() => {
     const total = households.length;
-    const completed = households.filter(h => h.status === 'Terminé').length;
-    const inProgress = households.filter(h => 
-      !['Non encore installée', 'Terminé', 'Inéligible'].includes(h.status ?? '')
+    const completed = households.filter((h) => h.status === 'Terminé').length;
+    const inProgress = households.filter(
+      (h) => !['Non encore installée', 'Terminé', 'Inéligible'].includes(h.status ?? '')
     ).length;
 
     // Simulations des métriques SENELEC
-    const conformiteNormes = 85 + Math.random() * 10; // 85-95%
+    const conformiteNormes = 90; // valeur représentative — à brancher sur API
     const inspectionsRealisees = Math.floor(total * 0.9); // 90% inspectés
     const nonConformites = Math.floor(inspectionsRealisees * 0.08); // 8% NC
     const autorisationsDelivrees = completed;
-    
-    const scoreQualiteGlobal = 88 + Math.random() * 8; // 88-96%
+
+    const scoreQualiteGlobal = 92; // valeur représentative — à brancher sur API
     const auditsRealises = Math.floor(total * 0.15); // 15% audités
     const rapportsValidation = completed;
-    
+
     const proceduresConformes = Math.floor(total * 0.95); // 95% conformes
     const risquesIdentifies = Math.floor(total * 0.03); // 3% risques
     const interventionsUrgentes = Math.floor(total * 0.02); // 2% urgentes
-    
+
     const tempsMoyenValidation = 2.5; // jours
     const tauxReussiteInspection = 92; // %
     const delaiMoyenCorrection = 5; // jours
@@ -149,7 +151,7 @@ export default function SenelecDashboard() {
       },
       {
         id: '2',
-        date: new Date(Date.now() - 24 * 60 * 60 * 1000),
+        date: new Date(new Date().setDate(new Date().getDate() - 1)),
         site: 'Zone B - Lot 456',
         inspecteur: 'Inspecteur SENELEC 2',
         statut: 'non_conforme',
@@ -159,7 +161,7 @@ export default function SenelecDashboard() {
       },
       {
         id: '3',
-        date: new Date(Date.now() - 48 * 60 * 60 * 1000),
+        date: new Date(new Date().setDate(new Date().getDate() - 2)),
         site: 'Zone C - Lot 789',
         inspecteur: 'Inspecteur SENELEC 3',
         statut: 'en_attente',
@@ -185,14 +187,14 @@ export default function SenelecDashboard() {
         conformite: 88,
         sitesVerifies: 120,
         nonConformites: 14,
-        dernierControle: new Date(Date.now() - 24 * 60 * 60 * 1000),
+        dernierControle: new Date(new Date().setDate(new Date().getDate() - 1)),
       },
       {
         norme: 'Normes SENELEC',
         conformite: 95,
         sitesVerifies: 180,
         nonConformites: 9,
-        dernierControle: new Date(Date.now() - 48 * 60 * 60 * 1000),
+        dernierControle: new Date(new Date().setDate(new Date().getDate() - 2)),
       },
     ];
   }, []);
@@ -205,7 +207,7 @@ export default function SenelecDashboard() {
   const ViewSelector = () => (
     <div className="flex gap-2 p-1 bg-white/5 rounded-xl">
       {[
-        { id: 'overview', label: 'Vue d\'ensemble', icon: BarChart3 },
+        { id: 'overview', label: "Vue d'ensemble", icon: BarChart3 },
         { id: 'inspections', label: 'Inspections', icon: Eye },
         { id: 'compliance', label: 'Conformité', icon: CheckCircle2 },
         { id: 'reports', label: 'Rapports', icon: FileText },
@@ -277,7 +279,9 @@ export default function SenelecDashboard() {
                         <Eye size={18} />
                       </div>
                       <div>
-                        <p className="text-[11px] font-black uppercase tracking-[0.06em]">Inspections</p>
+                        <p className="text-[11px] font-black uppercase tracking-[0.06em]">
+                          Inspections
+                        </p>
                         <p className="mt-1 text-[12px] text-slate-400">Planifier et effectuer</p>
                       </div>
                     </div>
@@ -309,7 +313,9 @@ export default function SenelecDashboard() {
                         <AlertTriangle size={18} />
                       </div>
                       <div>
-                        <p className="text-[11px] font-black uppercase tracking-[0.06em]">Alertes</p>
+                        <p className="text-[11px] font-black uppercase tracking-[0.06em]">
+                          Alertes
+                        </p>
                         <p className="mt-1 text-[12px] text-slate-400">Suivi et gestion</p>
                       </div>
                     </div>
@@ -325,7 +331,9 @@ export default function SenelecDashboard() {
                         <BarChart3 size={18} />
                       </div>
                       <div>
-                        <p className="text-[11px] font-black uppercase tracking-[0.06em]">Rapports</p>
+                        <p className="text-[11px] font-black uppercase tracking-[0.06em]">
+                          Rapports
+                        </p>
                         <p className="mt-1 text-[12px] text-blue-100/90">Supervision globale</p>
                       </div>
                     </div>
@@ -337,15 +345,28 @@ export default function SenelecDashboard() {
               <div className="overflow-x-auto pb-1">
                 <div className="flex min-w-max gap-3">
                   {[
-                    { label: 'Conformité', value: `${supervisionMetrics.conformiteNormes.toFixed(1)}%`, icon: CheckCircle2 },
-                    { label: 'Inspections', value: supervisionMetrics.inspectionsRealisees, icon: Eye },
-                    { label: 'Qualité', value: `${supervisionMetrics.scoreQualiteGlobal.toFixed(1)}/100`, icon: Award },
-                    { label: 'Risques', value: supervisionMetrics.risquesIdentifies, icon: AlertTriangle },
+                    {
+                      label: 'Conformité',
+                      value: `${supervisionMetrics.conformiteNormes.toFixed(1)}%`,
+                      icon: CheckCircle2,
+                    },
+                    {
+                      label: 'Inspections',
+                      value: supervisionMetrics.inspectionsRealisees,
+                      icon: Eye,
+                    },
+                    {
+                      label: 'Qualité',
+                      value: `${supervisionMetrics.scoreQualiteGlobal.toFixed(1)}/100`,
+                      icon: Award,
+                    },
+                    {
+                      label: 'Risques',
+                      value: supervisionMetrics.risquesIdentifies,
+                      icon: AlertTriangle,
+                    },
                   ].map(({ label, value, icon: Icon }) => (
-                    <div
-                      key={label}
-                      className={DASHBOARD_MINI_STAT_CARD}
-                    >
+                    <div key={label} className={DASHBOARD_MINI_STAT_CARD}>
                       <div className="flex items-center gap-3">
                         <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/5 text-blue-300">
                           <Icon size={16} />
@@ -354,7 +375,9 @@ export default function SenelecDashboard() {
                           <p className="text-[10px] font-black uppercase tracking-[0.06em] text-slate-400">
                             {label}
                           </p>
-                          <p className="mt-1 text-xl font-black tracking-tight text-white">{value}</p>
+                          <p className="mt-1 text-xl font-black tracking-tight text-white">
+                            {value}
+                          </p>
                         </div>
                       </div>
                     </div>
@@ -408,24 +431,32 @@ export default function SenelecDashboard() {
                   <div className="space-y-3">
                     {supervisionMetrics.nonConformites > 0 && (
                       <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
-                        <p className="text-sm text-amber-400">⚠️ {supervisionMetrics.nonConformites} non-conformités en attente</p>
+                        <p className="text-sm text-amber-400">
+                          ⚠️ {supervisionMetrics.nonConformites} non-conformités en attente
+                        </p>
                       </div>
                     )}
                     {supervisionMetrics.interventionsUrgentes > 0 && (
                       <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
-                        <p className="text-sm text-red-400">🚨 {supervisionMetrics.interventionsUrgentes} interventions urgentes requises</p>
+                        <p className="text-sm text-red-400">
+                          🚨 {supervisionMetrics.interventionsUrgentes} interventions urgentes
+                          requises
+                        </p>
                       </div>
                     )}
                     {supervisionMetrics.risquesIdentifies > 0 && (
                       <div className="p-3 bg-orange-500/10 border border-orange-500/20 rounded-lg">
-                        <p className="text-sm text-orange-400">📋 {supervisionMetrics.risquesIdentifies} risques identifiés</p>
+                        <p className="text-sm text-orange-400">
+                          📋 {supervisionMetrics.risquesIdentifies} risques identifiés
+                        </p>
                       </div>
                     )}
-                    {supervisionMetrics.nonConformites === 0 && supervisionMetrics.interventionsUrgentes === 0 && (
-                      <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
-                        <p className="text-sm text-emerald-400">✅ Aucune alerte active</p>
-                      </div>
-                    )}
+                    {supervisionMetrics.nonConformites === 0 &&
+                      supervisionMetrics.interventionsUrgentes === 0 && (
+                        <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
+                          <p className="text-sm text-emerald-400">✅ Aucune alerte active</p>
+                        </div>
+                      )}
                   </div>
                 </div>
 
@@ -436,19 +467,27 @@ export default function SenelecDashboard() {
                   <div className="space-y-3">
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-slate-400">Temps moyen validation</span>
-                      <span className="text-sm font-medium text-white">{supervisionMetrics.tempsMoyenValidation} jours</span>
+                      <span className="text-sm font-medium text-white">
+                        {supervisionMetrics.tempsMoyenValidation} jours
+                      </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-slate-400">Délai moyen correction</span>
-                      <span className="text-sm font-medium text-white">{supervisionMetrics.delaiMoyenCorrection} jours</span>
+                      <span className="text-sm font-medium text-white">
+                        {supervisionMetrics.delaiMoyenCorrection} jours
+                      </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-slate-400">Autorisations délivrées</span>
-                      <span className="text-sm font-medium text-emerald-400">{supervisionMetrics.autorisationsDelivrees}</span>
+                      <span className="text-sm font-medium text-emerald-400">
+                        {supervisionMetrics.autorisationsDelivrees}
+                      </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-slate-400">Audits réalisés</span>
-                      <span className="text-sm font-medium text-blue-400">{supervisionMetrics.auditsRealises}</span>
+                      <span className="text-sm font-medium text-blue-400">
+                        {supervisionMetrics.auditsRealises}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -469,26 +508,41 @@ export default function SenelecDashboard() {
                 </h3>
                 <div className="space-y-3">
                   {recentInspections.map((inspection) => (
-                    <div key={inspection.id} className={`p-4 rounded-lg border ${
-                      inspection.statut === 'conforme' ? 'bg-emerald-500/10 border-emerald-500/20' :
-                      inspection.statut === 'non_conforme' ? 'bg-red-500/10 border-red-500/20' :
-                      'bg-amber-500/10 border-amber-500/20'
-                    }`}>
+                    <div
+                      key={inspection.id}
+                      className={`p-4 rounded-lg border ${
+                        inspection.statut === 'conforme'
+                          ? 'bg-emerald-500/10 border-emerald-500/20'
+                          : inspection.statut === 'non_conforme'
+                            ? 'bg-red-500/10 border-red-500/20'
+                            : 'bg-amber-500/10 border-amber-500/20'
+                      }`}
+                    >
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-2">
-                            <span className={`text-xs px-2 py-1 rounded ${
-                              inspection.statut === 'conforme' ? 'bg-emerald-500 text-white' :
-                              inspection.statut === 'non_conforme' ? 'bg-red-500 text-white' :
-                              'bg-amber-500 text-white'
-                            }`}>
-                              {inspection.statut === 'conforme' ? 'Conforme' :
-                               inspection.statut === 'non_conforme' ? 'Non conforme' : 'En attente'}
+                            <span
+                              className={`text-xs px-2 py-1 rounded ${
+                                inspection.statut === 'conforme'
+                                  ? 'bg-emerald-500 text-white'
+                                  : inspection.statut === 'non_conforme'
+                                    ? 'bg-red-500 text-white'
+                                    : 'bg-amber-500 text-white'
+                              }`}
+                            >
+                              {inspection.statut === 'conforme'
+                                ? 'Conforme'
+                                : inspection.statut === 'non_conforme'
+                                  ? 'Non conforme'
+                                  : 'En attente'}
                             </span>
-                            <span className="text-sm font-medium text-white">{inspection.site}</span>
+                            <span className="text-sm font-medium text-white">
+                              {inspection.site}
+                            </span>
                           </div>
                           <p className="text-xs text-slate-400 mb-1">
-                            {inspection.norme} • {inspection.inspecteur} • {inspection.date.toLocaleDateString('fr-FR')}
+                            {inspection.norme} • {inspection.inspecteur} •{' '}
+                            {inspection.date.toLocaleDateString('fr-FR')}
                           </p>
                           <p className="text-sm text-white mb-2">{inspection.observations}</p>
                           {inspection.recommandations.length > 0 && (
@@ -523,14 +577,21 @@ export default function SenelecDashboard() {
                 </h3>
                 <div className="space-y-4">
                   {complianceData.map((compliance) => (
-                    <div key={compliance.norme} className="p-4 bg-white/[0.02] rounded-lg border border-white/5">
+                    <div
+                      key={compliance.norme}
+                      className="p-4 bg-white/[0.02] rounded-lg border border-white/5"
+                    >
                       <div className="flex items-center justify-between mb-3">
                         <h4 className="text-sm font-medium text-white">{compliance.norme}</h4>
-                        <span className={`text-sm font-medium ${
-                          compliance.conformite >= 90 ? 'text-emerald-400' :
-                          compliance.conformite >= 80 ? 'text-amber-400' :
-                          'text-red-400'
-                        }`}>
+                        <span
+                          className={`text-sm font-medium ${
+                            compliance.conformite >= 90
+                              ? 'text-emerald-400'
+                              : compliance.conformite >= 80
+                                ? 'text-amber-400'
+                                : 'text-red-400'
+                          }`}
+                        >
                           {compliance.conformite}%
                         </span>
                       </div>
@@ -538,11 +599,19 @@ export default function SenelecDashboard() {
                         label="Taux de conformité"
                         count={`${compliance.sitesVerifies - compliance.nonConformites} / ${compliance.sitesVerifies} sites`}
                         percentage={compliance.conformite}
-                        status={compliance.conformite >= 90 ? 'success' : compliance.conformite >= 80 ? 'warning' : 'info'}
+                        status={
+                          compliance.conformite >= 90
+                            ? 'success'
+                            : compliance.conformite >= 80
+                              ? 'warning'
+                              : 'info'
+                        }
                       />
                       <div className="mt-2 flex justify-between text-xs text-slate-400">
                         <span>{compliance.nonConformites} non-conformités</span>
-                        <span>Dernier contrôle: {compliance.dernierControle.toLocaleDateString('fr-FR')}</span>
+                        <span>
+                          Dernier contrôle: {compliance.dernierControle.toLocaleDateString('fr-FR')}
+                        </span>
                       </div>
                     </div>
                   ))}
@@ -571,7 +640,9 @@ export default function SenelecDashboard() {
                       <FileText size={20} className="text-blue-400" />
                       <div>
                         <p className="text-sm font-medium text-white">Rapports d'Inspection</p>
-                        <p className="text-xs text-slate-400">{supervisionMetrics.inspectionsRealisees} inspections</p>
+                        <p className="text-xs text-slate-400">
+                          {supervisionMetrics.inspectionsRealisees} inspections
+                        </p>
                       </div>
                     </div>
                   </button>
@@ -583,7 +654,9 @@ export default function SenelecDashboard() {
                       <CheckCircle2 size={20} className="text-emerald-400" />
                       <div>
                         <p className="text-sm font-medium text-white">Rapports de Conformité</p>
-                        <p className="text-xs text-slate-400">{complianceData.length} normes vérifiées</p>
+                        <p className="text-xs text-slate-400">
+                          {complianceData.length} normes vérifiées
+                        </p>
                       </div>
                     </div>
                   </button>
@@ -595,7 +668,9 @@ export default function SenelecDashboard() {
                       <Award size={20} className="text-amber-400" />
                       <div>
                         <p className="text-sm font-medium text-white">Rapports d'Audit</p>
-                        <p className="text-xs text-slate-400">{supervisionMetrics.auditsRealises} audits réalisés</p>
+                        <p className="text-xs text-slate-400">
+                          {supervisionMetrics.auditsRealises} audits réalisés
+                        </p>
                       </div>
                     </div>
                   </button>

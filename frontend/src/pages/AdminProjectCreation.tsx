@@ -14,24 +14,15 @@ import {
   Save,
   X,
   Eye,
-  EyeOff,
-  Calendar,
   Target,
   BarChart3,
   AlertTriangle,
   CheckCircle2,
   Clock,
-  DollarSign,
-  Tag,
-  UserPlus,
-  UserMinus,
-  Copy,
-  Trash2,
   Zap,
   Shield,
   Wrench,
   FileText,
-  TrendingUp,
 } from 'lucide-react';
 
 interface ProjectTemplate {
@@ -60,7 +51,7 @@ const PROJECT_TEMPLATES: ProjectTemplate[] = [
   {
     id: 'lse_infrastructure',
     name: 'Infrastructure LSE',
-    description: 'Projet d\'infrastructure pour client LSE avec supervision et maintenance',
+    description: "Projet d'infrastructure pour client LSE avec supervision et maintenance",
     client: 'CLIENT_LSE',
     defaultModules: ['dashboard', 'missions', 'planning', 'advanced_analytics'],
     defaultUsers: ['LSE_SUPERVISEUR', 'LSE_TECHNICIEN'],
@@ -70,7 +61,7 @@ const PROJECT_TEMPLATES: ProjectTemplate[] = [
       reportingFrequency: 'daily',
     },
     icon: 'Building',
-    category: 'infrastructure'
+    category: 'infrastructure',
   },
   {
     id: 'proquelec_internal',
@@ -78,14 +69,19 @@ const PROJECT_TEMPLATES: ProjectTemplate[] = [
     description: 'Projet de gestion interne pour Proquelec/GEM',
     client: 'PROQUELEC',
     defaultModules: ['dashboard', 'missions', 'users', 'planning', 'accounting'],
-    defaultUsers: ['PROQUELEC_ADMIN', 'PROQUELEC_DG', 'PROQUELEC_CHEF_PROJET', 'PROQUELEC_COMPTABLE'],
+    defaultUsers: [
+      'PROQUELEC_ADMIN',
+      'PROQUELEC_DG',
+      'PROQUELEC_CHEF_PROJET',
+      'PROQUELEC_COMPTABLE',
+    ],
     defaultSettings: {
       accountingEnabled: true,
       hrManagement: true,
       budgetTracking: true,
     },
     icon: 'Settings',
-    category: 'consulting'
+    category: 'consulting',
   },
   {
     id: 'senelec_supervision',
@@ -100,7 +96,7 @@ const PROJECT_TEMPLATES: ProjectTemplate[] = [
       realTimeMonitoring: true,
     },
     icon: 'Shield',
-    category: 'supervision'
+    category: 'supervision',
   },
   {
     id: 'subcontractor_maintenance',
@@ -115,7 +111,7 @@ const PROJECT_TEMPLATES: ProjectTemplate[] = [
       timeTracking: true,
     },
     icon: 'Wrench',
-    category: 'maintenance'
+    category: 'maintenance',
   },
 ];
 
@@ -169,28 +165,12 @@ const PROJECT_FEATURES: ProjectFeature[] = [
     enabled: true,
     required: true,
   },
-  {
-    id: 'kobo_global',
-    name: 'Projet Kobo Global',
-    description: 'Projet global de gestion pour Kobo avec modules complets',
-    client: 'CLIENT_LSE',
-    defaultModules: ['dashboard', 'missions', 'planning', 'advanced_analytics', 'ai_assistant', 'automated_workflows'],
-    defaultUsers: ['LSE_SUPERVISEUR', 'LSE_TECHNICIEN', 'LSE_PROJECT_MANAGER'],
-    defaultSettings: {
-      globalView: true,
-      crossProjectReporting: true,
-      aiIntegration: true,
-      workflowAutomation: true,
-    },
-    icon: 'Target',
-    category: 'global'
-  },
 ];
 
 export default function AdminProjectCreation() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  
+
   const [loading, setLoading] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<ProjectTemplate | null>(null);
   const [customProject, setCustomProject] = useState(false);
@@ -207,7 +187,7 @@ export default function AdminProjectCreation() {
     enabledModules: [] as string[],
     settings: {} as Record<string, any>,
   });
-  
+
   const [selectedFeatures, setSelectedFeatures] = useState<ProjectFeature[]>(PROJECT_FEATURES);
   const [showPreview, setShowPreview] = useState(false);
   const [step, setStep] = useState(1);
@@ -215,14 +195,13 @@ export default function AdminProjectCreation() {
   // Vérifier si l'utilisateur peut créer des projets
   const canCreateProject = () => {
     if (!user) return false;
-    
-    const normalizedRole = normalizeRole(user.role);
-    return normalizedRole === ROLES.PROQUELEC_ADMIN || normalizedRole === ROLES.PROQUELEC_DG;
+    const nRole = normalizeRole(user.role);
+    return nRole === ROLES.ADMIN || nRole === ROLES.DIRECTEUR;
   };
 
   useEffect(() => {
     if (!canCreateProject()) {
-      toast.error('Vous n\'avez pas les permissions pour créer des projets');
+      toast.error("Vous n'avez pas les permissions pour créer des projets");
       navigate('/dashboard');
       return;
     }
@@ -244,9 +223,9 @@ export default function AdminProjectCreation() {
       enabledModules: template.defaultModules,
       settings: { ...template.defaultSettings },
     });
-    
+
     // Mettre à jour les fonctionnalités selon le modèle
-    const updatedFeatures = PROJECT_FEATURES.map(feature => ({
+    const updatedFeatures = PROJECT_FEATURES.map((feature) => ({
       ...feature,
       enabled: template.defaultModules.includes(feature.module) || feature.required || false,
     }));
@@ -254,11 +233,9 @@ export default function AdminProjectCreation() {
   };
 
   const handleFeatureToggle = (featureId: string) => {
-    setSelectedFeatures(prev => 
-      prev.map(feature => 
-        feature.id === featureId 
-          ? { ...feature, enabled: !feature.enabled }
-          : feature
+    setSelectedFeatures((prev) =>
+      prev.map((feature) =>
+        feature.id === featureId ? { ...feature, enabled: !feature.enabled } : feature
       )
     );
   };
@@ -275,7 +252,7 @@ export default function AdminProjectCreation() {
     }
 
     setLoading(true);
-    
+
     try {
       // Créer le projet dans IndexedDB
       const newProject = {
@@ -288,23 +265,23 @@ export default function AdminProjectCreation() {
         endDate: projectData.endDate,
         progress: 0,
         assignedUsers: projectData.assignedUsers,
-        createdBy: user.id,
+        createdBy: user?.id ?? '',
         createdAt: new Date(),
         updatedAt: new Date(),
         tags: projectData.tags,
         priority: projectData.priority,
         budget: projectData.budget,
         actualCost: 0,
-        organizationId: user.organizationId,
+        organizationId: (user as any)?.organizationId ?? '',
         isArchived: false,
         settings: projectData.settings,
-        enabledModules: selectedFeatures.filter(f => f.enabled).map(f => f.module),
+        enabledModules: selectedFeatures.filter((f) => f.enabled).map((f) => f.module),
         version: 1,
         config: projectData.settings,
       };
 
       await db.projects.add(newProject);
-      
+
       // Créer les assignments pour les utilisateurs
       for (const userId of projectData.assignedUsers) {
         await db.projectAssignments.add({
@@ -312,42 +289,31 @@ export default function AdminProjectCreation() {
           userId,
           role: 'member',
           assignedAt: new Date(),
-          assignedBy: user.id,
+          assignedBy: user?.id ?? '',
           permissions: ['view', 'edit'],
           canSwitch: true,
           lastAccessed: new Date(),
         });
       }
 
-      // Synchroniser avec le serveur
+      // Synchroniser avec le serveur via apiClient (token injecté automatiquement)
       try {
-        const response = await fetch('/api/projects', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          },
-          body: JSON.stringify({
-            ...newProject,
-            projectId: parseInt(newProject.id.replace('project_', '')),
-          }),
+        await apiClient.post('/projects', {
+          ...newProject,
+          projectId: parseInt(newProject.id.replace('project_', '')),
         });
-
-        if (response.ok) {
-          const serverProject = await response.json();
-          logger.info(`[AdminProjectCreation] Project ${newProject.id} synced to server by ${user.id}`);
-          toast.success(`Projet "${projectData.name}" créé et synchronisé avec succès`);
-        } else {
-          throw new Error('Server sync failed');
-        }
+        logger.info(
+          `[AdminProjectCreation] Project ${newProject.id} synced to server by ${user?.id}`
+        );
+        toast.success(`Projet "${projectData.name}" créé et synchronisé avec succès`);
       } catch (syncError) {
         logger.warn('[AdminProjectCreation] Server sync failed, project saved locally:', syncError);
         toast.success(`Projet "${projectData.name}" créé localement (synchronisation en cours)`);
       }
 
       navigate('/dashboard');
-      
-      logger.info(`[AdminProjectCreation] Project ${newProject.id} created by ${user.id}`);
+
+      logger.info(`[AdminProjectCreation] Project ${newProject.id} created by ${user?.id}`);
     } catch (error) {
       logger.error('[AdminProjectCreation] Error creating project:', error);
       toast.error('Erreur lors de la création du projet');
@@ -427,17 +393,15 @@ export default function AdminProjectCreation() {
         <div className="flex items-center gap-4 mb-8">
           {[1, 2, 3].map((stepNumber) => (
             <div key={stepNumber} className="flex items-center">
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${
-                step >= stepNumber 
-                  ? 'bg-blue-600 text-white' 
-                  : 'bg-slate-700 text-slate-400'
-              }`}>
+              <div
+                className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${
+                  step >= stepNumber ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-400'
+                }`}
+              >
                 {stepNumber}
               </div>
               {stepNumber < 3 && (
-                <div className={`w-16 h-1 ${
-                  step > stepNumber ? 'bg-blue-600' : 'bg-slate-700'
-                }`} />
+                <div className={`w-16 h-1 ${step > stepNumber ? 'bg-blue-600' : 'bg-slate-700'}`} />
               )}
             </div>
           ))}
@@ -450,7 +414,7 @@ export default function AdminProjectCreation() {
               <FileText size={20} className="text-blue-400" />
               Modèles de Projet
             </h2>
-            
+
             <div className="space-y-3">
               {PROJECT_TEMPLATES.map((template) => (
                 <motion.div
@@ -465,14 +429,20 @@ export default function AdminProjectCreation() {
                   }`}
                 >
                   <div className="flex items-start gap-3">
-                    <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${getClientColor(template.client)}`}>
+                    <div
+                      className={`w-12 h-12 rounded-lg flex items-center justify-center ${getClientColor(template.client)}`}
+                    >
                       {getFeatureIcon(template.icon)}
                     </div>
                     <div className="flex-1">
                       <h3 className="text-base font-black text-white mb-1">{template.name}</h3>
-                      <p className="text-xs text-slate-400 line-clamp-2 mb-2">{template.description}</p>
+                      <p className="text-xs text-slate-400 line-clamp-2 mb-2">
+                        {template.description}
+                      </p>
                       <div className="flex items-center gap-2 text-xs">
-                        <span className={`px-2 py-1 rounded-full ${getClientColor(template.client)}`}>
+                        <span
+                          className={`px-2 py-1 rounded-full ${getClientColor(template.client)}`}
+                        >
                           {template.client}
                         </span>
                         <span className="text-slate-500">
@@ -483,7 +453,7 @@ export default function AdminProjectCreation() {
                   </div>
                 </motion.div>
               ))}
-              
+
               {/* Option personnalisé */}
               <motion.div
                 whileHover={{ scale: 1.02 }}
@@ -504,7 +474,9 @@ export default function AdminProjectCreation() {
                   </div>
                   <div>
                     <h3 className="text-base font-black text-white mb-1">Projet Personnalisé</h3>
-                    <p className="text-xs text-slate-400">Créez un projet entièrement personnalisé</p>
+                    <p className="text-xs text-slate-400">
+                      Créez un projet entièrement personnalisé
+                    </p>
                   </div>
                 </div>
               </motion.div>
@@ -515,7 +487,9 @@ export default function AdminProjectCreation() {
           <div className="lg:col-span-2">
             <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6">
               <h2 className="text-xl font-black text-white mb-6">
-                {selectedTemplate ? `Configuration : ${selectedTemplate.name}` : 'Détails du Projet'}
+                {selectedTemplate
+                  ? `Configuration : ${selectedTemplate.name}`
+                  : 'Détails du Projet'}
               </h2>
 
               {/* Informations générales */}
@@ -527,7 +501,7 @@ export default function AdminProjectCreation() {
                   <input
                     type="text"
                     value={projectData.name}
-                    onChange={(e) => setProjectData(prev => ({ ...prev, name: e.target.value }))}
+                    onChange={(e) => setProjectData((prev) => ({ ...prev, name: e.target.value }))}
                     className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                     placeholder="Nom du projet..."
                   />
@@ -539,7 +513,9 @@ export default function AdminProjectCreation() {
                   </label>
                   <textarea
                     value={projectData.description}
-                    onChange={(e) => setProjectData(prev => ({ ...prev, description: e.target.value }))}
+                    onChange={(e) =>
+                      setProjectData((prev) => ({ ...prev, description: e.target.value }))
+                    }
                     rows={3}
                     className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 resize-none"
                     placeholder="Description du projet..."
@@ -553,7 +529,9 @@ export default function AdminProjectCreation() {
                     </label>
                     <select
                       value={projectData.client}
-                      onChange={(e) => setProjectData(prev => ({ ...prev, client: e.target.value }))}
+                      onChange={(e) =>
+                        setProjectData((prev) => ({ ...prev, client: e.target.value }))
+                      }
                       className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                     >
                       <option value="">Sélectionner un client...</option>
@@ -570,7 +548,9 @@ export default function AdminProjectCreation() {
                     </label>
                     <select
                       value={projectData.priority}
-                      onChange={(e) => setProjectData(prev => ({ ...prev, priority: e.target.value as any }))}
+                      onChange={(e) =>
+                        setProjectData((prev) => ({ ...prev, priority: e.target.value as any }))
+                      }
                       className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                     >
                       <option value="low">Basse</option>
@@ -589,7 +569,9 @@ export default function AdminProjectCreation() {
                     <input
                       type="date"
                       value={projectData.startDate.toISOString().split('T')[0]}
-                      onChange={(e) => setProjectData(prev => ({ ...prev, startDate: new Date(e.target.value) }))}
+                      onChange={(e) =>
+                        setProjectData((prev) => ({ ...prev, startDate: new Date(e.target.value) }))
+                      }
                       className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                     />
                   </div>
@@ -601,10 +583,12 @@ export default function AdminProjectCreation() {
                     <input
                       type="date"
                       value={projectData.endDate?.toISOString().split('T')[0] || ''}
-                      onChange={(e) => setProjectData(prev => ({ 
-                        ...prev, 
-                        endDate: e.target.value ? new Date(e.target.value) : undefined 
-                      }))}
+                      onChange={(e) =>
+                        setProjectData((prev) => ({
+                          ...prev,
+                          endDate: e.target.value ? new Date(e.target.value) : undefined,
+                        }))
+                      }
                       className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                     />
                   </div>
@@ -617,7 +601,12 @@ export default function AdminProjectCreation() {
                   <input
                     type="number"
                     value={projectData.budget}
-                    onChange={(e) => setProjectData(prev => ({ ...prev, budget: parseFloat(e.target.value) || 0 }))}
+                    onChange={(e) =>
+                      setProjectData((prev) => ({
+                        ...prev,
+                        budget: parseFloat(e.target.value) || 0,
+                      }))
+                    }
                     className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                     placeholder="0"
                   />
@@ -630,7 +619,7 @@ export default function AdminProjectCreation() {
                   <Zap size={18} className="text-blue-400" />
                   Fonctionnalités Activées
                 </h3>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {selectedFeatures.map((feature) => {
                     const FeatureIcon = feature.icon;
@@ -647,14 +636,15 @@ export default function AdminProjectCreation() {
                         } ${feature.required ? 'opacity-50 cursor-not-allowed' : ''}`}
                       >
                         <div className="flex items-center gap-3">
-                          <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                            feature.enabled
-                              ? 'bg-emerald-500/20'
-                              : 'bg-slate-700'
-                          }`}>
-                            <FeatureIcon size={18} className={
-                              feature.enabled ? 'text-emerald-400' : 'text-slate-400'
-                            } />
+                          <div
+                            className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                              feature.enabled ? 'bg-emerald-500/20' : 'bg-slate-700'
+                            }`}
+                          >
+                            <FeatureIcon
+                              size={18}
+                              className={feature.enabled ? 'text-emerald-400' : 'text-slate-400'}
+                            />
                           </div>
                           <div className="flex-1">
                             <h4 className="text-sm font-medium text-white mb-1">{feature.name}</h4>
@@ -663,11 +653,11 @@ export default function AdminProjectCreation() {
                               <span className="text-xs text-amber-400">Requis</span>
                             )}
                           </div>
-                          <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
-                            feature.enabled
-                              ? 'bg-emerald-500'
-                              : 'bg-slate-600'
-                          }`}>
+                          <div
+                            className={`w-6 h-6 rounded-full flex items-center justify-center ${
+                              feature.enabled ? 'bg-emerald-500' : 'bg-slate-600'
+                            }`}
+                          >
                             {feature.enabled ? (
                               <CheckCircle2 size={14} className="text-white" />
                             ) : (
@@ -698,7 +688,7 @@ export default function AdminProjectCreation() {
                   >
                     Annuler
                   </button>
-                  
+
                   <button
                     onClick={handleCreateProject}
                     disabled={loading || !projectData.name || !projectData.client}
@@ -726,14 +716,16 @@ export default function AdminProjectCreation() {
                 <Eye size={20} className="text-blue-400" />
                 Aperçu du Projet
               </h3>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
                   <h4 className="text-sm font-medium text-slate-300 mb-3">Informations</h4>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-slate-400">Nom:</span>
-                      <span className="text-white font-medium">{projectData.name || 'Non défini'}</span>
+                      <span className="text-white font-medium">
+                        {projectData.name || 'Non défini'}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-slate-400">Client:</span>
@@ -748,7 +740,9 @@ export default function AdminProjectCreation() {
                     <div className="flex justify-between">
                       <span className="text-slate-400">Budget:</span>
                       <span className="text-white font-medium">
-                        {projectData.budget ? `${projectData.budget.toLocaleString()} €` : 'Non défini'}
+                        {projectData.budget
+                          ? `${projectData.budget.toLocaleString()} €`
+                          : 'Non défini'}
                       </span>
                     </div>
                   </div>
@@ -757,16 +751,18 @@ export default function AdminProjectCreation() {
                 <div>
                   <h4 className="text-sm font-medium text-slate-300 mb-3">Modules Activés</h4>
                   <div className="space-y-2">
-                    {selectedFeatures.filter(f => f.enabled).map((feature) => {
-                      const FeatureIcon = feature.icon;
-                      return (
-                        <div key={feature.id} className="flex items-center gap-2 text-sm">
-                          <FeatureIcon size={14} className="text-emerald-400" />
-                          <span className="text-white">{feature.name}</span>
-                        </div>
-                      );
-                    })}
-                    </div>
+                    {selectedFeatures
+                      .filter((f) => f.enabled)
+                      .map((feature) => {
+                        const FeatureIcon = feature.icon;
+                        return (
+                          <div key={feature.id} className="flex items-center gap-2 text-sm">
+                            <FeatureIcon size={14} className="text-emerald-400" />
+                            <span className="text-white">{feature.name}</span>
+                          </div>
+                        );
+                      })}
+                  </div>
                 </div>
 
                 <div>

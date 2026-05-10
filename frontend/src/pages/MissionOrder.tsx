@@ -118,12 +118,15 @@ export default function MissionOrder() {
   // Organization Config for DG Visibility
   const [orgConfig, setOrgConfig] = useState<any>(null);
   const nRole = useMemo(() => normalizeRole(user?.role), [user?.role]);
-  const isDG = nRole === ROLES.PROQUELEC_DG;
+  const isDG = nRole === ROLES.DIRECTEUR;
 
   useEffect(() => {
-    organizationService.getConfig().then(setOrgConfig).catch(err => {
-      logger.error('[MissionOrder] Failed to fetch org config', err);
-    });
+    organizationService
+      .getConfig()
+      .then(setOrgConfig)
+      .catch((err) => {
+        logger.error('[MissionOrder] Failed to fetch org config', err);
+      });
   }, []);
 
   // UI Local State
@@ -165,6 +168,10 @@ export default function MissionOrder() {
   const [isPinModalOpen, setIsPinModalOpen] = useState(false);
   const [pinCode, setPinCode] = useState('');
 
+  // QR Code de vérification — généré après certification
+  const [verificationQR, setVerificationQR] = useState<string | null>(null);
+  const [verificationUrl, setVerificationUrl] = useState<string | null>(null);
+
   // Business Logic Hooks
   const missionState = useMissionState();
   const { state } = missionState;
@@ -180,7 +187,7 @@ export default function MissionOrder() {
   const savedMissions = useMemo(() => {
     // FILTRAGE STRICT : Chaque utilisateur ne voit que ses propres créations
     // On conserve un accès pour l'administrateur système 'admingem' par sécurité
-    const isSystemAdmin = peut(PERMISSIONS.GERER_PARAMETRES);
+    const isSystemAdmin = peut(PERMISSIONS.SYSTEM_CONFIG);
 
     if (isSystemAdmin) return allMissions;
 
@@ -224,6 +231,25 @@ export default function MissionOrder() {
   const effectiveIsCertified = !!state.isCertified || isWorkflowApproved;
   const effectiveIsSubmitted = !effectiveIsCertified && (!!state.isSubmitted || isWorkflowPending);
   const isMissionLocked = effectiveIsSubmitted || effectiveIsCertified;
+
+  // Générer le QR code de vérification quand la mission est certifiée
+  useEffect(() => {
+    if (!effectiveIsCertified || !state.currentMissionId) return;
+    const url = `${window.location.origin}/verify/mission/${state.currentMissionId}`;
+    setVerificationUrl(url);
+    import('qrcode')
+      .then(({ default: QRCode }) => {
+        QRCode.toDataURL(url, {
+          width: 160,
+          errorCorrectionLevel: 'H',
+          margin: 1,
+          color: { dark: '#1e293b', light: '#f8fafc' },
+        })
+          .then(setVerificationQR)
+          .catch(() => {});
+      })
+      .catch(() => {});
+  }, [effectiveIsCertified, state.currentMissionId]);
 
   useEffect(() => {
     const hasUnsavedChanges =
@@ -992,6 +1018,36 @@ export default function MissionOrder() {
               >
                 {(effectiveIsSubmitted || effectiveIsCertified) && (
                   <MissionApprovalStatusBanner workflow={workflow} />
+                )}
+
+                {/* QR Code de vérification — affiché après certification */}
+                {effectiveIsCertified && verificationQR && (
+                  <div className="flex items-center gap-4 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl mb-3">
+                    <img
+                      src={verificationQR}
+                      alt="QR Code vérification"
+                      className="w-16 h-16 rounded-xl border border-emerald-500/30 shrink-0"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[11px] font-black text-emerald-400 uppercase tracking-widest mb-1">
+                        Mission Certifiée — QR de Vérification
+                      </p>
+                      <p className="text-[10px] text-slate-400 truncate font-mono">
+                        {verificationUrl}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          navigator.clipboard
+                            .writeText(verificationUrl || '')
+                            .then(() => toast.success('Lien copié'))
+                        }
+                        className="mt-1.5 text-[9px] text-emerald-400 hover:text-emerald-300 font-bold uppercase tracking-widest transition-colors"
+                      >
+                        📋 Copier le lien
+                      </button>
+                    </div>
+                  </div>
                 )}
 
                 {/* BARRE ONGLETS PILL + BOUTON FOCUS */}

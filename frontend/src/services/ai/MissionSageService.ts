@@ -196,11 +196,11 @@ const QUESTION_CATALOG: Record<string, string[]> = {
     'Norme NS 01-001',
     'Domaine d’application de la norme',
     'Exclusions de la norme NS 01-001',
-    'Comment respecter la norme ?',
-    'Quelles installations sont couvertes ?',
-    'Quelle tension est permise ?',
-    'Quelles sont les exclusions sanitaires ?',
     'Comment assurer conformité BT ?',
+    'Comment assurer la conformité BT ?',
+    'Quelle est la différence entre NS 01-001 et NF C 18-510 ?',
+    'À quoi sert la norme NF C 18-510 ?',
+    'Quand appliquer la NF C 18-510 ?',
   ],
   senelec: [
     'Branchement Senelec',
@@ -361,6 +361,7 @@ const QUESTION_GENERATORS: Record<
       'Comment savoir si on est conforme à la {subject} ?',
       'Quelles sont les exclusions de la {subject} ?',
       'Quels risques si on ne respecte pas la {subject} ?',
+      'Quelle est l’importance de la {subject} en milieu rural ?',
     ],
   },
   senelec: {
@@ -485,7 +486,22 @@ const CATEGORY_KEYWORDS: Record<string, string[]> = {
     'sync',
     'remonte',
   ],
-  norme: ['norme', 'ns 01-001', 'bt', 'erp', 'habitation', 'tension', 'conformité', 'regle'],
+  norme: [
+    'norme',
+    'ns 01-001',
+    'nf c 18-510',
+    '18-510',
+    'bt',
+    'erp',
+    'habitation',
+    'tension',
+    'conformite',
+    'regle',
+    'rural',
+    'consignation',
+    'habilitation',
+    'erd',
+  ],
   senelec: [
     'senelec',
     'branchement',
@@ -591,6 +607,9 @@ function getSmartSuggestions(q: string): string[] {
     'Aide Technique Vision',
     'Missions en attente',
     'Norme NS 01-001',
+    'Norme NF C 18-510',
+    'Règles de consignation',
+    'Habilitation électrique',
   ];
 }
 

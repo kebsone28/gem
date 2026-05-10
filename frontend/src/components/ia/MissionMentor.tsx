@@ -61,10 +61,12 @@ export const MissionMentor: React.FC<MissionMentorProps> = ({
   regionalSummaries,
 }) => {
   const { user } = useAuth();
-  const typedUser: User | null = user ? {
-    role: user.role || 'USER',
-    email: user.email || '',
-  } : null;
+  const typedUser: User | null = user
+    ? {
+        role: user.role || 'USER',
+        email: user.email || '',
+      }
+    : null;
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [history, setHistory] = useState<AIResponse[]>([]);
@@ -86,7 +88,7 @@ export const MissionMentor: React.FC<MissionMentorProps> = ({
     }),
     [stats, auditLogs, households, teams, regionalSummaries]
   );
-  const canManageAI = hasPermission(user, PERMISSIONS.CONFIGURER_MOTEUR_IA);
+  const canManageAI = hasPermission(user, PERMISSIONS.IA_CONFIG);
 
   const speakResponse = (message: string) => {
     if (isMuted || !('speechSynthesis' in window)) return;
@@ -227,21 +229,24 @@ export const MissionMentor: React.FC<MissionMentorProps> = ({
 
     recognition.start();
   };
- 
+
   const handleActionExecute = async (suggestion: any) => {
     const tid = toast.loading(`Exécution : ${suggestion.label}...`);
     try {
       const response = await apiClient.post('ai/agent/execute', {
-        action: suggestion.action
+        action: suggestion.action,
       });
-      
+
       if (response.data.success) {
         toast.success(response.data.message, { id: tid });
-        setHistory(prev => [...prev, { 
-          message: `✅ ${response.data.message}`, 
-          type: 'success',
-          _engine: 'RULES'
-        } as AIResponse]);
+        setHistory((prev) => [
+          ...prev,
+          {
+            message: `✅ ${response.data.message}`,
+            type: 'success',
+            _engine: 'RULES',
+          } as AIResponse,
+        ]);
       } else {
         toast.error(response.data.message || "Échec de l'exécution", { id: tid });
       }

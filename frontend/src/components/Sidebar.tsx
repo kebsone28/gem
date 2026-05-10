@@ -33,11 +33,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { useSync } from '../hooks/useSync';
 import { usePermissions } from '../hooks/usePermissions';
 import { motion } from 'framer-motion';
-import {
-  normalizeRole,
-  ROLES,
-  type UserRole,
-} from '../utils/permissions';
+import { normalizeRole, ROLES } from '../utils/permissions';
+import { AppRole } from '../utils/security/types';
+import type { UserRole } from '../utils/security/types';
 import { useProject } from '../contexts/ProjectContext';
 import { NotificationCenter } from './layout';
 import { organizationService } from '../services/organizationService';
@@ -57,7 +55,8 @@ export default function Sidebar() {
   const [sidebarMode, setSidebarMode] = useState<'wide' | 'compact' | 'rail'>(() => {
     if (typeof window === 'undefined') return 'wide';
     const storedMode = window.localStorage.getItem('gem-sidebar-mode');
-    if (storedMode === 'wide' || storedMode === 'compact' || storedMode === 'rail') return storedMode;
+    if (storedMode === 'wide' || storedMode === 'compact' || storedMode === 'rail')
+      return storedMode;
     return window.localStorage.getItem('gem-sidebar-density') === 'compact' ? 'compact' : 'wide';
   });
 
@@ -65,21 +64,27 @@ export default function Sidebar() {
   const nRole = useMemo(() => normalizeRole(user?.role), [user?.role]);
   const isMaster = isAdmin;
   const canAccessCharges = useMemo(
-    () => isMaster || nRole === ROLES.PROQUELEC_ADMIN || nRole === ROLES.PROQUELEC_DG || nRole === ROLES.PROQUELEC_COMPTABLE,
+    () =>
+      isMaster ||
+      nRole === AppRole.ADMIN ||
+      nRole === AppRole.DIRECTEUR ||
+      nRole === AppRole.COMPTABLE,
     [isMaster, nRole]
   );
   const missionLabel = 'Missions';
-  const roleLabels = useMemo<Partial<Record<UserRole, string>>>(() => ({
-    [ROLES.PROQUELEC_ADMIN]: 'Admin',
-    [ROLES.PROQUELEC_DG]: 'Direction générale',
-    [ROLES.CLIENT_LSE_SUPERVISEUR]: 'Client LSE',
-    [ROLES.CLIENT_LSE_TECHNIQUE]: 'Client LSE',
-    [ROLES.PROQUELEC_DIRECTION]: "Chef d'équipe",
-    [ROLES.PROQUELEC_CHEF_PROJET]: 'Chef de projet',
-    [ROLES.PROQUELEC_COMPTABLE]: 'Comptable',
-  }), []);
+  const roleLabels: Record<string, string> = {
+    [AppRole.ADMIN]: 'Admin',
+    [AppRole.DIRECTEUR]: 'Direction générale',
+    [AppRole.CHEF_PROJET]: 'Chef de projet',
+    [AppRole.COMPTABLE]: 'Comptable',
+    [AppRole.PATRIMOINE]: 'Gestion Patrimoine',
+    [AppRole.SUPERVISEUR]: 'Superviseur Client',
+    [AppRole.CONTROLEUR]: 'Contrôleur Client',
+    [AppRole.CHEF_EQUIPE]: "Chef d'équipe",
+  };
   const roleDisplay = (nRole && roleLabels[nRole]) || user?.role || 'Utilisateur';
-  const organizationName = (user?.organizationConfig as any)?.branding?.organizationName || 'GEM SAAS';
+  const organizationName =
+    (user?.organizationConfig as any)?.branding?.organizationName || 'GEM SAAS';
   const projectLabel = project?.name || 'Wanekoo Core';
 
   const handleLogout = () => {
@@ -88,7 +93,8 @@ export default function Sidebar() {
   };
 
   const cycleDesktopMode = () => {
-    const nextMode = sidebarMode === 'wide' ? 'compact' : sidebarMode === 'compact' ? 'rail' : 'wide';
+    const nextMode =
+      sidebarMode === 'wide' ? 'compact' : sidebarMode === 'compact' ? 'rail' : 'wide';
     setSidebarMode(nextMode);
     if (typeof window !== 'undefined') {
       window.localStorage.setItem('gem-sidebar-mode', nextMode);
@@ -98,7 +104,10 @@ export default function Sidebar() {
 
   const [orgConfig, setOrgConfig] = useState<any>(null);
   useEffect(() => {
-    organizationService.getConfig().then(setOrgConfig).catch(() => {});
+    organizationService
+      .getConfig()
+      .then(setOrgConfig)
+      .catch(() => {});
   }, []);
 
   const visibleMissionPanels = useMemo(() => orgConfig?.mission_panels_dg || [], [orgConfig]);
@@ -106,7 +115,9 @@ export default function Sidebar() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     document.documentElement.dataset.gemSidebarMode = sidebarMode;
-    window.dispatchEvent(new CustomEvent('gem:sidebar-mode-change', { detail: { mode: sidebarMode } }));
+    window.dispatchEvent(
+      new CustomEvent('gem:sidebar-mode-change', { detail: { mode: sidebarMode } })
+    );
   }, [sidebarMode]);
 
   interface NavItem {
@@ -121,19 +132,19 @@ export default function Sidebar() {
 
   const navItems: NavItem[] = useMemo(
     () => [
-      { 
-        to: '/dashboard', 
-        icon: LayoutDashboard, 
-        label: 'Tableau de Bord', 
+      {
+        to: '/dashboard',
+        icon: LayoutDashboard,
+        label: 'Tableau de Bord',
         title: "Vue d'ensemble de la mission et indicateurs clés",
-        category: 'PILOTAGE' 
+        category: 'PILOTAGE',
       },
       {
         to: '/simulation',
         icon: Calculator,
         label: 'Simulation',
         title: 'Calculez vos budgets et simulez des scénarios financiers',
-        permission: PERMISSIONS.VOIR_SIMULATION,
+        permission: PERMISSIONS.IA_SIMULATION,
         category: 'PILOTAGE',
       },
       {
@@ -141,7 +152,7 @@ export default function Sidebar() {
         icon: BarChart3,
         label: 'Charge',
         title: 'Renseignez les budgets prévus, coûts réels et écarts financiers',
-        permission: [PERMISSIONS.VOIR_FINANCES, PERMISSIONS.VOIR_PAIEMENTS],
+        permission: [PERMISSIONS.FINANCE_READ, PERMISSIONS.FINANCE_PAYMENTS],
         visible: canAccessCharges,
         category: 'PILOTAGE',
       },
@@ -150,7 +161,7 @@ export default function Sidebar() {
         icon: Users,
         label: 'Bordereau',
         title: 'Gérez la logistique des équipes et les affectations terrain',
-        permission: PERMISSIONS.GERER_LOGISTIQUE,
+        permission: PERMISSIONS.LOGISTIQUE_MANAGE,
         category: 'PILOTAGE',
       },
       {
@@ -158,7 +169,7 @@ export default function Sidebar() {
         icon: FileText,
         label: 'Cahier de Charge',
         title: 'Consultez les spécifications techniques et les rapports détaillés',
-        permission: [PERMISSIONS.VOIR_RAPPORTS_TERRAIN, PERMISSIONS.VOIR_RAPPORTS_FINANCIERS],
+        permission: [PERMISSIONS.TERRAIN_READ, PERMISSIONS.FINANCE_READ],
         category: 'PILOTAGE',
       },
       {
@@ -166,7 +177,7 @@ export default function Sidebar() {
         icon: ShieldCheck,
         label: 'Automatisation PV',
         title: 'Générez et gérez les procès-verbaux automatiquement',
-        permission: PERMISSIONS.GERER_PV,
+        permission: PERMISSIONS.DOCS_PV,
         category: 'PILOTAGE',
       },
       {
@@ -174,7 +185,7 @@ export default function Sidebar() {
         icon: MapIcon,
         label: 'Terrain',
         title: 'Suivez les ménages sur la carte interactive en temps réel',
-        permission: PERMISSIONS.VOIR_CARTE,
+        permission: PERMISSIONS.UI_MAP,
         category: 'OPÉRATIONS',
       },
       {
@@ -189,7 +200,7 @@ export default function Sidebar() {
         icon: Calendar,
         label: 'Planning',
         title: 'Planification intelligente des travaux par équipe',
-        permission: PERMISSIONS.VOIR_CARTE,
+        permission: PERMISSIONS.UI_MAP,
         category: 'OPÉRATIONS',
       },
       {
@@ -197,7 +208,7 @@ export default function Sidebar() {
         icon: GraduationCap,
         label: 'Formations',
         title: 'Planification des formations par région et session',
-        permission: PERMISSIONS.VOIR_CARTE,
+        permission: PERMISSIONS.UI_MAP,
         category: 'OPÉRATIONS',
       },
       {
@@ -205,7 +216,7 @@ export default function Sidebar() {
         icon: Truck,
         label: 'Logistique',
         title: 'Gestion du déploiement et des ressources matérielles',
-        permission: PERMISSIONS.GERER_LOGISTIQUE,
+        permission: PERMISSIONS.LOGISTIQUE_MANAGE,
         category: 'OPÉRATIONS',
       },
       {
@@ -213,7 +224,7 @@ export default function Sidebar() {
         icon: ShieldCheck,
         label: 'Approbation',
         title: 'Validez ou rejetez les interventions effectuées sur le terrain',
-        permission: PERMISSIONS.VALIDER_MISSION,
+        permission: PERMISSIONS.MISSIONS_VALIDATE,
         category: 'OPÉRATIONS',
       },
       {
@@ -221,8 +232,8 @@ export default function Sidebar() {
         icon: ClipboardList,
         label: missionLabel,
         title: 'Planifiez vos prochaines missions et objectifs',
-        permission: PERMISSIONS.CREER_MISSION,
-        visible: nRole === ROLES.PROQUELEC_DG ? visibleMissionPanels.length > 0 : true,
+        permission: PERMISSIONS.MISSIONS_CREATE,
+        visible: nRole === AppRole.DIRECTEUR ? visibleMissionPanels.length > 0 : true,
         category: 'OPÉRATIONS',
       },
       {
@@ -230,7 +241,7 @@ export default function Sidebar() {
         icon: Users,
         label: 'Utilisateurs',
         title: 'Gérez les comptes, les rôles et les accès de votre équipe',
-        permission: PERMISSIONS.GERER_UTILISATEURS,
+        permission: PERMISSIONS.SYSTEM_USERS,
         category: 'SYSTÈME',
       },
       {
@@ -238,7 +249,7 @@ export default function Sidebar() {
         icon: Activity,
         label: 'Diagnostic Santé',
         title: 'Vérifiez l’état technique du serveur et de la synchronisation',
-        permission: PERMISSIONS.VOIR_DIAGNOSTIC,
+        permission: PERMISSIONS.SYSTEM_AUDIT,
         category: 'SYSTÈME',
       },
       {
@@ -246,7 +257,7 @@ export default function Sidebar() {
         icon: Terminal,
         label: 'Terminal KoboToolbox',
         title: 'API officielle KoboCollect pour la synchronisation',
-        permission: PERMISSIONS.ACCES_TERMINAL_KOBO,
+        permission: PERMISSIONS.TERRAIN_TERMINAL,
         category: 'SYSTÈME',
       },
       {
@@ -254,7 +265,7 @@ export default function Sidebar() {
         icon: ClipboardCheck,
         label: 'GEM Toolbox',
         title: 'GEM Toolbox - Fiches terrain natives soumises directement au VPS',
-        permission: PERMISSIONS.ACCES_TERMINAL_KOBO,
+        permission: PERMISSIONS.TERRAIN_TERMINAL,
         category: 'SYSTÈME',
       },
       {
@@ -262,7 +273,7 @@ export default function Sidebar() {
         icon: Activity,
         label: 'GEM Collect',
         title: 'GEM Collect - Moteur de saisie terrain universel GEM',
-        permission: PERMISSIONS.VOIR_CARTE,
+        permission: PERMISSIONS.UI_MAP,
         category: 'SYSTÈME',
       },
       {
@@ -270,7 +281,7 @@ export default function Sidebar() {
         icon: Building2,
         label: 'Organisation',
         title: 'Configurez votre identité visuelle et les paramètres de structure',
-        permission: PERMISSIONS.GERER_PARAMETRES,
+        permission: PERMISSIONS.SYSTEM_CONFIG,
         category: 'SYSTÈME',
       },
       {
@@ -278,15 +289,15 @@ export default function Sidebar() {
         icon: Settings,
         label: 'Paramètres',
         title: 'Réglages globaux de l’application et préférences personnelles',
-        permission: PERMISSIONS.GERER_PARAMETRES,
+        permission: PERMISSIONS.SYSTEM_CONFIG,
         category: 'SYSTÈME',
       },
       {
         to: '/admin/security',
         icon: ShieldCheck,
         label: 'Sécurité',
-        title: 'Journal d\'audit et contrôles de sécurité avancés',
-        permission: PERMISSIONS.GERER_PARAMETRES,
+        title: "Journal d'audit et contrôles de sécurité avancés",
+        permission: PERMISSIONS.SYSTEM_CONFIG,
         category: 'SYSTÈME',
       },
       {
@@ -294,14 +305,14 @@ export default function Sidebar() {
         icon: Brain,
         label: 'Configuration IA',
         title: 'Configuration du cerveau IA, modes et auto-entraînement souverain',
-        permission: PERMISSIONS.CONFIGURER_MOTEUR_IA,
+        permission: PERMISSIONS.IA_CONFIG,
         category: 'SYSTÈME',
       },
       {
         to: '/aide',
         icon: HelpCircle,
         label: "Centre d'Aide",
-        title: 'Besoin d\'un guide ? Consultez notre documentation complète',
+        title: "Besoin d'un guide ? Consultez notre documentation complète",
         category: 'SYSTÈME',
       },
     ],
@@ -346,8 +357,6 @@ export default function Sidebar() {
       </div>
     );
   }
-
-  
 
   return (
     <>
@@ -397,8 +406,12 @@ export default function Sidebar() {
         )}
 
         {/* Logo Area */}
-        <div className={`relative border-b border-white/6 px-4 pb-3 pt-4 lg:pb-4 lg:pt-5 ${isRailDesktop ? 'lg:px-3' : 'lg:px-6'}`}>
-          <div className={`mb-2 flex items-center gap-3 lg:mb-2.5 ${isRailDesktop ? 'justify-center' : 'justify-between'}`}>
+        <div
+          className={`relative border-b border-white/6 px-4 pb-3 pt-4 lg:pb-4 lg:pt-5 ${isRailDesktop ? 'lg:px-3' : 'lg:px-6'}`}
+        >
+          <div
+            className={`mb-2 flex items-center gap-3 lg:mb-2.5 ${isRailDesktop ? 'justify-center' : 'justify-between'}`}
+          >
             {!isRailDesktop && (
               <div className="inline-flex items-center gap-2 rounded-full border border-blue-400/15 bg-blue-400/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-blue-200">
                 <span className="h-1.5 w-1.5 rounded-full bg-blue-300" />
@@ -428,8 +441,12 @@ export default function Sidebar() {
             </button>
           </div>
 
-          <div className={`flex items-start gap-3 ${isRailDesktop ? 'justify-center' : 'justify-between'}`}>
-            <div className={`flex min-w-0 items-center gap-3 ${isRailDesktop ? 'justify-center' : 'flex-1'}`}>
+          <div
+            className={`flex items-start gap-3 ${isRailDesktop ? 'justify-center' : 'justify-between'}`}
+          >
+            <div
+              className={`flex min-w-0 items-center gap-3 ${isRailDesktop ? 'justify-center' : 'flex-1'}`}
+            >
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/5 p-1 shadow-[0_10px_24px_rgba(2,6,23,0.28)] lg:h-12 lg:w-12">
                 {(user?.organizationConfig as any)?.branding?.logo ? (
                   <img
@@ -443,21 +460,21 @@ export default function Sidebar() {
               </div>
               {!isRailDesktop && (
                 <div className="min-w-0 flex-1">
-                <h1 className="line-clamp-2 text-[18px] font-black leading-[0.98] tracking-[-0.04em] text-white/95 lg:text-[20px]">
-                  {organizationName}
-                </h1>
-                <div className="mt-1 flex flex-col gap-0.5 lg:mt-1.5">
-                  <span className="truncate text-[10.5px] font-semibold uppercase tracking-[0.16em] text-blue-300">
-                    {projectLabel}
-                  </span>
-                  <span className="text-[10px] font-medium uppercase tracking-[0.16em] text-slate-500">
-                    {project?.name ? 'Projet actif' : 'Espace principal'}
-                  </span>
-                </div>
+                  <h1 className="line-clamp-2 text-[18px] font-black leading-[0.98] tracking-[-0.04em] text-white/95 lg:text-[20px]">
+                    {organizationName}
+                  </h1>
+                  <div className="mt-1 flex flex-col gap-0.5 lg:mt-1.5">
+                    <span className="truncate text-[10.5px] font-semibold uppercase tracking-[0.16em] text-blue-300">
+                      {projectLabel}
+                    </span>
+                    <span className="text-[10px] font-medium uppercase tracking-[0.16em] text-slate-500">
+                      {project?.name ? 'Projet actif' : 'Espace principal'}
+                    </span>
+                  </div>
                 </div>
               )}
             </div>
-            
+
             {/* Notification Center Integration (Axe 4 - Amélioration Continue) */}
             {!isRailDesktop && <NotificationCenter />}
           </div>
@@ -525,8 +542,12 @@ export default function Sidebar() {
         </div>
 
         {/* Navigation Scroll Area */}
-        <div className={`relative flex-1 overflow-y-auto px-3 py-3 no-scrollbar lg:py-5 ${isRailDesktop ? 'lg:px-2.5' : 'lg:px-4'}`}>
-          <div className={`rounded-[1.7rem] border border-white/6 bg-white/[0.025] shadow-[0_16px_38px_rgba(2,6,23,0.14)] ${isRailDesktop ? 'px-2 py-3' : 'px-2.5 py-2 lg:px-3 lg:py-3'}`}>
+        <div
+          className={`relative flex-1 overflow-y-auto px-3 py-3 no-scrollbar lg:py-5 ${isRailDesktop ? 'lg:px-2.5' : 'lg:px-4'}`}
+        >
+          <div
+            className={`rounded-[1.7rem] border border-white/6 bg-white/[0.025] shadow-[0_16px_38px_rgba(2,6,23,0.14)] ${isRailDesktop ? 'px-2 py-3' : 'px-2.5 py-2 lg:px-3 lg:py-3'}`}
+          >
             {Object.entries(memoGroupedItems).map(([cat, items], sectionIndex) => (
               <section
                 key={cat}
@@ -549,7 +570,9 @@ export default function Sidebar() {
                     />
                   </div>
                 )}
-                <nav className={`${isRailDesktop ? 'space-y-2' : isCompactDesktop ? 'space-y-1' : 'space-y-1 xl:grid xl:grid-cols-2 xl:gap-1.5 xl:space-y-0'}`}>
+                <nav
+                  className={`${isRailDesktop ? 'space-y-2' : isCompactDesktop ? 'space-y-1' : 'space-y-1 xl:grid xl:grid-cols-2 xl:gap-1.5 xl:space-y-0'}`}
+                >
                   {items.map((item) => (
                     <NavLink
                       key={item.to}
@@ -576,13 +599,17 @@ export default function Sidebar() {
                             />
                           )}
                           {isActive && (
-                            <div className={`absolute rounded-full bg-blue-300/90 shadow-[0_0_14px_rgba(96,165,250,0.8)] ${isRailDesktop ? 'bottom-2 left-1/2 h-1.5 w-7 -translate-x-1/2' : 'bottom-2 left-3 top-2 w-[3px]'}`} />
+                            <div
+                              className={`absolute rounded-full bg-blue-300/90 shadow-[0_0_14px_rgba(96,165,250,0.8)] ${isRailDesktop ? 'bottom-2 left-1/2 h-1.5 w-7 -translate-x-1/2' : 'bottom-2 left-3 top-2 w-[3px]'}`}
+                            />
                           )}
-                          <div className={`relative z-10 flex h-9 w-9 items-center justify-center rounded-xl border lg:h-10 lg:w-10 ${
-                            isActive
-                              ? 'border-blue-400/20 bg-blue-400/10'
-                              : 'border-white/5 bg-white/[0.03]'
-                          }`}>
+                          <div
+                            className={`relative z-10 flex h-9 w-9 items-center justify-center rounded-xl border lg:h-10 lg:w-10 ${
+                              isActive
+                                ? 'border-blue-400/20 bg-blue-400/10'
+                                : 'border-white/5 bg-white/[0.03]'
+                            }`}
+                          >
                             <item.icon
                               size={18}
                               className={`transition-transform duration-300 group-hover:scale-110 ${
@@ -598,9 +625,11 @@ export default function Sidebar() {
                           )}
                           {!isRailDesktop && (
                             <div className="relative z-10 min-w-0 flex-1">
-                              <span className={`block ${isCompactDesktop ? 'truncate' : 'line-clamp-2'} text-[12.5px] font-semibold tracking-[0.04em] lg:text-[13px] lg:tracking-[0.06em] ${
-                                isActive ? 'text-white' : 'text-slate-300'
-                              }`}>
+                              <span
+                                className={`block ${isCompactDesktop ? 'truncate' : 'line-clamp-2'} text-[12.5px] font-semibold tracking-[0.04em] lg:text-[13px] lg:tracking-[0.06em] ${
+                                  isActive ? 'text-white' : 'text-slate-300'
+                                }`}
+                              >
                                 {item.label}
                               </span>
                             </div>
@@ -619,13 +648,17 @@ export default function Sidebar() {
         </div>
 
         {/* Footer Context */}
-        <div className={`relative mt-auto border-t border-white/6 p-3 ${isRailDesktop ? 'lg:px-2.5 lg:py-4' : 'lg:p-4'}`}>
+        <div
+          className={`relative mt-auto border-t border-white/6 p-3 ${isRailDesktop ? 'lg:px-2.5 lg:py-4' : 'lg:p-4'}`}
+        >
           {!isRailDesktop && (
             <div className="rounded-[1.5rem] border border-white/6 bg-white/[0.025] px-4 py-3 text-[11px] text-slate-400">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold text-white">{user.name}</p>
-                  <p className="truncate uppercase tracking-[0.16em] text-slate-500">{roleDisplay}</p>
+                  <p className="truncate uppercase tracking-[0.16em] text-slate-500">
+                    {roleDisplay}
+                  </p>
                 </div>
                 <span className="rounded-full border border-white/8 bg-white/[0.04] px-2.5 py-1 text-[10px] uppercase tracking-[0.14em] text-slate-300">
                   {sidebarMode === 'compact' ? 'Compact' : 'Large'}
@@ -638,7 +671,11 @@ export default function Sidebar() {
             title="Se déconnecter"
             className={`group mt-3 flex w-full items-center border border-white/8 bg-white/[0.03] text-slate-300 transition-all hover:border-rose-500/20 hover:bg-rose-500/10 hover:text-rose-300 ${isRailDesktop ? 'justify-center rounded-2xl px-0 py-3.5' : 'justify-between rounded-[1.4rem] px-4 py-3.5 lg:mt-4 lg:px-5 lg:py-4'}`}
           >
-            {!isRailDesktop && <span className="text-[12px] font-semibold uppercase tracking-[0.16em]">Se déconnecter</span>}
+            {!isRailDesktop && (
+              <span className="text-[12px] font-semibold uppercase tracking-[0.16em]">
+                Se déconnecter
+              </span>
+            )}
             <LogOut size={16} className="group-hover:translate-x-1 transition-transform" />
           </button>
         </div>

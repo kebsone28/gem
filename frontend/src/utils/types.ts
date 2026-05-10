@@ -1,14 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-export type UserRole =
-  | 'ADMIN'
-  | 'ADMIN_PROQUELEC'
-  | 'DG'
-  | 'DG_PROQUELEC'
-  | 'CLIENT_LSE'
-  | 'CHEF_EQUIPE'
-  | 'CHEF_PROJET'
-  | 'COMPTABLE'
-  | 'DIRECTEUR';
+import type { UserRole as SecurityUserRole } from './security/types';
+
+export type UserRole = SecurityUserRole;
 
 export interface User {
   id: string;

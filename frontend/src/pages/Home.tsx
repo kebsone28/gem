@@ -8,62 +8,51 @@ import {
   Building,
   Users,
   Target,
-  BarChart3,
   Calendar,
   Clock,
-  TrendingUp,
   AlertTriangle,
   CheckCircle2,
   Settings,
   Bell,
   Search,
-  Filter,
   ArrowRight,
-  Star,
-  Award,
-  Zap,
-  Shield,
-  Eye,
-  EyeOff,
   Plus,
   Grid,
   List,
   LogOut,
-  User,
   HelpCircle,
-  FileText,
   Activity,
 } from 'lucide-react';
 
 export default function Home() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
   const projectSelectorData = useProjectSelector();
   const {
     projects,
-    selectedProject,
     filteredProjects,
-    projectStats,
     loading,
-    canAccessProjects,
     switchProject,
     setProjectFilter,
     setSearchTerm,
-    refreshProjects,
+    projectFilter, // source unique de vérité pour l'état du filtre actif
   } = projectSelectorData;
 
   const normalizedRole = normalizeRole(user?.role || '');
-  
+
   // 🛡️ Déterminer si l'utilisateur est admin ou DG pour l'UI (stats, boutons)
-  const isGlobalAdmin = isPlatformAdmin(user) || normalizedRole === ROLES.ADMIN || normalizedRole === ROLES.DG;
-  
+  const isGlobalAdmin =
+    (user ? isPlatformAdmin(user as any) : false) ||
+    normalizedRole === ROLES.ADMIN ||
+    normalizedRole === ROLES.DIRECTEUR;
+
   // La liste des projets est déjà filtrée à la source par useProjectSelector
   const availableProjects = filteredProjects;
 
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showNotifications, setShowNotifications] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'completed' | 'archived'>('all');
+  // filterStatus supprimé — projectFilter du hook est la seule source
 
   useEffect(() => {
     if (!user) {
@@ -78,7 +67,7 @@ export default function Home() {
     switch (role) {
       case ROLES.PLATFORM_ADMIN:
       case ROLES.ADMIN:
-      case ROLES.DG:
+      case ROLES.DIRECTEUR:
         return 'bg-purple-500/10 border-purple-500/20 text-purple-400';
       case ROLES.CHEF_PROJET:
         return 'bg-blue-500/10 border-blue-500/20 text-blue-400';
@@ -126,13 +115,6 @@ export default function Home() {
   const handleProjectSelect = (projectId: string) => {
     switchProject(projectId);
     navigate('/dashboard');
-  };
-
-  const getRecentProjects = () => {
-    return filteredProjects
-      .filter(p => !p.isArchived)
-      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-      .slice(0, 6);
   };
 
   const getNotifications = () => {
@@ -183,9 +165,9 @@ export default function Home() {
       <div className="absolute inset-0 overflow-hidden">
         {/* Gradient Base */}
         <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950" />
-        
+
         {/* Diagonal Grid Pattern */}
-        <div 
+        <div
           className="absolute inset-0 opacity-8"
           style={{
             backgroundImage: `
@@ -194,12 +176,12 @@ export default function Home() {
               linear-gradient(45deg, transparent 48%, rgba(34, 197, 94, 0.02) 49%, rgba(34, 197, 94, 0.02) 51%, transparent 52%)
             `,
             backgroundSize: '100px 100px, 150px 150px, 200px 200px',
-            backgroundPosition: '0 0, 50px 50px, 100px 100px'
+            backgroundPosition: '0 0, 50px 50px, 100px 100px',
           }}
         />
-        
+
         {/* Dot Pattern */}
-        <div 
+        <div
           className="absolute inset-0 opacity-6"
           style={{
             backgroundImage: `
@@ -208,19 +190,19 @@ export default function Home() {
               radial-gradient(circle, rgba(147, 51, 234, 0.02) 1px, transparent 1px)
             `,
             backgroundSize: '80px 80px, 120px 120px, 160px 160px',
-            backgroundPosition: '0 0, 40px 40px, 80px 80px'
+            backgroundPosition: '0 0, 40px 40px, 80px 80px',
           }}
         />
-        
+
         {/* Glow Points */}
         <div className="absolute top-1/4 left-1/4 w-2 h-2 bg-blue-400/20 rounded-full blur-sm" />
         <div className="absolute top-1/3 right-1/3 w-3 h-3 bg-purple-400/15 rounded-full blur-md" />
         <div className="absolute bottom-1/4 left-1/3 w-2 h-2 bg-emerald-400/15 rounded-full blur-sm" />
         <div className="absolute top-2/3 right-1/4 w-1 h-1 bg-blue-300/10 rounded-full blur-xs" />
         <div className="absolute bottom-1/3 right-2/3 w-2 h-2 bg-purple-300/10 rounded-full blur-sm" />
-        
+
         {/* Subtle Gradient Overlays */}
-        <div 
+        <div
           className="absolute inset-0 opacity-4"
           style={{
             backgroundImage: `
@@ -229,21 +211,21 @@ export default function Home() {
               radial-gradient(ellipse at center, rgba(34, 197, 94, 0.04) 0%, transparent 30%)
             `,
             backgroundSize: '100% 100%, 100% 100%, 100% 100%',
-            backgroundPosition: '0 0, 0 0, 0 0'
+            backgroundPosition: '0 0, 0 0, 0 0',
           }}
         />
 
         {/* Dynamic Glow for Mascot */}
-        <motion.div 
-          animate={{ 
+        <motion.div
+          animate={{
             opacity: [0.1, 0.2, 0.1],
-            scale: [1, 1.1, 1]
+            scale: [1, 1.1, 1],
           }}
           transition={{ duration: 4, repeat: Infinity }}
           className="absolute top-20 right-20 w-[500px] h-[500px] bg-blue-500/10 rounded-full blur-[100px] z-0"
         />
       </div>
-            {/* Header Premium */}
+      {/* Header Premium */}
       <header className="bg-slate-900/80 backdrop-blur-xl border-b border-slate-800 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
@@ -259,12 +241,12 @@ export default function Home() {
               </div>
 
               <div className="flex items-center gap-4">
-                <div className={`px-3 py-1 rounded-full text-xs font-medium ${getRoleColor(normalizedRole)}`}>
+                <div
+                  className={`px-3 py-1 rounded-full text-xs font-medium ${getRoleColor(normalizedRole ?? '')}`}
+                >
                   {normalizedRole || 'Utilisateur'}
                 </div>
-                <div className="text-sm text-slate-400">
-                  {user.name}
-                </div>
+                <div className="text-sm text-slate-400">{user.name}</div>
               </div>
             </div>
 
@@ -286,10 +268,11 @@ export default function Home() {
               </button>
 
               <button
-                onClick={() => navigate('/login')}
-                className="p-2 bg-slate-800 rounded-lg hover:bg-slate-700 transition-all"
+                onClick={logout}
+                className="p-2 bg-slate-800 rounded-lg hover:bg-slate-700 transition-all text-red-400 hover:text-red-300"
+                title="Déconnexion"
               >
-                <LogOut size={18} className="text-slate-300" />
+                <LogOut size={18} />
               </button>
             </div>
           </div>
@@ -312,9 +295,14 @@ export default function Home() {
               {getNotifications().map((notification) => {
                 const Icon = notification.icon;
                 return (
-                  <div key={notification.id} className="p-4 border-b border-slate-800/50 hover:bg-slate-800/50 transition-all cursor-pointer">
+                  <div
+                    key={notification.id}
+                    className="p-4 border-b border-slate-800/50 hover:bg-slate-800/50 transition-all cursor-pointer"
+                  >
                     <div className="flex items-start gap-3">
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${notification.color}`}>
+                      <div
+                        className={`w-8 h-8 rounded-lg flex items-center justify-center ${notification.color}`}
+                      >
                         <Icon size={16} />
                       </div>
                       <div className="flex-1">
@@ -347,7 +335,7 @@ export default function Home() {
                 </span>
               </h1>
               <p className="text-xl text-slate-400 mb-8 max-w-2xl leading-relaxed">
-                Votre tour de contrôle intelligente pour une gestion de projets d'excellence. 
+                Votre tour de contrôle intelligente pour une gestion de projets d'excellence.
                 Sélectionnez votre espace de travail et pilotez vos performances en temps réel.
               </p>
             </motion.div>
@@ -360,19 +348,19 @@ export default function Home() {
             >
               {/* Floating Animation for Mascot */}
               <motion.div
-                animate={{ 
+                animate={{
                   y: [0, -20, 0],
                 }}
-                transition={{ 
-                  duration: 6, 
+                transition={{
+                  duration: 6,
                   repeat: Infinity,
-                  ease: "easeInOut"
+                  ease: 'easeInOut',
                 }}
                 className="relative z-10"
               >
-                <img 
-                  src="/assets/mascot.png" 
-                  alt="GEM Mascot" 
+                <img
+                  src="/assets/mascot.png"
+                  alt="GEM Mascot"
                   className="w-80 h-auto drop-shadow-[0_20px_50px_rgba(59,130,246,0.3)]"
                 />
               </motion.div>
@@ -385,7 +373,8 @@ export default function Home() {
                 className="absolute -top-12 -left-12 bg-white/10 backdrop-blur-md border border-white/20 p-4 rounded-2xl shadow-2xl max-w-[200px] z-20"
               >
                 <p className="text-sm font-medium text-white italic">
-                  "Bonjour {user.name.split(' ')[0]}, ravi de vous revoir ! Prêt à accomplir de grandes choses aujourd'hui ?"
+                  "Bonjour {user.name.split(' ')[0]}, ravi de vous revoir ! Prêt à accomplir de
+                  grandes choses aujourd'hui ?"
                 </p>
                 <div className="absolute bottom-[-8px] right-8 w-4 h-4 bg-white/10 backdrop-blur-md border-r border-b border-white/20 rotate-45" />
               </motion.div>
@@ -395,67 +384,78 @@ export default function Home() {
             </motion.div>
           </div>
 
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12 relative z-10">
-              <motion.div
-                whileHover={{ scale: 1.02 }}
-                className="bg-gradient-to-br from-blue-500/10 to-blue-600/10 border border-blue-500/20 rounded-xl p-6"
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <Target size={24} className="text-blue-400" />
-                  <span className="text-2xl font-black text-white">{isGlobalAdmin ? projects.length : availableProjects.length}</span>
-                </div>
-                <h3 className="text-sm font-medium text-slate-300">
-                  {isGlobalAdmin ? 'Projets Totaux' : 'Mes Projets'}
-                </h3>
-              </motion.div>
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12 relative z-10">
+            <motion.div
+              whileHover={{ scale: 1.02 }}
+              className="bg-gradient-to-br from-blue-500/10 to-blue-600/10 border border-blue-500/20 rounded-xl p-6"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <Target size={24} className="text-blue-400" />
+                <span className="text-2xl font-black text-white">
+                  {isGlobalAdmin ? projects.length : availableProjects.length}
+                </span>
+              </div>
+              <h3 className="text-sm font-medium text-slate-300">
+                {isGlobalAdmin ? 'Projets Totaux' : 'Mes Projets'}
+              </h3>
+            </motion.div>
 
-              <motion.div
-                whileHover={{ scale: 1.02 }}
-                className="bg-gradient-to-br from-emerald-500/10 to-emerald-600/10 border border-emerald-500/20 rounded-xl p-6"
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <Activity size={24} className="text-emerald-400" />
-                  <span className="text-2xl font-black text-white">
-                    {isGlobalAdmin ? projects.filter(p => p.status === 'active').length : availableProjects.filter(p => p.status === 'active').length}
-                  </span>
-                </div>
-                <h3 className="text-sm font-medium text-slate-300">Projets Actifs</h3>
-              </motion.div>
+            <motion.div
+              whileHover={{ scale: 1.02 }}
+              className="bg-gradient-to-br from-emerald-500/10 to-emerald-600/10 border border-emerald-500/20 rounded-xl p-6"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <Activity size={24} className="text-emerald-400" />
+                <span className="text-2xl font-black text-white">
+                  {isGlobalAdmin
+                    ? projects.filter((p) => p.status === 'active').length
+                    : availableProjects.filter((p) => p.status === 'active').length}
+                </span>
+              </div>
+              <h3 className="text-sm font-medium text-slate-300">Projets Actifs</h3>
+            </motion.div>
 
-              <motion.div
-                whileHover={{ scale: 1.02 }}
-                className="bg-gradient-to-br from-purple-500/10 to-purple-600/10 border border-purple-500/20 rounded-xl p-6"
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <Users size={24} className="text-purple-400" />
-                  <span className="text-2xl font-black text-white">
-                    {isGlobalAdmin ? projects.filter(p => !p.isArchived).length : availableProjects.filter(p => !p.isArchived).length}
-                  </span>
-                </div>
-                <h3 className="text-sm font-medium text-slate-300">
-                  {isGlobalAdmin ? 'Projets Disponibles' : 'Projets Accessibles'}
-                </h3>
-              </motion.div>
+            <motion.div
+              whileHover={{ scale: 1.02 }}
+              className="bg-gradient-to-br from-purple-500/10 to-purple-600/10 border border-purple-500/20 rounded-xl p-6"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <Users size={24} className="text-purple-400" />
+                <span className="text-2xl font-black text-white">
+                  {isGlobalAdmin
+                    ? projects.filter((p) => !p.isArchived).length
+                    : availableProjects.filter((p) => !p.isArchived).length}
+                </span>
+              </div>
+              <h3 className="text-sm font-medium text-slate-300">
+                {isGlobalAdmin ? 'Projets Disponibles' : 'Projets Accessibles'}
+              </h3>
+            </motion.div>
 
-              <motion.div
-                whileHover={{ scale: 1.02 }}
-                className="bg-gradient-to-br from-amber-500/10 to-amber-600/10 border border-amber-500/20 rounded-xl p-6"
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <Clock size={24} className="text-amber-400" />
-                  <span className="text-2xl font-black text-white">
-                    {isGlobalAdmin ? projects.filter(p => p.status === 'planning').length : availableProjects.filter(p => p.status === 'planning').length}
-                  </span>
-                </div>
-                <h3 className="text-sm font-medium text-slate-300">En Planification</h3>
-              </motion.div>
-            </div>
+            <motion.div
+              whileHover={{ scale: 1.02 }}
+              className="bg-gradient-to-br from-amber-500/10 to-amber-600/10 border border-amber-500/20 rounded-xl p-6"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <Clock size={24} className="text-amber-400" />
+                <span className="text-2xl font-black text-white">
+                  {isGlobalAdmin
+                    ? projects.filter((p) => p.status === 'planning').length
+                    : availableProjects.filter((p) => p.status === 'planning').length}
+                </span>
+              </div>
+              <h3 className="text-sm font-medium text-slate-300">En Planification</h3>
+            </motion.div>
+          </div>
 
           {/* Search and Filters */}
           <div className="flex flex-col md:flex-row gap-4 mb-8 relative z-10">
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+              <Search
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                size={20}
+              />
               <input
                 type="text"
                 placeholder="Rechercher un projet..."
@@ -470,9 +470,9 @@ export default function Home() {
 
             <div className="flex gap-2">
               <button
-                onClick={() => setFilterStatus('all')}
+                onClick={() => setProjectFilter('all')}
                 className={`px-4 py-3 rounded-lg font-medium transition-all ${
-                  filterStatus === 'all'
+                  projectFilter === 'all'
                     ? 'bg-blue-600 text-white'
                     : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
                 }`}
@@ -480,9 +480,9 @@ export default function Home() {
                 Tous
               </button>
               <button
-                onClick={() => setFilterStatus('active')}
+                onClick={() => setProjectFilter('active')}
                 className={`px-4 py-3 rounded-lg font-medium transition-all ${
-                  filterStatus === 'active'
+                  projectFilter === 'active'
                     ? 'bg-emerald-600 text-white'
                     : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
                 }`}
@@ -490,9 +490,9 @@ export default function Home() {
                 Actifs
               </button>
               <button
-                onClick={() => setFilterStatus('completed')}
+                onClick={() => setProjectFilter('completed')}
                 className={`px-4 py-3 rounded-lg font-medium transition-all ${
-                  filterStatus === 'completed'
+                  projectFilter === 'completed'
                     ? 'bg-slate-600 text-white'
                     : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
                 }`}
@@ -556,7 +556,13 @@ export default function Home() {
               )}
             </div>
           ) : (
-            <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 relative z-10' : 'space-y-4 relative z-10'}>
+            <div
+              className={
+                viewMode === 'grid'
+                  ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 relative z-10'
+                  : 'space-y-4 relative z-10'
+              }
+            >
               {availableProjects.map((project, index) => (
                 <motion.div
                   key={project.id}
@@ -571,7 +577,9 @@ export default function Home() {
                 >
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3">
-                      <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${getStatusColor(project.status)}`}>
+                      <div
+                        className={`w-12 h-12 rounded-lg flex items-center justify-center ${getStatusColor(project.status)}`}
+                      >
                         {project.status === 'active' && <Activity size={20} />}
                         {project.status === 'planning' && <Calendar size={20} />}
                         {project.status === 'completed' && <CheckCircle2 size={20} />}
@@ -589,10 +597,14 @@ export default function Home() {
 
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(project.status)}`}>
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(project.status)}`}
+                      >
                         {project.status}
                       </span>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(project.priority)}`}>
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(project.priority)}`}
+                      >
                         {project.priority}
                       </span>
                     </div>
@@ -612,18 +624,29 @@ export default function Home() {
                   <div className="flex items-center justify-between text-xs text-slate-500">
                     <div className="flex items-center gap-2">
                       <Users size={14} />
-                      <span>{(project.assignedUsers || []).length} utilisateur{(project.assignedUsers || []).length > 1 ? 's' : ''}</span>
+                      <span>
+                        {(project.assignedUsers || []).length} utilisateur
+                        {(project.assignedUsers || []).length > 1 ? 's' : ''}
+                      </span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Clock size={14} />
-                      <span>Modifié {project.updatedAt ? new Date(project.updatedAt).toLocaleDateString('fr-FR') : 'N/A'}</span>
+                      <span>
+                        Modifié{' '}
+                        {project.updatedAt
+                          ? new Date(project.updatedAt).toLocaleDateString('fr-FR')
+                          : 'N/A'}
+                      </span>
                     </div>
                   </div>
 
                   {(project.tags || []).length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-3">
                       {(project.tags || []).slice(0, 3).map((tag, tagIndex) => (
-                        <span key={tagIndex} className="px-2 py-1 bg-slate-800 rounded text-xs text-slate-300">
+                        <span
+                          key={tagIndex}
+                          className="px-2 py-1 bg-slate-800 rounded text-xs text-slate-300"
+                        >
                           {tag}
                         </span>
                       ))}
@@ -640,7 +663,7 @@ export default function Home() {
           )}
 
           {/* Quick Actions */}
-          {(normalizedRole === ROLES.PROQUELEC_ADMIN || normalizedRole === ROLES.PROQUELEC_DG) && (
+          {(normalizedRole === ROLES.ADMIN || normalizedRole === ROLES.DIRECTEUR) && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -656,7 +679,9 @@ export default function Home() {
                 >
                   <Plus size={24} className="text-blue-400 mx-auto mb-3" />
                   <h3 className="text-lg font-black text-white mb-2">Créer un Projet</h3>
-                  <p className="text-sm text-slate-400">Démarrer un nouveau projet avec des modèles préconfigurés</p>
+                  <p className="text-sm text-slate-400">
+                    Démarrer un nouveau projet avec des modèles préconfigurés
+                  </p>
                 </motion.button>
 
                 <motion.button
@@ -666,7 +691,9 @@ export default function Home() {
                 >
                   <Users size={24} className="text-purple-400 mx-auto mb-3" />
                   <h3 className="text-lg font-black text-white mb-2">Gérer les Utilisateurs</h3>
-                  <p className="text-sm text-slate-400">Administrer les comptes et les permissions</p>
+                  <p className="text-sm text-slate-400">
+                    Administrer les comptes et les permissions
+                  </p>
                 </motion.button>
 
                 <motion.button
@@ -676,7 +703,9 @@ export default function Home() {
                 >
                   <Settings size={24} className="text-emerald-400 mx-auto mb-3" />
                   <h3 className="text-lg font-black text-white mb-2">Modules Globaux</h3>
-                  <p className="text-sm text-slate-400">Configurer les fonctionnalités du système</p>
+                  <p className="text-sm text-slate-400">
+                    Configurer les fonctionnalités du système
+                  </p>
                 </motion.button>
               </div>
             </motion.div>

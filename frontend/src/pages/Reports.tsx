@@ -21,6 +21,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { useProject } from '../contexts/ProjectContext';
 import { usePermissions } from '../hooks/usePermissions';
 import { useFinances } from '../hooks/useFinances';
+import { normalizeRole } from '../utils/permissions';
+import { AppRole } from '../utils/security/types';
 import {
   generateRapportAvancement,
   generateRapportFinancier,
@@ -67,10 +69,11 @@ export default function Reports() {
   const { project } = useProject();
   const { peut, PERMISSIONS } = usePermissions();
   const { getLabel } = useLabels();
-  const isLSE = user?.role === 'CLIENT_LSE';
-  const canViewFinances = peut(PERMISSIONS.VOIR_FINANCES);
-  const canManageFinances = peut(PERMISSIONS.GERER_BUDGETS);
-  const isAdmin = user?.role === 'ADMIN_PROQUELEC' || user?.role === 'DG_PROQUELEC';
+  const nRole = normalizeRole(user?.role);
+  const isLSE = nRole === AppRole.CONTROLEUR || nRole === AppRole.SUPERVISEUR; // LSE uses these roles
+  const canViewFinances = peut(PERMISSIONS.FINANCE_READ);
+  const canManageFinances = peut(PERMISSIONS.FINANCE_MANAGE);
+  const isAdmin = nRole === AppRole.ADMIN || nRole === AppRole.DIRECTEUR;
   const finances = useFinances();
   const [exportFormat, setExportFormat] = useState('PDF');
   const [includeFinancial, setIncludeFinancial] = useState(false);
@@ -146,7 +149,7 @@ export default function Reports() {
       color: 'bg-indigo-500/10 border-indigo-500/30',
       textColor: 'text-indigo-400',
       lseVisible: true,
-      roles: ['ADMIN_PROQUELEC', 'DG_PROQUELEC', 'CLIENT_LSE', 'CHEF_EQUIPE'],
+      roles: [AppRole.ADMIN, AppRole.DIRECTEUR, AppRole.SUPERVISEUR, AppRole.CHEF_EQUIPE],
       preview: [
         'Avancement global (%)',
         'Progression par région',
@@ -171,7 +174,7 @@ export default function Reports() {
       color: 'bg-emerald-500/10 border-emerald-500/30',
       textColor: 'text-emerald-400',
       lseVisible: false,
-      roles: ['ADMIN_PROQUELEC', 'DG_PROQUELEC', 'COMPTABLE', 'CHEF_PROJET'],
+      roles: [AppRole.ADMIN, AppRole.DIRECTEUR, AppRole.COMPTABLE, AppRole.CHEF_PROJET],
       preview: [
         'Marge globale (FCFA)',
         'Tableau Devis vs Réel',
@@ -201,7 +204,7 @@ export default function Reports() {
       color: 'bg-amber-500/10 border-amber-500/30',
       textColor: 'text-amber-400',
       lseVisible: false,
-      roles: ['ADMIN_PROQUELEC', 'DG_PROQUELEC', 'COMPTABLE', 'CHEF_PROJET'],
+      roles: [AppRole.ADMIN, AppRole.DIRECTEUR, AppRole.COMPTABLE, AppRole.CHEF_PROJET],
       preview: [
         'Kits chargés / livrés / posés',
         'Conso. matériaux par région',
@@ -220,7 +223,7 @@ export default function Reports() {
       color: 'bg-blue-500/10 border-blue-500/30',
       textColor: 'text-blue-400',
       lseVisible: false,
-      roles: ['ADMIN_PROQUELEC', 'DG_PROQUELEC'],
+      roles: [AppRole.ADMIN, AppRole.DIRECTEUR],
       preview: ['Taux sync par formulaire', 'Journal des opérations', 'Erreurs / Doublons'],
       handler: async () => {
         generateRapportKobo({ households });
@@ -229,7 +232,7 @@ export default function Reports() {
   ];
 
   const visible = reportCards.filter((r) => {
-    const roleOk = r.roles.includes(user?.role ?? '');
+    const roleOk = r.roles.includes(nRole ?? '');
     const lseOk = !isLSE || r.lseVisible;
     const search =
       r.title.toLowerCase().includes(searchTerm.toLowerCase()) ||

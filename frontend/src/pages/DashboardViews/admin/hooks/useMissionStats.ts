@@ -17,7 +17,7 @@ export function useMissionStats(user: Record<string, unknown> | null, projectId:
 
   const fetchStats = useCallback(async () => {
     if (!user) return;
-    const isMaster = hasPermission(user as any, PERMISSIONS.GERER_PARAMETRES);
+    const isMaster = hasPermission(user as any, PERMISSIONS.SYSTEM_CONFIG);
     const data = isMaster
       ? await missionStatsService.getGlobalStats()
       : await missionStatsService.getUserStats(user.email as string, user.id as string);

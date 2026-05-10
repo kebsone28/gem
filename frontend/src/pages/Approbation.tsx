@@ -26,6 +26,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import SignatureModal from '../components/common/SignatureModal';
 import { fmtFCFA } from '../utils/format';
 import { syncEventBus, SYNC_EVENTS } from '../utils/syncEventBus';
+import { getSocketInstance } from '../hooks/useWebSockets';
 import StockMonitorWidget from '../components/logistique/StockMonitorWidget';
 import logger from '../utils/logger';
 import { normalizeMissionApprovalRole } from '../utils/roleUtils';
@@ -73,9 +74,7 @@ export default function Approbation() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [failedDeleteIds, setFailedDeleteIds] = useState<string[]>([]);
   const [confirmDialog, setConfirmDialog] = useState<
-    | { mode: 'single'; missionId: string; title: string }
-    | { mode: 'bulk'; count: number }
-    | null
+    { mode: 'single'; missionId: string; title: string } | { mode: 'bulk'; count: number } | null
   >(null);
 
   // ── ROLES & PERMISSIONS (VERSION ENTERPRISE) ──
@@ -83,7 +82,7 @@ export default function Approbation() {
   const normalizedWorkflowRole = normalizeMissionApprovalRole(userRole) || userRole;
   const roleMetrics = {
     isAdmin: normalizedWorkflowRole === 'ADMIN',
-    isDG: userRole === 'DG_PROQUELEC',
+    isDG: normalizedWorkflowRole === 'DIRECTEUR',
     isDirector: normalizedWorkflowRole === 'DIRECTEUR',
     isAccountant: ['COMPTABLE', 'FINANCE'].includes(userRole),
     isProjectManager: ['CHEF_PROJET', 'PROJECT_MANAGER'].includes(userRole),
@@ -101,7 +100,7 @@ export default function Approbation() {
 
   const [isArchiveMode, setIsArchiveMode] = useState(false);
   const [counts, setCounts] = useState({ pending: 0, archive: 0 });
-  const isValidator = peut(PERMISSIONS.VALIDER_MISSION) || isAdmin || isDirector;
+  const isValidator = peut(PERMISSIONS.MISSIONS_VALIDATE) || isAdmin || isDirector;
 
   const fetchPending = async (silent = false) => {
     if (!isValidator) {
@@ -156,8 +155,28 @@ export default function Approbation() {
 
   useEffect(() => {
     if (!isValidator) return;
-    const interval = window.setInterval(() => fetchPending(true), 10000);
-    return () => window.clearInterval(interval);
+    const socket = getSocketInstance();
+
+    // Écoute temps réel via WebSocket (instantané)
+    const onMissionEvent = () => {
+      fetchPending(true);
+    };
+    if (socket) {
+      socket.on('mission:submitted', onMissionEvent);
+      socket.on('mission:certified', onMissionEvent);
+    }
+
+    // Polling de secours uniquement si WebSocket déconnecté (60 s au lieu de 10 s)
+    const fallbackInterval = setInterval(() => {
+      const s = getSocketInstance();
+      if (!s?.connected) fetchPending(true);
+    }, 60_000);
+
+    return () => {
+      socket?.off('mission:submitted', onMissionEvent);
+      socket?.off('mission:certified', onMissionEvent);
+      clearInterval(fallbackInterval);
+    };
   }, [isArchiveMode, isValidator]);
 
   useEffect(() => {

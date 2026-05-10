@@ -1,14 +1,16 @@
-﻿ 
+ 
 import { useState, useEffect } from 'react';
 import { db } from '../store/db';
 import { AlertTriangle, X, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { normalizeRole } from '../utils/permissions';
+import { AppRole } from '../utils/security/types';
 
 /**
  * SyncAlertBanner — Shows a dismissable warning banner when
  * the last sync is older than 24 hours, or if there has never been a sync.
- * Only shown to ADMIN_PROQUELEC and DG_PROQUELEC.
+ * Only shown to ADMIN_PROQUELEC and DIRECTEUR roles.
  */
 export default function SyncAlertBanner() {
   const { user } = useAuth();
@@ -18,7 +20,8 @@ export default function SyncAlertBanner() {
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
-    if (!user || !['ADMIN_PROQUELEC', 'DG_PROQUELEC'].includes(user.role)) return;
+    const nRole = normalizeRole(user?.role);
+    if (!nRole || ![AppRole.ADMIN, AppRole.DIRECTEUR].includes(nRole as any)) return;
     if (dismissed) return;
 
     const check = async () => {

@@ -1,4 +1,4 @@
-﻿ 
+ 
 /**
  * Auth Store (Zustand + persist)
  * Source of truth for authentication state.
@@ -10,26 +10,11 @@ import { persist, subscribeWithSelector } from 'zustand/middleware';
 import type { User, UserRole } from '../utils/types';
 import * as safeStorage from '../utils/safeStorage';
 
-const ROLE_ALIASES: Record<string, string> = {
-  'CP':                  'CHEF_PROJET',
-  'CHEF_PROJET':         'CHEF_PROJET',
-  'CHEF_DE_PROJET':      'CHEF_PROJET',
-  'CHEF DE PROJET':      'CHEF_PROJET',
-  'CHEF PROJET':         'CHEF_PROJET',
-  'DG':                  'DIRECTEUR',
-  'DG_PROQUELEC':        'DIRECTEUR',
-  'DIRECTEUR_GENERAL':   'DIRECTEUR',
-  'DIRECTEUR GENERAL':   'DIRECTEUR',
-  'DIR_GEN':             'DIRECTEUR',
-  'DIRECTEUR':           'DIRECTEUR',
-  'ADMIN':               'ADMIN_PROQUELEC',
-  'ADMIN_PROQUELEC':     'ADMIN_PROQUELEC',
-};
+import { normalizeRole as canonicalNormalizeRole } from '../utils/permissions';
 
 export const normalizeRole = (role: string | undefined): UserRole | undefined => {
   if (!role) return undefined;
-  const upper = role.toUpperCase();
-  return (ROLE_ALIASES[upper] || upper) as UserRole;
+  return (canonicalNormalizeRole(role) ?? role.toUpperCase()) as UserRole;
 };
 
 interface AuthState {

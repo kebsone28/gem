@@ -1,10 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useProjectSelector } from '../hooks/useProjectSelector';
 import {
   ChevronRight,
   Users,
-  Building,
   Calendar,
   Target,
   BarChart3,
@@ -14,13 +13,8 @@ import {
   Filter,
   RefreshCw,
   Eye,
-  EyeOff,
-  Settings,
-  UserPlus,
-  UserMinus,
   Edit,
   Trash2,
-  Save,
   X,
 } from 'lucide-react';
 

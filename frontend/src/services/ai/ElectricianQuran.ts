@@ -1,4 +1,4 @@
-﻿ 
+ 
 /**
  * SERVICE : ElectricianQuran (V.8.0 THEMATIC) 🛡️🕌🧠🧬🚀✨
  * Le Référentiel Technique & Cahier des Charges de PROQUELEC.
@@ -264,6 +264,41 @@ export const ELECTRICIAN_GUIDE: Record<string, TechnicalDefinition> = {
       'Transmettre au référent études si le cas sort du périmètre standard BT.',
     ],
     keywords: ['ns 01-001', 'domaine', 'application', 'tension', 'bt', '1000', 'erp'],
+  },
+  norme_nf_c_18_510: {
+    title: "Norme NF C 18-510 - Sécurité & Électrification Rurale",
+    description: "Référence technique pour les installations BT (≤ 1000V AC) en zones rurales où la norme sénégalaise standard (SLT) n'est pas applicable.",
+    specs: [
+      "Application stricte en zone d'électrification rurale décentralisée (ERD).",
+      "Conformité requise pour les micro-réseaux, kits solaires lourds et centrales hybrides.",
+      "Exigences de sécurité renforcées pour l'exploitation, la maintenance et le dépannage.",
+      "Protection contre les risques électriques lors des interventions : Habilitation électrique obligatoire.",
+      "Mise en œuvre des procédures de consignation et de déconsignation spécifiques au milieu rural.",
+      "Utilisation d'EPI (Gants isolants, écran facial, tapis) pour toute intervention sur ouvrage sous tension.",
+    ],
+    norm: "NF C 18-510",
+    sourceFamily: "GEM",
+    criticalChecks: [
+      "Vérifier si l'installation se situe en zone de dérogation SLT (Réseau autonome).",
+      "Vérifier la présence et l'état des dispositifs de coupure et de sectionnement.",
+      "Contrôler le carnet d'habilitation électrique de l'intervenant terrain.",
+      "Vérifier la signalisation de sécurité et le balisage de la zone d'intervention.",
+    ],
+    forbiddenPractices: [
+      "Intervention sur installation non consignée sans habilitation spécifique.",
+      "Absence de port des EPI réglementaires en zone de voisinage simple ou renforcé.",
+      "Utilisation de matériel de mesure (Multimètre) non certifié CAT III ou IV.",
+    ],
+    validationNote: "Cette norme prévaut pour la sécurité des intervenants et la pérennité des ouvrages en milieu rural spécifique (Hors réseau Senelec standard).",
+    defaultVerdict: "A verifier",
+    defaultSeverity: "majeure",
+    correctiveActions: [
+      "Identifier le type de réseau (Isolé / Micro-réseau / Autonome).",
+      "Appliquer strictement les 5 étapes de la consignation NF C 18-510.",
+      "Vérifier la validité de l'habilitation électrique de l'agent avant déploiement.",
+      "S'assurer de la présence du kit de secours électrique sur site.",
+    ],
+    keywords: ["nf c 18-510", "18-510", "rurale", "electrification", "habilitation", "secu", "securite", "slt", "intervention", "consignation", "epi", "erd", "micro-reseau", "kit solaire"],
   },
   ns01_terms: {
     title: 'Glossaire Technique NS 01-001',

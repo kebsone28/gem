@@ -1,4 +1,3 @@
-
 /**
  * 🔐 Security Types & Constants - GEM SAAS
  */
@@ -16,10 +15,10 @@ export type TenantId = (typeof TENANTS)[keyof typeof TENANTS];
 // 2️⃣ RÉFÉRENTIEL DES RÔLES GÉNÉRIQUES
 export const AppRole = {
   PLATFORM_ADMIN: 'PLATFORM_ADMIN',
-  ADMIN: 'ADMIN',
-  DG: 'DG',
+  ADMIN: 'ADMIN_PROQUELEC',
+  DIRECTEUR: 'DIRECTEUR',
   CHEF_PROJET: 'CHEF_PROJET',
-  DIRECTION: 'DIRECTION',
+  CHEF_EQUIPE: 'CHEF_EQUIPE',
   COMPTABLE: 'COMPTABLE',
   PATRIMOINE: 'PATRIMOINE',
   SUPERVISEUR: 'SUPERVISEUR',
@@ -30,30 +29,36 @@ export const AppRole = {
 export type UserRole = (typeof AppRole)[keyof typeof AppRole];
 
 export const ROLE_ALIASES: Record<string, UserRole> = {
+  // Proquelec
   PROQUELEC_ADMIN: AppRole.ADMIN,
-  PROQUELEC_DG: AppRole.DG,
+  PROQUELEC_DG: AppRole.DIRECTEUR,
   PROQUELEC_CHEF_PROJET: AppRole.CHEF_PROJET,
-  PROQUELEC_DIRECTION: AppRole.DIRECTION,
+  PROQUELEC_DIRECTION: AppRole.DIRECTEUR,
   PROQUELEC_COMPTABLE: AppRole.COMPTABLE,
   PROQUELEC_PATRIMOINE: AppRole.PATRIMOINE,
   PROQUELEC_EMPLOYE: AppRole.EMPLOYE,
+
+  // Senelec
   SENELEC_SUPERVISEUR: AppRole.SUPERVISEUR,
   SENELEC_CONTROLEUR: AppRole.CONTROLEUR,
-  SUPERVISEUR_SENELEC: AppRole.SUPERVISEUR,
-  CONTROLEUR_SENELEC: AppRole.CONTROLEUR,
+
+  // LSE
   CLIENT_LSE_SUPERVISEUR: AppRole.SUPERVISEUR,
   CLIENT_LSE_TECHNIQUE: AppRole.CONTROLEUR,
-  TECHNICIEN_LSE: AppRole.CONTROLEUR,
-  SUPERVISEUR_LSE: AppRole.SUPERVISEUR,
-  SOUS_TRAITANT_DIRECTEUR: AppRole.DG,
+
+  // Sous-traitants
+  SOUS_TRAITANT_DIRECTEUR: AppRole.DIRECTEUR,
   SOUS_TRAITANT_EMPLOYE: AppRole.EMPLOYE,
-  DIRECTEUR_SOUS_TRAITANT: AppRole.DG,
-  EMPLOYE_SOUS_TRAITANT: AppRole.EMPLOYE,
-  'DIRECTION GÉNÉRALE': AppRole.DG,
+
+  // Legacy / Display names
+  'DIRECTION GÉNÉRALE': AppRole.DIRECTEUR,
   'CHEF DE PROJET': AppRole.CHEF_PROJET,
-  'CHEF DE CHANTIER': AppRole.DIRECTION,
-  'DG': AppRole.DG,
-  'ADMIN': AppRole.ADMIN,
+  'CHEF DE CHANTIER': AppRole.DIRECTEUR,
+  CHEF_EQUIPE: AppRole.CHEF_EQUIPE,
+  DG: AppRole.DIRECTEUR,
+  ADMIN: AppRole.ADMIN,
+  ADMIN_PROQUELEC: AppRole.ADMIN,
+  DG_PROQUELEC: AppRole.DIRECTEUR,
 };
 
 /**
@@ -153,23 +158,27 @@ export const PERMISSIONS = {
   DOCS_READ: 'docs.read',
   DOCS_CONFIDENTIAL: 'docs.confidential',
   DOCS_PV: 'docs.pv',
+  // ── IA avancée ──
+  IA_CONFIG: 'ia.config',
+  // ── Gestion des modules ──
+  MODULES_MANAGE: 'modules.manage',
 } as const;
 
 export const ROLES = AppRole;
 
 export const LEGACY_MAPPING: Record<string, string> = {
-  'voir_missions': PERMISSIONS.MISSIONS_READ,
-  'creer_mission': PERMISSIONS.MISSIONS_CREATE,
-  'modifier_mission': PERMISSIONS.MISSIONS_UPDATE,
-  'valider_mission': PERMISSIONS.MISSIONS_VALIDATE,
-  'approuver_mission': PERMISSIONS.MISSIONS_APPROVE,
-  'voir_finances': PERMISSIONS.FINANCE_READ,
-  'voir_paiements': PERMISSIONS.FINANCE_PAYMENTS,
-  'voir_carte': PERMISSIONS.UI_MAP,
-  'acces_chat': PERMISSIONS.UI_CHAT,
-  'voir_alertes': PERMISSIONS.UI_ALERTS,
-  'voir_formations': PERMISSIONS.UI_TRAINING,
-  'voir_projets': PERMISSIONS.UI_PROJECTS,
-  'voir_equipes': PERMISSIONS.UI_TEAMS,
-  'utiliser_ia': PERMISSIONS.IA_USE,
+  voir_missions: PERMISSIONS.MISSIONS_READ,
+  creer_mission: PERMISSIONS.MISSIONS_CREATE,
+  modifier_mission: PERMISSIONS.MISSIONS_UPDATE,
+  valider_mission: PERMISSIONS.MISSIONS_VALIDATE,
+  approuver_mission: PERMISSIONS.MISSIONS_APPROVE,
+  voir_finances: PERMISSIONS.FINANCE_READ,
+  voir_paiements: PERMISSIONS.FINANCE_PAYMENTS,
+  voir_carte: PERMISSIONS.UI_MAP,
+  acces_chat: PERMISSIONS.UI_CHAT,
+  voir_alertes: PERMISSIONS.UI_ALERTS,
+  voir_formations: PERMISSIONS.UI_TRAINING,
+  voir_projets: PERMISSIONS.UI_PROJECTS,
+  voir_equipes: PERMISSIONS.UI_TEAMS,
+  utiliser_ia: PERMISSIONS.IA_USE,
 };

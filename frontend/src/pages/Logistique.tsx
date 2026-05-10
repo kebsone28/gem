@@ -81,7 +81,7 @@ export default function Logistique() {
             <button
               onClick={handleRefresh}
               disabled={isRefreshing}
-              className={`rounded-xl p-3 transition-all disabled:opacity-50 ${logistiqueAccent.badge} hover:bg-white/[0.08]`}
+              className={`rounded-xl p-3 transition-all disabled:opacity-50 ${logistiqueAccent.badge} hover:bg-white/8`}
               aria-label="Synchroniser les données"
             >
               <RefreshCcw size={20} className={isRefreshing ? 'animate-spin' : ''} />

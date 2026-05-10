@@ -17,7 +17,6 @@ import {
   CheckCircle2,
   FileText,
   Settings,
-  MapPin,
   DollarSign,
   Zap,
 } from 'lucide-react';
@@ -26,7 +25,6 @@ import {
   DASHBOARD_ACTION_TILE_PRIMARY,
   DASHBOARD_ACTION_TILE_SECONDARY,
   DASHBOARD_MINI_STAT_CARD,
-  DASHBOARD_PRIMARY_BUTTON,
   DASHBOARD_STICKY_PANEL,
   StatusBadge,
   KPICard,
@@ -85,43 +83,43 @@ interface RiskManagementMetrics {
 }
 
 export default function ProjectManagerDashboard() {
-  const { user } = useAuth();
   const { peut, PERMISSIONS } = usePermissions();
   const navigate = useNavigate();
   const households = useLiveQuery(() => db.households.toArray()) || [];
-  const zones = useLiveQuery(() => db.zones.toArray()) || [];
   const teams = useLiveQuery(() => db.teams.toArray()) || [];
 
-  const [selectedView, setSelectedView] = useState<'overview' | 'teams' | 'risks' | 'reports'>('overview');
+  const [selectedView, setSelectedView] = useState<'overview' | 'teams' | 'risks' | 'reports'>(
+    'overview'
+  );
 
   // Vérification des permissions
-  const canViewProjects = peut(PERMISSIONS.VOIR_PROJETS);
-  const canManageProjects = peut(PERMISSIONS.MODIFIER_PROJET);
-  const canViewTeams = peut(PERMISSIONS.VOIR_EQUIPES);
-  const canViewMissions = peut(PERMISSIONS.VOIR_MISSIONS);
-  const canViewFinances = peut(PERMISSIONS.VOIR_FINANCES);
-  const canViewReports = peut(PERMISSIONS.VOIR_RAPPORTS_TERRAIN);
-  const canManagePlanning = peut(PERMISSIONS.GERER_PLANNING);
+  const _canViewProjects = peut(PERMISSIONS.UI_PROJECTS);
+  const _canManageProjects = peut(PERMISSIONS.MISSIONS_UPDATE);
+  const canViewTeams = peut(PERMISSIONS.UI_TEAMS);
+  const canViewMissions = peut(PERMISSIONS.MISSIONS_READ);
+  const canViewFinances = peut(PERMISSIONS.FINANCE_READ);
+  const canViewReports = peut(PERMISSIONS.TERRAIN_READ);
+  const canManagePlanning = peut(PERMISSIONS.MISSIONS_PLANNING);
 
   // Calcul des métriques de projet
   const projectMetrics: ProjectMetrics = useMemo(() => {
     const total = households.length;
-    const completed = households.filter(h => h.status === 'Terminé').length;
-    const inProgress = households.filter(h => 
-      !['Non encore installée', 'Terminé', 'Inéligible'].includes(h.status ?? '')
+    const completed = households.filter((h) => h.status === 'Terminé').length;
+    const inProgress = households.filter(
+      (h) => !['Non encore installée', 'Terminé', 'Inéligible'].includes(h.status ?? '')
     ).length;
 
     const overallProgress = total > 0 ? Math.round((completed / total) * 100) : 0;
-    
+
     // Simulation métriques budget (à remplacer avec vraies données)
-    const budgetUtilization = Math.min(85, overallProgress + Math.random() * 10);
+    const budgetUtilization = Math.min(85, overallProgress);
     const timelineAdherence = overallProgress >= 70 ? 95 : Math.max(60, overallProgress - 10);
-    const qualityScore = Math.min(95, overallProgress + Math.random() * 5);
-    
-    const activeTeams = teams.filter(t => t.status === 'active').length;
+    const qualityScore = Math.min(95, Math.round(overallProgress * 0.95 + 5));
+
+    const activeTeams = teams.filter((t) => t.status === 'active').length;
     const atRiskTasks = Math.max(0, inProgress * 0.15); // 15% des tâches en risque
-    const monthlyBurnRate = Math.round(100000 + Math.random() * 50000); // FCFA
-    
+    const monthlyBurnRate = 125000; // FCFA — valeur médiane fixe, à brancher sur API
+
     const projectedCompletion = new Date();
     projectedCompletion.setMonth(projectedCompletion.getMonth() + (100 - overallProgress) / 20);
 
@@ -139,11 +137,12 @@ export default function ProjectManagerDashboard() {
 
   // Calcul des métriques de coordination d'équipe
   const teamCoordination: TeamCoordinationMetrics = useMemo(() => {
-    const teamPerformance = teams.map(team => {
-      const teamHouseholds = households.filter(h => h.assignedTeamId === team.id);
-      const completed = teamHouseholds.filter(h => h.status === 'Terminé').length;
-      const progress = teamHouseholds.length > 0 ? Math.round((completed / teamHouseholds.length) * 100) : 0;
-      const efficiency = Math.min(100, progress + Math.random() * 20);
+    const teamPerformance = teams.map((team) => {
+      const teamHouseholds = households.filter((h) => h.assignedTeams?.includes(team.id));
+      const completed = teamHouseholds.filter((h) => h.status === 'Terminé').length;
+      const progress =
+        teamHouseholds.length > 0 ? Math.round((completed / teamHouseholds.length) * 100) : 0;
+      const efficiency = Math.min(100, progress + 10); // +10% déterministe — à brancher sur API
       const workload = teamHouseholds.length;
 
       return {
@@ -162,12 +161,16 @@ export default function ProjectManagerDashboard() {
       { from: 'team_interieur', to: 'team_livraison', status: 'ok' as const },
     ];
 
-    const resourceAllocation = teams.map(team => ({
-      teamId: team.id,
-      allocated: Math.round(team.capacity * 0.8),
-      capacity: team.capacity,
-      utilization: Math.round(80 + Math.random() * 15),
-    }));
+    const resourceAllocation = teams.map((team) => {
+      const allocated = Math.round(team.capacity * 0.8);
+      return {
+        teamId: team.id,
+        allocated,
+        capacity: team.capacity,
+        utilization:
+          team.capacity > 0 ? Math.min(100, Math.round((allocated / team.capacity) * 100)) : 80,
+      };
+    });
 
     return { teamPerformance, dependencies, resourceAllocation };
   }, [teams, households]);
@@ -185,7 +188,7 @@ export default function ProjectManagerDashboard() {
       },
       {
         id: 'risk_2',
-        title: 'Pénurie d\'électriciens qualifiés',
+        title: "Pénurie d'électriciens qualifiés",
         severity: 'high' as const,
         probability: 0.2,
         impact: 0.8,
@@ -206,13 +209,13 @@ export default function ProjectManagerDashboard() {
         riskId: 'risk_1',
         plan: 'Diversification fournisseurs + stock de sécurité',
         owner: 'Logistique',
-        dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        dueDate: new Date(new Date().setDate(new Date().getDate() + 7)),
       },
       {
         riskId: 'risk_2',
         plan: 'Formation accélérée + recrutement',
         owner: 'RH',
-        dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+        dueDate: new Date(new Date().setDate(new Date().getDate() + 14)),
       },
     ];
 
@@ -229,7 +232,7 @@ export default function ProjectManagerDashboard() {
   const ViewSelector = () => (
     <div className="flex gap-2 p-1 bg-white/5 rounded-xl">
       {[
-        { id: 'overview', label: 'Vue d\'ensemble', icon: BarChart3 },
+        { id: 'overview', label: "Vue d'ensemble", icon: BarChart3 },
         { id: 'teams', label: 'Équipes', icon: Users },
         { id: 'risks', label: 'Risques', icon: AlertTriangle },
         { id: 'reports', label: 'Rapports', icon: FileText },
@@ -301,7 +304,9 @@ export default function ProjectManagerDashboard() {
                         <Clock size={18} />
                       </div>
                       <div>
-                        <p className="text-[11px] font-black uppercase tracking-[0.06em]">Planning</p>
+                        <p className="text-[11px] font-black uppercase tracking-[0.06em]">
+                          Planning
+                        </p>
                         <p className="mt-1 text-[12px] text-slate-400">Gantt et ressources</p>
                       </div>
                     </div>
@@ -317,8 +322,12 @@ export default function ProjectManagerDashboard() {
                         <Users size={18} />
                       </div>
                       <div>
-                        <p className="text-[11px] font-black uppercase tracking-[0.06em]">Équipes</p>
-                        <p className="mt-1 text-[12px] text-slate-400">Composition et performance</p>
+                        <p className="text-[11px] font-black uppercase tracking-[0.06em]">
+                          Équipes
+                        </p>
+                        <p className="mt-1 text-[12px] text-slate-400">
+                          Composition et performance
+                        </p>
                       </div>
                     </div>
                   </button>
@@ -333,7 +342,9 @@ export default function ProjectManagerDashboard() {
                         <Target size={18} />
                       </div>
                       <div>
-                        <p className="text-[11px] font-black uppercase tracking-[0.06em]">Missions</p>
+                        <p className="text-[11px] font-black uppercase tracking-[0.06em]">
+                          Missions
+                        </p>
                         <p className="mt-1 text-[12px] text-slate-400">Suivi et validation</p>
                       </div>
                     </div>
@@ -349,7 +360,9 @@ export default function ProjectManagerDashboard() {
                         <FileText size={18} />
                       </div>
                       <div>
-                        <p className="text-[11px] font-black uppercase tracking-[0.06em]">Rapports</p>
+                        <p className="text-[11px] font-black uppercase tracking-[0.06em]">
+                          Rapports
+                        </p>
                         <p className="mt-1 text-[12px] text-blue-100/90">Génération et export</p>
                       </div>
                     </div>
@@ -361,15 +374,24 @@ export default function ProjectManagerDashboard() {
               <div className="overflow-x-auto pb-1">
                 <div className="flex min-w-max gap-3">
                   {[
-                    { label: 'Progression', value: `${projectMetrics.overallProgress}%`, icon: TrendingUp },
-                    { label: 'Budget utilisé', value: `${projectMetrics.budgetUtilization.toFixed(1)}%`, icon: DollarSign },
+                    {
+                      label: 'Progression',
+                      value: `${projectMetrics.overallProgress}%`,
+                      icon: TrendingUp,
+                    },
+                    {
+                      label: 'Budget utilisé',
+                      value: `${projectMetrics.budgetUtilization.toFixed(1)}%`,
+                      icon: DollarSign,
+                    },
                     { label: 'Équipes actives', value: projectMetrics.activeTeams, icon: Users },
-                    { label: 'Tâches à risque', value: projectMetrics.atRiskTasks, icon: AlertTriangle },
+                    {
+                      label: 'Tâches à risque',
+                      value: projectMetrics.atRiskTasks,
+                      icon: AlertTriangle,
+                    },
                   ].map(({ label, value, icon: Icon }) => (
-                    <div
-                      key={label}
-                      className={DASHBOARD_MINI_STAT_CARD}
-                    >
+                    <div key={label} className={DASHBOARD_MINI_STAT_CARD}>
                       <div className="flex items-center gap-3">
                         <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/5 text-blue-300">
                           <Icon size={16} />
@@ -378,7 +400,9 @@ export default function ProjectManagerDashboard() {
                           <p className="text-[10px] font-black uppercase tracking-[0.06em] text-slate-400">
                             {label}
                           </p>
-                          <p className="mt-1 text-xl font-black tracking-tight text-white">{value}</p>
+                          <p className="mt-1 text-xl font-black tracking-tight text-white">
+                            {value}
+                          </p>
                         </div>
                       </div>
                     </div>
@@ -430,7 +454,10 @@ export default function ProjectManagerDashboard() {
                 </h3>
                 <div className="space-y-3">
                   {teamCoordination.teamPerformance.slice(0, 4).map((team) => (
-                    <div key={team.id} className="flex items-center justify-between p-3 bg-white/[0.02] rounded-lg border border-white/5">
+                    <div
+                      key={team.id}
+                      className="flex items-center justify-between p-3 bg-white/[0.02] rounded-lg border border-white/5"
+                    >
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
                           <Users size={16} className="text-blue-400" />
@@ -442,7 +469,9 @@ export default function ProjectManagerDashboard() {
                       </div>
                       <div className="text-right">
                         <p className="text-lg font-black text-white">{team.progress}%</p>
-                        <p className="text-xs text-slate-400">Efficacité: {team.efficiency.toFixed(1)}%</p>
+                        <p className="text-xs text-slate-400">
+                          Efficacité: {team.efficiency.toFixed(1)}%
+                        </p>
                       </div>
                     </div>
                   ))}
@@ -457,7 +486,10 @@ export default function ProjectManagerDashboard() {
                   </h3>
                   <div className="text-center">
                     <p className="text-3xl font-black text-white">
-                      {projectMetrics.projectedCompletion.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
+                      {projectMetrics.projectedCompletion.toLocaleDateString('fr-FR', {
+                        month: 'long',
+                        year: 'numeric',
+                      })}
                     </p>
                     <p className="text-sm text-slate-400 mt-2">
                       Basé sur le rythme actuel de {projectMetrics.overallProgress}%
@@ -493,32 +525,48 @@ export default function ProjectManagerDashboard() {
                 <h3 className="text-[11px] font-black mb-4 flex items-center gap-2 text-blue-300/65 uppercase tracking-[0.08em]">
                   <Activity size={18} className="text-blue-500" /> Coordination des Équipes
                 </h3>
-                
+
                 {/* Dépendances */}
                 <div className="mb-6">
                   <h4 className="text-sm font-medium text-white mb-3">Dépendances Inter-Équipes</h4>
                   <div className="space-y-2">
                     {teamCoordination.dependencies.map((dep, i) => (
-                      <div key={i} className={`flex items-center gap-3 p-3 rounded-lg border ${
-                        dep.status === 'blocking' ? 'bg-red-500/10 border-red-500/30' :
-                        dep.status === 'warning' ? 'bg-amber-500/10 border-amber-500/30' :
-                        'bg-emerald-500/10 border-emerald-500/30'
-                      }`}>
-                        <div className={`w-3 h-3 rounded-full ${
-                          dep.status === 'blocking' ? 'bg-red-500' :
-                          dep.status === 'warning' ? 'bg-amber-500' :
-                          'bg-emerald-500'
-                        }`} />
+                      <div
+                        key={i}
+                        className={`flex items-center gap-3 p-3 rounded-lg border ${
+                          dep.status === 'blocking'
+                            ? 'bg-red-500/10 border-red-500/30'
+                            : dep.status === 'warning'
+                              ? 'bg-amber-500/10 border-amber-500/30'
+                              : 'bg-emerald-500/10 border-emerald-500/30'
+                        }`}
+                      >
+                        <div
+                          className={`w-3 h-3 rounded-full ${
+                            dep.status === 'blocking'
+                              ? 'bg-red-500'
+                              : dep.status === 'warning'
+                                ? 'bg-amber-500'
+                                : 'bg-emerald-500'
+                          }`}
+                        />
                         <span className="text-sm text-white">
                           {dep.from} → {dep.to}
                         </span>
-                        <span className={`text-xs px-2 py-1 rounded ${
-                          dep.status === 'blocking' ? 'bg-red-500 text-white' :
-                          dep.status === 'warning' ? 'bg-amber-500 text-white' :
-                          'bg-emerald-500 text-white'
-                        }`}>
-                          {dep.status === 'blocking' ? 'Bloquant' :
-                           dep.status === 'warning' ? 'Attention' : 'OK'}
+                        <span
+                          className={`text-xs px-2 py-1 rounded ${
+                            dep.status === 'blocking'
+                              ? 'bg-red-500 text-white'
+                              : dep.status === 'warning'
+                                ? 'bg-amber-500 text-white'
+                                : 'bg-emerald-500 text-white'
+                          }`}
+                        >
+                          {dep.status === 'blocking'
+                            ? 'Bloquant'
+                            : dep.status === 'warning'
+                              ? 'Attention'
+                              : 'OK'}
                         </span>
                       </div>
                     ))}
@@ -530,7 +578,10 @@ export default function ProjectManagerDashboard() {
                   <h4 className="text-sm font-medium text-white mb-3">Allocation des Ressources</h4>
                   <div className="space-y-2">
                     {teamCoordination.resourceAllocation.map((resource) => (
-                      <div key={resource.teamId} className="flex items-center gap-3 p-3 bg-white/[0.02] rounded-lg border border-white/5">
+                      <div
+                        key={resource.teamId}
+                        className="flex items-center gap-3 p-3 bg-white/[0.02] rounded-lg border border-white/5"
+                      >
                         <div className="flex-1">
                           <p className="text-sm text-white">Équipe {resource.teamId}</p>
                           <p className="text-xs text-slate-400">
@@ -564,27 +615,40 @@ export default function ProjectManagerDashboard() {
                   </h3>
                   <div className="space-y-3">
                     {riskManagement.identifiedRisks.map((risk) => (
-                      <div key={risk.id} className={`p-3 rounded-lg border ${
-                        risk.severity === 'critical' ? 'bg-red-500/10 border-red-500/30' :
-                        risk.severity === 'high' ? 'bg-red-500/10 border-red-500/20' :
-                        risk.severity === 'medium' ? 'bg-amber-500/10 border-amber-500/20' :
-                        'bg-blue-500/10 border-blue-500/20'
-                      }`}>
+                      <div
+                        key={risk.id}
+                        className={`p-3 rounded-lg border ${
+                          risk.severity === 'critical'
+                            ? 'bg-red-500/10 border-red-500/30'
+                            : risk.severity === 'high'
+                              ? 'bg-red-500/10 border-red-500/20'
+                              : risk.severity === 'medium'
+                                ? 'bg-amber-500/10 border-amber-500/20'
+                                : 'bg-blue-500/10 border-blue-500/20'
+                        }`}
+                      >
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex-1">
                             <p className="text-sm font-medium text-white">{risk.title}</p>
                             <p className="text-xs text-slate-400 mt-1">
-                              Probabilité: {(risk.probability * 100).toFixed(0)}% | 
-                              Impact: {(risk.impact * 100).toFixed(0)}%
+                              Probabilité: {(risk.probability * 100).toFixed(0)}% | Impact:{' '}
+                              {(risk.impact * 100).toFixed(0)}%
                             </p>
                           </div>
-                          <span className={`text-xs px-2 py-1 rounded ${
-                            risk.status === 'open' ? 'bg-red-500 text-white' :
-                            risk.status === 'mitigated' ? 'bg-emerald-500 text-white' :
-                            'bg-blue-500 text-white'
-                          }`}>
-                            {risk.status === 'open' ? 'Ouvert' :
-                             risk.status === 'mitigated' ? 'Atténué' : 'Accepté'}
+                          <span
+                            className={`text-xs px-2 py-1 rounded ${
+                              risk.status === 'open'
+                                ? 'bg-red-500 text-white'
+                                : risk.status === 'mitigated'
+                                  ? 'bg-emerald-500 text-white'
+                                  : 'bg-blue-500 text-white'
+                            }`}
+                          >
+                            {risk.status === 'open'
+                              ? 'Ouvert'
+                              : risk.status === 'mitigated'
+                                ? 'Atténué'
+                                : 'Accepté'}
                           </span>
                         </div>
                       </div>
@@ -599,7 +663,10 @@ export default function ProjectManagerDashboard() {
                   </h3>
                   <div className="space-y-3">
                     {riskManagement.mitigationPlans.map((plan) => (
-                      <div key={plan.riskId} className="p-3 bg-white/[0.02] rounded-lg border border-white/5">
+                      <div
+                        key={plan.riskId}
+                        className="p-3 bg-white/[0.02] rounded-lg border border-white/5"
+                      >
                         <p className="text-sm text-white mb-2">{plan.plan}</p>
                         <div className="flex justify-between text-xs text-slate-400">
                           <span>Responsable: {plan.owner}</span>
@@ -617,7 +684,9 @@ export default function ProjectManagerDashboard() {
                   <DollarSign size={18} className="text-blue-500" /> Réserve de Contingence
                 </h3>
                 <div className="text-center">
-                  <p className="text-3xl font-black text-white">{riskManagement.contingencyReserves}%</p>
+                  <p className="text-3xl font-black text-white">
+                    {riskManagement.contingencyReserves}%
+                  </p>
                   <p className="text-sm text-slate-400 mt-2">du budget total alloué aux imprévus</p>
                 </div>
               </div>

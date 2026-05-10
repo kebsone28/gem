@@ -25,6 +25,7 @@ import { generateGrappePDF, generateGrappeExcel } from '../services/bordereauGen
 import { useProject } from '../contexts/ProjectContext';
 import { db } from '../store/db';
 import { useSyncListener } from '../hooks/useSyncListener';
+import { useGrappes } from '../hooks/useGrappes';
 import { fmtNum } from '../utils/format';
 import logger from '../utils/logger';
 import type { Household } from '../utils/types';
@@ -156,9 +157,10 @@ const Bordereau = () => {
   const setSelectedHouseholdId = useTerrainUIStore((s) => s.setSelectedHouseholdId);
   const projectId = project?.id || null;
 
-  const [loading, setLoading] = useState(true);
+  // Hook centralisé pour les grappes (API + cache offline)
+  const { grappes, loading, error: grappesError, refresh: refreshGrappes } = useGrappes(projectId || undefined);
+
   const [syncing, setSyncing] = useState(false);
-  const [data, setData] = useState({ grappes: [] });
   const [searchQuery, setSearchQuery] = useState('');
   const deferredSearchQuery = useDeferredValue(searchQuery);
 
@@ -224,14 +226,10 @@ const Bordereau = () => {
   const fetchData = useCallback(
     async (forceRefresh = false) => {
       if (!projectId) {
-        setData({ grappes: [] });
-        setLoading(false);
         return;
       }
 
       try {
-        setLoading(true);
-
         if (forceRefresh && db) {
           try {
             if (db.grappes && typeof db.grappes.clear === 'function') {
@@ -246,9 +244,8 @@ const Bordereau = () => {
           }
         }
 
-        const response = await api.get(`/projects/${projectId}/bordereau?_t=${Date.now()}`);
-        const grappes = response.data.grappes || [];
-        setData(response.data);
+        // Refresh grappes via hook
+        refreshGrappes();
 
         // Trigger Worker for Stats and Initial Grouping
         workerRef.current?.postMessage({ action: 'CALCULATE_STATS', data: grappes });
@@ -267,11 +264,9 @@ const Bordereau = () => {
       } catch (error) {
         logger.error('Error fetching bordereau:', error);
         toast.error('Erreur lors du chargement du bordereau');
-      } finally {
-        setLoading(false);
       }
     },
-    [projectId]
+    [projectId, grappes, refreshGrappes]
   );
 
   useEffect(() => {
@@ -282,15 +277,15 @@ const Bordereau = () => {
 
   // Offload heavy filtering to worker when query changes
   useEffect(() => {
-    if (data.grappes.length > 0) {
+    if (grappes.length > 0) {
       setIsProcessing(true);
       workerRef.current?.postMessage({
         action: 'GROUP_AND_FILTER_GRAPPES',
-        data: data.grappes,
+        data: grappes,
         params: { query: deferredSearchQuery },
       });
     }
-  }, [deferredSearchQuery, data.grappes]);
+  }, [deferredSearchQuery, grappes]);
 
   // CORRECTION 3 : initialiser filteredDetailHouseholds immédiatement quand detailHouseholds
   // est chargé, pour éviter le flash "aucun résultat" pendant que le Worker traite les données.

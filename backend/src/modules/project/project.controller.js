@@ -234,6 +234,83 @@ export const updateProject = async (req, res) => {
   }
 };
 
+// @desc    Assign user to multiple projects atomically
+// @route   POST /api/projects/assign-user
+export const assignUserToProjects = async (req, res) => {
+  try {
+    const { userId, projectIds } = req.body;
+    const { organizationId, id: adminId } = req.user;
+
+    const allProjects = await prisma.project.findMany({
+      where: { organizationId, deletedAt: null }
+    });
+
+    const updates = [];
+
+    for (const p of allProjects) {
+      const currentAssigned = (p.config || {}).assignedUsers || [];
+      const isCurrentlyAssigned = currentAssigned.includes(userId);
+      const shouldBeAssigned = projectIds.includes(p.id);
+
+      if (shouldBeAssigned && !isCurrentlyAssigned) {
+        updates.push(
+          prisma.project.update({
+            where: { id: p.id },
+            data: {
+              config: {
+                ...(p.config || {}),
+                assignedUsers: [...currentAssigned, userId]
+              }
+            }
+          })
+        );
+      } else if (!shouldBeAssigned && isCurrentlyAssigned) {
+        updates.push(
+          prisma.project.update({
+            where: { id: p.id },
+            data: {
+              config: {
+                ...(p.config || {}),
+                assignedUsers: currentAssigned.filter(id => id !== userId)
+              }
+            }
+          })
+        );
+      }
+    }
+
+    if (updates.length > 0) {
+      await prisma.$transaction(updates);
+
+      // Audit Log
+      await tracerAction({
+        userId: adminId,
+        organizationId,
+        action: 'ASSIGNATION_PROJETS_UTILISATEUR',
+        resource: 'Utilisateur',
+        resourceId: userId,
+        details: { projectIds },
+        req,
+      });
+
+      try {
+        socketService.emit('notification', {
+          type: 'SYNC',
+          message: `Les assignations de projets ont été mises à jour`,
+          data: { user: adminId, action: 'USER_ASSIGNMENTS_UPDATED' },
+        });
+      } catch (wsError) {
+        console.error('WebSocket Emit error during assignment:', wsError);
+      }
+    }
+
+    res.json({ message: 'Assignations mises à jour avec succès', count: updates.length });
+  } catch (error) {
+    console.error('Assign user to projects error:', error);
+    res.status(500).json({ error: 'Server error while updating assignments' });
+  }
+};
+
 // @desc    Delete project (Soft delete) — requires admin password confirmation
 // @route   DELETE /api/projects/:id
 export const deleteProject = async (req, res) => {

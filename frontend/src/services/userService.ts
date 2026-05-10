@@ -21,17 +21,27 @@ export const userService = {
   },
 
   async createUser(user: Partial<ManagedUser> & { password?: string }): Promise<ManagedUser> {
-    const response = await apiClient.post('/users', user);
-    return response.data;
+    try {
+      const response = await apiClient.post('/users', user);
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ [USER_SERVICE] Create User Error Details:', error.response?.data);
+      throw error;
+    }
   },
 
   async updateUser(
     id: string,
     user: Partial<ManagedUser> & { password?: string }
   ): Promise<ManagedUser> {
-    logger.debug(`[USER_SERVICE] Updating user ${id}:`, user);
-    const response = await apiClient.patch(`/users/${id}`, user);
-    return response.data;
+    try {
+      logger.debug(`[USER_SERVICE] Updating user ${id}:`, user);
+      const response = await apiClient.patch(`/users/${id}`, user);
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ [USER_SERVICE] Update User Error Details:', error.response?.data);
+      throw error;
+    }
   },
 
   async deleteUser(id: string): Promise<void> {

@@ -23,6 +23,10 @@ export const projectService = {
     return res.data;
   },
 
+  setUserAssignments: async (userId: string, projectIds: string[]): Promise<void> => {
+    await apiClient.post('/projects/assign-user', { userId, projectIds });
+  },
+
   deleteProject: async (id: string): Promise<void> => {
     await apiClient.delete(`/projects/${id}`);
   },

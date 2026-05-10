@@ -44,6 +44,7 @@ import { computeTheoreticalNeeds, getAvailablePlanningRegions } from '../service
 import { exportProjectConfig, importProjectConfig } from '../services/configExportService';
 import { isMasterAdmin } from '../utils/permissions';
 import ChargesAndResourcesTab from './settings/ChargesAndResourcesTab';
+import { DataSection } from '../components/DataSection';
 
 // ─── TYPE DEFINITIONS ───────────────────────────────────────────────────
 type ProjectConfig = Record<string, unknown> & {
@@ -67,11 +68,11 @@ type TabType = 'charges' | 'kobo' | 'data' | 'datahub' | 'system';
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState<TabType>(() => {
-  // Vérifier si on vient du terrain avec un paramètre tab
-  const urlParams = new URLSearchParams(window.location.search);
-  const tabFromUrl = urlParams.get('tab') as TabType;
-  return tabFromUrl || 'charges';
-});
+    // Vérifier si on vient du terrain avec un paramètre tab
+    const urlParams = new URLSearchParams(window.location.search);
+    const tabFromUrl = urlParams.get('tab') as TabType;
+    return tabFromUrl || 'charges';
+  });
   const [isDeploying, setIsDeploying] = useState(false);
   const [commitMessage, setCommitMessage] = useState('Deploy update');
   const [localAgentState, setLocalAgentState] = useState<{
@@ -89,7 +90,7 @@ export default function Settings() {
 
   // Cast project config once at the top for type safety
   const cfg = ((project?.config || {}) as ProjectConfig) || ({} as ProjectConfig);
-  const canRunDbMaintenance = isMasterAdmin(user);
+  const canRunDbMaintenance = isMasterAdmin(user as any);
   const canAccessAdminOnlyTabs = true; // Temporairement forcer l'affichage pour débogage
 
   const isLoading = isProjectLoading || isHouseholdsLoading;
@@ -219,8 +220,8 @@ export default function Settings() {
       ? [
           { id: 'kobo', label: 'KoBo', icon: CloudDownload },
           { id: 'data', label: 'Données', icon: Database },
-                    { id: 'datahub', label: 'Data Hub', icon: Cloud },
-                    { id: 'system', label: 'Système', icon: Server },
+          { id: 'datahub', label: 'Data Hub', icon: Cloud },
+          { id: 'system', label: 'Système', icon: Server },
         ]
       : []),
   ];
@@ -364,10 +365,7 @@ export default function Settings() {
                     <KoboSettingsSection project={project} onUpdate={updateProject} />
                   )}
                   {canAccessAdminOnlyTabs && activeTab === 'datahub' && (
-                    <DataHubSection
-                      project={project}
-                      onUpdate={updateProject}
-                    />
+                    <DataHubSection project={project} onUpdate={updateProject} />
                   )}
                   {canAccessAdminOnlyTabs && activeTab === 'data' && (
                     <DataSection
@@ -376,7 +374,7 @@ export default function Settings() {
                       onUpdate={updateProject}
                     />
                   )}
-                                    {canAccessAdminOnlyTabs && activeTab === 'system' && (
+                  {canAccessAdminOnlyTabs && activeTab === 'system' && (
                     <div className="space-y-6 sm:space-y-8">
                       <div className="flex items-center justify-between mb-4">
                         <h2 className="text-lg sm:text-xl font-black text-white uppercase tracking-tight flex items-center gap-3">
