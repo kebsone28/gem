@@ -1408,7 +1408,7 @@ export default function AdminUsers() {
             {loading ? (
               <div className="p-20 text-center space-y-4">
                 <div className="w-16 h-16 flex items-center justify-center mx-auto">
-                  <RefreshCw size={32} className="text-indigo-400 animate-spin" />
+                  <RefreshCcw size={32} className="text-indigo-400 animate-spin" />
                 </div>
                 <div>
                   <h3 className="text-white font-black">Chargement...</h3>
