@@ -1755,77 +1755,80 @@ export default function AdminUsers() {
                       }).length;
 
                     return (
-                      <>
-                        <div className="flex items-center justify-between mb-4">
-                          <div className="flex items-center gap-2">
-                            <ShieldCheck size={20} className="text-emerald-500" />
-                            <h4 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                              Droits d'accès granulaires
-                              <span className="text-[10px] bg-slate-800 text-emerald-400 px-2 py-0.5 rounded-full border border-slate-700 font-bold">
-                                {permissionGroups.length} Modules &bull; {checkedPermissionsCount}/
-                                {totalPermissions} Actives
-                              </span>
-                            </h4>
+                      <div className="space-y-6">
+                        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 p-6 bg-slate-900/40 rounded-3xl border border-slate-800/50 backdrop-blur-sm shadow-xl">
+                          <div className="flex items-center gap-4">
+                            <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20">
+                              <ShieldCheck size={24} className="text-emerald-500" />
+                            </div>
+                            <div>
+                              <h4 className="text-xl font-black text-white tracking-tight">
+                                Droits d'accès granulaires
+                              </h4>
+                              <div className="flex items-center gap-2 mt-1">
+                                <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">
+                                  {permissionGroups.length} Modules
+                                </span>
+                                <span className="text-slate-600 font-bold">•</span>
+                                <span className="text-[10px] font-bold text-slate-500 uppercase">
+                                  {checkedPermissionsCount} / {totalPermissions} Actives
+                                </span>
+                              </div>
+                            </div>
                           </div>
+
                           {!(form.role === 'ADMIN_PROQUELEC' || isMasterAdminEmail(form.email)) && (
-                            <div className="flex items-center gap-3">
+                            <div className="flex flex-wrap items-center gap-3">
                               {form.permissions === null || form.permissions === undefined ? (
-                                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 shadow-[0_0_15px_-5px_rgba(16,185,129,0.3)]">
+                                <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
                                   <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                  <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">
+                                  <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">
                                     Mode Automatique
                                   </span>
                                 </div>
                               ) : (
-                                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 shadow-[0_0_15px_-5px_rgba(245,158,11,0.3)]">
+                                <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20">
                                   <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                                  <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider">
+                                  <span className="text-[10px] font-black text-amber-400 uppercase tracking-widest">
                                     Mode Personnalisé
                                   </span>
                                 </div>
                               )}
-                              <div className="flex items-center gap-2">
-                                <button
-                                  type="button"
-                                  onClick={() => navigate('/admin/permissions')}
-                                  className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[12px] font-bold uppercase tracking-wider border border-blue-600 transition-all active:scale-95"
-                                >
-                                  Ouvrir matrice
-                                </button>
 
-                                <button
-                                  type="button"
-                                  onClick={async () => {
-                                    if (!form.role) return toast.error('Rôle manquant');
-                                    const currentRole =
-                                      normalizeRole(form.role) || (form.role as PermissionUserRole);
-                                    const allValues = Object.values(PERMISSIONS) as string[];
-                                    const perms = allValues.filter((value) => {
-                                      const isChecked =
-                                        form.permissions === null || form.permissions === undefined
-                                          ? (ROLE_PERMISSIONS[currentRole] || []).includes(value)
-                                          : (form.permissions || []).includes(value);
-                                      return isChecked;
-                                    });
-                                    setPendingApplyPerms(perms);
-                                    setPendingApplyRole(form.role);
-                                    setConfirmApplyOpen(true);
-                                  }}
-                                  disabled={applyingRoleDefaults}
-                                  className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[12px] font-bold uppercase tracking-wider border border-emerald-600 transition-all disabled:opacity-50"
-                                >
-                                  Appliquer au rôle
-                                </button>
+                              <div className="h-8 w-px bg-slate-800 hidden sm:block mx-2" />
 
-                                <button
-                                  type="button"
-                                  onClick={applyDefaultPermissions}
-                                  className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-bold uppercase tracking-wider border border-slate-700 transition-all hover:scale-105 active:scale-95 flex items-center gap-2"
-                                >
-                                  <RefreshCcw size={12} className="text-slate-400" />
-                                  Réinitialiser
-                                </button>
-                              </div>
+                              <button
+                                type="button"
+                                onClick={() => navigate('/admin/permissions')}
+                                className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-black uppercase tracking-widest transition-all shadow-lg shadow-indigo-600/20 active:scale-95"
+                              >
+                                Ouvrir matrice
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  if (!form.role) return toast.error('Rôle manquant');
+                                  const currentRole =
+                                    normalizeRole(form.role) || (form.role as UserRole);
+                                  setForm((f: any) => ({
+                                    ...f,
+                                    permissions: [...(ROLE_PERMISSIONS[currentRole] || [])],
+                                  }));
+                                  toast.success('Permissions du rôle appliquées');
+                                }}
+                                className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-black uppercase tracking-widest transition-all shadow-lg shadow-emerald-600/20 active:scale-95"
+                              >
+                                Appliquer au rôle
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => setForm((f: any) => ({ ...f, permissions: [] }))}
+                                className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] font-black uppercase tracking-widest transition-all active:scale-95"
+                              >
+                                Réinitialiser
+                              </button>
                             </div>
                           )}
                         </div>
