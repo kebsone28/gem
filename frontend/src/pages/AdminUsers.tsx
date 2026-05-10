@@ -87,7 +87,7 @@ const ROLE_CONFIG: Record<
     label: 'DG Proquelec',
     color: 'bg-emerald-500/10 border-emerald-500/50',
     textColor: 'text-emerald-400',
-    icon: Shield,
+    icon: ShieldIcon,
     description: 'Direction GEM',
   },
   PROQUELEC_CHEF_PROJET: {
@@ -131,14 +131,14 @@ const ROLE_CONFIG: Record<
     label: 'Superviseur SENELEC',
     color: 'bg-cyan-500/10 border-cyan-500/50',
     textColor: 'text-cyan-400',
-    icon: Shield,
+    icon: ShieldIcon,
     description: 'Contrôle Technique National',
   },
   SENELEC_CONTROLEUR: {
     label: 'Contrôleur SENELEC',
     color: 'bg-cyan-500/10 border-cyan-500/50',
     textColor: 'text-cyan-400',
-    icon: Shield,
+    icon: ShieldIcon,
     description: 'Inspection & Conformité',
   },
   
