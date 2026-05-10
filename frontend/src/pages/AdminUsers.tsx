@@ -1793,9 +1793,10 @@ export default function AdminUsers() {
 
                     return (
                       <div className="space-y-6">
-                        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 p-6 bg-slate-900/40 rounded-3xl border border-slate-800/50 backdrop-blur-sm shadow-xl">
+                        <div className="flex flex-col gap-4 p-6 bg-slate-900/40 rounded-3xl border border-slate-800/50 backdrop-blur-sm shadow-xl">
+                          {/* Row 1: Icon + Title + Counters */}
                           <div className="flex items-center gap-4">
-                            <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20">
+                            <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex-shrink-0">
                               <ShieldCheck size={24} className="text-emerald-500" />
                             </div>
                             <div>
@@ -1814,8 +1815,9 @@ export default function AdminUsers() {
                             </div>
                           </div>
 
+                          {/* Row 2: Mode Badge + Action Buttons */}
                           {!(form.role === 'ADMIN_PROQUELEC' || isMasterAdminEmail(form.email)) && (
-                            <div className="flex flex-wrap items-center gap-3">
+                            <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-slate-800/50">
                               {form.permissions === null || form.permissions === undefined ? (
                                 <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
                                   <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -1832,40 +1834,40 @@ export default function AdminUsers() {
                                 </div>
                               )}
 
-                              <div className="h-8 w-px bg-slate-800 hidden sm:block mx-2" />
+                              <div className="flex flex-wrap items-center gap-2 ml-auto">
+                                <button
+                                  type="button"
+                                  onClick={() => navigate('/admin/permissions')}
+                                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-black uppercase tracking-widest transition-all shadow-lg shadow-indigo-600/20 active:scale-95"
+                                >
+                                  Ouvrir matrice
+                                </button>
 
-                              <button
-                                type="button"
-                                onClick={() => navigate('/admin/permissions')}
-                                className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-black uppercase tracking-widest transition-all shadow-lg shadow-indigo-600/20 active:scale-95"
-                              >
-                                Ouvrir matrice
-                              </button>
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    if (!form.role) return toast.error('Rôle manquant');
+                                    const currentRole =
+                                      normalizeRole(form.role) || (form.role as UserRole);
+                                    setForm((f: any) => ({
+                                      ...f,
+                                      permissions: [...(ROLE_PERMISSIONS[currentRole] || [])],
+                                    }));
+                                    toast.success('Permissions du rôle appliquées');
+                                  }}
+                                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-black uppercase tracking-widest transition-all shadow-lg shadow-emerald-600/20 active:scale-95"
+                                >
+                                  Appliquer au rôle
+                                </button>
 
-                              <button
-                                type="button"
-                                onClick={async () => {
-                                  if (!form.role) return toast.error('Rôle manquant');
-                                  const currentRole =
-                                    normalizeRole(form.role) || (form.role as UserRole);
-                                  setForm((f: any) => ({
-                                    ...f,
-                                    permissions: [...(ROLE_PERMISSIONS[currentRole] || [])],
-                                  }));
-                                  toast.success('Permissions du rôle appliquées');
-                                }}
-                                className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-black uppercase tracking-widest transition-all shadow-lg shadow-emerald-600/20 active:scale-95"
-                              >
-                                Appliquer au rôle
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={() => setForm((f: any) => ({ ...f, permissions: [] }))}
-                                className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] font-black uppercase tracking-widest transition-all active:scale-95"
-                              >
-                                Réinitialiser
-                              </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setForm((f: any) => ({ ...f, permissions: [] }))}
+                                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] font-black uppercase tracking-widest transition-all active:scale-95"
+                                >
+                                  Réinitialiser
+                                </button>
+                              </div>
                             </div>
                           )}
                         </div>
