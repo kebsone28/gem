@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, no-empty */
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { db } from '../store/db';
 import type { UserRole, User } from '../utils/types';
@@ -324,6 +324,43 @@ export default function AdminUsers() {
 
   const hasFetched = useRef(false);
 
+  // ─── Stable loadData (useCallback prevents stale closure in useEffect) ────
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const results = await Promise.allSettled([
+        userService.getUsers(),
+        db.teams.toArray(),
+        projectService.getProjects(),
+      ]);
+
+      if (results[0].status === 'fulfilled') {
+        setUsers(results[0].value);
+      } else {
+        toast.error("Échec du chargement des utilisateurs");
+        logger.error('[AdminUsers] Load users failed', results[0].reason);
+      }
+
+      if (results[1].status === 'fulfilled') {
+        setTeams(results[1].value);
+      } else {
+        logger.warn('[AdminUsers] Load teams from Dexie failed', results[1].reason);
+      }
+
+      if (results[2].status === 'fulfilled') {
+        setProjects(results[2].value);
+      } else {
+        toast.error("Échec du chargement des projets");
+        logger.error('[AdminUsers] Load projects failed', results[2].reason);
+      }
+    } catch (err) {
+      toast.error('Erreur critique lors du chargement des données');
+      logger.error('[AdminUsers] Critical load failure', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (hasFetched.current) return;
     hasFetched.current = true;
@@ -331,7 +368,7 @@ export default function AdminUsers() {
     loadData();
     loadOrgConfig();
     appSecurity.get('securityQuestion').then(setActiveSecurityQuestion);
-  }, []);
+  }, [loadData]);
 
   const loadOrgConfig = async () => {
     try {
@@ -368,12 +405,16 @@ export default function AdminUsers() {
   const [newPassword, setNewPassword] = useState('');
   const [showNewPass, setShowNewPass] = useState(false);
 
-  // ─── Filtering ────────────────────────────────────────────────────────────
-  const filtered = users.filter(
-    (u: User) =>
-      u.email.toLowerCase().includes(search.toLowerCase()) ||
-      (u.name || '').toLowerCase().includes(search.toLowerCase()) ||
-      u.role.toLowerCase().includes(search.toLowerCase())
+  // ─── Filtering (memoized to avoid recompute on every render) ─────────────
+  const filtered = useMemo(
+    () =>
+      users.filter(
+        (u: User) =>
+          u.email.toLowerCase().includes(search.toLowerCase()) ||
+          (u.name || '').toLowerCase().includes(search.toLowerCase()) ||
+          u.role.toLowerCase().includes(search.toLowerCase())
+      ),
+    [users, search]
   );
 
   // ─── Open form (create / edit) ────────────────────────────────────────────
@@ -384,7 +425,8 @@ export default function AdminUsers() {
     setShowPass(false);
   };
   const openEdit = (u: User) => {
-    if (u.role === 'ADMIN_PROQUELEC' && user?.id !== u.id) {
+    const isProtected = u.role === 'ADMIN_PROQUELEC' || isMasterAdminEmail(u.email);
+    if (isProtected && user?.id !== u.id) {
       toast.error('Impossible de modifier un autre Administrateur Système');
       return;
     }
@@ -556,7 +598,7 @@ export default function AdminUsers() {
 
   // ─── Open delete modal ────────────────────────────────────────────────────
   const openDelete = (u: User) => {
-    if (u.id === '1' || u.role === 'ADMIN_PROQUELEC') {
+    if (isMasterAdminEmail(u.email) || u.role === 'ADMIN_PROQUELEC') {
       toast.error('Impossible de supprimer un compte Administrateur.');
       return;
     }
@@ -573,7 +615,8 @@ export default function AdminUsers() {
   const confirmDelStep1 = async () => {
     if (!deleteTarget) return;
     // Non-admin: require name confirmation before delete
-    if (deleteTarget.role !== 'ADMIN_PROQUELEC') {
+    const isAdminTarget = deleteTarget.role === 'ADMIN_PROQUELEC' || isMasterAdminEmail(deleteTarget.email);
+    if (!isAdminTarget) {
       if (
         !deleteConfirmedName ||
         deleteConfirmedName.toLowerCase() !== (deleteTarget.name || '').toLowerCase()
@@ -610,7 +653,7 @@ export default function AdminUsers() {
     try {
       await userService.deleteUser(deleteTarget.id);
       if (user) {
-        auditService.logAction(
+        await auditService.logAction(
           user,
           'Suppression Utilisateur',
           'UTILISATEURS',
@@ -628,7 +671,7 @@ export default function AdminUsers() {
 
   // ─── Toggle active ────────────────────────────────────────────────────────
   const toggleActive = async (u: User) => {
-    if (u.id === '1') {
+    if (isMasterAdminEmail(u.email)) {
       toast.error('Impossible de désactiver le compte Admin principal.');
       return;
     }
@@ -636,7 +679,7 @@ export default function AdminUsers() {
     try {
       await userService.updateUser(u.id, { active: next });
       if (user) {
-        auditService.logAction(
+        await auditService.logAction(
           user,
           next ? 'Activation Utilisateur' : 'Désactivation Utilisateur',
           'UTILISATEURS',
@@ -670,7 +713,7 @@ export default function AdminUsers() {
     try {
       await userService.updateUser(resetTarget.id, { password: newPassword });
       if (user) {
-        auditService.logAction(
+        await auditService.logAction(
           user,
           'Réinitialisation Mot de Passe',
           'UTILISATEURS',
@@ -686,37 +729,29 @@ export default function AdminUsers() {
     }
   };
 
-  // ─── Role stats ──────────────────────────────────────────────────────────
-  // Build a lookup: for each ROLE_CONFIG key, what raw role values map to it?
-  // We do NOT use normalizeRole() on the config key because multiple config keys
-  // may normalize to the same AppRole (e.g. PROQUELEC_DG and PROQUELEC_ADMIN → DG).
-  // Instead, we match exact role strings including all known aliases.
-  const ROLE_ALIASES_REVERSE: Record<string, string[]> = {};
-  // For each ROLE_CONFIG key, collect all raw role values that should be counted under it.
-  // A user role belongs to a config key if: u.role === roleKey OR the alias of u.role maps to roleKey.
-  const roleStats = Object.entries(ROLE_CONFIG).map(([roleKey, cfg]) => ({
-    ...cfg,
-    role: roleKey,
-    count: users.filter((u: User) => {
-      // Direct match (e.g. user.role = "PROQUELEC_ADMIN", key = "PROQUELEC_ADMIN")
-      if (u.role === roleKey) return true;
-      // Alias match: the user has a legacy role that is an alias OF this config key
-      // e.g. user.role = "ADMIN_PROQUELEC", key = "PROQUELEC_ADMIN"
-      // We check: is there any ROLE_ALIAS entry where alias key === u.role AND value === normalizeRole(roleKey)?
-      const nConfigRole = normalizeRole(roleKey);
-      const nUserRole = normalizeRole(u.role);
-      // Only match if they normalize to the same AppRole AND no OTHER ROLE_CONFIG key is a closer direct match
-      if (nUserRole && nConfigRole && nUserRole === nConfigRole) {
-        // Ensure no other config key matches u.role exactly (avoid double-counting)
-        const hasExactMatch = Object.keys(ROLE_CONFIG).some(k => k !== roleKey && k === u.role);
-        if (hasExactMatch) return false;
-        return true;
-      }
-      return false;
-    }).length,
-  }));
+  // ─── Role stats (memoized – recomputes only when users list changes) ────────
+  const roleStats = useMemo(
+    () =>
+      Object.entries(ROLE_CONFIG).map(([roleKey, cfg]) => ({
+        ...cfg,
+        role: roleKey,
+        count: users.filter((u: User) => {
+          if (u.role === roleKey) return true;
+          const nConfigRole = normalizeRole(roleKey);
+          const nUserRole = normalizeRole(u.role);
+          if (nUserRole && nConfigRole && nUserRole === nConfigRole) {
+            const hasExactMatch = Object.keys(ROLE_CONFIG).some(k => k !== roleKey && k === u.role);
+            if (hasExactMatch) return false;
+            return true;
+          }
+          return false;
+        }).length,
+      })),
+    [users]
+  );
 
-  const isAdminDelete = deleteTarget?.role === 'ADMIN_PROQUELEC';
+  const isAdminDelete =
+    deleteTarget?.role === 'ADMIN_PROQUELEC' || isMasterAdminEmail(deleteTarget?.email ?? '');
 
   return (
     <PageContainer className="min-h-screen bg-slate-950 py-8">
