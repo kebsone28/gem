@@ -1,5 +1,5 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, no-empty */
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+/* eslint-disable @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, no-empty */
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { db } from '../store/db';
 import type { UserRole, User } from '../utils/types';
@@ -168,7 +168,7 @@ const FEATURE_PACKS: Record<
   string,
   {
     label: string;
-    icon: any;
+    icon: React.ElementType;
     color: string;
     bg: string;
     border: string;
@@ -235,7 +235,9 @@ const FEATURE_PACKS: Record<
   },
 };
 
-type UserForm = Omit<User, 'id' | 'createdAt'>;
+type UserForm = Omit<User, 'id' | 'createdAt'> & {
+  assignedProjectIds: string[];
+};
 
 const emptyForm = (): UserForm => ({
   email: '',
@@ -259,11 +261,11 @@ export default function AdminUsers() {
   const [pendingApplyRole, setPendingApplyRole] = useState<string | null>(null);
   const { user, impersonate } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
-  const [teams, setTeams] = useState<any[]>([]);
+  const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [search, setSearch] = useState('');
-  const [projects, setProjects] = useState<any[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState<UserForm>(emptyForm());
@@ -280,7 +282,7 @@ export default function AdminUsers() {
   const [activeSecurityQuestion, setActiveSecurityQuestion] = useState('');
 
   // ── Organization Config State ──
-  const [orgConfig, setOrgConfig] = useState<any>({
+  const [orgConfig, setOrgConfig] = useState<Record<string, unknown>>({
     mission_panels_dg: ['prep', 'report', 'approval'],
   });
   const [isSavingConfig, setIsSavingConfig] = useState(false);
@@ -379,7 +381,7 @@ export default function AdminUsers() {
     }
   };
 
-  const updateOrgConfig = async (newConfig: any) => {
+  const updateOrgConfig = async (newConfig: Record<string, unknown>) => {
     setIsSavingConfig(true);
     try {
       await organizationService.updateConfig(newConfig);
@@ -442,7 +444,7 @@ export default function AdminUsers() {
 
     setForm({
       email: u.email,
-      notificationEmail: (u as any).notificationEmail || '',
+      notificationEmail: u.notificationEmail || '',
       password: '', // Do not show current pass
       role: u.role,
       name: u.name || '',
@@ -451,13 +453,13 @@ export default function AdminUsers() {
       requires2FA: !!u.requires2FA,
       permissions: u.permissions ?? undefined,
       assignedProjectIds: userProjects,
-    } as any);
+    });
     setShowForm(true);
     setShowPass(false);
   };
 
   const togglePermission = (p: string) => {
-    setForm((f: any) => {
+    setForm((f: UserForm) => {
       const currentRole = normalizeRole(f.role) || (f.role as PermissionUserRole);
 
       // Si on est en mode Auto (null ou undefined), on part de la base du rôle
@@ -476,7 +478,7 @@ export default function AdminUsers() {
     const pack = FEATURE_PACKS[packId];
     if (!pack) return;
 
-    setForm((f: any) => {
+    setForm((f: UserForm) => {
       const currentRole = normalizeRole(f.role) || (f.role as PermissionUserRole);
       const isAuto = f.permissions === null || f.permissions === undefined;
       const current = isAuto ? ROLE_PERMISSIONS[currentRole] || [] : f.permissions;
@@ -497,7 +499,7 @@ export default function AdminUsers() {
   const applyDefaultPermissions = () => {
     // En mettant permissions à undefined, le système repasse automatiquement
     // sur le fallback du RÔLE (comportement par défaut)
-    setForm((f: any) => ({ ...f, permissions: null })); // null tells the server to reset to role defaults
+    setForm((f: UserForm) => ({ ...f, permissions: null })); // null tells the server to reset to role defaults
     toast(`✅ Compte synchronisé sur les droits par défaut du rôle ${form.role}`, { icon: 'ℹ️' });
   };
 
@@ -529,7 +531,7 @@ export default function AdminUsers() {
         await userService.updateUser(editId, finalForm);
 
         if (user) {
-          auditService.logAction(
+          await auditService.logAction(
             user,
             'Modification Utilisateur',
             'UTILISATEURS',
@@ -542,7 +544,7 @@ export default function AdminUsers() {
         const newUser = await userService.createUser(finalForm);
         finalUserId = newUser.id;
         if (user) {
-          auditService.logAction(
+          await auditService.logAction(
             user,
             'Création Utilisateur',
             'UTILISATEURS',
@@ -556,7 +558,7 @@ export default function AdminUsers() {
       // ── Update Project Assignments ──
       if (finalUserId) {
         invalidatePermissionsCache(finalUserId);
-        const assignedIds = (form as any).assignedProjectIds || [];
+        const assignedIds = form.assignedProjectIds || [];
         const updatePromises = projects.map(async (p) => {
           const currentAssigned = p.config?.assignedUsers || [];
           const isCurrentlyAssigned = currentAssigned.includes(finalUserId);
@@ -583,16 +585,18 @@ export default function AdminUsers() {
             Promise.all(updatePromises),
             new Promise((_, reject) => setTimeout(() => reject(new Error('Délai d\'assignation dépassé')), 10000))
           ]);
-        } catch (assignError: any) {
-          logger.warn('[AdminUsers] Project assignment partially failed or timed out', assignError);
+        } catch (assignError) {
+          const errMessage = assignError instanceof Error ? assignError.message : String(assignError);
+          logger.warn('[AdminUsers] Project assignment partially failed or timed out', errMessage);
           toast.error("Certaines assignations de projets n'ont pas pu être finalisées");
         }
       }
 
       setShowForm(false);
       loadData(); // Refresh list
-    } catch (err: any) {
-      toast.error(`❌  Erreur: ${err.message}`);
+    } catch (err) {
+      const errMessage = err instanceof Error ? err.message : String(err);
+      toast.error(`❌  Erreur: ${errMessage}`);
     }
   };
 
@@ -664,8 +668,9 @@ export default function AdminUsers() {
       toast(`🗑️  Compte "${name}" supprimé du serveur.`, { icon: '⚠️' });
       setDeleteTarget(null);
       loadData();
-    } catch (err: any) {
-      toast.error(`❌  Erreur: ${err.message}`);
+    } catch (err) {
+      const errMessage = err instanceof Error ? err.message : String(err);
+      toast.error(`❌  Erreur: ${errMessage}`);
     }
   };
 
@@ -693,8 +698,9 @@ export default function AdminUsers() {
         toast(`⏸️  Compte "${u.name}" désactivé.`, { icon: 'ℹ️' });
       }
       loadData();
-    } catch (err: any) {
-      toast.error(`❌  Erreur: ${err.message}`);
+    } catch (err) {
+      const errMessage = err instanceof Error ? err.message : String(err);
+      toast.error(`❌  Erreur: ${errMessage}`);
     }
   };
 
@@ -724,8 +730,9 @@ export default function AdminUsers() {
       toast.success(`🔑  Mot de passe de "${resetTarget.name}" réinitialisé.`);
       setResetTarget(null);
       loadData();
-    } catch (err: any) {
-      toast.error(`❌  Erreur: ${err.message}`);
+    } catch (err) {
+      const errMessage = err instanceof Error ? err.message : String(err);
+      toast.error(`❌  Erreur: ${errMessage}`);
     }
   };
 
@@ -969,8 +976,8 @@ export default function AdminUsers() {
                     pendingApplyPerms
                   );
                   toast.success('Matrice mise à jour pour le rôle');
-                } catch (err: any) {
-                  logger.error('Apply role defaults failed', err);
+                } catch (err) {
+                  logger.error('Apply role defaults failed', err instanceof Error ? err.message : String(err));
                   toast.error('Erreur lors de la mise à jour de la matrice');
                 } finally {
                   setApplyingRoleDefaults(false);
@@ -1372,7 +1379,7 @@ export default function AdminUsers() {
                           <div className="flex flex-col">
                             <span className="text-slate-300 font-bold text-xs">
                               {u.teamId
-                                ? teams.find((t: any) => t.id === u.teamId)?.name
+                                ? teams.find((t: Team) => t.id === u.teamId)?.name
                                 : 'Accès Global'}
                             </span>
                             <span className="text-slate-600 dark:text-slate-400 text-xs font-medium">
@@ -1523,7 +1530,7 @@ export default function AdminUsers() {
                   <input
                     type="text"
                     value={form.name}
-                    onChange={(e) => setForm((f: any) => ({ ...f, name: e.target.value }))}
+                    onChange={(e) => setForm((f: UserForm) => ({ ...f, name: e.target.value }))}
                     placeholder="ex: Chef Maçons"
                     title="Nom complet"
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white font-medium placeholder:text-slate-600 dark:text-slate-400 focus:ring-2 focus:ring-indigo-500 outline-none"
@@ -1539,7 +1546,7 @@ export default function AdminUsers() {
                     <input
                       type="text"
                       value={form.email}
-                      onChange={(e) => setForm((f: any) => ({ ...f, email: e.target.value }))}
+                      onChange={(e) => setForm((f: UserForm) => ({ ...f, email: e.target.value }))}
                       placeholder="ex: maçongem"
                       title="Identifiant de connexion"
                       autoComplete="username"
@@ -1553,9 +1560,9 @@ export default function AdminUsers() {
                     <input
                       type="email"
                       autoComplete="email"
-                      value={(form as any).notificationEmail}
+                      value={form.notificationEmail}
                       onChange={(e) =>
-                        setForm((f: any) => ({ ...f, notificationEmail: e.target.value }))
+                        setForm((f: UserForm) => ({ ...f, notificationEmail: e.target.value }))
                       }
                       placeholder="user@wanekoo.com"
                       title="Email pour les notifications (Missions, etc.)"
@@ -1573,7 +1580,7 @@ export default function AdminUsers() {
                     <input
                       type={showPass ? 'text' : 'password'}
                       value={form.password}
-                      onChange={(e) => setForm((f: any) => ({ ...f, password: e.target.value }))}
+                      onChange={(e) => setForm((f: UserForm) => ({ ...f, password: e.target.value }))}
                       placeholder="Min. 6 caractères"
                       title="Mot de passe"
                       autoComplete="new-password"
@@ -1605,7 +1612,7 @@ export default function AdminUsers() {
                           type="button"
                           disabled={isImmutable}
                           onClick={() =>
-                            setForm((f: any) => ({
+                            setForm((f: UserForm) => ({
                               ...f,
                               role,
                               teamId: role !== 'CHEF_EQUIPE' ? undefined : f.teamId,
@@ -1639,12 +1646,12 @@ export default function AdminUsers() {
                       aria-label="Choisir l'équipe"
                       value={form.teamId ?? ''}
                       onChange={(e) =>
-                        setForm((f: any) => ({ ...f, teamId: e.target.value || undefined }))
+                        setForm((f: UserForm) => ({ ...f, teamId: e.target.value || undefined }))
                       }
                       className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white font-medium focus:ring-2 focus:ring-indigo-500 outline-none appearance-none"
                     >
                       <option value="">— Sélectionner une équipe —</option>
-                      {teams.map((t: any) => (
+                      {teams.map((t: Team) => (
                         <option key={t.id} value={t.id}>
                           {t.name}
                         </option>
@@ -1663,7 +1670,7 @@ export default function AdminUsers() {
                       <p className="text-slate-600 text-[10px] italic">Aucun projet disponible</p>
                     ) : (
                       projects.map((p) => {
-                        const isAssigned = ((form as any).assignedProjectIds || []).includes(p.id);
+                        const isAssigned = (form.assignedProjectIds || []).includes(p.id);
                         return (
                           <label
                             key={p.id}
@@ -1679,7 +1686,7 @@ export default function AdminUsers() {
                                 className="hidden"
                                 checked={isAssigned}
                                 onChange={() => {
-                                  setForm((f: any) => {
+                                  setForm((f: UserForm) => {
                                     const current = f.assignedProjectIds || [];
                                     const next = current.includes(p.id)
                                       ? current.filter((id: string) => id !== p.id)
@@ -1726,7 +1733,7 @@ export default function AdminUsers() {
                 {form.role === 'ADMIN_PROQUELEC' && (
                   <label className="flex items-center gap-3 cursor-pointer">
                     <div
-                      onClick={() => setForm((f: any) => ({ ...f, requires2FA: !f.requires2FA }))}
+                      onClick={() => setForm((f: UserForm) => ({ ...f, requires2FA: !f.requires2FA }))}
                       className={`w-10 h-6 rounded-full transition-all flex items-center px-0.5 ${form.requires2FA ? 'bg-indigo-600' : 'bg-slate-700'}`}
                     >
                       <div
@@ -1838,7 +1845,7 @@ export default function AdminUsers() {
                     const checkedPermissionsCount = permissionGroups
                       .flatMap((g) => g.keys)
                       .filter((key) => {
-                        const value = (PERMISSIONS as any)[key];
+                        const value = PERMISSIONS[key as keyof typeof PERMISSIONS];
                         if (!value) return false;
                         if (form.role === 'ADMIN_PROQUELEC' || isMasterAdminEmail(form.email))
                           return true;
@@ -1905,7 +1912,7 @@ export default function AdminUsers() {
                                     if (!form.role) return toast.error('Rôle manquant');
                                     const currentRole =
                                       normalizeRole(form.role) || (form.role as UserRole);
-                                    setForm((f: any) => ({
+                                    setForm((f: UserForm) => ({
                                       ...f,
                                       permissions: [...(ROLE_PERMISSIONS[currentRole] || [])],
                                     }));
@@ -1918,7 +1925,7 @@ export default function AdminUsers() {
 
                                 <button
                                   type="button"
-                                  onClick={() => setForm((f: any) => ({ ...f, permissions: [] }))}
+                                  onClick={() => setForm((f: UserForm) => ({ ...f, permissions: [] }))}
                                   className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] font-black uppercase tracking-widest transition-all active:scale-95"
                                 >
                                   Réinitialiser
@@ -2006,7 +2013,7 @@ export default function AdminUsers() {
                                   </h5>
                                   <div className="grid grid-cols-1 gap-2">
                                     {group.keys.map((key) => {
-                                      const value = (PERMISSIONS as any)[key];
+                                      const value = PERMISSIONS[key as keyof typeof PERMISSIONS];
                                       if (!value) return null;
 
                                       const currentRole =
@@ -2103,7 +2110,7 @@ export default function AdminUsers() {
                 {/* Active toggle */}
                 <label className="flex items-center gap-3 cursor-pointer">
                   <div
-                    onClick={() => setForm((f: any) => ({ ...f, active: !f.active }))}
+                    onClick={() => setForm((f: UserForm) => ({ ...f, active: !f.active }))}
                     className={`w-10 h-6 rounded-full transition-all flex items-center px-0.5 ${form.active ? 'bg-emerald-600' : 'bg-slate-700'}`}
                   >
                     <div
