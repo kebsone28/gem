@@ -1,0 +1,1 @@
+const fs=require('fs');const path=process.argv[2];const a=parseInt(process.argv[3]);const b=parseInt(process.argv[4]);const s=fs.readFileSync(path,'utf8').split('\n').slice(a-1,b).map((l,i)=>({ln:a+i,text:l}));console.log(JSON.stringify(s,null,2));

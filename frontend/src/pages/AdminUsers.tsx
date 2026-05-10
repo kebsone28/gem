@@ -40,6 +40,7 @@ import { userService } from '../services/userService';
 import { organizationService } from '../services/organizationService';
 import { auditService } from '../services/auditService';
 import projectService from '../services/projectService';
+import adminPermissionsService from '../services/adminPermissionsService';
 import logger from '../utils/logger';
 import { isMasterAdminEmail } from '../utils/roleUtils';
 import {
@@ -1134,7 +1135,10 @@ export default function AdminUsers() {
                       <div
                         className={`p-2.5 rounded-xl mb-4 transition-transform group-hover/panel:scale-110 ${isActive ? `${panel.bg} ${panel.color}` : 'bg-slate-800 text-slate-400'}`}
                       >
-                        <panel.icon size={20} />
+                        {(() => {
+                          const Icon = panel.icon;
+                          return <Icon size={20} />;
+                        })()}
                       </div>
                       <span
                         className={`text-sm font-black uppercase tracking-tight mb-1 ${isActive ? 'text-white' : 'text-slate-500'}`}
@@ -1503,7 +1507,7 @@ export default function AdminUsers() {
                   <div className="grid grid-cols-2 gap-3">
                     {(
                       Object.entries(ROLE_CONFIG) as [UserRole, (typeof ROLE_CONFIG)[UserRole]][]
-                    ).map(([role, cfg]) => {
+                    }).map(([role, cfg]) => {
                       const isImmutable =
                         form.role === 'ADMIN_PROQUELEC' || isMasterAdminEmail(form.email);
                       return (
@@ -1524,7 +1528,7 @@ export default function AdminUsers() {
                               : 'bg-slate-950 border-slate-800 text-slate-500 hover:border-slate-700'
                           } ${isImmutable ? 'cursor-not-allowed opacity-80' : ''}`}
                         >
-                          <cfg.icon size={14} /> {cfg.label}
+                          {(() => { const Icon = cfg.icon; return <Icon size={14} /> })()} {cfg.label}
                         </button>
                       );
                     })}
@@ -1614,11 +1618,11 @@ export default function AdminUsers() {
                               </div>
                             </div>
                             
-                            {isAssigned && (
-                              <span className="text-[8px] px-2 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 font-black uppercase tracking-widest">
-                                Accès Activé
-                              </span>
-                            )}
+                              {isAssigned && (
+                                <span className="text-[8px] px-2 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 font-black uppercase tracking-widest">
+                                  Accès Activé
+                                </span>
+                              )}
                           </label>
                         );
                       })
@@ -1886,7 +1890,7 @@ export default function AdminUsers() {
                                         <div
                                           className={`w-8 h-8 rounded-lg flex items-center justify-center mb-2 ${isActive ? pack.color : 'text-slate-600'}`}
                                         >
-                                          <pack.icon size={18} />
+                                          {(() => { const Icon = pack.icon; return <Icon size={18} /> })()}
                                         </div>
                                         <span
                                           className={`text-[10px] font-black uppercase tracking-tight ${isActive ? 'text-white' : 'text-slate-500'}`}
@@ -1992,8 +1996,8 @@ export default function AdminUsers() {
                                 </div>
                               ))}
                             </div>
-                          )}
-                        </div>
+                          </div>
+                        )}
                       </div>
                     );
                   })()}
