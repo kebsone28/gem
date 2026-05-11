@@ -10,60 +10,63 @@ datasource db {
 }
 
 model Organization {
-  id              String           @id @default(uuid())
-  name            String
-  config          Json             @default("{}")
-  createdAt       DateTime         @default(now())
-  auditLogs       AuditLog[]
-  grappes         Grappe[]
-  missions        Mission[]
-  performanceLogs PerformanceLog[]
-  projects        Project[]
-  teams           Team[]
-  users           User[]
-  conflictLogs    ConflictLog[]
-  syncLogs        SyncLog[]
-  koboFormMappings KoboFormMapping[]
-  internalKoboSubmissions InternalKoboSubmission[]
-  formationModules FormationModule[]
-  formationSessions FormationSession[]
+  id                         String                     @id @default(uuid())
+  name                       String
+  config                     Json                       @default("{}")
+  createdAt                  DateTime                   @default(now())
+  auditLogs                  AuditLog[]
+  grappes                    Grappe[]
+  missions                   Mission[]
+  performanceLogs            PerformanceLog[]
+  projects                   Project[]
+  teams                      Team[]
+  users                      User[]
+  conflictLogs               ConflictLog[]
+  syncLogs                   SyncLog[]
+  koboFormMappings           KoboFormMapping[]
+  internalKoboSubmissions    InternalKoboSubmission[]
+  formationModules           FormationModule[]
+  formationSessions          FormationSession[]
   formationPlanningHistories FormationPlanningHistory[]
-  formationPlannerStates FormationPlannerState[]
+  formationPlannerStates     FormationPlannerState[]
+  documents                  Document[]
 }
 
 model User {
-  id                 String           @id @default(uuid())
-  organizationId     String
-  email              String
-  name               String?
-  passwordHash       String
-  roleLegacy         String           @default("user")
-  roleId             String?
-  lastLogin          DateTime?
-  requires2FA        Boolean          @default(false)
-  securityQuestion   String?
-  securityAnswerHash String?
-  recoveryCodeHash   String?
-  active             Boolean          @default(true)
-  permissions        Json?            @default("[]")
-  notificationEmail  String?
-  createdAt          DateTime         @default(now())
-  actionApprovals    ActionApproval[]
-  auditLogs          AuditLog[]
-  missions           Mission[]
-  performanceLogs    PerformanceLog[]
-  projectsUpdated    Project[]        @relation("UpdatedBy")
-  syncLogs           SyncLog[]
-  ledTeam            Team?            @relation("TeamLeader")
-  organization       Organization     @relation(fields: [organizationId], references: [id])
-  role               Role?            @relation(fields: [roleId], references: [id])
-  userMemory         UserMemory?
-  chatParticipations ChatParticipant[]
-  chatMessages       ChatMessage[]    @relation("ChatMessageSender")
-  chatCreated        ChatConversation[] @relation("ChatConversationCreator")
-  chatBlocksReceived ChatUserBlock[]  @relation("ChatBlockedUser")
-  chatBlocksIssued   ChatUserBlock[]  @relation("ChatBlockIssuer")
-  internalKoboSubmissions InternalKoboSubmission[]
+  id                       String                   @id @default(uuid())
+  organizationId           String
+  email                    String
+  name                     String?
+  passwordHash             String
+  roleLegacy               String                   @default("user")
+  roleId                   String?
+  lastLogin                DateTime?
+  requires2FA              Boolean                  @default(false)
+  securityQuestion         String?
+  securityAnswerHash       String?
+  recoveryCodeHash         String?
+  active                   Boolean                  @default(true)
+  permissions              Json?                    @default("[]")
+  notificationEmail        String?
+  createdAt                DateTime                 @default(now())
+  actionApprovals          ActionApproval[]
+  auditLogs                AuditLog[]
+  missions                 Mission[]
+  performanceLogs          PerformanceLog[]
+  projectsUpdated          Project[]                @relation("UpdatedBy")
+  syncLogs                 SyncLog[]
+  ledTeam                  Team?                    @relation("TeamLeader")
+  organization             Organization             @relation(fields: [organizationId], references: [id])
+  role                     Role?                    @relation(fields: [roleId], references: [id])
+  userMemory               UserMemory?
+  chatParticipations       ChatParticipant[]
+  chatMessages             ChatMessage[]            @relation("ChatMessageSender")
+  chatCreated              ChatConversation[]       @relation("ChatConversationCreator")
+  chatBlocksReceived       ChatUserBlock[]          @relation("ChatBlockedUser")
+  chatBlocksIssued         ChatUserBlock[]          @relation("ChatBlockIssuer")
+  internalKoboSubmissions  InternalKoboSubmission[]
+  uploadedDocuments        Document[]               @relation("DocumentUploader")
+  uploadedDocumentVersions DocumentVersion[]        @relation("DocumentVersionUploader")
 
   @@unique([email, organizationId])
 }
@@ -87,6 +90,7 @@ model Project {
   updatedBy       User?            @relation("UpdatedBy", fields: [updatedById], references: [id])
   teams           Team[]
   zones           Zone[]
+  documents       Document[]
 }
 
 model Zone {
@@ -104,36 +108,36 @@ model Zone {
 }
 
 model Household {
-  id               String                   @id @default(uuid())
-  zoneId           String?
-  organizationId   String
-  name             String?
-  phone            String?
-  region           String?
-  departement      String?
-  village          String?
-  latitude         Float?
-  longitude        Float?
-  status           String
-  location         Json
-  location_gis     Unsupported("geometry")?
-  owner            Json
-  koboData         Json?                    @default("{}")
-  koboSync         Json?                    @default("{}")
-  koboSubmissionId BigInt?                  @unique
-  numeroordre      String?
-  constructionData Json?                    @default("{}")
-  alerts           Json?                    @default("[]")
-  source           String?
-  version          Int                      @default(1)
-  manualOverrides  String[]                 @default([])
-  assignedTeams    String[]                 @default([])
-  grappeId         String?
-  updatedAt        DateTime                 @updatedAt
-  deletedAt        DateTime?
-  grappe           Grappe?                  @relation(fields: [grappeId], references: [id])
-  zone             Zone?                    @relation(fields: [zoneId], references: [id])
-  performanceLogs  PerformanceLog[]
+  id                      String                   @id @default(uuid())
+  zoneId                  String?
+  organizationId          String
+  name                    String?
+  phone                   String?
+  region                  String?
+  departement             String?
+  village                 String?
+  latitude                Float?
+  longitude               Float?
+  status                  String
+  location                Json
+  location_gis            Unsupported("geometry")?
+  owner                   Json
+  koboData                Json?                    @default("{}")
+  koboSync                Json?                    @default("{}")
+  koboSubmissionId        BigInt?                  @unique
+  numeroordre             String?
+  constructionData        Json?                    @default("{}")
+  alerts                  Json?                    @default("[]")
+  source                  String?
+  version                 Int                      @default(1)
+  manualOverrides         String[]                 @default([])
+  assignedTeams           String[]                 @default([])
+  grappeId                String?
+  updatedAt               DateTime                 @updatedAt
+  deletedAt               DateTime?
+  grappe                  Grappe?                  @relation(fields: [grappeId], references: [id])
+  zone                    Zone?                    @relation(fields: [zoneId], references: [id])
+  performanceLogs         PerformanceLog[]
   internalKoboSubmissions InternalKoboSubmission[]
 
   @@unique([numeroordre, organizationId])
@@ -212,13 +216,13 @@ model Team {
 }
 
 model SyncLog {
-  id        String   @id @default(uuid())
-  userId    String
-  deviceId  String
-  timestamp DateTime @default(now())
-  action    String
-  details   Json
-  user      User     @relation(fields: [userId], references: [id])
+  id             String       @id @default(uuid())
+  userId         String
+  deviceId       String
+  timestamp      DateTime     @default(now())
+  action         String
+  details        Json
+  user           User         @relation(fields: [userId], references: [id])
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id])
 }
@@ -247,14 +251,14 @@ model ConflictLog {
 model KoboFormMapping {
   id             String   @id @default(uuid())
   organizationId String
-  koboAssetId    String   // ID du formulaire Kobo (asset uid)
-  mapping        Json     // Mapping dynamique des champs
-  version        String   // Version du formulaire Kobo
+  koboAssetId    String // ID du formulaire Kobo (asset uid)
+  mapping        Json // Mapping dynamique des champs
+  version        String // Version du formulaire Kobo
   lastValidated  DateTime @default(now())
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  organization   Organization @relation(fields: [organizationId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id])
 
   @@unique([organizationId, koboAssetId])
   @@index([organizationId])
@@ -264,11 +268,11 @@ model KoboFormMapping {
 model InternalKoboSubmission {
   id                 String       @id @default(uuid())
   organizationId     String
-  householdId         String?
-  numeroOrdre         String?
+  householdId        String?
+  numeroOrdre        String?
   formKey            String       @default("terrain_internal")
   formVersion        String
-  clientSubmissionId  String
+  clientSubmissionId String
   role               String?
   status             String       @default("draft")
   syncStatus         String       @default("synced")
@@ -652,16 +656,16 @@ enum SyncStatus {
 // ============================================
 
 model FormationModule {
-  id             String   @id @default(uuid())
+  id             String  @id @default(uuid())
   organizationId String
   name           String
   description    String?
   duration       Int
-  order          Int      @default(0)
-  isActive       Boolean  @default(true)
+  order          Int     @default(0)
+  isActive       Boolean @default(true)
 
   sessionModules FormationSessionModule[]
-  organization   Organization @relation(fields: [organizationId], references: [id])
+  organization   Organization             @relation(fields: [organizationId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -670,14 +674,14 @@ model FormationModule {
 }
 
 model FormationSession {
-  id             String   @id @default(uuid())
-  organizationId String
-  region         String
-  salle          String
+  id              String @id @default(uuid())
+  organizationId  String
+  region          String
+  salle           String
   maxParticipants Int
 
-  startDate    DateTime
-  endDate      DateTime?
+  startDate DateTime
+  endDate   DateTime?
 
   workSaturday Boolean @default(false)
   workSunday   Boolean @default(false)
@@ -688,7 +692,7 @@ model FormationSession {
   participants   FormationParticipant[]
   sessionModules FormationSessionModule[]
   historyEntries FormationPlanningHistory[]
-  organization   Organization @relation(fields: [organizationId], references: [id])
+  organization   Organization               @relation(fields: [organizationId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -701,18 +705,18 @@ model FormationSession {
 
 // Table de liaison session <-> modules (plusieurs modules par session)
 model FormationSessionModule {
-  id          String   @id @default(uuid())
-  sessionId   String
-  moduleId    String
-  duration    Int      // Durée spécifique pour ce module dans cette session (surécrit la durée par défaut)
-  orderIndex  Int      @default(0) // Ordre du module dans la session
-  notes       String?  // Notes spécifiques au module
+  id         String  @id @default(uuid())
+  sessionId  String
+  moduleId   String
+  duration   Int // Durée spécifique pour ce module dans cette session (surécrit la durée par défaut)
+  orderIndex Int     @default(0) // Ordre du module dans la session
+  notes      String? // Notes spécifiques au module
 
-  session     FormationSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  module      FormationModule  @relation(fields: [moduleId], references: [id])
+  session FormationSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  module  FormationModule  @relation(fields: [moduleId], references: [id])
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([sessionId, moduleId]) // Un module ne peut être ajouté qu'une fois par session
   @@index([sessionId])
@@ -720,24 +724,24 @@ model FormationSessionModule {
 }
 
 model FormationParticipant {
-  id          String   @id @default(uuid())
-  sessionId   String
-  name        String   // Nom et prénom
-  email       String?
-  phone       String?
-  role        String?  // Role (électricien, chef d'équipe, etc.)
+  id        String  @id @default(uuid())
+  sessionId String
+  name      String // Nom et prénom
+  email     String?
+  phone     String?
+  role      String? // Role (électricien, chef d'équipe, etc.)
 
-  attendance  Boolean  @default(false) // Présence
+  attendance Boolean @default(false) // Présence
 
-  session     FormationSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  session FormationSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
-  createdAt   DateTime @default(now())
+  createdAt DateTime @default(now())
 
   @@index([sessionId])
 }
 
 model FormationPlanningHistory {
-  id             String  @id @default(uuid())
+  id             String   @id @default(uuid())
   organizationId String
   sessionId      String?
   action         String
@@ -756,8 +760,8 @@ model FormationPlanningHistory {
 }
 
 model FormationPlannerState {
-  id             String @id @default(uuid())
-  organizationId String @unique
+  id             String   @id @default(uuid())
+  organizationId String   @unique
   payload        Json
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -773,20 +777,20 @@ model FormationPlannerState {
 // ============================================
 
 model ChatConversation {
-  id             String            @id @default(uuid())
+  id             String    @id @default(uuid())
   organizationId String
   type           String
   name           String?
   scopeKey       String?
   createdById    String?
   archivedAt     DateTime?
-  retentionDays  Int               @default(0) // 0 = permanent, 7, 30, 90
-  createdAt      DateTime          @default(now())
-  updatedAt      DateTime          @updatedAt
+  retentionDays  Int       @default(0) // 0 = permanent, 7, 30, 90
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
-  createdBy      User?             @relation("ChatConversationCreator", fields: [createdById], references: [id])
-  participants   ChatParticipant[]
-  messages       ChatMessage[]
+  createdBy    User?             @relation("ChatConversationCreator", fields: [createdById], references: [id])
+  participants ChatParticipant[]
+  messages     ChatMessage[]
 
   @@unique([organizationId, scopeKey])
   @@index([organizationId])
@@ -795,17 +799,17 @@ model ChatConversation {
 }
 
 model ChatParticipant {
-  id             String           @id @default(uuid())
+  id             String    @id @default(uuid())
   organizationId String
   conversationId String
   userId         String
-  role           String           @default("MEMBER")
-  joinedAt       DateTime         @default(now())
+  role           String    @default("MEMBER")
+  joinedAt       DateTime  @default(now())
   lastReadAt     DateTime?
-  lastClearedAt  DateTime?        // Date avant laquelle les messages sont masqués pour cet utilisateur
+  lastClearedAt  DateTime? // Date avant laquelle les messages sont masqués pour cet utilisateur
 
-  conversation   ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  conversation ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([conversationId, userId])
   @@index([organizationId])
@@ -813,17 +817,17 @@ model ChatParticipant {
 }
 
 model ChatMessage {
-  id             String           @id @default(uuid())
+  id             String    @id @default(uuid())
   organizationId String
   conversationId String
   senderId       String
   content        String
-  deletedFor     String[]         @default([])
-  createdAt      DateTime         @default(now())
+  deletedFor     String[]  @default([])
+  createdAt      DateTime  @default(now())
   editedAt       DateTime?
 
-  conversation   ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  sender         User             @relation("ChatMessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  conversation ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User             @relation("ChatMessageSender", fields: [senderId], references: [id], onDelete: Cascade)
 
   @@index([organizationId, createdAt])
   @@index([conversationId, createdAt])
@@ -831,17 +835,17 @@ model ChatMessage {
 }
 
 model ChatUserBlock {
-  id             String   @id @default(uuid())
+  id             String    @id @default(uuid())
   organizationId String
   userId         String
   blockedById    String
   reason         String?
-  active         Boolean  @default(true)
-  blockedAt      DateTime @default(now())
+  active         Boolean   @default(true)
+  blockedAt      DateTime  @default(now())
   unblockedAt    DateTime?
 
-  user           User     @relation("ChatBlockedUser", fields: [userId], references: [id], onDelete: Cascade)
-  blockedBy      User     @relation("ChatBlockIssuer", fields: [blockedById], references: [id], onDelete: Cascade)
+  user      User @relation("ChatBlockedUser", fields: [userId], references: [id], onDelete: Cascade)
+  blockedBy User @relation("ChatBlockIssuer", fields: [blockedById], references: [id], onDelete: Cascade)
 
   @@unique([organizationId, userId])
   @@index([organizationId, active])
@@ -849,29 +853,29 @@ model ChatUserBlock {
 }
 
 model Document {
-  id              String         @id @default(uuid())
-  organizationId  String
-  projectId       String?
-  folderId        String?        // Reference to parent folder for hierarchical organization
-  uploadedById    String
-  filename        String         // Original filename
-  storageKey      String         // Key in storage service (S3/local)
-  mimeType        String
-  size            Int            // File size in bytes
-  description     String?        // Optional description
-  isPublic        Boolean        @default(false) // If true, accessible without authentication
-  accessLevel     String         @default("ORG") // ORG, PROJECT, TEAM, PRIVATE, PUBLIC
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-  deletedAt       DateTime?      // Soft delete
+  id             String    @id @default(uuid())
+  organizationId String
+  projectId      String?
+  folderId       String? // Reference to parent folder for hierarchical organization
+  uploadedById   String
+  filename       String // Original filename
+  storageKey     String // Key in storage service (S3/local)
+  mimeType       String
+  size           Int // File size in bytes
+  description    String? // Optional description
+  isPublic       Boolean   @default(false) // If true, accessible without authentication
+  accessLevel    String    @default("ORG") // ORG, PROJECT, TEAM, PRIVATE, PUBLIC
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime? // Soft delete
 
   // Relations
-  organization    Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  project         Project?       @relation(fields: [projectId], references: [id])
-  folder          Document?      @relation("DocumentFolder", fields: [folderId], references: [id])
-  uploadedBy      User           @relation(fields: [uploadedById], references: [id])
-  children        Document[]     @relation("DocumentFolder")
-  versions        DocumentVersion@relation("DocumentVersions")
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  project      Project?          @relation(fields: [projectId], references: [id])
+  folder       Document?         @relation("DocumentFolder", fields: [folderId], references: [id])
+  uploadedBy   User              @relation("DocumentUploader", fields: [uploadedById], references: [id])
+  children     Document[]        @relation("DocumentFolder")
+  versions     DocumentVersion[]
 
   @@index([organizationId])
   @@index([projectId])
@@ -881,18 +885,18 @@ model Document {
 }
 
 model DocumentVersion {
-  id              String         @id @default(uuid())
-  documentId      String
-  storageKey      String         // Key in storage service for this version
-  mimeType        String
-  size            Int            // File size in bytes
-  uploadedById    String
-  uploadedAt      DateTime       @default(now())
-  changeLog       String?        // Description of what changed in this version
+  id           String   @id @default(uuid())
+  documentId   String
+  storageKey   String // Key in storage service for this version
+  mimeType     String
+  size         Int // File size in bytes
+  uploadedById String
+  uploadedAt   DateTime @default(now())
+  changeLog    String? // Description of what changed in this version
 
   // Relations
-  document        Document       @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  uploadedBy      User           @relation(fields: [uploadedById], references: [id])
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  uploadedBy User     @relation("DocumentVersionUploader", fields: [uploadedById], references: [id])
 
   @@index([documentId])
   @@index([uploadedById])
