@@ -9,7 +9,7 @@ import {
   createVersion,
   getDocumentVersions
 } from './sharedoc.service.js';
-import { authProtect, permissionProtect } from '../middlewares/auth.js';
+import { authProtect } from '../../api/middlewares/auth.js';
 import logger from '../../utils/logger.js';
 
 /**

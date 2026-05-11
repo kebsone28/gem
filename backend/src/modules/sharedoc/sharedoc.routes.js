@@ -10,7 +10,7 @@ import {
   createSharedocVersion,
   getSharedocDocumentVersions
 } from './sharedoc.controller.js';
-import { authProtect } from '../middlewares/auth.js';
+import { authProtect } from '../../api/middlewares/auth.js';
 
 const router = Router();
 
