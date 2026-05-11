@@ -9,6 +9,7 @@ import cookieParser from 'cookie-parser';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import { config } from './core/config/config.js';
+import sharedocRoutes from './modules/sharedoc/sharedoc.routes.js';
 
 const app = express();
 
@@ -115,6 +116,7 @@ app.use('/api/alerts', alertsRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/pvs', pvRoutes);
 app.use('/api/internal-kobo', internalKoboRoutes);
+app.use('/api/sharedoc', sharedocRoutes);
 if (config.env !== 'production') {
   app.use('/api/debug', debugRoutes);
 }

@@ -2030,7 +2030,7 @@ GemChatComposer.displayName = 'GemChatComposer';
 
 export default function Communication() {
   const { user } = useAuth();
-  const { isAdmin, peut } = usePermissions();
+  const { isAdmin, isDG, peut } = usePermissions();
 
   // ── Core state ──────────────────────────────────────
   const [bootstrapping, setBootstrapping] = useState(true);
@@ -2064,6 +2064,9 @@ export default function Communication() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<ChatMessage[]>([]);
+  const [showCleanupMenu, setShowCleanupMenu] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [showClearMyConfirm, setShowClearMyConfirm] = useState(false);
 
   // ── Group creation ────────────────────────────────────
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
@@ -2726,34 +2729,28 @@ export default function Communication() {
   );
 
   const handleClearHistory = useCallback(async () => {
-    if (!activeConversationId) return;
-    if (
-      !window.confirm(
-        "Voulez-vous vraiment vider l'historique complet pour TOUS les participants ? Cette action est irréversible."
-      )
-    )
+    if (!activeConversationId) {
+      toast.error("Aucune conversation active pour le vidage.");
       return;
-
+    }
+    setShowClearConfirm(false);
     try {
-      console.log('[CHAT] Clearing history for conversation:', activeConversationId);
-      await chatService.clearHistory(activeConversationId);
+      const res = await chatService.clearHistory(activeConversationId);
       setMessagesByConversation((prev) => ({ ...prev, [activeConversationId]: [] }));
-      toast.success("L'historique a été vidé pour tous.");
+      setConversations(prev => prev.map(c =>
+        c.id === activeConversationId ? { ...c, lastMessage: null, updatedAt: new Date().toISOString() } : c
+      ));
+      const count = (res as any).deletedCount ?? '?';
+      toast.success(`L'historique a été vidé (${count} messages supprimés).`);
     } catch (e: any) {
-      console.error('[CHAT] Error clearing history:', e);
-      toast.error(e?.response?.data?.error || 'Erreur lors du nettoyage.');
+      const errorMsg = e?.response?.data?.error || e?.message || 'Erreur lors du nettoyage.';
+      toast.error(errorMsg);
     }
   }, [activeConversationId]);
 
   const handleClearMyHistory = useCallback(async () => {
     if (!activeConversationId) return;
-    if (
-      !window.confirm(
-        'Voulez-vous vider votre propre historique ? Les messages resteront visibles pour les autres participants.'
-      )
-    )
-      return;
-
+    setShowClearMyConfirm(false);
     try {
       await chatService.clearMyHistory(activeConversationId);
       setMessagesByConversation((prev) => ({ ...prev, [activeConversationId]: [] }));
@@ -2794,8 +2791,9 @@ export default function Communication() {
   const hasActiveConv = !!activeConversation;
 
   return (
-    // h-full : le Layout fournit h-dvh via gem-app-shell → main → immersive div
-    // Le chat ne fait que remplir l'espace disponible sans jamais déborder
+    <>
+    {/* h-full : le Layout fournit h-dvh via gem-app-shell → main → immersive div */}
+    {/* Le chat ne fait que remplir l'espace disponible sans jamais déborder */}
     <div className="relative flex h-full w-full flex-col overflow-hidden bg-slate-950 text-slate-100">
       <div className="flex min-h-0 flex-1 overflow-hidden">
         {/* ═══════════════ LEFT SIDEBAR ═══════════════ */}
@@ -3227,66 +3225,75 @@ export default function Communication() {
                     <Info size={16} />
                   </button>
 
-                  {/* Menu Options de nettoyage */}
-                  <div className="relative group/menu">
-                    <button className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors">
+                  {/* Menu Options de nettoyage — contrôlé par état */}
+                  <div className="relative">
+                    <button
+                      id="cleanup-menu-btn"
+                      aria-label="Options de nettoyage"
+                      onClick={() => setShowCleanupMenu((p) => !p)}
+                      className={`p-1.5 rounded-lg transition-colors ${showCleanupMenu ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
+                    >
                       <Settings2 size={16} />
                     </button>
 
-                    <div className="absolute top-full right-0 mt-1 w-56 bg-slate-800 border border-white/10 rounded-xl shadow-2xl opacity-0 invisible group-hover/menu:opacity-100 group-hover/menu:visible transition-all z-[100] overflow-hidden">
-                      <div className="p-2 border-b border-white/5 bg-white/5">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                          Options de nettoyage
-                        </p>
-                      </div>
+                    {showCleanupMenu && (
+                      <div className="absolute top-full right-0 mt-1 w-56 bg-slate-800 border border-white/10 rounded-xl shadow-2xl z-[100] overflow-hidden">
+                        <div className="p-2 border-b border-white/5 bg-white/5">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                            Options de nettoyage
+                          </p>
+                        </div>
 
-                      <button
-                        onClick={handleClearMyHistory}
-                        className="flex items-center gap-3 w-full px-4 py-2.5 text-left text-[12.5px] text-slate-300 hover:bg-slate-700 hover:text-white transition-colors"
-                      >
-                        <UserMinus size={14} className="text-amber-400" />
-                        Vider pour mon compte
-                      </button>
-
-                      {isAdmin && (
                         <button
-                          onClick={handleClearHistory}
-                          className="flex items-center gap-3 w-full px-4 py-2.5 text-left text-[12.5px] text-rose-400 hover:bg-rose-500/10 transition-colors"
+                          onClick={() => { setShowCleanupMenu(false); setShowClearMyConfirm(true); }}
+                          className="flex items-center gap-3 w-full px-4 py-2.5 text-left text-[12.5px] text-slate-300 hover:bg-slate-700 hover:text-white transition-colors"
                         >
-                          <Trash2 size={14} />
-                          Vider pour tous (Admin)
+                          <UserMinus size={14} className="text-amber-400" />
+                          Vider pour mon compte
                         </button>
-                      )}
 
-                      <div className="p-2 border-t border-white/5 bg-white/5">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                          Rétention automatique
-                        </p>
+                        {(isAdmin || isDG) && (
+                          <button
+                            id="clear-all-history-btn"
+                            aria-label="Vider l'historique pour tous"
+                            onClick={() => { setShowCleanupMenu(false); setShowClearConfirm(true); }}
+                            className="flex items-center gap-3 w-full px-4 py-2.5 text-left text-[12.5px] text-rose-400 hover:bg-rose-500/10 transition-colors"
+                          >
+                            <Trash2 size={14} />
+                            Vider pour tous (Admin)
+                          </button>
+                        )}
+
+                        <div className="p-2 border-t border-white/5 bg-white/5">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                            Rétention automatique
+                          </p>
+                        </div>
+
+                        {[
+                          { label: 'Permanent', days: 0 },
+                          { label: '7 jours', days: 7 },
+                          { label: '30 jours', days: 30 },
+                          { label: '90 jours', days: 90 },
+                        ].map((opt) => (
+                          <button
+                            key={opt.days}
+                            onClick={() => { handleUpdateRetention(opt.days); setShowCleanupMenu(false); }}
+                            className={`flex items-center justify-between w-full px-4 py-2 text-left text-[12px] transition-colors ${
+                              activeConversation.retentionDays === opt.days
+                                ? 'bg-indigo-600/20 text-indigo-400 font-bold'
+                                : 'text-slate-400 hover:bg-slate-700 hover:text-white'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <Clock size={12} />
+                              {opt.label}
+                            </div>
+                            {activeConversation.retentionDays === opt.days && <Check size={12} />}
+                          </button>
+                        ))}
                       </div>
-
-                      {[
-                        { label: 'Permanent', days: 0 },
-                        { label: '7 jours', days: 7 },
-                        { label: '30 jours', days: 30 },
-                        { label: '90 jours', days: 90 },
-                      ].map((opt) => (
-                        <button
-                          key={opt.days}
-                          onClick={() => handleUpdateRetention(opt.days)}
-                          className={`flex items-center justify-between w-full px-4 py-2 text-left text-[12px] transition-colors ${
-                            activeConversation.retentionDays === opt.days
-                              ? 'bg-indigo-600/20 text-indigo-400 font-bold'
-                              : 'text-slate-400 hover:bg-slate-700 hover:text-white'
-                          }`}
-                        >
-                          <div className="flex items-center gap-3">
-                            <Clock size={12} />
-                            {opt.label}
-                          </div>
-                          {activeConversation.retentionDays === opt.days && <Check size={12} />}
-                        </button>
-                      ))}
-                    </div>
+                    )}
                   </div>
 
                   {!activeConversation.isGlobal && (
@@ -3561,5 +3568,92 @@ export default function Communication() {
         )}
       </div>
     </div>
+
+    {/* ── Modale confirmation : Vider pour TOUS ── */}
+    {showClearConfirm && (
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="clear-all-modal-title"
+        className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm"
+        onClick={(e) => { if (e.target === e.currentTarget) setShowClearConfirm(false); }}
+      >
+        <div className="bg-slate-900 border border-rose-500/30 rounded-2xl shadow-2xl p-6 w-full max-w-md mx-4">
+          <div className="flex items-start gap-4 mb-5">
+            <div className="flex-shrink-0 h-10 w-10 rounded-full bg-rose-500/15 flex items-center justify-center">
+              <Trash2 size={20} className="text-rose-400" />
+            </div>
+            <div>
+              <h3 id="clear-all-modal-title" className="text-[15px] font-bold text-white leading-tight">
+                Vider l&apos;historique pour tous
+              </h3>
+              <p className="text-[13px] text-slate-400 mt-1">
+                Cette action supprime définitivement tous les messages de la conversation pour <strong className="text-white">tous les participants</strong>. Elle est irréversible.
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-3 justify-end">
+            <button
+              id="clear-all-cancel-btn"
+              onClick={() => setShowClearConfirm(false)}
+              className="px-4 py-2 text-[13px] text-slate-300 bg-slate-800 hover:bg-slate-700 border border-white/10 rounded-lg transition-colors"
+            >
+              Annuler
+            </button>
+            <button
+              id="clear-all-confirm-btn"
+              onClick={handleClearHistory}
+              className="px-4 py-2 text-[13px] font-semibold text-white bg-rose-600 hover:bg-rose-500 rounded-lg transition-colors"
+            >
+              Vider pour tous
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* ── Modale confirmation : Vider mon historique ── */}
+    {showClearMyConfirm && (
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="clear-my-modal-title"
+        className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm"
+        onClick={(e) => { if (e.target === e.currentTarget) setShowClearMyConfirm(false); }}
+      >
+        <div className="bg-slate-900 border border-amber-500/30 rounded-2xl shadow-2xl p-6 w-full max-w-md mx-4">
+          <div className="flex items-start gap-4 mb-5">
+            <div className="flex-shrink-0 h-10 w-10 rounded-full bg-amber-500/15 flex items-center justify-center">
+              <UserMinus size={20} className="text-amber-400" />
+            </div>
+            <div>
+              <h3 id="clear-my-modal-title" className="text-[15px] font-bold text-white leading-tight">
+                Vider mon historique
+              </h3>
+              <p className="text-[13px] text-slate-400 mt-1">
+                Les messages disparaîtront de votre vue uniquement. Les autres participants continueront à les voir.
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-3 justify-end">
+            <button
+              id="clear-my-cancel-btn"
+              onClick={() => setShowClearMyConfirm(false)}
+              className="px-4 py-2 text-[13px] text-slate-300 bg-slate-800 hover:bg-slate-700 border border-white/10 rounded-lg transition-colors"
+            >
+              Annuler
+            </button>
+            <button
+              id="clear-my-confirm-btn"
+              onClick={handleClearMyHistory}
+              className="px-4 py-2 text-[13px] font-semibold text-white bg-amber-600 hover:bg-amber-500 rounded-lg transition-colors"
+            >
+              Vider ma vue
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }

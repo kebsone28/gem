@@ -847,3 +847,53 @@ model ChatUserBlock {
   @@index([organizationId, active])
   @@index([blockedById])
 }
+
+model Document {
+  id              String         @id @default(uuid())
+  organizationId  String
+  projectId       String?
+  folderId        String?        // Reference to parent folder for hierarchical organization
+  uploadedById    String
+  filename        String         // Original filename
+  storageKey      String         // Key in storage service (S3/local)
+  mimeType        String
+  size            Int            // File size in bytes
+  description     String?        // Optional description
+  isPublic        Boolean        @default(false) // If true, accessible without authentication
+  accessLevel     String         @default("ORG") // ORG, PROJECT, TEAM, PRIVATE, PUBLIC
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  deletedAt       DateTime?      // Soft delete
+
+  // Relations
+  organization    Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  project         Project?       @relation(fields: [projectId], references: [id])
+  folder          Document?      @relation("DocumentFolder", fields: [folderId], references: [id])
+  uploadedBy      User           @relation(fields: [uploadedById], references: [id])
+  children        Document[]     @relation("DocumentFolder")
+  versions        DocumentVersion@relation("DocumentVersions")
+
+  @@index([organizationId])
+  @@index([projectId])
+  @@index([folderId])
+  @@index([uploadedById])
+  @@index([accessLevel])
+}
+
+model DocumentVersion {
+  id              String         @id @default(uuid())
+  documentId      String
+  storageKey      String         // Key in storage service for this version
+  mimeType        String
+  size            Int            // File size in bytes
+  uploadedById    String
+  uploadedAt      DateTime       @default(now())
+  changeLog       String?        // Description of what changed in this version
+
+  // Relations
+  document        Document       @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  uploadedBy      User           @relation(fields: [uploadedById], references: [id])
+
+  @@index([documentId])
+  @@index([uploadedById])
+}

@@ -828,21 +828,21 @@ export const deleteConversation = async (req, res) => {
 };
 export const clearHistory = async (req, res) => {
   try {
-    const { organizationId } = req.user;
+    const { organizationId, email } = req.user;
     const { conversationId } = req.params;
+
+    console.log(`[CHAT] clearHistory: user=${email} org=${organizationId} conv=${conversationId}`);
 
     assertChatPersistenceAvailable();
 
-    // Seul un admin ou le créateur peut vider la salle
-    // (Ici on simplifie : si l'utilisateur est admin ou créateur)
-    // Mais pour la demande, on permet l'action si le middleware a validé les droits
-
-    await prisma.chatMessage.deleteMany({
+    const deletedCount = await prisma.chatMessage.deleteMany({
       where: {
         conversationId,
         organizationId,
       },
     });
+
+    console.log(`[CHAT] clearHistory done: deleted ${deletedCount.count} messages from ${conversationId}`);
 
     // Mettre à jour updatedAt pour que la conversation remonte dans la liste (même vide)
     await prisma.chatConversation.update({
@@ -852,7 +852,7 @@ export const clearHistory = async (req, res) => {
 
     socketService.emit('chat:history:cleared', { conversationId }, getConversationRoom(conversationId));
 
-    res.json({ success: true, message: 'Historique vidé pour tous.' });
+    res.json({ success: true, message: 'Historique vidé pour tous.', deletedCount: deletedCount.count });
   } catch (error) {
     console.error('[CHAT_CLEAR_HISTORY_ERROR]', error);
     res.status(500).json({ error: "Erreur lors du vidage de l'historique." });

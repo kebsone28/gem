@@ -70,6 +70,9 @@ async function checkProjectKPIsAndCreateAlerts(projectId, organizationId) {
 
     const kpiData = await aggregateProjectKPIs(projectId, organizationId);
 
+    // Calculate dynamic thresholds based on historical data
+    const dynamicThresholds = await calculateDynamicThresholds(projectId, organizationId);
+
     const safeKpiData = {
       electrifiedHouseholds: kpiData.electrifiedHouseholds ?? 0,
       pvRetard: kpiData.pvRetard ?? 0,
@@ -85,35 +88,49 @@ async function checkProjectKPIsAndCreateAlerts(projectId, organizationId) {
 
     const alertsToCreate = [];
 
-    // 1. Alerte Stock Critique
+    // 1. Alerte Stock Critique - Use dynamic threshold if reliable, otherwise config
+    let stockThreshold = config.stockCritical;
+    let stockThresholdSource = 'config';
+    if (dynamicThresholds.kitsPrepared.isReliable && dynamicThresholds.kitsPrepared.dynamicThreshold !== null) {
+      stockThreshold = dynamicThresholds.kitsPrepared.dynamicThreshold;
+      stockThresholdSource = 'dynamic';
+    }
+
     if (
       safeKpiData.logistics.kitPrepared !== undefined &&
-      safeKpiData.logistics.kitPrepared < config.stockCritical
+      safeKpiData.logistics.kitPrepared < stockThreshold
     ) {
       alertsToCreate.push({
         type: 'IGPP_STOCK',
         severity: safeKpiData.logistics.kitPrepared === 0 ? 'CRITICAL' : 'HIGH',
         title: `Stock critique: ${safeKpiData.logistics.kitPrepared} kits disponibles`,
-        description: `Nombre de kits préparés: ${safeKpiData.logistics.kitPrepared}. Seuil critique: ${config.stockCritical}`,
+        description: `Nombre de kits préparés: ${safeKpiData.logistics.kitPrepared}. Seuil critique (${stockThresholdSource}): ${stockThreshold}`,
         recommendedAction: 'Préparer plus de kits immédiatement',
       });
     }
 
-    // 2. Alerte Budget
+    // 2. Alerte Budget - Use dynamic threshold if reliable, otherwise config
+    let budgetThreshold = config.budgetThreshold;
+    let budgetThresholdSource = 'config';
+    if (dynamicThresholds.budgetUsage.isReliable && dynamicThresholds.budgetUsage.dynamicThreshold !== null) {
+      budgetThreshold = dynamicThresholds.budgetUsage.dynamicThreshold;
+      budgetThresholdSource = 'dynamic';
+    }
+
     if (
       safeKpiData.budgetUsagePercent !== undefined &&
-      safeKpiData.budgetUsagePercent > config.budgetThreshold
+      safeKpiData.budgetUsagePercent > budgetThreshold
     ) {
       alertsToCreate.push({
         type: 'IGPP_BUDGET',
         severity: safeKpiData.budgetUsagePercent > 95 ? 'CRITICAL' : 'HIGH',
         title: `Budget utilisé à ${safeKpiData.budgetUsagePercent}%`,
-        description: `Utilisation du budget: ${safeKpiData.budgetUsagePercent}%. Seuil d'alerte: ${config.budgetThreshold}%`,
+        description: `Utilisation du budget: ${safeKpiData.budgetUsagePercent}%. Seuil d'alerte (${budgetThresholdSource}): ${budgetThreshold}%`,
         recommendedAction: 'Vérifier les dépenses et obtenir une approbation supplémentaire si nécessaire',
       });
     }
 
-    // 3. Alerte Électricité
+    // 3. Alerte Électricité (no dynamic threshold for this one yet - keep as is)
     if (
       safeKpiData.electrifiedHouseholds !== undefined &&
       safeKpiData.electrifiedHouseholds < config.electricityMin
@@ -127,21 +144,28 @@ async function checkProjectKPIsAndCreateAlerts(projectId, organizationId) {
       });
     }
 
-    // 4. Alerte Rendement Équipes
+    // 4. Alerte Rendement Équipes - Use dynamic threshold if reliable, otherwise config (1+)
+    let performanceThreshold = 1; // Default souhaité: 1+
+    let performanceThresholdSource = 'default (1+)';
+    if (dynamicThresholds.performance.isReliable && dynamicThresholds.performance.dynamicThreshold !== null) {
+      performanceThreshold = dynamicThresholds.performance.dynamicThreshold;
+      performanceThresholdSource = 'dynamic';
+    }
+
     if (safeKpiData.performance?.avgPerDay !== undefined) {
       const teamEfficiency = safeKpiData.performance.avgPerDay;
-      if (teamEfficiency < 1) {
+      if (teamEfficiency < performanceThreshold) {
         alertsToCreate.push({
           type: 'IGPP_TEAM_PERFORMANCE',
           severity: 'MEDIUM',
           title: `Rendement équipes faible: ${teamEfficiency.toFixed(2)} ménages/jour`,
-          description: `Rendement moyen des équipes: ${teamEfficiency.toFixed(2)} ménages/jour. Seuil souhaité: 1+`,
+          description: `Rendement moyen des équipes: ${teamEfficiency.toFixed(2)} ménages/jour. Seuil souhaité (${performanceThresholdSource}): ${performanceThreshold}+`,
           recommendedAction: 'Vérifier les obstacles, fournir du soutien supplémentaire ou réallouer les ressources',
         });
       }
     }
 
-    // 5. Alerte Retard (PV non complétés)
+    // 5. Alerte Retard (PV non complétés) - Keep as is for now (could add dynamic threshold later)
     if (safeKpiData.pvRetard !== undefined && safeKpiData.pvRetard > config.delayThreshold) {
       alertsToCreate.push({
         type: 'IGPP_DELAY',
@@ -171,7 +195,15 @@ async function checkProjectKPIsAndCreateAlerts(projectId, organizationId) {
               projectId,
               organizationId,
               status: 'OPEN',
-              metadata: { kpiCheck: true, timestamp: new Date().toISOString() },
+              metadata: { 
+                kpiCheck: true, 
+                timestamp: new Date().toISOString(),
+                dynamicThresholdsUsed: {
+                  budget: dynamicThresholds.budgetUsage.isReliable ? dynamicThresholds.budgetUsage.dynamicThreshold : null,
+                  kits: dynamicThresholds.kitsPrepared.isReliable ? dynamicThresholds.kitsPrepared.dynamicThreshold : null,
+                  performance: dynamicThresholds.performance.isReliable ? dynamicThresholds.performance.dynamicThreshold : null
+                }
+              },
             },
           });
 
@@ -285,5 +317,127 @@ async function calculateAvgPerDay(organizationId) {
     return days > 0 ? Math.round((completed / days) * 10) / 10 : 0;
   } catch {
     return 0;
+  }
+}
+
+// 🔧 NOUVEAU : Calcul des seuils dynamiques basés sur l'historique
+async function calculateDynamicThresholds(projectId, organizationId) {
+  try {
+    // Récupérer l'historique des 90 derniers jours pour des seuils plus stables
+    const ninetyDaysAgo = new Date();
+    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+    
+    // 1. Historique du budget usage
+    const budgetHistory = await prisma.$queryRaw`
+      SELECT 
+        COALESCE(SUM(CASE WHEN h.status IN ('Terminé', 'Réception: Validée') THEN p.indicatorValue ELSE 0 END), 0)::float as budgetUsed,
+        COALESCE(SUM(p.indicatorValue), 0)::float as budgetPlanned,
+        DATE(pr."updatedAt") as date
+      FROM "Household" h
+      JOIN "Zone" z ON h."zoneId" = z.id
+      JOIN "Project" pr ON z."projectId" = pr.id
+      LEFT JOIN "Indicator" p ON pr.id = p."projectId" AND p.key = 'budget'
+      WHERE h."organizationId" = ${organizationId} 
+        AND h."deletedAt" IS NULL
+        AND pr."updatedAt" >= ${ninetyDaysAgo}
+      GROUP BY DATE(pr."updatedAt")
+      ORDER BY DATE(pr."updatedAt")
+    `;
+    
+    // 2. Historique des kits préparés
+    const kitsHistory = await prisma.$queryRaw`
+      SELECT 
+        COALESCE(SUM(
+          COALESCE(NULLIF("koboData"->'group_ed3yt17'->>'Nombre_de_KIT_pr_par', '')::numeric, 0)
+        ), 0)::int as kitPrepared,
+        DATE("timestamp") as date
+      FROM "Household" h
+      JOIN "Zone" z ON h."zoneId" = z.id
+      WHERE z."projectId" = ${projectId} 
+        AND h."organizationId" = ${organizationId}
+        AND h."deletedAt" IS NULL
+        AND "timestamp" >= ${ninetyDaysAgo}
+      GROUP BY DATE("timestamp")
+      ORDER BY DATE("timestamp")
+    `;
+    
+    // 3. Historique de la performance (ménages/jour)
+    const performanceHistory = await prisma.$queryRaw`
+      SELECT 
+        COUNT(*)::int as completedCount,
+        COUNT(DISTINCT DATE("timestamp"))::int as daysWorked,
+        DATE("timestamp") as date
+      FROM "PerformanceLog"
+      WHERE "organizationId" = ${organizationId}
+        AND "action" = 'STATUS_CHANGE'
+        AND "newStatus" IN ('Terminé', 'Réception: Validée', 'Conforme')
+        AND "timestamp" >= ${ninetyDaysAgo}
+      GROUP BY DATE("timestamp")
+      ORDER BY DATE("timestamp")
+    `;
+    
+    // Calcul des seuils dynamiques (moyenne + écart-type pour adapter à la variabilité)
+    const budgetUsageHistory = budgetHistory.map(row => {
+      const used = Number(row.budgetUsed || 0);
+      const planned = Number(row.budgetPlanned || 1);
+      return planned > 0 ? Math.round((used / planned) * 100) : 0;
+    });
+    
+    const kitsHistoryValues = kitsHistory.map(row => Number(row.kitPrepared || 0));
+    const performanceHistoryValues = performanceHistory.map(row => {
+      const completed = Number(row.completedCount || 0);
+      const days = Number(row.daysWorked || 1);
+      return days > 0 ? Math.round((completed / days) * 10) / 10 : 0;
+    });
+    
+    // Fonction pour calculer moyenne et écart-type
+    const calculateStats = (values) => {
+      if (values.length < 3) return { mean: 0, stdDev: 0, count: values.length };
+      
+      const mean = values.reduce((sum, v) => sum + v, 0) / values.length;
+      const variance = values.reduce((sum, v) => sum + Math.pow(v - mean, 2), 0) / values.length;
+      const stdDev = Math.sqrt(variance);
+      return { mean, stdDev, count: values.length };
+    };
+    
+    const budgetStats = calculateStats(budgetUsageHistory);
+    const kitsStats = calculateStats(kitsHistoryValues);
+    const performanceStats = calculateStats(performanceHistoryValues);
+    
+    // Seuils dynamiques : moyenne - (écart-type * facteur) pour les seuils inférieurs
+    //                       moyenne + (écart-type * facteur) pour les seuils supérieurs
+    // Facteur de 1.5 pour être réactif mais pas trop sensible au bruit
+    const FACTOR = 1.5;
+    
+    return {
+      budgetUsage: {
+        dynamicThreshold: budgetStats.mean > 0 && budgetStats.count >= 3 
+          ? Math.max(20, Math.round(budgetStats.mean + (budgetStats.stdDev * FACTOR))) 
+          : null,
+        historyCount: budgetStats.count,
+        isReliable: budgetStats.count >= 5
+      },
+      kitsPrepared: {
+        dynamicThreshold: kitsStats.mean > 0 && kitsStats.count >= 3 
+          ? Math.max(1, Math.round(kitsStats.mean - (kitsStats.stdDev * FACTOR))) 
+          : null,
+        historyCount: kitsStats.count,
+        isReliable: kitsStats.count >= 5
+      },
+      performance: {
+        dynamicThreshold: performanceStats.mean > 0 && performanceStats.count >= 3 
+          ? Math.max(0.1, Math.round((performanceStats.mean - (performanceStats.stdDev * FACTOR)) * 10) / 10) 
+          : null,
+        historyCount: performanceStats.count,
+        isReliable: performanceStats.count >= 5
+      }
+    };
+  } catch (err) {
+    logger.error('[IGPP-ALERT-AGENT] Error calculating dynamic thresholds:', err);
+    return {
+      budgetUsage: { dynamicThreshold: null, historyCount: 0, isReliable: false },
+      kitsPrepared: { dynamicThreshold: null, historyCount: 0, isReliable: false },
+      performance: { dynamicThreshold: null, historyCount: 0, isReliable: false }
+    };
   }
 }
