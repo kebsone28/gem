@@ -730,7 +730,12 @@ export default function Cahier() {
   const { teams: allTeams } = useTeams(project?.id);
   const migratedProjectRef = useRef<string | null>(null);
 
-  const [documentMode, setDocumentMode] = useState<CahierDocumentMode>('cahier');
+  const [documentMode, setDocumentMode] = useState<CahierDocumentMode>(() => {
+    if (peut(PERMISSIONS.CAHIER_TECHNICAL)) return 'cahier';
+    if (peut(PERMISSIONS.CAHIER_CONTRACTS)) return 'contrat';
+    if (peut(PERMISSIONS.CAHIER_STRATEGY)) return 'strategie';
+    return 'cahier';
+  });
   const [selectedRole, setSelectedRole] = useState('Électricien');
   const [selectedContractLot, setSelectedContractLot] = useState('LOT A');
   const [isContractEditing, setIsContractEditing] = useState(false);
@@ -1571,10 +1576,10 @@ export default function Cahier() {
         <div className="max-w-7xl mx-auto px-3 pt-3 md:px-8 md:pt-8">
           <div className="inline-flex rounded-xl border border-slate-800 bg-slate-950/70 p-1">
             {[
-              { key: 'cahier' as const, label: 'Cahier de charge', icon: HardHat },
-              { key: 'contrat' as const, label: 'Contrat', icon: FileText },
-              { key: 'strategie' as const, label: 'Stratégie opérationnelle', icon: ClipboardList },
-            ].map((item) => {
+              { key: 'cahier' as const, label: 'Cahier de charge', icon: HardHat, permission: PERMISSIONS.CAHIER_TECHNICAL },
+              { key: 'contrat' as const, label: 'Contrat', icon: FileText, permission: PERMISSIONS.CAHIER_CONTRACTS },
+              { key: 'strategie' as const, label: 'Stratégie opérationnelle', icon: ClipboardList, permission: PERMISSIONS.CAHIER_STRATEGY },
+            ].filter(item => peut(item.permission)).map((item) => {
               const Icon = item.icon;
               const active = documentMode === item.key;
               return (

@@ -99,13 +99,10 @@ async function canSync(): Promise<boolean> {
 
 export function hasSyncAuthContext(): boolean {
   const { user, isAuthenticated } = useAuthStore.getState();
-  const token = safeStorage.getItem('access_token');
-  const isValidToken =
-    !!token && token !== 'undefined' && token !== 'null' && token.length >= 20;
   const isOnLoginPage =
     typeof window !== 'undefined' && window.location.pathname === '/login';
 
-  return !!user && isAuthenticated && isValidToken && !isOnLoginPage;
+  return !!user && isAuthenticated && !isOnLoginPage;
 }
 
 /** Pull remote changes and apply them to the local Dexie database */

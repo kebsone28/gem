@@ -1,5 +1,5 @@
 import express from 'express';
-import { getUsers, createUser, updateUser, deleteUser } from '../../modules/user/user.controller.js';
+import { getUsers, createUser, updateUser, deleteUser, requestUserDeletion } from '../../modules/user/user.controller.js';
 import { authProtect } from '../middlewares/auth.js';
 import { verifierPermission } from '../../middleware/verifierPermission.js';
 import { PERMISSIONS } from '../../core/config/permissions.js';
@@ -12,6 +12,7 @@ router.use(authProtect);
 // Only administrators can manage users
 router.get('/', verifierPermission(PERMISSIONS.GERER_UTILISATEURS), getUsers);
 router.post('/', verifierPermission(PERMISSIONS.GERER_UTILISATEURS), createUser);
+router.post('/:id/request-deletion', verifierPermission(PERMISSIONS.GERER_UTILISATEURS), requestUserDeletion);
 router.patch('/:id', verifierPermission(PERMISSIONS.GERER_UTILISATEURS), updateUser);
 router.delete('/:id', verifierPermission(PERMISSIONS.GERER_UTILISATEURS), deleteUser);
 

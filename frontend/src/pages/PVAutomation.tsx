@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, prefer-const */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, prefer-const */
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -43,6 +43,7 @@ import {
 import { saveAs } from 'file-saver';
 import QRCode from 'qrcode';
 import * as XLSX from 'xlsx';
+import { encryptData, decryptData } from '../utils/crypto';
 
 // --- Services & DB ---
 import { db } from '../store/db';
@@ -69,19 +70,20 @@ import logger from '../utils/logger';
 
 const SIGNATURE_TTL_MS = 8 * 60 * 60 * 1000;
 
-const storeSignatureWithTTL = (key: string, value: string, ttlMs = SIGNATURE_TTL_MS) => {
-  const item = {
-    value,
-    expiry: Date.now() + ttlMs,
-  };
+const storeSignatureWithTTL = async (key: string, value: string, secret: string, ttlMs = SIGNATURE_TTL_MS) => {
   try {
+    const encryptedValue = await encryptData(value, secret);
+    const item = {
+      value: encryptedValue,
+      expiry: Date.now() + ttlMs,
+    };
     localStorage.setItem(key, JSON.stringify(item));
   } catch (e) {
     console.warn('[PVAutomation] Signature storage failed:', e);
   }
 };
 
-const getSignatureWithTTL = (key: string): string | null => {
+const getSignatureWithTTL = async (key: string, secret: string): Promise<string | null> => {
   try {
     const stored = localStorage.getItem(key);
     if (!stored) return null;
@@ -90,12 +92,15 @@ const getSignatureWithTTL = (key: string): string | null => {
       localStorage.removeItem(key);
       return null;
     }
-    return item.value || null;
+    if (!item.value) return null;
+    
+    return await decryptData(item.value, secret);
   } catch {
     localStorage.removeItem(key);
     return null;
   }
 };
+
 
 export interface PVRecord {
   id: string;
@@ -218,25 +223,54 @@ function usePVAutomation(): PVLogic {
   >(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSignatureOpen, setIsSignatureOpen] = useState(false);
-  const [signatureData, setSignatureData] = useState<string | null>(
-    getSignatureWithTTL('gem_pv_sig')
-  );
-  const [bossSignatureData, setBossSignatureData] = useState<string | null>(
-    getSignatureWithTTL('gem_pv_boss_sig')
-  );
+  const [signatureData, setSignatureData] = useState<string | null>(null);
+  const [bossSignatureData, setBossSignatureData] = useState<string | null>(null);
   const [isBossSignatureOpen, setIsBossSignatureOpen] = useState(false);
   const [archivedPVs, setArchivedPVs] = useState<PVRecord[]>([]);
   const [isLoadingPVs, setIsLoadingPVs] = useState(true);
   const { activeProjectId, project } = useProject();
   const hasMigratedLocalPVsRef = useRef(false);
 
-  // 💾 Persistance automatique pour Robustesse
+  const currentUser = useAuthStore((state) => state.user);
+
+  // 💾 Persistance automatique pour Robustesse (Chiffrée)
   useEffect(() => {
-    if (signatureData) storeSignatureWithTTL('gem_pv_sig', signatureData);
-    else localStorage.removeItem('gem_pv_sig');
-    if (bossSignatureData) storeSignatureWithTTL('gem_pv_boss_sig', bossSignatureData);
-    else localStorage.removeItem('gem_pv_boss_sig');
-  }, [signatureData, bossSignatureData]);
+    const persistSignatures = async () => {
+      const userSecret = `sig-secret-${currentUser?.id || 'anonymous'}`;
+      
+      if (signatureData) {
+        await storeSignatureWithTTL('gem_pv_sig', signatureData, userSecret);
+      } else {
+        localStorage.removeItem('gem_pv_sig');
+      }
+      
+      if (bossSignatureData) {
+        await storeSignatureWithTTL('gem_pv_boss_sig', bossSignatureData, userSecret);
+      } else {
+        localStorage.removeItem('gem_pv_boss_sig');
+      }
+    };
+    
+    void persistSignatures();
+  }, [signatureData, bossSignatureData, currentUser?.id]);
+
+  // Initial load of signatures
+  useEffect(() => {
+    const loadSignatures = async () => {
+      if (!currentUser?.id) return;
+      const userSecret = `sig-secret-${currentUser.id}`;
+      
+      const sig = await getSignatureWithTTL('gem_pv_sig', userSecret);
+      if (sig) setSignatureData(sig);
+      
+      const bSig = await getSignatureWithTTL('gem_pv_boss_sig', userSecret);
+      if (bSig) setBossSignatureData(bSig);
+    };
+    
+    void loadSignatures();
+  }, [currentUser?.id]);
+
+
 
   const submissionsQuery = useLiveQuery(() =>
     db.households.filter((h) => !!h.koboData || h.status === 'WAITING_AUDIT').toArray()

@@ -35,6 +35,13 @@ export default function DeliveriesTab({ searchQuery = '' }: DeliveriesTabProps) 
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="mb-2">
+        <h2 className={`text-xl font-black ${isDarkMode ? 'text-white' : 'text-slate-900'} tracking-tight`}>Flux des Livraisons</h2>
+        <p className={`text-sm mt-1 max-w-3xl leading-relaxed ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+          Ce panneau assure la traçabilité des équipements acheminés sur le terrain. Il collecte les données remontées par les livreurs et les synchronise en temps réel avec le référentiel matériel pour garantir qu'aucune phase d'installation ne soit bloquée par un manque de stock.
+        </p>
+      </div>
+
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         <div
           className={`${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'} border rounded-2xl p-6 transition-all hover:shadow-lg`}

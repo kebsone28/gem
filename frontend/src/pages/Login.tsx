@@ -102,8 +102,7 @@ export default function Login() {
         password: password,
       });
 
-      const { accessToken: token1, token: token2, user: userPayload } = response.data;
-      const accessToken = token1 || token2;
+      const { user: userPayload } = response.data;
       const emailResp = userPayload?.email || '';
       const roleResp = userPayload?.role || '';
       const nameResp = userPayload?.name || '';
@@ -121,7 +120,6 @@ export default function Login() {
           organizationConfig: orgConfigResp,
           id: idResp,
           requires2FA,
-          accessToken,
         } as any);
         setStep('2fa');
         setInfo('Une validation de sécurité supplémentaire est requise.');
@@ -135,7 +133,6 @@ export default function Login() {
         nameResp,
         orgResp,
         idResp,
-        accessToken,
         orgConfigResp,
         userPayload?.permissions
       );
@@ -159,15 +156,13 @@ export default function Login() {
         email: pendingUser.email,
         answer: twoFAAnswer,
       });
-      const { user, accessToken: token1, token: token2 } = data;
-      const accessToken = token1 || token2;
+      const { user } = data;
       login(
         user.email,
         user.role,
         user.name,
         user.organization,
         user.id,
-        accessToken,
         user.organizationConfig,
         user.permissions
       );

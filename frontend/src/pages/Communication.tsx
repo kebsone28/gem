@@ -2452,6 +2452,13 @@ export default function Communication() {
       );
     };
 
+    const onHistoryCleared = (p: { conversationId: string }) => {
+      setMessagesByConversation((c) => ({ ...c, [p.conversationId]: [] }));
+      setConversations((c) =>
+        c.map((x) => (x.id === p.conversationId ? { ...x, lastMessage: null, updatedAt: new Date().toISOString() } : x))
+      );
+    };
+
     socket.on('chat:presence', onPresence);
     socket.on('chat:conversation:new', onConversation);
     socket.on('chat:message:new', onMessage);
@@ -2460,6 +2467,7 @@ export default function Communication() {
     socket.on('chat:user:block-state', onBlockState);
     socket.on('chat:conversation:deleted', onConvDeleted);
     socket.on('chat:conversation:read', onRead);
+    socket.on('chat:history:cleared', onHistoryCleared);
 
     return () => {
       socket.off('chat:presence', onPresence);
@@ -2470,6 +2478,7 @@ export default function Communication() {
       socket.off('chat:user:block-state', onBlockState);
       socket.off('chat:conversation:deleted', onConvDeleted);
       socket.off('chat:conversation:read', onRead);
+      socket.off('chat:history:cleared', onHistoryCleared);
     };
   }, [activeConversationId, socketVersion, user?.id, soundEnabled]);
 
@@ -2726,10 +2735,12 @@ export default function Communication() {
       return;
 
     try {
+      console.log('[CHAT] Clearing history for conversation:', activeConversationId);
       await chatService.clearHistory(activeConversationId);
       setMessagesByConversation((prev) => ({ ...prev, [activeConversationId]: [] }));
       toast.success("L'historique a été vidé pour tous.");
     } catch (e: any) {
+      console.error('[CHAT] Error clearing history:', e);
       toast.error(e?.response?.data?.error || 'Erreur lors du nettoyage.');
     }
   }, [activeConversationId]);

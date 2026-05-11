@@ -59,7 +59,6 @@ export const startIGPPAlertAgent = async () => {
  */
 async function checkProjectKPIsAndCreateAlerts(projectId, organizationId) {
   try {
-    // Récupérer la configuration des alertes pour cette organisation
     const config = await prisma.alertConfiguration.findUnique({
       where: { organizationId },
     });
@@ -69,61 +68,69 @@ async function checkProjectKPIsAndCreateAlerts(projectId, organizationId) {
       return;
     }
 
-    // Récupérer les données KPI actuelles
-    // Note: Cela suppose que les données KPI sont disponibles via une API ou cache
-    // Pour l'intégration, nous utilisons les données agrégées depuis la base de données
-    const kpiData = await aggregateProjectKPIs(projectId);
+    const kpiData = await aggregateProjectKPIs(projectId, organizationId);
 
-    // Créer les alertes IGPP basées sur les seuils
+    const safeKpiData = {
+      electrifiedHouseholds: kpiData.electrifiedHouseholds ?? 0,
+      pvRetard: kpiData.pvRetard ?? 0,
+      pvnc: kpiData.pvnc ?? 0,
+      budgetUsagePercent: kpiData.budgetUsagePercent ?? 0,
+      logistics: {
+        kitPrepared: kpiData.logistics?.kitPrepared ?? 0,
+      },
+      performance: {
+        avgPerDay: kpiData.performance?.avgPerDay ?? 0,
+      },
+    };
+
     const alertsToCreate = [];
 
     // 1. Alerte Stock Critique
     if (
-      kpiData.logistics?.kitPrepared !== undefined &&
-      kpiData.logistics.kitPrepared < config.stockCritical
+      safeKpiData.logistics.kitPrepared !== undefined &&
+      safeKpiData.logistics.kitPrepared < config.stockCritical
     ) {
       alertsToCreate.push({
         type: 'IGPP_STOCK',
-        severity: kpiData.logistics.kitPrepared === 0 ? 'CRITICAL' : 'HIGH',
-        title: `Stock critique: ${kpiData.logistics.kitPrepared} kits disponibles`,
-        description: `Nombre de kits préparés: ${kpiData.logistics.kitPrepared}. Seuil critique: ${config.stockCritical}`,
+        severity: safeKpiData.logistics.kitPrepared === 0 ? 'CRITICAL' : 'HIGH',
+        title: `Stock critique: ${safeKpiData.logistics.kitPrepared} kits disponibles`,
+        description: `Nombre de kits préparés: ${safeKpiData.logistics.kitPrepared}. Seuil critique: ${config.stockCritical}`,
         recommendedAction: 'Préparer plus de kits immédiatement',
       });
     }
 
     // 2. Alerte Budget
     if (
-      kpiData.budgetUsagePercent !== undefined &&
-      kpiData.budgetUsagePercent > config.budgetThreshold
+      safeKpiData.budgetUsagePercent !== undefined &&
+      safeKpiData.budgetUsagePercent > config.budgetThreshold
     ) {
       alertsToCreate.push({
         type: 'IGPP_BUDGET',
-        severity: kpiData.budgetUsagePercent > 95 ? 'CRITICAL' : 'HIGH',
-        title: `Budget utilisé à ${kpiData.budgetUsagePercent}%`,
-        description: `Utilisation du budget: ${kpiData.budgetUsagePercent}%. Seuil d'alerte: ${config.budgetThreshold}%`,
+        severity: safeKpiData.budgetUsagePercent > 95 ? 'CRITICAL' : 'HIGH',
+        title: `Budget utilisé à ${safeKpiData.budgetUsagePercent}%`,
+        description: `Utilisation du budget: ${safeKpiData.budgetUsagePercent}%. Seuil d'alerte: ${config.budgetThreshold}%`,
         recommendedAction: 'Vérifier les dépenses et obtenir une approbation supplémentaire si nécessaire',
       });
     }
 
     // 3. Alerte Électricité
     if (
-      kpiData.electrifiedHouseholds !== undefined &&
-      kpiData.electrifiedHouseholds < config.electricityMin
+      safeKpiData.electrifiedHouseholds !== undefined &&
+      safeKpiData.electrifiedHouseholds < config.electricityMin
     ) {
       alertsToCreate.push({
         type: 'IGPP_ELECTRICITY',
         severity: 'HIGH',
-        title: `Accès électricité faible: ${kpiData.electrifiedHouseholds}%`,
-        description: `Pourcentage de ménages avec accès électricité: ${kpiData.electrifiedHouseholds}%. Minimum requis: ${config.electricityMin}%`,
+        title: `Accès électricité faible: ${safeKpiData.electrifiedHouseholds}%`,
+        description: `Pourcentage de ménages avec accès électricité: ${safeKpiData.electrifiedHouseholds}%. Minimum requis: ${config.electricityMin}%`,
         recommendedAction: 'Vérifier les interruptions d\'électricité et contacter le fournisseur si nécessaire',
       });
     }
 
     // 4. Alerte Rendement Équipes
-    if (kpiData.performance?.avgPerDay !== undefined) {
-      const teamEfficiency = kpiData.performance.avgPerDay;
+    if (safeKpiData.performance?.avgPerDay !== undefined) {
+      const teamEfficiency = safeKpiData.performance.avgPerDay;
       if (teamEfficiency < 1) {
-        // Moins de 1 ménage par jour par personne
         alertsToCreate.push({
           type: 'IGPP_TEAM_PERFORMANCE',
           severity: 'MEDIUM',
@@ -135,32 +142,29 @@ async function checkProjectKPIsAndCreateAlerts(projectId, organizationId) {
     }
 
     // 5. Alerte Retard (PV non complétés)
-    if (kpiData.pvRetard !== undefined && kpiData.pvRetard > config.delayThreshold) {
+    if (safeKpiData.pvRetard !== undefined && safeKpiData.pvRetard > config.delayThreshold) {
       alertsToCreate.push({
         type: 'IGPP_DELAY',
         severity: 'HIGH',
-        title: `Retards PV importants: ${kpiData.pvRetard} logements`,
-        description: `Nombre de logements en retard PV: ${kpiData.pvRetard}. Seuil d'alerte: ${config.delayThreshold}`,
+        title: `Retards PV importants: ${safeKpiData.pvRetard} logements`,
+        description: `Nombre de logements en retard PV: ${safeKpiData.pvRetard}. Seuil d'alerte: ${config.delayThreshold}`,
         recommendedAction: 'Prioriser les PV en retard et identifier les obstacles',
       });
     }
 
-    // Créer les alertes dans la base de données
     for (const alertData of alertsToCreate) {
       try {
-        // Vérifier si une alerte similaire et ouverte existe déjà
         const existingAlert = await prisma.alert.findFirst({
           where: {
             projectId,
             organizationId,
             type: alertData.type,
             status: 'OPEN',
-            createdAt: { gte: new Date(Date.now() - 5 * 60 * 1000) }, // Créée dans les 5 dernières minutes
+            createdAt: { gte: new Date(Date.now() - 5 * 60 * 1000) },
           },
         });
 
         if (!existingAlert) {
-          // Créer une nouvelle alerte
           const newAlert = await prisma.alert.create({
             data: {
               ...alertData,
@@ -172,8 +176,6 @@ async function checkProjectKPIsAndCreateAlerts(projectId, organizationId) {
           });
 
           logger.info(`[IGPP-ALERT-AGENT] Alert created: ${newAlert.id}`);
-
-          // Déclencher les notifications
           await alertsService.triggerNotifications(newAlert);
         }
       } catch (err) {
@@ -188,30 +190,21 @@ async function checkProjectKPIsAndCreateAlerts(projectId, organizationId) {
 /**
  * Agréger les données KPI à partir de la base de données
  */
-async function aggregateProjectKPIs(projectId) {
+async function aggregateProjectKPIs(projectId, organizationId) {
   try {
-    // Récupérer les statistiques du projet
     const households = await prisma.household.findMany({
-      where: { projectId, status: 'ACTIVE' },
+      where: { projectId: projectId, organizationId, status: 'ACTIVE' },
     });
 
     const missions = await prisma.mission.findMany({
       where: { projectId },
     });
 
-    // Compter les statuts
-    const missionsByStatus = {};
-    missions.forEach((m) => {
-      missionsByStatus[m.status] = (missionsByStatus[m.status] || 0) + 1;
-    });
-
-    // Calculs
     const totalHouseholds = households.length;
     const electrifiedHouseholds = households.filter((h) => h.hasElectricity).length;
     const electrificationPercent =
       totalHouseholds > 0 ? Math.round((electrifiedHouseholds / totalHouseholds) * 100) : 0;
 
-    // Récupérer les missions PV par statut
     const pvMissions = missions.filter((m) => m.type?.startsWith('PV'));
     const pvRetard = pvMissions.filter((m) => m.status === 'RETARD').length;
     const pvnc = pvMissions.filter((m) => m.type?.includes('NC')).length;
@@ -220,16 +213,77 @@ async function aggregateProjectKPIs(projectId) {
       electrifiedHouseholds: electrificationPercent,
       pvRetard: pvRetard,
       pvnc: pvnc,
-      budgetUsagePercent: 45, // TODO: Intégrer avec les données budgétaires réelles
+      budgetUsagePercent: await calculateBudgetUsage(organizationId),
       logistics: {
-        kitPrepared: 12, // TODO: Intégrer avec le système logistique
+        kitPrepared: await calculateKitPrepared(projectId, organizationId),
       },
       performance: {
-        avgPerDay: 1.5, // TODO: Calculer depuis les données de performances réelles
+        avgPerDay: await calculateAvgPerDay(organizationId),
       },
     };
   } catch (err) {
     logger.error('[IGPP-ALERT-AGENT] Error aggregating KPIs:', err);
     return {};
+  }
+}
+
+async function calculateBudgetUsage(organizationId) {
+  try {
+    const result = await prisma.$queryRaw`
+      SELECT 
+        COALESCE(SUM(CASE WHEN h.status IN ('Terminé', 'Réception: Validée') THEN p.indicatorValue ELSE 0 END), 0)::float as budgetUsed,
+        COALESCE(SUM(p.indicatorValue), 0)::float as budgetPlanned
+      FROM "Household" h
+      JOIN "Zone" z ON h."zoneId" = z.id
+      JOIN "Project" pr ON z."projectId" = pr.id
+      LEFT JOIN "Indicator" p ON pr.id = p."projectId" AND p.key = 'budget'
+      WHERE h."organizationId" = ${organizationId} AND h."deletedAt" IS NULL
+    `;
+    const row = result[0] || {};
+    const budgetUsed = Number(row.budgetUsed || 0);
+    const budgetPlanned = Number(row.budgetPlanned || 1);
+    return Math.round((budgetUsed / budgetPlanned) * 100);
+  } catch {
+    return 0;
+  }
+}
+
+async function calculateKitPrepared(projectId, organizationId) {
+  try {
+    const result = await prisma.$queryRaw`
+      SELECT COALESCE(SUM(
+        COALESCE(NULLIF("koboData"->'group_ed3yt17'->>'Nombre_de_KIT_pr_par', '')::numeric, 0)
+      ), 0)::int as kitPrepared
+      FROM "Household" h
+      JOIN "Zone" z ON h."zoneId" = z.id
+      WHERE z."projectId" = ${projectId} AND h."organizationId" = ${organizationId}
+    `;
+    return Number(result[0]?.kitPrepared || 0);
+  } catch {
+    return 0;
+  }
+}
+
+async function calculateAvgPerDay(organizationId) {
+  try {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    
+    const result = await prisma.$queryRaw`
+      SELECT 
+        COUNT(*)::int as completedCount,
+        COUNT(DISTINCT DATE("timestamp"))::int as daysWorked
+      FROM "PerformanceLog"
+      WHERE "organizationId" = ${organizationId}
+        AND "action" = 'STATUS_CHANGE'
+        AND "newStatus" IN ('Terminé', 'Réception: Validée', 'Conforme')
+        AND "timestamp" >= ${thirtyDaysAgo}
+    `;
+    const row = result[0] || {};
+    const completed = Number(row.completedCount || 0);
+    const days = Number(row.daysWorked || 1);
+    return days > 0 ? Math.round((completed / days) * 10) / 10 : 0;
+  } catch {
+    return 0;
   }
 }

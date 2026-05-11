@@ -45,8 +45,9 @@ export const pullChanges = async (req, res) => {
             }
         });
 
-        const { email, id: userId, role: userRole } = req.user;
-        const isGlobalAdmin = email === 'admingem' || userRole === 'ADMIN' || userRole === 'DG' || userRole === 'ADMIN_PROQUELEC' || userRole === 'DG_PROQUELEC';
+const { email, id: userId, role: userRole } = req.user;
+         const { ROLES } = await import('../../core/config/permissions.js');
+         const isGlobalAdmin = userRole === ROLES.ADMIN || userRole === ROLES.DIRECTEUR || userRole === ROLES.ADMIN_ALT || userRole === 'ADMIN_PROQUELEC' || userRole === 'DG_PROQUELEC';
 
         // 🛡️ Extraire assignedUsers de config et filtrer pour le frontend
         let projects = rawProjects.map(p => {

@@ -9,13 +9,13 @@ import { isMasterAdminEmail } from '../utils/roleUtils';
 
 interface AuthContextType {
   user: User | null;
+  isLoading: boolean;
   login: (
     email: string,
     role: string,
     name: string,
     organization?: string,
     id?: string,
-    accessToken?: string,
     organizationConfig?: any,
     permissions?: string[]
   ) => void;
@@ -23,6 +23,7 @@ interface AuthContextType {
   impersonate: (targetUser: User) => void;
   stopImpersonation: () => void;
 }
+
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -37,28 +38,9 @@ const normalizeSessionUser = (rawUser: any): User => ({
 });
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(() => {
-    const storedUser = safeStorage.getItem('user');
-    const token = safeStorage.getItem('access_token');
-    if (storedUser && token) {
-      try {
-        const parsed = JSON.parse(storedUser);
-        // 🛠️ Auto-réparation du rôle corrompu
-        if (parsed && isMasterAdminEmail(parsed.email) && !parsed.role) {
-          parsed.role = 'ADMIN_PROQUELEC';
-          safeStorage.setItem('user', JSON.stringify(parsed));
-          logger.log('🛠️ [AUTH] Rôle Admin restauré pour le super-administrateur');
-        }
-        return parsed;
-      } catch (e) {
-        logger.error('Failed to parse stored user', e);
-        safeStorage.removeItem('user');
-        safeStorage.removeItem('access_token');
-        return null;
-      }
-    }
-    return null;
-  });
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
 
   const isRefreshingRef = useRef(false);
 
@@ -68,14 +50,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     safeStorage.setItem('user', JSON.stringify(nextUser));
   }, []);
 
+  const verifySession = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const { data } = await apiClient.get('auth/me');
+      if (data) {
+        applySessionUser(normalizeSessionUser(data));
+      }
+    } catch (err) {
+      logger.debug('[AUTH] No active session found on startup');
+      setUser(null);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [applySessionUser]);
+
+  useEffect(() => {
+    verifySession();
+  }, [verifySession]);
+
   const refreshSession = useCallback(async () => {
-    if (!safeStorage.getItem('access_token') || isRefreshingRef.current) return;
+    if (isRefreshingRef.current) return;
     isRefreshingRef.current = true;
     try {
       const { data } = await apiClient.post('auth/refresh');
-      if (data?.accessToken) {
-        safeStorage.setItem('access_token', data.accessToken);
-      }
       if (data?.user) {
         applySessionUser(normalizeSessionUser(data.user));
       }
@@ -85,6 +83,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       isRefreshingRef.current = false;
     }
   }, [applySessionUser]);
+
 
   // Listen for forced logout events dispatched by apiClient when token refresh fails.
   // This breaks the stale-auth sync loop without needing AuthContext inside interceptors.
@@ -146,18 +145,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     name: string,
     organization?: string,
     id?: string,
-    accessToken?: string,
     organizationConfig?: any,
     permissions?: string[]
   ) => {
-    logger.info(
-      `[AUTH-CONTEXT] Login called for ${email}. AccessToken provided: ${accessToken ? 'YES' : 'NO'}`
-    );
-
-    if (accessToken && (accessToken === 'undefined' || accessToken === 'null')) {
-      logger.error('[AUTH-CONTEXT] Received invalid token string:', accessToken);
-      accessToken = undefined;
-    }
+    logger.info(`[AUTH-CONTEXT] Login successful for ${email}.`);
 
     const newUser: User = {
       id: id || 'temp-id-' + Date.now(),
@@ -171,25 +162,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     applySessionUser(newUser);
 
-    if (accessToken) {
-      safeStorage.setItem('access_token', accessToken);
-    }
-
     // Clear stale project/session-specific pointers. ProjectContext will repopulate them from the server.
     safeStorage.removeItem('active_project_id');
     safeStorage.removeItem('last_sync_timestamp');
   };
 
+
   const logout = () => {
     useAuthStore.getState().logout();
-    safeStorage.removeItem('access_token');
     safeStorage.removeItem('user');
-    safeStorage.removeItem('admin_access_token');
     safeStorage.removeItem('admin_user_data');
     safeStorage.removeItem('active_project_id');
     safeStorage.removeItem('last_sync_timestamp');
     setUser(null);
+    
+    // Explicitly call backend logout to clear cookies
+    apiClient.post('auth/logout').catch(() => {
+      // Ignore errors during logout
+    });
   };
+
 
   /**
    * 🎭 Impersonate: Adopt another user's role via Backend Security
@@ -201,24 +193,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     try {
-      const currentToken = safeStorage.getItem('access_token');
       const { data } = await apiClient.post('auth/impersonate', {
         targetUserId: targetUser.id,
         reason: 'Support Administratif',
       });
 
       // 💾 SAUVEGARDE DE L'IDENTITÉ ADMIN REELLE
-      safeStorage.setItem('admin_access_token', currentToken!);
       safeStorage.setItem('admin_user_data', JSON.stringify(user));
 
       // 🔄 SWITCH VERS L'IDENTITÉ SIMULÉE
-      safeStorage.setItem('access_token', data.accessToken);
       safeStorage.setItem('user', JSON.stringify(data.user));
 
       setUser(data.user);
       logger.log(`🎭 [AUTH] Simulation active : ${targetUser.name}`);
 
-      // TODO: Remplacer par un reset d'état React (reset Zustand + navigate).
       // Rechargement conservé temporairement pour garantir un état applicatif propre.
       window.location.reload();
     } catch (error: any) {
@@ -227,6 +215,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+
   /**
    * 🔙 Stop Impersonation: Return to Admin identity via Backend Validation
    */
@@ -234,18 +223,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const { data } = await apiClient.post('auth/stop-impersonation');
 
-      // 🔄 RESTAURATION DE L'IDENTITÉ ADMIN (Token neuf reçu du serveur)
-      safeStorage.setItem('access_token', data.accessToken);
+      // 🔄 RESTAURATION DE L'IDENTITÉ ADMIN
       safeStorage.setItem('user', JSON.stringify(data.user));
 
-      // 🧹 NETTOYAGE DES ÉTATS TEMPORAIRES (Si présents)
-      safeStorage.removeItem('admin_access_token');
+      // 🧹 NETTOYAGE DES ÉTATS TEMPORAIRES
       safeStorage.removeItem('admin_user_data');
 
       logger.log('🔙 [AUTH] Sessions simulée fermée, retour admin validé');
 
-      // TODO: Remplacer par un reset d'état React (reset Zustand + navigate).
-      // Rechargement conservé temporairement pour garantir un état applicatif propre.
       window.location.reload();
     } catch (error: any) {
       logger.error('❌ Stop impersonation failed:', error);
@@ -254,11 +239,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+
   return (
-    <AuthContext.Provider value={{ user, login, logout, impersonate, stopImpersonation }}>
+    <AuthContext.Provider value={{ user, isLoading, login, logout, impersonate, stopImpersonation }}>
       {children}
     </AuthContext.Provider>
   );
+
 };
 
 export const useAuth = () => {

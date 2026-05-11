@@ -79,6 +79,7 @@ interface MovementHistoryEntry {
   quantity?: number;
   variantId?: string;
   label?: string;
+  author?: string;
 }
 
 export function useLogistique(serverHouseholds?: Household[]) {
@@ -247,11 +248,12 @@ export function useLogistique(serverHouseholds?: Household[]) {
   );
 
   const logMovement = async (
-    type: 'ENTRY' | 'EXIT' | 'TRANSFER',
-    details: Record<string, unknown>
+    type: 'ENTRY' | 'EXIT' | 'TRANSFER' | 'LOAD_TEAM',
+    details: Record<string, unknown>,
+    currentConfig?: any // Allow passing the latest config to avoid race conditions
   ) => {
     if (!project) return;
-    const newConfig = { ...project.config };
+    const newConfig = currentConfig || { ...project.config };
     const logistique = newConfig.logistique || { history: [] };
 
     const newEntry: MovementHistoryEntry = {
@@ -271,7 +273,122 @@ export function useLogistique(serverHouseholds?: Household[]) {
       history: newHistory.slice(0, 200),
     };
 
-    await updateProject({ config: newConfig }, project.id);
+    if (!currentConfig) {
+      await updateProject({ config: newConfig }, project.id);
+    }
+    return newEntry;
+  };
+
+  const deleteMovement = async (movementId: string) => {
+    try {
+      if (!project) {
+        console.warn('deleteMovement: no project');
+        return;
+      }
+      const newConfig = { ...project.config };
+      const logistique = newConfig.logistique || { history: [] };
+      const history = (logistique.history || []) as MovementHistoryEntry[];
+      const entry = history.find(m => m.id === movementId);
+      
+      if (!entry) {
+        console.warn(`deleteMovement: entry ${movementId} not found`);
+        return;
+      }
+
+      console.log('deleteMovement: deleting entry', entry);
+
+      // Filter history
+      newConfig.logistique = {
+        ...logistique,
+        history: history.filter(m => m.id !== movementId)
+      };
+
+      // If it was a production log, we need to revert the warehouse loading
+      if (entry.type === 'LOAD_TEAM' || entry.type === 'EXIT') {
+         // Use the current memoized warehouses as the base if config is empty
+         const baseWarehouses = (newConfig.warehouses && newConfig.warehouses.length > 0) ? newConfig.warehouses : warehouses;
+         const whs = [...baseWarehouses];
+         const whIdx = whs.findIndex(w => w.id === entry.warehouseId);
+         if (whIdx >= 0) {
+           const wh = { ...whs[whIdx] };
+           const teams = [...(wh.preparatorTeams || [])];
+           const teamIdx = teams.findIndex(t => t.teamName === entry.teamName);
+           if (teamIdx >= 0) {
+             const date = entry.timestamp.split('T')[0];
+             // Remove the specific loading entry
+             teams[teamIdx] = {
+               ...teams[teamIdx],
+               loadings: (teams[teamIdx].loadings || []).filter(l => 
+                 !(l.date === date && l.kitsLoaded === entry.quantity && l.variantId === entry.variantId)
+               )
+             };
+             wh.preparatorTeams = teams;
+             whs[whIdx] = wh;
+             newConfig.warehouses = whs;
+             console.log('deleteMovement: warehouse stock reverted');
+           } else {
+             console.warn('deleteMovement: team not found in warehouse');
+           }
+         } else {
+           console.warn(`deleteMovement: warehouse ${entry.warehouseId} not found`);
+         }
+      }
+
+      console.log('deleteMovement: calling updateProject with new config');
+      await updateProject({ config: newConfig }, project.id);
+      console.log('deleteMovement: updateProject successful');
+    } catch (err) {
+      console.error('deleteMovement: error', err);
+    }
+  };
+
+  const updateMovement = async (movementId: string, updatedQty: number) => {
+    try {
+      if (!project) return;
+      const newConfig = { ...project.config };
+      const logistique = newConfig.logistique || { history: [] };
+      const history = [...(logistique.history || [])] as MovementHistoryEntry[];
+      const entryIndex = history.findIndex(m => m.id === movementId);
+      
+      if (entryIndex === -1) return;
+      const entry = history[entryIndex];
+      const oldQty = entry.quantity || 0;
+
+      // Update history
+      history[entryIndex] = { ...entry, quantity: updatedQty };
+      newConfig.logistique = {
+        ...logistique,
+        history
+      };
+
+      // Update warehouse loading
+      if (entry.type === 'LOAD_TEAM' || entry.type === 'EXIT') {
+         const baseWarehouses = (newConfig.warehouses && newConfig.warehouses.length > 0) ? newConfig.warehouses : warehouses;
+         const whs = [...baseWarehouses];
+         const whIdx = whs.findIndex(w => w.id === entry.warehouseId);
+         if (whIdx >= 0) {
+           const wh = { ...whs[whIdx] };
+           const teams = [...(wh.preparatorTeams || [])];
+           const teamIdx = teams.findIndex(t => t.teamName === entry.teamName);
+           if (teamIdx >= 0) {
+             const date = entry.timestamp.split('T')[0];
+             const loadings = [...(teams[teamIdx].loadings || [])];
+             const loadIdx = loadings.findIndex(l => l.date === date && l.kitsLoaded === oldQty && l.variantId === entry.variantId);
+             if (loadIdx >= 0) {
+               loadings[loadIdx] = { ...loadings[loadIdx], kitsLoaded: updatedQty };
+               teams[teamIdx] = { ...teams[teamIdx], loadings };
+               wh.preparatorTeams = teams;
+               whs[whIdx] = wh;
+               newConfig.warehouses = whs;
+             }
+           }
+         }
+      }
+
+      await updateProject({ config: newConfig }, project.id);
+    } catch (err) {
+      console.error('updateMovement: error', err);
+    }
   };
 
   // --- Legacy global stock (for StockTab backward compat) ---
@@ -446,39 +563,48 @@ export function useLogistique(serverHouseholds?: Household[]) {
     warehouseId: string,
     teamId: string,
     teamName: string,
-    kitsLoaded: number,
-    variantId: string = 'standard'
+    entries: { variantId: string; kitsLoaded: number; author?: string }[],
+    customDate?: string
   ) => {
-    const whStatus = warehouseStats.find((warehouse) => warehouse.id === warehouseId);
-    if (whStatus && whStatus.kitsLoadedToday + kitsLoaded > whStatus.kitsLoadedToday + 500) {
-      // arbitrary logical cap or real stock check
-    }
-
-    const today = new Date().toISOString().split('T')[0];
-    const updated = warehouses.map((wh) => {
+    if (!project || entries.length === 0) return;
+    const today = customDate || new Date().toISOString().split('T')[0];
+    
+    const updatedWarehouses = warehouses.map((wh) => {
       if (wh.id !== warehouseId) return wh;
 
       const teams = [...(wh.preparatorTeams || [])];
       const teamIdx = teams.findIndex((team) => team.teamId === teamId);
-      const loading = { date: today, kitsLoaded, variantId };
+      let currentLoadings = teamIdx >= 0 ? [...(teams[teamIdx].loadings || [])] : [];
+
+      entries.forEach(({ variantId, kitsLoaded }) => {
+        const loading = { date: today, kitsLoaded, variantId };
+        currentLoadings = [...currentLoadings.filter((current) => current.date !== today || current.variantId !== variantId), loading];
+      });
 
       if (teamIdx >= 0) {
-        const loadings = [...(teams[teamIdx].loadings || []).filter((current) => current.date !== today), loading];
-        teams[teamIdx] = { ...teams[teamIdx], loadings };
+        teams[teamIdx] = { ...teams[teamIdx], loadings: currentLoadings };
       } else {
-        teams.push({ teamId, teamName, loadings: [loading] });
+        teams.push({ teamId, teamName, loadings: currentLoadings });
       }
       return { ...wh, preparatorTeams: teams };
     });
 
-    await _saveWarehouseConfig(updated);
-    await logMovement('EXIT', {
-      warehouseId,
-      teamName,
-      quantity: kitsLoaded,
-      variantId,
-      label: `Chargement Équipe: ${teamName}`,
-    });
+    const newConfig = { ...project.config, warehouses: updatedWarehouses };
+    
+    // Log each movement, sequentially updating newConfig
+    for (const { variantId, kitsLoaded, author } of entries) {
+      await logMovement('LOAD_TEAM', {
+        warehouseId,
+        teamName,
+        quantity: kitsLoaded,
+        variantId,
+        label: `Production: ${variantId === 'standard' ? 'KIT principal' : 'KIT principal+'}`,
+        author,
+      }, newConfig);
+    }
+
+    // Now call the final updateProject with the fully constructed config
+    await updateProject({ config: newConfig }, project.id);
   };
 
   const receiveStock = async (warehouseId: string, kitsCount: number, source: string) => {
@@ -624,6 +750,9 @@ export function useLogistique(serverHouseholds?: Household[]) {
     addPreparatorLoading,
     receiveStock,
     updateWarehouseCoords,
+    deleteMovement,
+    updateMovement,
     isLoading: !households || project === undefined || !projects,
   };
+
 }

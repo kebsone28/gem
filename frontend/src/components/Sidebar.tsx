@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
+  LayoutGrid,
   Map as MapIcon,
   FileText,
   Users,
@@ -161,7 +162,7 @@ export default function Sidebar() {
         icon: Users,
         label: 'Bordereau',
         title: 'Gérez la logistique des équipes et les affectations terrain',
-        permission: PERMISSIONS.LOGISTIQUE_MANAGE,
+        permission: PERMISSIONS.LOGISTIQUE_OM,
         category: 'PILOTAGE',
       },
       {
@@ -200,7 +201,7 @@ export default function Sidebar() {
         icon: Calendar,
         label: 'Planning',
         title: 'Planification intelligente des travaux par équipe',
-        permission: PERMISSIONS.UI_MAP,
+        permission: PERMISSIONS.MISSIONS_PLANNING,
         category: 'OPÉRATIONS',
       },
       {
@@ -217,6 +218,14 @@ export default function Sidebar() {
         label: 'Logistique',
         title: 'Gestion du déploiement et des ressources matérielles',
         permission: PERMISSIONS.LOGISTIQUE_MANAGE,
+        category: 'OPÉRATIONS',
+      },
+      {
+        to: '/atelier',
+        icon: LayoutGrid,
+        label: 'Atelier',
+        title: 'Saisie et journalisation de la préparation des kits',
+        permission: PERMISSIONS.LOGISTIQUE_ATELIER,
         category: 'OPÉRATIONS',
       },
       {

@@ -101,6 +101,9 @@ export default function AgentsTab({ searchQuery = '' }: AgentsTabProps) {
                 >
                   Temps réel
                 </p>
+                <p className={`text-sm mt-3 max-w-2xl leading-relaxed hidden sm:block ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+                  Analysez l'efficacité et la ponctualité de vos ressources humaines. Le système identifie automatiquement les anomalies (retards, sous-activité) pour vous permettre de réajuster les équipes au niveau des Paramètres (Settings) et fluidifier le planning.
+                </p>
               </div>
             </div>
           </div>

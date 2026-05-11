@@ -1,1072 +1,428 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState } from 'react';
-import { motion } from 'framer-motion';
 import {
-  Zap,
   Plus,
   Minus,
-  Calculator,
-  Compass,
-  Activity,
   CheckCircle2,
-  AlertTriangle,
-  MapPin,
-  Edit2,
-  Save,
-  X,
   Warehouse,
-  Users,
-  Package,
-  TrendingUp,
-  ArrowRightLeft,
-  Globe,
-  BarChart3,
-  type LucideIcon,
+  Save,
+  Clock,
+  LayoutGrid,
+  Edit2,
+  Trash2,
+  X,
+  Check,
+  ChevronDown,
+  ArrowUpDown
 } from 'lucide-react';
-import { SENEGAL_REGIONS, KIT_VARIANTS } from '../../utils/config';
 import { useLogistique } from '../../hooks/useLogistique';
-import { Link } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 import toast from 'react-hot-toast';
-
-const HEALTH_BADGE_STYLES = {
-  emerald: {
-    container: 'bg-emerald-500/10 border-emerald-500/30',
-    text: 'text-emerald-400',
-  },
-  slate: {
-    container: 'bg-slate-500/10 border-slate-500/30',
-    text: 'text-slate-300',
-  },
-  rose: {
-    container: 'bg-rose-500/10 border-rose-500/30',
-    text: 'text-rose-400',
-  },
-  amber: {
-    container: 'bg-amber-500/10 border-amber-500/30',
-    text: 'text-amber-400',
-  },
-} as const;
-
-const STOCK_CARD_STYLES = {
-  blue: {
-    container: 'border-blue-500/20',
-    text: 'text-blue-400',
-  },
-  emerald: {
-    container: 'border-emerald-500/20',
-    text: 'text-emerald-400',
-  },
-  rose: {
-    container: 'border-rose-500/20',
-    text: 'text-rose-400',
-  },
-  slate: {
-    container: 'border-slate-500/20',
-    text: 'text-slate-300',
-  },
-} as const;
-
-type HealthBadgeColor = keyof typeof HEALTH_BADGE_STYLES;
-type StockCardColor = keyof typeof STOCK_CARD_STYLES;
 
 export default function WorkshopTab() {
   const {
-    project,
     warehouses,
     warehouseStats,
-    globalStats,
-    globalVelocity,
-    preparatorTeams,
-    addWarehouse,
-    deleteWarehouse,
-    transferStock,
-    receiveStock,
-    movementHistory,
     addPreparatorLoading,
-    updateWarehouseCoords,
+    movementHistory,
+    deleteMovement,
+    updateMovement,
   } = useLogistique();
+  const { user } = useAuth();
 
-  const [selectedWarehouseId, setSelectedWarehouseId] = useState<string | 'global'>('global');
-  const [editingCoords, setEditingCoords] = useState(false);
-  const [coordForm, setCoordForm] = useState({ lat: '', lng: '', address: '' });
-  const [loadingInputs, setLoadingInputs] = useState<Record<string, string>>({});
-  const [loadingVariants, setLoadingVariants] = useState<Record<string, string>>({});
-  const [addingWarehouse, setAddingWarehouse] = useState(false);
-  const [newWhForm, setNewWhForm] = useState({ name: '', region: '' });
+  const [selectedWarehouseId, setSelectedWarehouseId] = useState<string | null>(
+    warehouses?.[0]?.id || null
+  );
+  
+  // Simple form state for the 2 categories
+  const [qtyPrincipal, setQtyPrincipal] = useState<string>('');
+  const [qtyPrincipalPlus, setQtyPrincipalPlus] = useState<string>('');
+  const [isSaving, setIsSaving] = useState(false);
 
-  // UI Modals / Forms
-  const [showTransferModal, setShowTransferModal] = useState(false);
-  const [showReceiveModal, setShowReceiveModal] = useState(false);
-  const [receivingWh, setReceivingWh] = useState<string | null>(null);
-  const [receiveForm, setReceiveForm] = useState({ quantity: '', source: '' });
-  const [transferForm, setTransferForm] = useState({ from: '', to: '', qty: '' });
+  // Sorting state
+  const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' }>({ key: 'timestamp', direction: 'desc' });
 
-  const totalHouses =
-    (project as any)?.totalHouses ||
-    (project?.config?.grappesConfig as any)?.grappes?.reduce(
-      (s: number, g: any) => s + (g.nb_menages || 0),
-      0
-    ) ||
-    3500;
+  // Editing state for journal
+  const [editingMovementId, setEditingMovementId] = useState<string | null>(null);
+  const [editingQty, setEditingQty] = useState<string>('');
 
-  const isGlobal = selectedWarehouseId === 'global';
-  const activeWh = isGlobal ? null : warehouseStats?.find((w) => w.id === selectedWarehouseId);
+  const activeWh = warehouseStats?.find((w) => w.id === selectedWarehouseId);
 
-  const velocity = isGlobal ? globalVelocity : activeWh?.teamVelocity || 0;
-  const kitsLoadedToday = isGlobal ? globalStats.todayLoaded : activeWh?.kitsLoadedToday || 0;
-  const kitsConsumed = isGlobal ? globalStats.totalConsumed : activeWh?.kitsConsumed || 0;
-  const totalLoaded = isGlobal ? globalStats.totalLoaded : activeWh?.kitsLoadedAllTime || 0;
+  // Filter history for "LOAD_TEAM" (Production) and specific to the selected warehouse
+  const productionJournal = movementHistory.filter(m => m.type === 'LOAD_TEAM' && m.warehouseId === selectedWarehouseId);
 
-  const progress = Math.min(100, Math.round((totalLoaded / totalHouses) * 100));
-  const daysRemaining = velocity > 0 ? Math.ceil((totalHouses - totalLoaded) / velocity) : 999;
-  const estimatedDate = new Date();
-  estimatedDate.setDate(estimatedDate.getDate() + daysRemaining);
+  const sortedJournal = [...productionJournal].sort((a, b) => {
+     let valA: any, valB: any;
+     switch(sortConfig.key) {
+        case 'timestamp':
+          valA = new Date(a.timestamp).getTime();
+          valB = new Date(b.timestamp).getTime();
+          break;
+        case 'type':
+          valA = a.variantId || '';
+          valB = b.variantId || '';
+          break;
+        case 'qty':
+          valA = a.quantity || 0;
+          valB = b.quantity || 0;
+          break;
+        case 'author':
+          valA = a.author?.toLowerCase() || '';
+          valB = b.author?.toLowerCase() || '';
+          break;
+        default:
+          valA = 0;
+          valB = 0;
+     }
+     if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
+     if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
+     return 0;
+  });
 
-  let healthBadge: { text: string; color: HealthBadgeColor; icon: LucideIcon } = {
-    text: 'En Avance',
-    color: 'emerald',
-    icon: CheckCircle2,
-  };
-  if (velocity < 10) healthBadge = { text: 'Inactif', color: 'slate', icon: AlertTriangle };
-  else if (velocity < 30) healthBadge = { text: 'En Retard', color: 'rose', icon: AlertTriangle };
-  else if (velocity < 40) healthBadge = { text: 'Sous Tension', color: 'amber', icon: Activity };
-  const healthBadgeStyles = HEALTH_BADGE_STYLES[healthBadge.color];
-
-  // Isolated teams for the active warehouse
-  const filteredTeams = isGlobal
-    ? []
-    : preparatorTeams.filter((t) => !t.regionId || t.regionId === activeWh?.regionId);
-
-  const handleSaveLoading = async (whId: string, teamId: string, teamName: string) => {
-    const qty = parseInt(loadingInputs[teamId] || '0');
-    const variantId = loadingVariants[teamId] || 'standard';
-    if (qty <= 0) return;
-    await addPreparatorLoading(whId, teamId, teamName, qty, variantId);
-    setLoadingInputs((prev) => ({ ...prev, [teamId]: '' }));
-    setLoadingVariants((prev) => ({ ...prev, [teamId]: '' }));
-    toast.success(`Chargement ${qty} kits (${variantId}) enregistré !`);
+  const requestSort = (key: string) => {
+    let direction: 'asc' | 'desc' = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
   };
 
-  const handleReceiveStock = async () => {
-    if (!receivingWh || !receiveForm.quantity || !receiveForm.source) {
-      toast.error('Veuillez remplir tous les champs correctement');
+  const handleValidateProduction = async () => {
+    if (!activeWh) {
+      toast.error('Veuillez sélectionner un magasin');
       return;
     }
-    const qty = parseInt(receiveForm.quantity);
-    if (isNaN(qty) || qty <= 0) {
+
+    const q1 = parseInt(qtyPrincipal || '0');
+    const q2 = parseInt(qtyPrincipalPlus || '0');
+
+    if (q1 <= 0 && q2 <= 0) {
+      toast.error('Veuillez entrer une quantité valide');
+      return;
+    }
+
+    setIsSaving(true);
+    const teamId = `atelier_${activeWh.id}`;
+    const teamName = `Atelier ${activeWh.region}`;
+
+    try {
+      const entries = [];
+      const authorName = user?.name || user?.email || 'Inconnu';
+      if (q1 > 0) entries.push({ variantId: 'standard', kitsLoaded: q1, author: authorName });
+      if (q2 > 0) entries.push({ variantId: 'premium', kitsLoaded: q2, author: authorName });
+
+      if (entries.length > 0) {
+        await addPreparatorLoading(activeWh.id, teamId, teamName, entries);
+      }
+      
+      setQtyPrincipal('');
+      setQtyPrincipalPlus('');
+      toast.success('Enregistré avec succès !');
+    } catch (error) {
+      toast.error("Erreur lors de l'enregistrement");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteMovement(id);
+      toast.success('Supprimé');
+    } catch (err) {
+      toast.error('Erreur lors de la suppression');
+      console.error(err);
+    }
+  };
+
+  const handleStartEdit = (id: string, currentQty: number) => {
+    setEditingMovementId(id);
+    setEditingQty(currentQty.toString());
+  };
+
+  const handleSaveEdit = async (id: string) => {
+    const q = parseInt(editingQty);
+    if (isNaN(q) || q <= 0) {
       toast.error('Quantité invalide');
       return;
     }
-    await receiveStock(receivingWh, qty, receiveForm.source);
-    setShowReceiveModal(false);
-    setReceiveForm({ quantity: '', source: '' });
-    setReceivingWh(null);
-    toast.success('Réception de matériel enregistrée !');
+    await updateMovement(id, q);
+    setEditingMovementId(null);
+    toast.success('Mis à jour');
   };
 
-  const handleDeleteWarehouse = async (id: string, name: string) => {
-    const stats = warehouseStats.find((s) => s.id === id);
-    const remainingStock = Math.max(0, (stats?.kitsLoadedToday || 0) - (stats?.kitsConsumed || 0));
-
-    if (remainingStock > 0) {
-      toast.error(
-        `Impossible de supprimer "${name}" : il reste ${remainingStock} kits en stock. Transférez le stock d'abord.`
-      );
-      return;
-    }
-
-    if (
-      !confirm(
-        `Souhaitez-vous vraiment supprimer le magasin "${name}" ? Cette action est réversible par un administrateur.`
-      )
-    )
-      return;
-
-    await deleteWarehouse(id);
-    setSelectedWarehouseId('global');
-    toast.success(`Magasin "${name}" supprimé ✓`);
-  };
-
-  const handleTransfer = async () => {
-    const qty = parseInt(transferForm.qty);
-    if (!transferForm.from || !transferForm.to || isNaN(qty) || qty <= 0) {
-      toast.error('Veuillez remplir tous les champs correctement');
-      return;
-    }
-    if (transferForm.from === transferForm.to) {
-      toast.error('Les magasins source et destination doivent être différents');
-      return;
-    }
-
-    const sourceWh = warehouseStats.find((w) => w.id === transferForm.from);
-    const sourceStock = Math.max(
-      0,
-      (sourceWh?.kitsLoadedToday || 0) - (sourceWh?.kitsConsumed || 0)
-    );
-
-    if (qty > sourceStock) {
-      toast.error(`Stock insuffisant dans le magasin source (Disponible: ${sourceStock})`);
-      return;
-    }
-
-    await transferStock(transferForm.from, transferForm.to, qty);
-    setShowTransferModal(false);
-    setTransferForm({ from: '', to: '', qty: '' });
-    toast.success(`Transfert de ${qty} kits effectué ✓`);
-  };
-
-  const handleSaveCoords = async () => {
-    if (!activeWh) return;
-    const lat = parseFloat(coordForm.lat);
-    const lng = parseFloat(coordForm.lng);
-    if (isNaN(lat) || isNaN(lng)) {
-      toast.error('Coordonnées invalides');
-      return;
-    }
-    await updateWarehouseCoords(activeWh.id, lat, lng, coordForm.address);
-    setEditingCoords(false);
-    toast.success('Coordonnées du magasin mises à jour ✓');
-  };
-
-  const handleAddWarehouse = async () => {
-    if (!newWhForm.name || !newWhForm.region) {
-      toast.error('Nom et région requis');
-      return;
-    }
-    await addWarehouse(newWhForm.name, newWhForm.region);
-    setAddingWarehouse(false);
-    setNewWhForm({ name: '', region: '' });
-    toast.success('Magasin créé ✓');
+  const getVariantLabel = (variantId: string) => {
+    if (variantId === 'premium') return 'KIT Principal+';
+    if (variantId === 'standard') return 'KIT Principal';
+    return variantId;
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      {/* Header: Warehouse Selector */}
-      <div className="space-y-3">
-        <span className="text-slate-400 text-xs font-bold uppercase tracking-widest">
-          Vue
-        </span>
-
-        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-          <button
-            onClick={() => setSelectedWarehouseId('global')}
-            className={`shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm transition-all ${
-              selectedWarehouseId === 'global'
-                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20'
-                : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white'
-            }`}
-          >
-            <Globe size={14} />
-            Réseau National
-          </button>
-
-          {warehouses?.map((wh) => (
-            <div key={wh.id} className="relative group shrink-0">
-              <button
-                onClick={() => setSelectedWarehouseId(wh.id)}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm transition-all ${
-                  selectedWarehouseId === wh.id
-                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'
-                    : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white'
-                }`}
-              >
-                <Warehouse size={14} />
-                {wh.name}
-                {warehouseStats?.find((s) => s.id === wh.id)?.hasAlert && (
-                  <span className="w-2 h-2 bg-red-500 rounded-full" />
-                )}
-              </button>
-              {!isGlobal && selectedWarehouseId === wh.id && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDeleteWarehouse(wh.id, wh.name);
-                  }}
-                  className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shadow-lg"
-                  aria-label="Supprimer ce magasin"
-                >
-                  <X size={10} />
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          <button
-            onClick={() => setAddingWarehouse(true)}
-            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm bg-slate-900 border border-dashed border-slate-700 text-slate-500 hover:text-white hover:border-blue-500 transition-all"
-          >
-            <Plus size={14} />
-            Ajouter Magasin
-          </button>
-
-          <button
-            onClick={() => setShowTransferModal(true)}
-            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm bg-indigo-900/20 border border-indigo-500/30 text-indigo-400 hover:bg-indigo-500 hover:text-white transition-all"
-          >
-            <ArrowRightLeft size={14} />
-            Transfert Stock
-          </button>
-        </div>
-      </div>
-
-      {/* Modals: Add & Transfer */}
-      {addingWarehouse && (
-        <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 sm:p-8 w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <h3 className="text-xl font-black text-white mb-6">Nouveau Magasin</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                  Nom
-                </label>
-                <input
-                  value={newWhForm.name}
-                  onChange={(e) => setNewWhForm((p) => ({ ...p, name: e.target.value }))}
-                  className="mt-2 w-full bg-slate-950 border border-slate-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500"
-                  placeholder="Ex: Magasin Kaffrine Sud"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                  Région
-                </label>
-                <select
-                  aria-label="Région du nouveau magasin"
-                  value={newWhForm.region}
-                  onChange={(e) => setNewWhForm((p) => ({ ...p, region: e.target.value }))}
-                  className="mt-2 w-full bg-slate-950 border border-slate-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500"
-                >
-                  <option value="">Sélectionner une région...</option>
-                  {SENEGAL_REGIONS.map((reg) => (
-                    <option key={reg} value={reg}>
-                      {reg}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <div className="flex flex-col gap-3 mt-6 sm:flex-row">
-              <button
-                onClick={() => setAddingWarehouse(false)}
-                className="flex-1 py-3 rounded-xl bg-slate-800 text-slate-300 font-bold hover:bg-slate-700 transition-all"
-              >
-                Annuler
-              </button>
-              <button
-                onClick={handleAddWarehouse}
-                className="flex-1 py-3 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-500 transition-all"
-              >
-                Créer
-              </button>
-            </div>
+    <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      
+      {/* Header compact */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between bg-slate-900/40 backdrop-blur-md border border-white/5 p-4 rounded-[2rem] shadow-lg">
+        <div className="flex items-center gap-4">
+          <div className="w-10 h-10 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center">
+            <LayoutGrid size={20} />
+          </div>
+          <div>
+            <h3 className="text-base font-black text-white tracking-tight uppercase">Atelier de Production</h3>
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">Saisie & Journalisation</p>
+            <p className="text-sm mt-3 max-w-2xl leading-relaxed text-slate-400">
+              Tracez et comptabilisez la préparation ou le pré-assemblage des kits avant leur déploiement. Ce journal permet de vérifier que le stock théorique correspond au matériel effectivement préparé et validé par vos équipes en atelier.
+            </p>
           </div>
         </div>
-      )}
 
-      {showTransferModal && (
-        <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 sm:p-8 w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <h3 className="text-xl font-black text-white mb-6 flex items-center gap-3">
-              <ArrowRightLeft className="text-indigo-400" />
-              Transfert de Kits
-            </h3>
-            <div className="space-y-4">
-              <div>
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                  De (Source)
-                </label>
-                <select
-                  aria-label="Magasin source"
-                  value={transferForm.from}
-                  onChange={(e) => setTransferForm((p) => ({ ...p, from: e.target.value }))}
-                  className="mt-2 w-full bg-slate-950 border border-slate-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500"
-                >
-                  <option value="">Source...</option>
-                  {warehouseStats.map((w) => (
-                    <option key={w.id} value={w.id}>
-                      {w.name} (Stock: {Math.max(0, w.kitsLoadedToday - w.kitsConsumed)})
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                  Vers (Destination)
-                </label>
-                <select
-                  title="Magasin destination"
-                  value={transferForm.to}
-                  onChange={(e) => setTransferForm((p) => ({ ...p, to: e.target.value }))}
-                  className="mt-2 w-full bg-slate-950 border border-slate-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500"
-                >
-                  <option value="">Destination...</option>
-                  {warehouses
-                    .filter((w) => w.id !== transferForm.from)
-                    .map((w) => (
-                      <option key={w.id} value={w.id}>
-                        {w.name}
-                      </option>
-                    ))}
-                </select>
-              </div>
-              <div>
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                  Quantité (Kits)
-                </label>
-                <input
-                  type="number"
-                  value={transferForm.qty}
-                  onChange={(e) => setTransferForm((p) => ({ ...p, qty: e.target.value }))}
-                  className="mt-2 w-full bg-slate-950 border border-slate-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500"
-                  placeholder="Nombre de kits complets"
-                />
-              </div>
-            </div>
-            <div className="flex flex-col gap-3 mt-6 sm:flex-row">
-              <button
-                onClick={() => setShowTransferModal(false)}
-                className="flex-1 py-3 rounded-xl bg-slate-800 text-slate-300 font-bold hover:bg-slate-700 transition-all"
-              >
-                Annuler
-              </button>
-              <button
-                onClick={handleTransfer}
-                className="flex-1 py-3 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-500 transition-all"
-              >
-                Confirmer Transfert
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Main Grid */}
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-5">
-        {/* Left Column: Stock/Consolidated or Map/Teams */}
-        <div className="lg:col-span-3 space-y-6">
-          {isGlobal ? (
-            /* National Global Dashboard */
-            <div className="space-y-6">
-              <div className="bg-slate-900 border border-slate-800 rounded-[2rem] p-5 sm:p-8">
-                <div className="flex items-center gap-3 mb-6 sm:mb-8">
-                  <BarChart3 className="text-indigo-400" />
-                  <h3 className="text-xl sm:text-2xl font-black text-white uppercase tracking-tight">
-                    Tableau de Bord National
-                  </h3>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
-                  <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 sm:p-6">
-                    <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1">
-                      Stock Pivot
-                    </p>
-                    <p className="text-3xl font-black text-white">{globalStats.totalAvailable}</p>
-                    <p className="text-xs text-slate-400 mt-2 font-bold uppercase">
-                      Kits Disponibles
-                    </p>
-                  </div>
-                  <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 sm:p-6">
-                    <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1">
-                      Chargements / Jour
-                    </p>
-                    <p className="text-3xl font-black text-white">{globalStats.todayLoaded}</p>
-                    <p className="text-xs text-indigo-400 mt-2 font-bold uppercase">
-                      Tous Magasins
-                    </p>
-                  </div>
-                  <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 sm:p-6">
-                    <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1">
-                      En Transit
-                    </p>
-                    <p className="text-3xl font-black text-amber-500">{globalStats.inTransit}</p>
-                    <p className="text-xs text-slate-400 mt-2 font-bold uppercase">
-                      Livraisons Terrain
-                    </p>
-                  </div>
-                  <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 sm:p-6">
-                    <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1">
-                      Installations
-                    </p>
-                    <p className="text-3xl font-black text-emerald-500">
-                      {globalStats.totalConsumed}
-                    </p>
-                    <p className="text-xs text-slate-400 mt-2 font-bold uppercase">
-                      Foyers Conformes
-                    </p>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">
-                    Répartition par Zone
-                  </h4>
-                  <div className="space-y-3">
-                    {warehouseStats.map((ws) => (
-                      <div
-                        key={ws.id}
-                        className="bg-slate-950/40 border border-slate-800 px-4 sm:px-6 py-4 rounded-xl flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between"
-                      >
-                        <div className="flex items-center gap-4 min-w-0">
-                          <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-white">
-                            <Warehouse size={18} />
-                          </div>
-                          <div>
-                            <p className="font-bold text-white text-sm">{ws.name}</p>
-                            <p className="text-xs text-slate-500 font-bold uppercase">
-                              {ws.region}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="w-full sm:w-auto sm:text-right">
-                          <p className="font-black text-white">
-                            {Math.max(0, ws.kitsLoadedToday - ws.kitsConsumed)}{' '}
-                            <span className="text-xs text-slate-500">KITS</span>
-                          </p>
-                          <div className="flex items-center gap-2 mt-1">
-                            <div className="w-24 h-1 bg-slate-800 rounded-full">
-                              <motion.div
-                                className="h-full bg-blue-500 rounded-full"
-                                initial={false}
-                                animate={{
-                                  width: `${Math.min(100, (ws.kitsLoadedAllTime / (totalHouses / warehouses.length)) * 100)}%`,
-                                }}
-                              />
-                            </div>
-                            <span className="text-xs font-bold text-slate-500">
-                              {Math.round(
-                                (ws.kitsLoadedAllTime / (totalHouses / warehouses.length)) * 100
-                              )}
-                              %
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          ) : (
-            activeWh && (
-              /* Specific Warehouse View */
-              <>
-                {/* Stock Card */}
-                <div className="bg-slate-900 border border-slate-800 rounded-[2rem] p-5 sm:p-8 relative overflow-hidden">
-                  <div className="absolute top-0 right-0 p-10 opacity-5 pointer-events-none">
-                    <Compass size={100} className="text-blue-500" />
-                  </div>
-                  <div className="flex flex-col gap-4 mb-6 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <Package className="text-blue-400" size={20} />
-                      <h3 className="text-lg sm:text-xl font-black text-white">
-                        Stock Local : {activeWh.name}
-                      </h3>
-                    </div>
-                    <div
-                      className={`flex w-fit items-center gap-2 px-3 py-1.5 rounded-xl border ${healthBadgeStyles.container}`}
-                    >
-                      <healthBadge.icon size={14} className={healthBadgeStyles.text} />
-                      <span className={`${healthBadgeStyles.text} font-bold text-xs`}>
-                        {healthBadge.text}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-                    {[
-                      { label: 'Chargés (Auj)', val: kitsLoadedToday, color: 'blue' as StockCardColor },
-                      { label: 'Consommés (Zone)', val: kitsConsumed, color: 'emerald' as StockCardColor },
-                      {
-                        label: 'Disponible',
-                        val: Math.max(0, kitsLoadedToday - kitsConsumed),
-                        color: (activeWh?.hasAlert ? 'rose' : 'slate') as StockCardColor,
-                      },
-                    ].map((card) => {
-                      const styles = STOCK_CARD_STYLES[card.color];
-                      return (
-                      <div
-                        key={card.label}
-                        className={`bg-slate-950/60 border rounded-2xl p-4 text-center ${styles.container}`}
-                      >
-                        <p className="text-3xl font-black text-white">{card.val}</p>
-                        <p className={`text-xs font-bold uppercase tracking-widest mt-1 ${styles.text}`}>
-                          {card.label}
-                        </p>
-                      </div>
-                    );
-                    })}
-                  </div>
-                  <div className="mt-4 pt-4 border-t border-slate-800">
-                    <button
-                      onClick={() => {
-                        setReceivingWh(activeWh.id);
-                        setShowReceiveModal(true);
-                      }}
-                      className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 text-xs font-black uppercase tracking-widest transition-all border border-emerald-500/20"
-                    >
-                      <Plus size={14} />
-                      Réception Matériel
-                    </button>
-                  </div>
-
-                  {activeWh?.hasAlert && (
-                    <div className="flex items-center gap-3 bg-red-500/10 border border-red-500/30 rounded-xl p-3">
-                      <AlertTriangle size={16} className="text-red-400 shrink-0" />
-                      <p className="text-red-300 text-xs font-semibold">
-                        Risque de rupture locale. Stock insuffisant pour la cadence actuelle.
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                {/* GPS Card */}
-                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 sm:p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <MapPin className="text-orange-400" size={18} />
-                      <h4 className="font-black text-white">Localisation</h4>
-                    </div>
-                    {!editingCoords && (
-                      <button
-                        onClick={() => {
-                          setCoordForm({
-                            lat: activeWh?.latitude?.toString() || '',
-                            lng: activeWh?.longitude?.toString() || '',
-                            address: activeWh?.address || '',
-                          });
-                          setEditingCoords(true);
-                        }}
-                        className="flex items-center gap-2 text-slate-400 hover:text-white text-sm font-semibold transition-all"
-                      >
-                        <Edit2 size={14} />
-                        Modifier
-                      </button>
-                    )}
-                  </div>
-
-                  {editingCoords ? (
-                    <div className="space-y-3">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                          <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                            Latitude
-                          </label>
-                          <input
-                            value={coordForm.lat}
-                            onChange={(e) => setCoordForm((p) => ({ ...p, lat: e.target.value }))}
-                            className="mt-1 w-full bg-slate-950 border border-slate-700 text-white rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-orange-500"
-                            placeholder="Ex: 14.1050"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                            Longitude
-                          </label>
-                          <input
-                            value={coordForm.lng}
-                            onChange={(e) => setCoordForm((p) => ({ ...p, lng: e.target.value }))}
-                            className="mt-1 w-full bg-slate-950 border border-slate-700 text-white rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-orange-500"
-                            placeholder="Ex: -15.5560"
-                          />
-                        </div>
-                      </div>
-                      <div>
-                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                          Adresse Physique
-                        </label>
-                        <input
-                          value={coordForm.address}
-                          onChange={(e) => setCoordForm((p) => ({ ...p, address: e.target.value }))}
-                          className="mt-1 w-full bg-slate-950 border border-slate-700 text-white rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-orange-500"
-                          placeholder="Ex: Route nationale, Kaffrine"
-                        />
-                      </div>
-                      <div className="flex gap-2 pt-1">
-                        <button
-                          onClick={() => setEditingCoords(false)}
-                          className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg bg-slate-800 text-slate-300 text-sm font-bold hover:bg-slate-700 transition-all"
-                        >
-                          <X size={14} /> Annuler
-                        </button>
-                        <button
-                          onClick={handleSaveCoords}
-                          className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg bg-orange-600 text-white text-sm font-bold hover:bg-orange-500 transition-all"
-                        >
-                          <Save size={14} /> Enregistrer
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {activeWh?.latitude && activeWh?.longitude ? (
-                        <>
-                          <div className="flex items-center gap-3 text-sm">
-                            <span className="font-mono text-slate-300 bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs">
-                              {activeWh.latitude.toFixed(6)}, {activeWh.longitude.toFixed(6)}
-                            </span>
-                          </div>
-                          {activeWh.address && (
-                            <p className="text-slate-400 text-sm">{activeWh.address}</p>
-                          )}
-                        </>
-                      ) : (
-                        <p className="text-slate-600 dark:text-slate-400 text-sm italic">
-                          Cliquez "Modifier" pour géolocaliser ce magasin.
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {/* Preparator Teams Filtered by Role & Region */}
-                <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
-                  <div className="flex items-center gap-3 px-4 sm:px-6 py-4 border-b border-slate-800 bg-slate-950">
-                    <Users size={16} className="text-blue-400" />
-                    <h4 className="font-black text-white uppercase tracking-tight text-sm">
-                      Équipes de Préparation : {activeWh.region}
-                    </h4>
-                  </div>
-                  <div className="px-4 sm:px-6 py-3 bg-blue-900/10 border-b border-blue-900/30">
-                    <p className="text-blue-400 text-xs leading-relaxed font-black uppercase tracking-widest">
-                      Isolation ERP : Seules les équipes de rôle "PRÉPARATION" assignées à cette
-                      zone sont affichées.
-                    </p>
-                  </div>
-
-                  {filteredTeams.length > 0 ? (
-                    <div className="divide-y divide-slate-800">
-                      {filteredTeams.map((team) => {
-                        const todayLoading = activeWh?.preparatorTeams
-                          ?.find((pt: any) => pt.teamId === team.id)
-                          ?.loadings?.find((l: any) => l.date === new Date().toISOString().split('T')[0]);
-                        return (
-                          <div
-                            key={team.id}
-                            className="flex flex-col items-stretch gap-4 px-4 sm:px-6 py-4 hover:bg-slate-800/20 transition-all lg:flex-row lg:items-center"
-                          >
-                            <div className="flex-1">
-                              <p className="font-bold text-white text-sm">{team.name}</p>
-                              <div className="flex items-center gap-2 mt-1">
-                                <span className="text-xs font-black px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-400 uppercase tracking-widest">
-                                  {team.tradeKey || 'EQUIPE'}
-                                </span>
-                                {team.children && team.children.length > 0 && (
-                                  <span className="text-xs text-slate-500 font-bold uppercase">
-                                    {team.children.length} UNITÉS
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                              {todayLoading && (
-                                <span className="text-xs font-black text-emerald-400 bg-emerald-500/10 px-3 py-1.5 rounded-xl border border-emerald-500/20 w-fit">
-                                  {todayLoading.kitsLoaded} KITS ✓
-                                </span>
-                              )}
-                              <div className="flex items-center justify-between gap-1 bg-slate-950/60 p-1 rounded-xl border border-slate-800 w-full sm:w-auto">
-                                <select
-                                  aria-label="Type de Kit"
-                                  value={loadingVariants[team.id] || 'standard'}
-                                  onChange={(e) =>
-                                    setLoadingVariants((p) => ({ ...p, [team.id]: e.target.value }))
-                                  }
-                                  className="bg-transparent text-xs font-black text-slate-400 outline-none border-r border-slate-800 pr-1 mr-1 uppercase min-w-[64px]"
-                                >
-                                  {KIT_VARIANTS.map((v) => (
-                                    <option key={v.id} value={v.id}>
-                                      {v.id.split('_')[0]}
-                                    </option>
-                                  ))}
-                                </select>
-                                <button
-                                  aria-label="Diminuer"
-                                  onClick={() =>
-                                    setLoadingInputs((p) => ({
-                                      ...p,
-                                      [team.id]: String(
-                                        Math.max(0, parseInt(p[team.id] || '0') - 1)
-                                      ),
-                                    }))
-                                  }
-                                  className="w-8 h-8 hover:bg-slate-800 rounded-lg flex items-center justify-center text-slate-500 hover:text-white transition-all"
-                                >
-                                  <Minus size={14} />
-                                </button>
-                                <input
-                                  type="number"
-                                  min="0"
-                                  value={loadingInputs[team.id] || ''}
-                                  onChange={(e) =>
-                                    setLoadingInputs((p) => ({ ...p, [team.id]: e.target.value }))
-                                  }
-                                  placeholder="0"
-                                  className="w-12 text-center bg-transparent text-white text-sm font-black outline-none"
-                                />
-                                <button
-                                  aria-label="Augmenter"
-                                  onClick={() =>
-                                    setLoadingInputs((p) => ({
-                                      ...p,
-                                      [team.id]: String(parseInt(p[team.id] || '0') + 1),
-                                    }))
-                                  }
-                                  className="w-8 h-8 hover:bg-slate-800 rounded-lg flex items-center justify-center text-slate-500 hover:text-white transition-all"
-                                >
-                                  <Plus size={14} />
-                                </button>
-                              </div>
-                              <button
-                                aria-label="Enregistrer les chargements"
-                                onClick={() => handleSaveLoading(activeWh!.id, team.id, team.name)}
-                                className="flex items-center justify-center w-full sm:w-10 h-10 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition-all shadow-lg active:scale-95"
-                              >
-                                <Save size={16} />
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="p-12 text-center">
-                      <Users
-                        size={40}
-                        className="text-slate-800 dark:text-slate-100 mx-auto mb-4"
-                      />
-                      <p className="text-slate-500 text-sm font-bold uppercase tracking-tight">
-                        Aucune équipe de préparation trouvée pour "{activeWh.region}"
-                      </p>
-                      <p className="text-xs text-slate-600 dark:text-slate-400 mt-2 font-medium">
-                        Configurez le rôle ERP et la région dans{' '}
-                        <Link to="/settings" className="text-blue-500 hover:underline">
-                          Settings {'>'} Équipes
-                        </Link>
-                        .
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Journal de Bord (Specific to this Warehouse) */}
-                <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
-                  <div className="flex items-center gap-3 px-4 sm:px-6 py-4 border-b border-slate-800 bg-slate-950">
-                    <Activity size={16} className="text-amber-400" />
-                    <h4 className="font-black text-white uppercase tracking-tight text-sm">
-                      Journal de Bord : {activeWh.name}
-                    </h4>
-                  </div>
-                  <div className="max-h-[300px] overflow-y-auto divide-y divide-slate-800/50">
-                    {movementHistory.filter(
-                      (m: any) =>
-                        m.warehouseId === activeWh.id ||
-                        m.fromId === activeWh.id ||
-                        m.toId === activeWh.id
-                    ).length > 0 ? (
-                      movementHistory
-                        .filter(
-                          (m: any) =>
-                            m.warehouseId === activeWh.id ||
-                            m.fromId === activeWh.id ||
-                            m.toId === activeWh.id
-                        )
-                        .map((move: any) => (
-                          <div
-                            key={move.id}
-                            className="px-4 sm:px-6 py-3 hover:bg-slate-800/20 transition-all flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
-                          >
-                            <div className="flex items-center gap-3">
-                              <div
-                                className={`w-2 h-2 rounded-full ${move.type === 'ENTRY' ? 'bg-emerald-500' : move.type === 'TRANSFER' ? 'bg-amber-500' : 'bg-blue-500'}`}
-                              />
-                              <div>
-                                <p className="text-xs font-bold text-slate-200">{move.label}</p>
-                                <p className="text-xs text-slate-500 font-medium">
-                                  {new Date(move.timestamp).toLocaleDateString('fr-FR')} à{' '}
-                                  {new Date(move.timestamp).toLocaleTimeString('fr-FR', {
-                                    hour: '2-digit',
-                                    minute: '2-digit',
-                                  })}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="sm:text-right">
-                              <p
-                                className={`text-xs font-black ${move.type === 'ENTRY' ? 'text-emerald-400' : move.type === 'TRANSFER' ? 'text-amber-400' : 'text-blue-400'}`}
-                              >
-                                {move.type === 'ENTRY' ? '+' : '-'}
-                                {move.quantity} KITS
-                              </p>
-                              {move.variantId && (
-                                <p className="text-xs text-slate-500 font-bold uppercase">
-                                  {move.variantId}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        ))
-                    ) : (
-                      <div className="p-8 text-center text-slate-600 dark:text-slate-400 text-xs font-bold uppercase tracking-widest">
-                        Aucun historique disponible
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </>
-            )
-          )}
-        </div>
-
-        {/* --- MODALS --- */}
-        {/* Modal Réception Matériel */}
-        {showReceiveModal && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              className="bg-slate-900 border border-slate-800 rounded-[2rem] p-5 sm:p-8 w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl"
+        {/* Sélecteur de magasin compact */}
+        <div className="mt-4 sm:mt-0 flex items-center gap-3">
+          <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest hidden md:block">Zone :</span>
+          <div className="relative">
+            <select
+              value={selectedWarehouseId || ''}
+              onChange={(e) => setSelectedWarehouseId(e.target.value)}
+              className="appearance-none bg-slate-950 border border-slate-800 text-white text-xs font-bold rounded-xl pl-4 pr-10 py-2.5 outline-none focus:border-indigo-500 transition-colors shadow-inner w-48 sm:w-64"
             >
-              <h3 className="text-xl font-black text-white mb-2 uppercase tracking-tight">
-                Réception de Matériel
-              </h3>
-              <p className="text-slate-400 text-sm mb-6">
-                Enregistrez l'arrivée de nouveaux kits dans ce magasin.
-              </p>
-
-              <div className="space-y-4">
-                <div>
-                  <label
-                    htmlFor="receive_qty"
-                    className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2"
-                  >
-                    Quantité (Kits)
-                  </label>
-                  <input
-                    id="receive_qty"
-                    type="number"
-                    aria-label="Quantité"
-                    value={receiveForm.quantity}
-                    onChange={(e) => setReceiveForm((p) => ({ ...p, quantity: e.target.value }))}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-white font-bold focus:outline-none focus:border-emerald-500"
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="receive_source"
-                    className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2"
-                  >
-                    Source / Fournisseur
-                  </label>
-                  <input
-                    id="receive_source"
-                    type="text"
-                    title="Source"
-                    value={receiveForm.source}
-                    onChange={(e) => setReceiveForm((p) => ({ ...p, source: e.target.value }))}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-white font-bold focus:outline-none focus:border-emerald-500"
-                    placeholder="Ex: Arrivage Dakar Central"
-                  />
-                </div>
-                <div className="flex flex-col gap-3 pt-4 sm:flex-row">
-                  <button
-                    onClick={() => setShowReceiveModal(false)}
-                    className="flex-1 py-3 rounded-xl bg-slate-800 text-slate-300 font-bold hover:bg-slate-700 transition-all"
-                  >
-                    Annuler
-                  </button>
-                  <button
-                    onClick={handleReceiveStock}
-                    className="flex-1 py-3 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-500 shadow-lg shadow-emerald-900/40 transition-all"
-                  >
-                    Confirmer
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
-
-        {/* Right: Intelligence GEM */}
-        <div className="lg:col-span-2">
-          <div className="bg-gradient-to-br from-indigo-900/40 via-slate-900 to-slate-900 border border-indigo-500/20 p-5 sm:p-8 rounded-[2rem] shadow-2xl relative overflow-hidden group lg:sticky lg:top-6">
-            <div className="absolute -top-6 -right-6 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl group-hover:bg-indigo-500/20 transition-all" />
-
-            <div className="flex items-center gap-3 mb-6">
-              <Zap className="text-indigo-400 fill-indigo-400/20" />
-              <h3 className="text-xl font-black text-white tracking-tight uppercase">
-                Intelligence Réseau
-              </h3>
-            </div>
-
-            <div className="mb-8">
-              <p className="text-slate-500 text-xs font-black uppercase tracking-widest mb-1">
-                Date d'Achèvement Cible
-              </p>
-              <p className="text-2xl font-black text-white">
-                {daysRemaining < 9999
-                  ? estimatedDate.toLocaleDateString('fr-FR', {
-                      day: 'numeric',
-                      month: 'long',
-                      year: 'numeric',
-                    })
-                  : 'Recueillez plus de données'}
-              </p>
-              <div className="flex items-center gap-2 mt-2">
-                <span className="px-2 py-0.5 rounded-md bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-black uppercase">
-                  J-{daysRemaining}
-                </span>
-                <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">
-                  à la vitesse actuelle
-                </p>
-              </div>
-            </div>
-
-            <div className="mb-8">
-              <div className="flex items-center justify-between text-xs font-black uppercase mb-3">
-                <span className="text-slate-500 tracking-widest">
-                  Progressions Travaux ({totalHouses} ménages)
-                </span>
-                <span className="text-indigo-400">{progress}%</span>
-              </div>
-              <div className="h-3 bg-slate-950 rounded-full overflow-hidden border border-slate-800 p-0.5">
-                <motion.div
-                  className="h-full bg-gradient-to-r from-indigo-600 to-blue-500 rounded-full shadow-[0_0_15px_rgba(99,102,241,0.5)] transition-all duration-1000"
-                  initial={false}
-                  animate={{ width: `${progress}%` }}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-4 mb-8">
-              <p className="text-xs text-indigo-200/40 font-black uppercase tracking-widest">
-                Cadence Globale
-              </p>
-              <div className="flex items-center gap-4 p-5 bg-slate-950/50 rounded-2xl border border-slate-800 group-hover:border-indigo-500/30 transition-colors">
-                <div className="p-3 rounded-xl bg-indigo-500/10 text-indigo-400">
-                  <TrendingUp size={24} />
-                </div>
-                <div>
-                  <p className="text-3xl font-black text-white">{velocity}</p>
-                  <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">
-                    Installations / Jour (Moy 7j)
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-5 bg-indigo-500/5 border border-indigo-500/20 rounded-2xl flex items-start gap-4">
-              <div className="p-2 bg-indigo-500/10 rounded-lg text-indigo-400 shrink-0">
-                <Calculator size={18} />
-              </div>
-              <p className="text-xs text-indigo-300 font-black leading-relaxed uppercase tracking-wider">
-                Les prévisions d'intelligence artificielle "GEM" s'ajustent en temps réel aux
-                performances des équipes de terrain et aux capacités logistiques des magasins.
-              </p>
-            </div>
+              {warehouses?.map((wh) => (
+                <option key={wh.id} value={wh.id}>{wh.name}</option>
+              ))}
+            </select>
+            <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
           </div>
         </div>
       </div>
+
+      {!activeWh ? (
+         <div className="flex flex-col items-center justify-center py-12 bg-slate-900/30 border border-dashed border-slate-800 rounded-[2rem]">
+           <Warehouse size={32} className="text-slate-700 mb-3" />
+           <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px]">Sélectionnez un magasin pour commencer</p>
+         </div>
+      ) : (
+        <div className="space-y-4">
+          {/* Section Saisie Rapide (Compacte) */}
+          <div className="bg-slate-900/50 border border-slate-800/80 rounded-[2rem] p-4 lg:p-6 shadow-xl relative overflow-hidden">
+             {/* Design element */}
+             <div className="absolute -top-10 -right-10 w-40 h-40 bg-indigo-500/5 rounded-full blur-2xl pointer-events-none" />
+             
+             <div className="flex flex-col lg:flex-row lg:items-end gap-6 relative z-10">
+               
+               {/* Inputs */}
+               <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+                 
+                 {/* KIT Principal */}
+                 <div className="bg-slate-950/80 border border-slate-800/60 rounded-2xl p-3 flex items-center justify-between">
+                   <div className="pl-2">
+                     <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Saisie</p>
+                     <h5 className="text-sm font-black text-white">KIT Principal</h5>
+                   </div>
+                   <div className="flex items-center bg-slate-900 border border-slate-700 rounded-xl overflow-hidden shadow-inner">
+                     <button
+                       onClick={() => setQtyPrincipal((p) => String(Math.max(0, parseInt(p || '0') - 1)))}
+                       className="w-10 h-10 flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800 active:bg-slate-700 transition-colors"
+                     >
+                       <Minus size={16} />
+                     </button>
+                     <input
+                       type="number"
+                       value={qtyPrincipal}
+                       onChange={(e) => setQtyPrincipal(e.target.value)}
+                       className="w-14 bg-transparent text-center font-black text-white outline-none text-lg"
+                       placeholder="0"
+                     />
+                     <button
+                       onClick={() => setQtyPrincipal((p) => String(parseInt(p || '0') + 1))}
+                       className="w-10 h-10 flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800 active:bg-slate-700 transition-colors"
+                     >
+                       <Plus size={16} />
+                     </button>
+                   </div>
+                 </div>
+
+                 {/* KIT Principal+ */}
+                 <div className="bg-slate-950/80 border border-slate-800/60 rounded-2xl p-3 flex items-center justify-between">
+                   <div className="pl-2">
+                     <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Saisie</p>
+                     <h5 className="text-sm font-black text-white flex items-center gap-1">
+                       KIT Principal<span className="text-amber-500 bg-amber-500/10 px-1 rounded-md text-[10px]">+</span>
+                     </h5>
+                   </div>
+                   <div className="flex items-center bg-slate-900 border border-slate-700 rounded-xl overflow-hidden shadow-inner">
+                     <button
+                       onClick={() => setQtyPrincipalPlus((p) => String(Math.max(0, parseInt(p || '0') - 1)))}
+                       className="w-10 h-10 flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800 active:bg-slate-700 transition-colors"
+                     >
+                       <Minus size={16} />
+                     </button>
+                     <input
+                       type="number"
+                       value={qtyPrincipalPlus}
+                       onChange={(e) => setQtyPrincipalPlus(e.target.value)}
+                       className="w-14 bg-transparent text-center font-black text-white outline-none text-lg"
+                       placeholder="0"
+                     />
+                     <button
+                       onClick={() => setQtyPrincipalPlus((p) => String(parseInt(p || '0') + 1))}
+                       className="w-10 h-10 flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800 active:bg-slate-700 transition-colors"
+                     >
+                       <Plus size={16} />
+                     </button>
+                   </div>
+                 </div>
+
+               </div>
+
+               {/* Valider */}
+               <button
+                 onClick={handleValidateProduction}
+                 disabled={isSaving || ((!qtyPrincipal || qtyPrincipal === '0') && (!qtyPrincipalPlus || qtyPrincipalPlus === '0'))}
+                 className="lg:w-48 h-[68px] rounded-2xl bg-indigo-600 text-white font-black text-[11px] uppercase tracking-widest hover:bg-indigo-500 transition-all shadow-xl shadow-indigo-600/30 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed group shrink-0"
+               >
+                 {isSaving ? (
+                   <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                 ) : (
+                   <>
+                     <Save size={16} className="group-active:scale-90 transition-transform" />
+                     <span>Valider</span>
+                   </>
+                 )}
+               </button>
+             </div>
+          </div>
+
+          {/* Section Journal */}
+          <div className="bg-slate-900 border border-slate-800 rounded-[2rem] overflow-hidden shadow-2xl flex-1 flex flex-col min-h-[400px]">
+             <div className="px-6 py-4 border-b border-slate-800 bg-slate-950/50 flex items-center justify-between">
+               <div className="flex items-center gap-2">
+                 <Clock size={16} className="text-slate-500" />
+                 <h4 className="text-[11px] font-black text-white uppercase tracking-widest">Journal du jour</h4>
+               </div>
+               <div className="px-2 py-1 bg-indigo-500/10 text-indigo-400 rounded-lg text-[10px] font-bold uppercase tracking-widest">
+                 {sortedJournal.length} Session(s)
+               </div>
+             </div>
+             
+             <div className="overflow-x-auto flex-1">
+               <table className="w-full text-left">
+                 <thead className="bg-slate-950/80 text-[9px] font-black text-slate-500 uppercase tracking-[0.2em]">
+                   <tr>
+                     <th className="px-6 py-3 cursor-pointer hover:text-slate-300 transition-colors" onClick={() => requestSort('timestamp')}>
+                       <div className="flex items-center gap-1">
+                         Heure
+                         <ArrowUpDown size={10} className={sortConfig.key === 'timestamp' ? 'text-indigo-400' : 'opacity-50'} />
+                       </div>
+                     </th>
+                     <th className="px-6 py-3">Magasin</th>
+                     <th className="px-6 py-3 cursor-pointer hover:text-slate-300 transition-colors" onClick={() => requestSort('type')}>
+                       <div className="flex items-center gap-1">
+                         Type
+                         <ArrowUpDown size={10} className={sortConfig.key === 'type' ? 'text-indigo-400' : 'opacity-50'} />
+                       </div>
+                     </th>
+                     <th className="px-6 py-3 cursor-pointer hover:text-slate-300 transition-colors" onClick={() => requestSort('author')}>
+                       <div className="flex items-center gap-1">
+                         Auteur
+                         <ArrowUpDown size={10} className={sortConfig.key === 'author' ? 'text-indigo-400' : 'opacity-50'} />
+                       </div>
+                     </th>
+                     <th className="px-6 py-3 text-right cursor-pointer hover:text-slate-300 transition-colors" onClick={() => requestSort('qty')}>
+                       <div className="flex items-center justify-end gap-1">
+                         Qté
+                         <ArrowUpDown size={10} className={sortConfig.key === 'qty' ? 'text-indigo-400' : 'opacity-50'} />
+                       </div>
+                     </th>
+                     <th className="px-6 py-3 text-right">Actions</th>
+                   </tr>
+                 </thead>
+                 <tbody className="divide-y divide-slate-800/50">
+                   {sortedJournal.map((entry) => {
+                     const isEditing = editingMovementId === entry.id;
+                     const dateObj = new Date(entry.timestamp);
+                     
+                     return (
+                       <tr key={entry.id} className="group hover:bg-white/[0.02] transition-colors">
+                         <td className="px-6 py-4">
+                           <div className="flex flex-col">
+                             <span className="font-bold text-white text-sm">{dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                             <span className="text-[9px] text-slate-500 font-medium">{dateObj.toLocaleDateString()}</span>
+                           </div>
+                         </td>
+                         <td className="px-6 py-4">
+                            <span className="text-xs font-bold text-slate-300">
+                             {activeWh?.name || 'Inconnu'}
+                           </span>
+                         </td>
+                         <td className="px-6 py-4">
+                           <div className="flex items-center gap-1.5">
+                             <div className={`w-1.5 h-1.5 rounded-full ${entry.variantId === 'premium' ? 'bg-amber-500' : 'bg-indigo-500'}`} />
+                             <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">
+                               {getVariantLabel(entry.variantId || 'standard')}
+                             </span>
+                           </div>
+                         </td>
+                         <td className="px-6 py-4">
+                           <span className="text-xs font-bold text-indigo-300 bg-indigo-500/10 px-2 py-1 rounded-md">
+                             {entry.author || 'Inconnu'}
+                           </span>
+                         </td>
+                         <td className="px-6 py-4 text-right">
+                           {isEditing ? (
+                             <div className="flex justify-end">
+                               <input
+                                 type="number"
+                                 value={editingQty}
+                                 onChange={(e) => setEditingQty(e.target.value)}
+                                 className="w-16 bg-slate-950 border border-slate-700 text-center text-white rounded-lg px-2 py-1 outline-none focus:border-indigo-500 font-bold text-sm"
+                                 autoFocus
+                               />
+                             </div>
+                           ) : (
+                             <div className="flex items-center justify-end gap-1">
+                               <span className="text-lg font-black text-emerald-400">+{entry.quantity}</span>
+                               <span className="text-[9px] font-black text-slate-600 mt-1">U</span>
+                             </div>
+                           )}
+                         </td>
+                         <td className="px-6 py-4 text-right">
+                           <div className="flex items-center justify-end gap-1">
+                             {isEditing ? (
+                               <>
+                                 <button onClick={() => setEditingMovementId(null)} className="p-1.5 rounded-md text-slate-500 hover:text-white hover:bg-slate-800 transition-colors">
+                                   <X size={14} />
+                                 </button>
+                                 <button onClick={() => handleSaveEdit(entry.id)} className="p-1.5 rounded-md text-emerald-500 hover:text-white hover:bg-emerald-600 transition-colors">
+                                   <Check size={14} />
+                                 </button>
+                               </>
+                             ) : (
+                               <>
+                                 <button onClick={() => handleStartEdit(entry.id, entry.quantity || 0)} className="p-1.5 rounded-md text-slate-500 hover:text-blue-400 hover:bg-blue-500/10 transition-colors opacity-0 group-hover:opacity-100">
+                                   <Edit2 size={14} />
+                                 </button>
+                                 <button onClick={() => handleDelete(entry.id)} className="p-1.5 rounded-md text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors opacity-0 group-hover:opacity-100">
+                                   <Trash2 size={14} />
+                                 </button>
+                               </>
+                             )}
+                           </div>
+                         </td>
+                       </tr>
+                     );
+                   })}
+                   {sortedJournal.length === 0 && (
+                     <tr>
+                       <td colSpan={6} className="px-6 py-16 text-center">
+                         <CheckCircle2 size={24} className="text-slate-700 mx-auto mb-2" />
+                         <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px]">Aucune saisie pour ce magasin</p>
+                       </td>
+                     </tr>
+                   )}
+                 </tbody>
+               </table>
+             </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

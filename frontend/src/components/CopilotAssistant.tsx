@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import apiClient from '../api/client';
 import toast from 'react-hot-toast';
+import { useProject } from '../contexts/ProjectContext';
 
 interface Suggestion {
   id: string;
@@ -35,6 +36,7 @@ export default function CopilotAssistant() {
   ]);
   const [isTyping, setIsTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const { project } = useProject();
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -50,11 +52,11 @@ export default function CopilotAssistant() {
     setMessage('');
     setIsTyping(true);
 
-    try {
-      const response = await apiClient.post('ai/agent/query', {
-        message: userMessage,
-        context: { projectId: 'active-project' } // POC placeholder
-      });
+try {
+       const response = await apiClient.post('ai/agent/query', {
+         message: userMessage,
+         context: { projectId: project?.id || 'no-project' }
+       });
 
       setChat(prev => [...prev, { 
         role: 'assistant', 

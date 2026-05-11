@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import axios from 'axios';
 import logger from '../utils/logger';
 import * as safeStorage from '../utils/safeStorage';
@@ -33,7 +33,6 @@ function resetRefreshState() {
 }
 
 function triggerSingleLogout(isAlreadyAtLogin: boolean) {
-  safeStorage.removeItem('access_token');
   safeStorage.removeItem('user');
 
   if (logoutTriggered || isAlreadyAtLogin) return;
@@ -45,6 +44,7 @@ function triggerSingleLogout(isAlreadyAtLogin: boolean) {
   }, 100);
 }
 
+
 async function performTokenRefresh(): Promise<string> {
   if (refreshPromise) {
     logger.debug('🔐 [AUTH] Refresh already in progress. Waiting for shared refresh promise...');
@@ -52,38 +52,23 @@ async function performTokenRefresh(): Promise<string> {
   }
 
   refreshPromise = (async () => {
-    const hasToken = !!safeStorage.getItem('access_token');
-    if (!hasToken) {
-      logger.error('❌ [AUTH] No access token found in storage. Refresh cancelled.');
-      throw new Error('No token to refresh');
-    }
-
     try {
-      try {
-        console.debug('[AUTH-REFRESH] document.cookie length=', (document.cookie || '').length);
-      } catch {
-        // Cookie inspection is diagnostic only.
-      }
-
       const { data } = await apiClient.post('auth/refresh');
-      if (!data?.accessToken) {
-        logger.error('❌ [AUTH] Refresh response missing accessToken');
-        throw new Error('No token in refresh response');
-      }
-
-      logger.log('✅ [AUTH] Token refreshed successfully');
-      safeStorage.setItem('access_token', data.accessToken);
+      // No need to check for accessToken in body, it's in the HttpOnly cookie now.
+      
+      logger.log('✅ [AUTH] Token refreshed successfully via cookie');
       window.dispatchEvent(
         new CustomEvent('auth:token-refreshed', {
-          detail: { accessToken: data.accessToken, user: data.user },
+          detail: { user: data.user },
         })
       );
       logoutTriggered = false;
-      return data.accessToken as string;
+      return 'refreshed'; // Dummy return value
     } finally {
       resetRefreshState();
     }
   })();
+
 
   return refreshPromise;
 }
@@ -91,30 +76,10 @@ async function performTokenRefresh(): Promise<string> {
 // Request Interceptor: Add Auth Token & Project Context
 apiClient.interceptors.request.use(
   (config) => {
-    const token = safeStorage.getItem('access_token');
     const activeProjectId = safeStorage.getItem('active_project_id');
-    const url = config.url || '';
-    const publicAuthRoute = isPublicAuthRoute(url);
-    const refreshRoute = isRefreshRoute(url);
-
-    if (token && !refreshRoute) {
-      if (token === 'undefined' || token === 'null') {
-        logger.warn('API-CLIENT', `Found invalid token string in storage: "${token}". Removing.`);
-        safeStorage.removeItem('access_token');
-      } else {
-        config.headers.Authorization = `Bearer ${token}`;
-        // Diagnostic: confirm header presence (masked)
-        console.debug('[API-CLIENT] Authorization header set (masked)');
-        // logger.debug('API-CLIENT', `Request to ${config.url} with token: ${token.substring(0, 10)}...`);
-      }
-    } else if (!publicAuthRoute && !refreshRoute) {
-      logger.debug('API-CLIENT', `Request to ${config.url} sent WITHOUT token`);
-    }
-
     if (activeProjectId) {
       config.headers['X-Project-Id'] = activeProjectId;
     }
-
     return config;
   },
   (error) => Promise.reject(error)
@@ -142,9 +107,8 @@ apiClient.interceptors.response.use(
       logger.debug(`🔐 [AUTH] 401 detected on ${url}. Attempting token refresh...`);
 
       try {
-        const refreshedAccessToken = await performTokenRefresh();
-        originalRequest.headers = originalRequest.headers || {};
-        originalRequest.headers.Authorization = `Bearer ${refreshedAccessToken}`;
+        await performTokenRefresh();
+        // Cookie is automatically sent now
         return apiClient(originalRequest);
       } catch (refreshError: unknown) {
         const refreshMessage = (refreshError as { message?: string })?.message;

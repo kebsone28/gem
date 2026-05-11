@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, react-hooks/exhaustive-deps */
+/* eslint-disable @typescript-eslint/no-explicit-any, react-hooks/exhaustive-deps */
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../store/db';
@@ -172,8 +172,18 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const updateProject = async (updates: Partial<Project>, id?: string) => {
     const currentId = id || activeProjectId;
     if (currentId) {
-      await apiClient.patch(`/projects/${currentId}`, updates);
-      await syncProjectsFromServer(currentId);
+      // 1. Optimistic local update
+      await db.projects.update(currentId, updates);
+
+      // 2. Attempt to sync with server if token exists
+      try {
+        if (getStoredAccessToken()) {
+          await apiClient.patch(`/projects/${currentId}`, updates);
+          await syncProjectsFromServer(currentId);
+        }
+      } catch (err) {
+        logger.warn('⚠️ [PROJECT] Local update only (offline or no token).', err);
+      }
     }
   };
 

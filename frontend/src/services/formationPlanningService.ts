@@ -219,37 +219,26 @@ export interface PreviewSessionValidationRequest {
   rooms: RoomResource[];
 }
 
-import * as safeStorage from '../utils/safeStorage';
+import apiClient from '../api/client';
 
 const apiFetch = async (url: string, options: RequestInit = {}) => {
-  const token = safeStorage.getItem('access_token');
-  const activeProjectId = safeStorage.getItem('active_project_id');
-  const headers = new Headers(options.headers || {});
-  if (token) {
-    headers.set('Authorization', `Bearer ${token}`);
-  }
-  if (activeProjectId) {
-    headers.set('X-Project-Id', activeProjectId);
-  }
-  return fetch(url, { ...options, headers });
+  const method = (options.method || 'GET').toLowerCase();
+  const config = {
+    method,
+    url,
+    data: options.body ? JSON.parse(options.body as string) : undefined,
+    headers: options.headers as any,
+  };
+  return apiClient(config);
 };
 
-const handleResponse = async (response: Response) => {
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || errorData.error || `Erreur serveur (${response.status})`);
-  }
-  return response.json();
+const handleResponse = (response: any) => {
+  return response.data;
 };
 
-const downloadResponseBlob = async (response: Response, fallbackFileName: string) => {
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || errorData.error || `Erreur serveur (${response.status})`);
-  }
-
-  const blob = await response.blob();
-  const contentDisposition = response.headers.get('Content-Disposition') || '';
+const downloadResponseBlob = async (response: any, fallbackFileName: string) => {
+  const blob = new Blob([response.data], { type: response.headers['content-type'] });
+  const contentDisposition = response.headers['content-disposition'] || '';
   const match = contentDisposition.match(/filename="?([^"]+)"?/i);
   const fileName = match?.[1] || fallbackFileName;
   const url = URL.createObjectURL(blob);

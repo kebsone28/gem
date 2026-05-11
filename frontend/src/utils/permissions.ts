@@ -52,6 +52,16 @@ export const PERMISSION_GROUPS = {
     PERMISSIONS.FINANCE_EXPORT,
   ],
   SUPERVISOR_PACK: [PERMISSIONS.MISSIONS_VALIDATE, PERMISSIONS.DOCS_PV, PERMISSIONS.SYSTEM_AUDIT],
+  LOGISTIQUE_FULL_PACK: [
+    PERMISSIONS.LOGISTIQUE_READ,
+    PERMISSIONS.LOGISTIQUE_STOCK,
+    PERMISSIONS.LOGISTIQUE_DELIVERIES,
+    PERMISSIONS.LOGISTIQUE_AGENTS,
+    PERMISSIONS.LOGISTIQUE_OM,
+    PERMISSIONS.LOGISTIQUE_ATELIER,
+    PERMISSIONS.LOGISTIQUE_DEPLOYMENT,
+    PERMISSIONS.LOGISTIQUE_MANAGE,
+  ],
 };
 
 const ALL_ATOMIC_PERMISSIONS = Object.values(PERMISSIONS).filter((p) => p.includes('.'));
@@ -74,12 +84,13 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     PERMISSIONS.SYSTEM_SYNC,
     PERMISSIONS.UI_TEAMS,
     PERMISSIONS.DOCS_CONFIDENTIAL,
+    ...PERMISSION_GROUPS.LOGISTIQUE_FULL_PACK,
   ],
   [AppRole.CHEF_PROJET]: [
     ...PERMISSION_GROUPS.SOCLE_COMMUN,
     ...PERMISSION_GROUPS.MISSION_MANAGER,
     PERMISSIONS.TERRAIN_READ,
-    PERMISSIONS.LOGISTIQUE_READ,
+    ...PERMISSION_GROUPS.LOGISTIQUE_FULL_PACK,
     PERMISSIONS.UI_TEAMS,
     PERMISSIONS.IA_USE,
   ],
@@ -89,13 +100,14 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     ...PERMISSION_GROUPS.MISSION_VIEWER,
     ...PERMISSION_GROUPS.FINANCE_ADMIN,
     PERMISSIONS.LOGISTIQUE_READ,
+    PERMISSIONS.LOGISTIQUE_STOCK,
     PERMISSIONS.SYSTEM_EXPORT,
   ],
   [AppRole.PATRIMOINE]: [
     ...PERMISSION_GROUPS.SOCLE_COMMUN,
     ...PERMISSION_GROUPS.MISSION_VIEWER,
     PERMISSIONS.TERRAIN_MENAGES,
-    PERMISSIONS.LOGISTIQUE_MANAGE,
+    ...PERMISSION_GROUPS.LOGISTIQUE_FULL_PACK,
     PERMISSIONS.UI_TEAMS,
   ],
   [AppRole.EMPLOYE]: [...PERMISSION_GROUPS.SOCLE_COMMUN, ...PERMISSION_GROUPS.MISSION_VIEWER],
@@ -124,9 +136,8 @@ export const normalizeRole = (role?: string): UserRole | null => {
 export const sameTenant = (user: AuthUser, resource: SecurityResource): boolean =>
   user.tenantId === resource.tenantId;
 export const isPlatformAdmin = (user: AuthUser): boolean =>
-  user?.isPlatformAdmin === true ||
-  normalizeRole(user?.role) === AppRole.PLATFORM_ADMIN ||
-  user?.email === 'admingem'; // 🔑 God Mode historique (Bypass de secours)
+   user?.isPlatformAdmin === true ||
+   normalizeRole(user?.role) === AppRole.PLATFORM_ADMIN;
 
 export const invalidatePermissionsCache = (userId?: string) => {
   if (userId) {
@@ -148,17 +159,30 @@ export const hasPermission = (user: AuthUser, permission: string | string[]): bo
 
   let userPerms = PERMS_CACHE.get(cacheKey);
   if (!userPerms) {
-    const newPerms = new Set<string>(user.permissions || []);
-    if (newPerms.size === 0 && nRole)
-      (ROLE_PERMISSIONS[nRole] || []).forEach((p) => newPerms.add(p));
-    PERMS_CACHE.set(cacheKey, newPerms);
-    userPerms = newPerms;
+    const rawPerms = new Set<string>(user.permissions || []);
+    if (rawPerms.size === 0 && nRole)
+      (ROLE_PERMISSIONS[nRole] || []).forEach((p) => rawPerms.add(p));
+    
+    // Expansion récursive des dépendances
+    const expandedPerms = new Set<string>();
+    rawPerms.forEach(p => {
+        expandedPerms.add(p);
+        resolvePermissionDependencies(p).forEach(dep => expandedPerms.add(dep));
+    });
+
+    PERMS_CACHE.set(cacheKey, expandedPerms);
+    userPerms = expandedPerms;
   }
 
-  const check = (p: string): boolean =>
-    userPerms!.has(p) ||
-    !!(REVERSE_LEGACY_MAPPING[p] && userPerms!.has(REVERSE_LEGACY_MAPPING[p])) ||
-    !!(LEGACY_MAPPING[p] && userPerms!.has(LEGACY_MAPPING[p]));
+  const check = (p: string): boolean => {
+    if (userPerms!.has(p)) return true;
+    
+    // Vérification des alias legacy
+    if (REVERSE_LEGACY_MAPPING[p] && userPerms!.has(REVERSE_LEGACY_MAPPING[p])) return true;
+    if (LEGACY_MAPPING[p] && userPerms!.has(LEGACY_MAPPING[p])) return true;
+
+    return false;
+  };
   return Array.isArray(permission) ? permission.some((p) => check(p)) : check(permission);
 };
 
@@ -283,8 +307,45 @@ export const PERMISSION_LABELS: Record<string, string> = {
   [PERMISSIONS.TERRAIN_REJECT]: 'Rejeter Dossier Kobo',
   [PERMISSIONS.UI_PROJECTS]: 'Registre des Projets',
   [PERMISSIONS.UI_DASHBOARD]: 'Personnaliser Dashboard',
-  [PERMISSIONS.LOGISTIQUE_READ]: 'État des Stocks',
-  [PERMISSIONS.LOGISTIQUE_MANAGE]: 'Mouvements & Logistique',
+
+  // 📈 Dashboard & Vues
+  [PERMISSIONS.DASHBOARD_ADMIN]: 'Dashboard (Administration)',
+  [PERMISSIONS.DASHBOARD_PROJECT]: 'Dashboard (Chef de Projet)',
+  [PERMISSIONS.DASHBOARD_TEAM]: 'Dashboard (Équipes)',
+  [PERMISSIONS.DASHBOARD_CLIENT]: 'Dashboard (Client/LSE)',
+  [PERMISSIONS.DASHBOARD_ACCOUNTING]: 'Dashboard (Comptabilité)',
+  [PERMISSIONS.DASHBOARD_ASSETS]: 'Dashboard (Patrimoine)',
+
+  // ⚙️ Paramètres
+  [PERMISSIONS.SETTINGS_CHARGES]: 'Paramètres (Charges & Ressources)',
+  [PERMISSIONS.SETTINGS_KOBO]: 'Paramètres (KoboToolbox)',
+  [PERMISSIONS.SETTINGS_DATA]: 'Paramètres (Base de Données)',
+  [PERMISSIONS.SETTINGS_DATAHUB]: 'Paramètres (Data Hub)',
+  [PERMISSIONS.SETTINGS_SYSTEM]: 'Paramètres (Déploiement & Système)',
+
+  // 📝 Cahier des Charges
+  [PERMISSIONS.CAHIER_TECHNICAL]: 'Cahier (Référentiel Technique)',
+  [PERMISSIONS.CAHIER_CONTRACTS]: 'Cahier (Clauses Contractuelles)',
+  [PERMISSIONS.CAHIER_STRATEGY]: 'Cahier (Stratégie Opérationnelle)',
+
+  // 📦 Logistique Granulaire
+  [PERMISSIONS.LOGISTIQUE_READ]: 'Logistique (Vue Globale)',
+  [PERMISSIONS.LOGISTIQUE_STOCK]: 'Gestion des Stocks',
+  [PERMISSIONS.LOGISTIQUE_DELIVERIES]: 'Suivi des Livraisons',
+  [PERMISSIONS.LOGISTIQUE_AGENTS]: 'Performances Agents',
+  [PERMISSIONS.LOGISTIQUE_OM]: 'Émission Ordres de Mission',
+  [PERMISSIONS.LOGISTIQUE_ATELIER]: 'Atelier de Production',
+  [PERMISSIONS.LOGISTIQUE_DEPLOYMENT]: 'Déploiement Terrain',
+  [PERMISSIONS.LOGISTIQUE_MANAGE]: 'Logistique (Master)',
+  
+  // 🗺️ Terrain
+  [PERMISSIONS.TERRAIN_MAP]: 'Accès Carte Interactive',
+  [PERMISSIONS.TERRAIN_READ]: 'Voir Données Terrain',
+  [PERMISSIONS.TERRAIN_ZONES]: 'Gestion Zones/Grappes',
+  [PERMISSIONS.TERRAIN_MENAGES]: 'Gestion des Ménages',
+  [PERMISSIONS.TERRAIN_TERMINAL]: 'Terminal Collecte Kobo',
+  [PERMISSIONS.TERRAIN_REJECT]: 'Rejeter Dossier Kobo',
+
   [PERMISSIONS.DOCS_PV]: 'Génération des PV',
   [PERMISSIONS.DOCS_CONFIDENTIAL]: 'Voir Docs Confidentiels',
   [PERMISSIONS.UI_TRAINING]: 'Accès Sessions Formation',
@@ -294,4 +355,49 @@ export const PERMISSION_LABELS: Record<string, string> = {
   [PERMISSIONS.IA_USE]: 'Assistant Wanekoo',
   [PERMISSIONS.IA_METRICS]: 'Consommation & Coûts IA',
   [PERMISSIONS.IA_SIMULATION]: 'Scénarios de Simulation',
+  [PERMISSIONS.IA_CONFIG]: 'Configuration Cerveau IA',
+};
+
+// 9️⃣ GESTION DES DÉPENDANCES
+// Permet de s'assurer que si un module "avancé" est activé, ses prérequis le sont aussi.
+export const PERMISSION_DEPENDENCIES: Record<string, string[]> = {
+  [PERMISSIONS.TERRAIN_MAP]: [PERMISSIONS.TERRAIN_READ],
+  [PERMISSIONS.TERRAIN_ZONES]: [PERMISSIONS.TERRAIN_READ],
+  [PERMISSIONS.TERRAIN_MENAGES]: [PERMISSIONS.TERRAIN_READ],
+  [PERMISSIONS.TERRAIN_TERMINAL]: [PERMISSIONS.TERRAIN_READ],
+  [PERMISSIONS.TERRAIN_REJECT]: [PERMISSIONS.TERRAIN_READ, PERMISSIONS.TERRAIN_MENAGES],
+  
+  [PERMISSIONS.LOGISTIQUE_STOCK]: [PERMISSIONS.LOGISTIQUE_READ],
+  [PERMISSIONS.LOGISTIQUE_DELIVERIES]: [PERMISSIONS.LOGISTIQUE_READ, PERMISSIONS.LOGISTIQUE_STOCK],
+  [PERMISSIONS.LOGISTIQUE_AGENTS]: [PERMISSIONS.LOGISTIQUE_READ],
+  [PERMISSIONS.LOGISTIQUE_OM]: [PERMISSIONS.LOGISTIQUE_READ, PERMISSIONS.MISSIONS_CREATE],
+  [PERMISSIONS.LOGISTIQUE_ATELIER]: [PERMISSIONS.LOGISTIQUE_READ],
+  [PERMISSIONS.LOGISTIQUE_DEPLOYMENT]: [PERMISSIONS.LOGISTIQUE_READ, PERMISSIONS.TERRAIN_READ],
+  
+  [PERMISSIONS.FINANCE_MANAGE]: [PERMISSIONS.FINANCE_READ],
+  [PERMISSIONS.FINANCE_PAYMENTS]: [PERMISSIONS.FINANCE_READ, PERMISSIONS.FINANCE_MANAGE],
+  [PERMISSIONS.FINANCE_EXPORT]: [PERMISSIONS.FINANCE_READ],
+  
+  [PERMISSIONS.MISSIONS_CREATE]: [PERMISSIONS.MISSIONS_READ],
+  [PERMISSIONS.MISSIONS_UPDATE]: [PERMISSIONS.MISSIONS_READ],
+  [PERMISSIONS.MISSIONS_DELETE]: [PERMISSIONS.MISSIONS_READ, PERMISSIONS.MISSIONS_UPDATE],
+  [PERMISSIONS.MISSIONS_VALIDATE]: [PERMISSIONS.MISSIONS_READ],
+  [PERMISSIONS.MISSIONS_APPROVE]: [PERMISSIONS.MISSIONS_READ, PERMISSIONS.MISSIONS_VALIDATE],
+};
+
+/**
+ * Résout récursivement toutes les permissions requises pour une permission donnée.
+ */
+export const resolvePermissionDependencies = (p: string, visited = new Set<string>()): string[] => {
+  if (visited.has(p)) return [];
+  visited.add(p);
+  
+  const deps = PERMISSION_DEPENDENCIES[p] || [];
+  const allDeps = [...deps];
+  
+  deps.forEach(dep => {
+    allDeps.push(...resolvePermissionDependencies(dep, visited));
+  });
+  
+  return Array.from(new Set(allDeps));
 };

@@ -30,6 +30,7 @@ import { useTeams } from '../hooks/useTeams';
 import { StatusBadge } from '../components/dashboards/DashboardComponents';
 import { useTerrainData } from '../hooks/useTerrainData';
 import { useAuth } from '../contexts/AuthContext';
+import { usePermissions } from '../hooks/usePermissions';
 
 import { KoboSettingsSection } from '../components/KoboSettingsSection';
 import DataHubSection from '../components/DataHubSection';
@@ -91,7 +92,7 @@ export default function Settings() {
   // Cast project config once at the top for type safety
   const cfg = ((project?.config || {}) as ProjectConfig) || ({} as ProjectConfig);
   const canRunDbMaintenance = isMasterAdmin(user as any);
-  const canAccessAdminOnlyTabs = true; // Temporairement forcer l'affichage pour débogage
+  const canAccessAdminOnlyTabs = canRunDbMaintenance;
 
   const isLoading = isProjectLoading || isHouseholdsLoading;
 
@@ -214,17 +215,21 @@ export default function Settings() {
         : 'COMMIT + PUSH + DÉPLOYER'
       : 'DÉPLOYER DEPUIS GITHUB';
 
+  const { peut, PERMISSIONS } = usePermissions();
+
   const tabs = [
-    { id: 'charges', label: 'Charges & Ressources', icon: DollarSign },
-    ...(canAccessAdminOnlyTabs
-      ? [
-          { id: 'kobo', label: 'KoBo', icon: CloudDownload },
-          { id: 'data', label: 'Données', icon: Database },
-          { id: 'datahub', label: 'Data Hub', icon: Cloud },
-          { id: 'system', label: 'Système', icon: Server },
-        ]
-      : []),
-  ];
+    { id: 'charges', label: 'Charges & Ressources', icon: DollarSign, permission: PERMISSIONS.SETTINGS_CHARGES },
+    { id: 'kobo', label: 'KoBo', icon: CloudDownload, permission: PERMISSIONS.SETTINGS_KOBO },
+    { id: 'data', label: 'Données', icon: Database, permission: PERMISSIONS.SETTINGS_DATA },
+    { id: 'datahub', label: 'Data Hub', icon: Cloud, permission: PERMISSIONS.SETTINGS_DATAHUB },
+    { id: 'system', label: 'Système', icon: Server, permission: PERMISSIONS.SETTINGS_SYSTEM },
+  ].filter(tab => peut(tab.permission));
+
+  useEffect(() => {
+    if (tabs.length > 0 && !tabs.find(t => t.id === activeTab)) {
+      setActiveTab(tabs[0].id as TabType);
+    }
+  }, [tabs, activeTab]);
 
   return (
     <div className="min-h-screen bg-slate-950 py-4 sm:py-8 transition-all duration-500">
@@ -354,27 +359,27 @@ export default function Settings() {
                 <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/5 blur-[100px] pointer-events-none rounded-full" />
 
                 <div className="relative z-10">
-                  {activeTab === 'charges' && (
+                  {activeTab === 'charges' && peut(PERMISSIONS.SETTINGS_CHARGES) && (
                     <ChargesAndResourcesTab
                       project={project}
                       households={households || []}
                       householdsError={householdsError}
                     />
                   )}
-                  {canAccessAdminOnlyTabs && activeTab === 'kobo' && (
+                  {activeTab === 'kobo' && peut(PERMISSIONS.SETTINGS_KOBO) && (
                     <KoboSettingsSection project={project} onUpdate={updateProject} />
                   )}
-                  {canAccessAdminOnlyTabs && activeTab === 'datahub' && (
+                  {activeTab === 'datahub' && peut(PERMISSIONS.SETTINGS_DATAHUB) && (
                     <DataHubSection project={project} onUpdate={updateProject} />
                   )}
-                  {canAccessAdminOnlyTabs && activeTab === 'data' && (
+                  {activeTab === 'data' && peut(PERMISSIONS.SETTINGS_DATA) && (
                     <DataSection
                       project={project}
                       households={households || []}
                       onUpdate={updateProject}
                     />
                   )}
-                  {canAccessAdminOnlyTabs && activeTab === 'system' && (
+                  {activeTab === 'system' && peut(PERMISSIONS.SETTINGS_SYSTEM) && (
                     <div className="space-y-6 sm:space-y-8">
                       <div className="flex items-center justify-between mb-4">
                         <h2 className="text-lg sm:text-xl font-black text-white uppercase tracking-tight flex items-center gap-3">

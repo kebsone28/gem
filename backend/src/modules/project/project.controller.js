@@ -41,10 +41,11 @@ export const getProjects = async (req, res) => {
       },
     });
 
-    const { email, id: userId, role: userRole } = req.user;
-    
-    // 🛡️ Déterminer si l'utilisateur est un Admin Global ou DG
-    const isGlobalAdmin = email === 'admingem' || userRole === 'ADMIN' || userRole === 'DG' || userRole === 'ADMIN_PROQUELEC' || userRole === 'DG_PROQUELEC';
+const { email, id: userId, role: userRole } = req.user;
+     
+     // 🛡️ Déterminer si l'utilisateur est un Admin Global ou DG
+     const { ROLES } = await import('../../core/config/permissions.js');
+     const isGlobalAdmin = userRole === ROLES.ADMIN || userRole === ROLES.DIRECTEUR || userRole === ROLES.ADMIN_ALT || userRole === 'ADMIN_PROQUELEC' || userRole === 'DG_PROQUELEC';
 
     let projects = rawProjects.map(p => ({
       ...p,
@@ -639,12 +640,13 @@ export const deployServerUpdate = async (req, res) => {
   try {
     const { email, organizationId, role: userRole } = req.user;
 
-    // 🛡️ SÉCURITÉ : Seul l'administrateur principal ou un ADMIN_PROQUELEC peut déployer
-    const isSuperAdmin = email === (process.env.SUPER_ADMIN_EMAIL || 'admingem');
-    const hasAdminRole = userRole === 'ADMIN_PROQUELEC';
-    if (!isSuperAdmin && !hasAdminRole) {
-      return res.status(403).json({ error: 'Privilèges insuffisants pour cette opération.' });
-    }
+// 🛡️ SÉCURITÉ : Seul l'administrateur principal ou un ADMIN_PROQUELEC peut déployer
+      const { ROLES, isSuperAdminEmail } = await import('../../core/config/permissions.js');
+      const isSuperAdmin = isSuperAdminEmail(email);
+      const hasAdminRole = userRole === ROLES.ADMIN || userRole === ROLES.DIRECTEUR || userRole === ROLES.ADMIN_ALT || userRole === 'ADMIN_PROQUELEC';
+      if (!isSuperAdmin && !hasAdminRole) {
+        return res.status(403).json({ error: 'Privilèges insuffisants pour cette opération.' });
+      }
 
     const projectPath = DEFAULT_WANEKOO_DEPLOY_PATH;
     const command = buildWanekooDeployCommand(projectPath);
@@ -695,12 +697,13 @@ export const dbMaintenance = async (req, res) => {
   try {
     const { email, organizationId, role: userRole } = req.user;
 
-    // 🛡️ SÉCURITÉ : Seul l'administrateur principal ou un ADMIN_PROQUELEC peut lancer la maintenance
-    const isSuperAdmin = email === (process.env.SUPER_ADMIN_EMAIL || 'admingem');
-    const hasAdminRole = userRole === 'ADMIN_PROQUELEC';
-    if (!isSuperAdmin && !hasAdminRole) {
-      return res.status(403).json({ error: 'Privilèges insuffisants pour cette opération.' });
-    }
+// 🛡️ SÉCURITÉ : Seul l'administrateur principal ou un ADMIN_PROQUELEC peut lancer la maintenance
+     const { ROLES, isSuperAdminEmail } = await import('../../core/config/permissions.js');
+     const isSuperAdmin = isSuperAdminEmail(email);
+     const hasAdminRole = userRole === ROLES.ADMIN || userRole === ROLES.DIRECTEUR || userRole === ROLES.ADMIN_ALT || userRole === 'ADMIN_PROQUELEC';
+     if (!isSuperAdmin && !hasAdminRole) {
+       return res.status(403).json({ error: 'Privilèges insuffisants pour cette opération.' });
+     }
 
     console.log(`[SYSTEM] Maintenance BD initiée par ${email}`);
 

@@ -44,7 +44,14 @@ export const userService = {
     }
   },
 
-  async deleteUser(id: string): Promise<void> {
-    await apiClient.delete(`/users/${id}`);
+  async requestDeletion(id: string): Promise<string> {
+    const response = await apiClient.post(`/users/${id}/request-deletion`);
+    return response.data.token;
+  },
+
+  async deleteUser(id: string, confirmationToken: string): Promise<void> {
+    await apiClient.delete(`/users/${id}`, {
+      params: { confirmationToken }
+    });
   },
 };

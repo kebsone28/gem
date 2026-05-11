@@ -1,14 +1,14 @@
-﻿/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { useState } from 'react';
 import { Package, Truck, Users, Wrench, Map as MapIcon, RefreshCcw, Search } from 'lucide-react';
 import StockTab from '../components/logistique/StockTab';
 import DeliveriesTab from '../components/logistique/DeliveriesTab';
 import AgentsTab from '../components/logistique/AgentsTab';
-import WorkshopTab from '../components/logistique/WorkshopTab';
 import GrappesTab from '../components/logistique/GrappesTab';
 import TeamLedgerTab from '../components/logistique/TeamLedgerTab';
 import { useLogistique } from '../hooks/useLogistique';
 import { useTheme } from '../contexts/ThemeContext';
+import { usePermissions } from '../hooks/usePermissions';
 import toast from 'react-hot-toast';
 
 // Import centralized design system
@@ -18,24 +18,27 @@ import {
   MODULE_ACCENTS,
 } from '../components/dashboards/DashboardComponents';
 
-type LogistiqueTabId = 'stock' | 'deliveries' | 'agents' | 'ledger' | 'workshop' | 'grappes';
+type LogistiqueTabId = 'stock' | 'deliveries' | 'agents' | 'ledger' | 'grappes';
 
 const TABS: Array<{
   id: LogistiqueTabId;
   label: string;
   mobileLabel: string;
   icon: typeof Package;
+  permission: string;
 }> = [
-  { id: 'stock', label: 'Stock & Matériel', mobileLabel: 'Stock', icon: Package },
-  { id: 'deliveries', label: 'Livraisons', mobileLabel: 'Livraisons', icon: Truck },
-  { id: 'agents', label: 'Suivi des Agents', mobileLabel: 'Agents', icon: Users },
-  { id: 'ledger', label: 'Ordres de Mission', mobileLabel: 'Ordres', icon: Package },
-  { id: 'workshop', label: 'Atelier', mobileLabel: 'Atelier', icon: Wrench },
-  { id: 'grappes', label: 'Déploiement Terrain', mobileLabel: 'Terrain', icon: MapIcon },
+  { id: 'stock', label: 'Stock & Matériel', mobileLabel: 'Stock', icon: Package, permission: 'logistique.stock' },
+  { id: 'deliveries', label: 'Livraisons', mobileLabel: 'Livraisons', icon: Truck, permission: 'logistique.deliveries' },
+  { id: 'agents', label: 'Suivi des Agents', mobileLabel: 'Agents', icon: Users, permission: 'logistique.agents' },
+  { id: 'ledger', label: 'Ordres de Mission', mobileLabel: 'Ordres', icon: Package, permission: 'logistique.om' },
+  { id: 'grappes', label: 'Déploiement Terrain', mobileLabel: 'Terrain', icon: MapIcon, permission: 'logistique.deployment' },
 ];
 
 export default function Logistique() {
-  const [activeTab, setActiveTab] = useState<LogistiqueTabId>('stock');
+  const { peut } = usePermissions();
+  const allowedTabs = TABS.filter(t => peut(t.permission));
+  
+  const [activeTab, setActiveTab] = useState<LogistiqueTabId>(allowedTabs[0]?.id || 'stock');
   const [searchQuery, setSearchQuery] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { isLoading, refreshTeams } = useLogistique();
@@ -120,7 +123,7 @@ export default function Logistique() {
             className={`overflow-hidden rounded-2xl border transition-colors ${isDarkMode ? `${DASHBOARD_SECTION_SURFACE} ${logistiqueAccent.surface}` : 'border-slate-200 bg-slate-100/80'}`}
           >
             <div className="flex overflow-x-auto gap-1 p-1 scrollbar-hide snap-x snap-mandatory">
-              {TABS.map((tab) => {
+              {allowedTabs.map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
                 return (
@@ -168,7 +171,6 @@ export default function Logistique() {
                 {activeTab === 'deliveries' && <DeliveriesTab searchQuery={searchQuery} />}
                 {activeTab === 'agents' && <AgentsTab searchQuery={searchQuery} />}
                 {activeTab === 'ledger' && <TeamLedgerTab searchQuery={searchQuery} />}
-                {activeTab === 'workshop' && <WorkshopTab />}
                 {activeTab === 'grappes' && <GrappesTab />}
               </>
             )}

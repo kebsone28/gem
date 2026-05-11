@@ -29,7 +29,6 @@ interface AuthState {
     name: string,
     organization?: string,
     id?: string,
-    accessToken?: string,
     permissions?: string[]
   ) => void;
   logout: () => void;
@@ -41,10 +40,9 @@ export const useAuthStore = create<AuthState>()(
     persist(
       (set) => ({
         user: (() => {
-          // Rehydrate from safe storage on first load
+          // Rehydrate from safe storage on first load (Optimistic UI)
           const storedUser = safeStorage.getItem('user');
-          const token = safeStorage.getItem('access_token');
-          if (storedUser && token) {
+          if (storedUser) {
             try {
               const parsed = JSON.parse(storedUser) as User;
               if (parsed.role) parsed.role = normalizeRole(parsed.role) as UserRole;
@@ -55,9 +53,9 @@ export const useAuthStore = create<AuthState>()(
           }
           return null;
         })(),
-        isAuthenticated: !!safeStorage.getItem('access_token'),
+        isAuthenticated: !!safeStorage.getItem('user'),
 
-        login: (email, role, name, organization, id, accessToken, permissions) => {
+        login: (email, role, name, organization, id, permissions) => {
           const newUser: User = {
             id: id ?? `temp-${Date.now()}`,
             email,
@@ -66,13 +64,11 @@ export const useAuthStore = create<AuthState>()(
             organization,
             permissions: Array.isArray(permissions) ? permissions : [],
           };
-          if (accessToken) safeStorage.setItem('access_token', accessToken);
           safeStorage.setItem('user', JSON.stringify(newUser));
           set({ user: newUser, isAuthenticated: true });
         },
 
         logout: () => {
-          safeStorage.removeItem('access_token');
           safeStorage.removeItem('user');
           set({ user: null, isAuthenticated: false });
         },

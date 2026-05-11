@@ -5,6 +5,7 @@
 
 export const ROLES = {
     ADMIN: "ADMIN_PROQUELEC",
+    ADMIN_ALT: "ADMIN_ALT",
     DIRECTEUR: "DIRECTEUR",
     CHEF_PROJET: "CHEF_PROJET",
     COMPTABLE: "COMPTABLE",
@@ -49,6 +50,8 @@ export const ROLE_PERMISSIONS = {
     // 👑 ADMIN: Accès absolu
     [ROLES.ADMIN]: Object.values(PERMISSIONS),
     [ROLES.ADMIN_ALT]: Object.values(PERMISSIONS),
+    // DIRECTEUR also has full access
+    [ROLES.DIRECTEUR]: Object.values(PERMISSIONS),
 
     // 🚀 OPÉRATIONNELS: Tout sauf suppression de projet (peuvent créer)
     [ROLES.CHEF_PROJET]: [
@@ -63,23 +66,6 @@ export const ROLE_PERMISSIONS = {
         PERMISSIONS.GERER_FINANCES,
         PERMISSIONS.ACCES_TERMINAL_KOBO,
         PERMISSIONS.GERER_PV,
-        PERMISSIONS.VOIR_MISSIONS,
-        PERMISSIONS.MODIFIER_MISSIONS
-    ],
-    [ROLES.DIRECTEUR]: [
-        PERMISSIONS.VOIR_CARTE,
-        PERMISSIONS.MODIFIER_CARTE,
-        PERMISSIONS.CREER_PROJET,
-        PERMISSIONS.GERER_LOGISTIQUE,
-        PERMISSIONS.VOIR_RAPPORTS,
-        PERMISSIONS.CREER_MISSION,
-        PERMISSIONS.VOIR_SIMULATION,
-        PERMISSIONS.VOIR_FINANCES,
-        PERMISSIONS.GERER_FINANCES,
-        PERMISSIONS.ACCES_TERMINAL_KOBO,
-        PERMISSIONS.GERER_PV,
-        PERMISSIONS.VALIDER_MISSION,
-        PERMISSIONS.APPROBATION_FINALE_DG,
         PERMISSIONS.VOIR_MISSIONS,
         PERMISSIONS.MODIFIER_MISSIONS
     ],
@@ -130,4 +116,20 @@ export const ROLE_PERMISSIONS = {
         PERMISSIONS.GERER_LOGISTIQUE,
         PERMISSIONS.VOIR_MISSIONS
     ]
+};
+
+/**
+ * Helper function to check if an email is a super admin
+ * Supports comma-separated SUPER_ADMIN_EMAIL environment variable
+ * @param {string} email - Email to check
+ * @returns {boolean} - True if email is a super admin
+ */
+export const isSuperAdminEmail = (email) => {
+    if (!email) return false;
+    const superAdminEmails = process.env.SUPER_ADMIN_EMAIL;
+    if (!superAdminEmails) return false;
+    
+    // Split by comma and trim whitespace
+    const emailList = superAdminEmails.split(',').map(e => e.trim());
+    return emailList.includes(email.trim());
 };

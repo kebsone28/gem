@@ -118,6 +118,7 @@ export interface PolicyResponse {
 
 // 3️⃣ REGISTRY DES PERMISSIONS (NAMESPACED)
 export const PERMISSIONS = {
+  // ── MISSIONS ──
   MISSIONS_READ: 'missions.read',
   MISSIONS_CREATE: 'missions.create',
   MISSIONS_UPDATE: 'missions.update',
@@ -125,19 +126,54 @@ export const PERMISSIONS = {
   MISSIONS_VALIDATE: 'missions.validate',
   MISSIONS_APPROVE: 'missions.approve',
   MISSIONS_PLANNING: 'missions.planning',
+
+  // ── TERRAIN ──
   TERRAIN_READ: 'terrain.read',
   TERRAIN_WRITE: 'terrain.write',
   TERRAIN_TERMINAL: 'terrain.terminal',
   TERRAIN_REJECT: 'terrain.reject',
   TERRAIN_ZONES: 'terrain.zones',
   TERRAIN_MENAGES: 'terrain.menages',
+  TERRAIN_MAP: 'terrain.map',
+
+  // ── CAHIER DES CHARGES ──
+  CAHIER_TECHNICAL: 'cahier.technical',
+  CAHIER_CONTRACTS: 'cahier.contracts',
+  CAHIER_STRATEGY: 'cahier.strategy',
+
+  // ── FINANCES ──
   FINANCE_READ: 'finance.read',
   FINANCE_MANAGE: 'finance.manage',
   FINANCE_PAYMENTS: 'finance.payments',
   FINANCE_EXPORT: 'finance.export',
   FINANCE_REPORTS: 'finance.reports',
+
+  // ── LOGISTIQUE (ISOLATION TOTALE) ──
+  LOGISTIQUE_STOCK: 'logistique.stock',
+  LOGISTIQUE_DELIVERIES: 'logistique.deliveries',
+  LOGISTIQUE_AGENTS: 'logistique.agents',
+  LOGISTIQUE_OM: 'logistique.om',
+  LOGISTIQUE_ATELIER: 'logistique.atelier',
+  LOGISTIQUE_DEPLOYMENT: 'logistique.deployment',
   LOGISTIQUE_READ: 'logistique.read',
   LOGISTIQUE_MANAGE: 'logistique.manage',
+
+  // ── DASHBOARD (VUES SPÉCIFIQUES) ──
+  DASHBOARD_ADMIN: 'dashboard.admin',
+  DASHBOARD_PROJECT: 'dashboard.project',
+  DASHBOARD_TEAM: 'dashboard.team',
+  DASHBOARD_CLIENT: 'dashboard.client',
+  DASHBOARD_ACCOUNTING: 'dashboard.accounting',
+  DASHBOARD_ASSETS: 'dashboard.assets',
+
+  // ── PARAMÈTRES (SETTINGS) ──
+  SETTINGS_CHARGES: 'settings.charges',
+  SETTINGS_KOBO: 'settings.kobo',
+  SETTINGS_DATA: 'settings.data',
+  SETTINGS_DATAHUB: 'settings.datahub',
+  SETTINGS_SYSTEM: 'settings.system',
+
+  // ── SYSTÈME ──
   SYSTEM_USERS: 'system.users',
   SYSTEM_ROLES: 'system.roles',
   SYSTEM_AUDIT: 'system.audit',
@@ -145,6 +181,8 @@ export const PERMISSIONS = {
   SYSTEM_CONFIG: 'system.config',
   SYSTEM_EXPORT: 'system.export',
   SYSTEM_MESSAGES: 'system.messages',
+
+  // ── UI & NAVIGATION ──
   UI_MAP: 'ui.map',
   UI_CHAT: 'ui.chat',
   UI_ALERTS: 'ui.alerts',
@@ -152,15 +190,19 @@ export const PERMISSIONS = {
   UI_PROJECTS: 'ui.projects',
   UI_TEAMS: 'ui.teams',
   UI_DASHBOARD: 'ui.dashboard',
+
+  // ── IA (WANEKOO) ──
   IA_USE: 'ia.use',
   IA_METRICS: 'ia.metrics',
   IA_SIMULATION: 'ia.simulation',
+  IA_CONFIG: 'ia.config',
+
+  // ── DOCUMENTS ──
   DOCS_READ: 'docs.read',
   DOCS_CONFIDENTIAL: 'docs.confidential',
   DOCS_PV: 'docs.pv',
-  // ── IA avancée ──
-  IA_CONFIG: 'ia.config',
-  // ── Gestion des modules ──
+
+  // ── MODULES ──
   MODULES_MANAGE: 'modules.manage',
 } as const;
 
@@ -181,4 +223,5 @@ export const LEGACY_MAPPING: Record<string, string> = {
   voir_projets: PERMISSIONS.UI_PROJECTS,
   voir_equipes: PERMISSIONS.UI_TEAMS,
   utiliser_ia: PERMISSIONS.IA_USE,
+  gerer_utilisateurs: PERMISSIONS.SYSTEM_USERS,
 };

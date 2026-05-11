@@ -227,6 +227,14 @@ const Terrain: React.FC = () => {
     }
   }, [households, selectedHouseholdId, setMapCommand]);
   useEffect(() => {
+    if (viewMode === 'map' && !peut(PERMISSIONS.TERRAIN_MAP) && peut(PERMISSIONS.TERRAIN_READ)) {
+      setViewMode('list');
+    } else if (viewMode === 'list' && !peut(PERMISSIONS.TERRAIN_READ) && peut(PERMISSIONS.TERRAIN_MAP)) {
+      setViewMode('map');
+    }
+  }, [peut, PERMISSIONS, viewMode, setViewMode]);
+
+  useEffect(() => {
     const handleStatus = () => setIsOfflineMode(!navigator.onLine);
     window.addEventListener('online', handleStatus);
     window.addEventListener('offline', handleStatus);
@@ -839,34 +847,36 @@ const Terrain: React.FC = () => {
         isSyncing={isSyncing}
         showSearch={terrainFeatures.search}
         showSync={terrainFeatures.sync}
-        showDataHub={terrainFeatures.dataHub}
-        showTeamFilter={terrainFeatures.teamFilter}
-        showStatusFilter={terrainFeatures.statusFilter}
-        showListToggle={terrainFeatures.listView}
-        showRecenter={terrainFeatures.recenter}
+        showSearch={terrainFeatures.search && peut(PERMISSIONS.TERRAIN_READ)}
+        showSync={terrainFeatures.sync && peut(PERMISSIONS.SYSTEM_SYNC)}
+        showDataHub={terrainFeatures.dataHub && peutVoirDataHub}
+        showTeamFilter={terrainFeatures.teamFilter && peut(PERMISSIONS.TERRAIN_READ)}
+        showStatusFilter={terrainFeatures.statusFilter && peut(PERMISSIONS.TERRAIN_READ)}
+        showListToggle={terrainFeatures.listView && peut(PERMISSIONS.TERRAIN_READ) && peut(PERMISSIONS.TERRAIN_MAP)}
+        showRecenter={terrainFeatures.recenter && peut(PERMISSIONS.TERRAIN_MAP)}
         showAdvancedTools={
-          terrainFeatures.mapStyle ||
-          terrainFeatures.statusLegend ||
-          terrainFeatures.zoneOverlay ||
-          terrainFeatures.routing ||
-          terrainFeatures.grappeTools ||
-          terrainFeatures.analytics ||
-          terrainFeatures.heatmap ||
-          terrainFeatures.dataHub ||
-          terrainFeatures.regionDownload
+          (terrainFeatures.mapStyle && peut(PERMISSIONS.TERRAIN_MAP)) ||
+          (terrainFeatures.statusLegend && peut(PERMISSIONS.TERRAIN_MAP)) ||
+          (terrainFeatures.zoneOverlay && peut(PERMISSIONS.TERRAIN_ZONES)) ||
+          (terrainFeatures.routing && peut(PERMISSIONS.TERRAIN_MAP)) ||
+          (terrainFeatures.grappeTools && peut(PERMISSIONS.TERRAIN_ZONES)) ||
+          (terrainFeatures.analytics && peut(PERMISSIONS.TERRAIN_READ)) ||
+          (terrainFeatures.heatmap && peut(PERMISSIONS.TERRAIN_MAP)) ||
+          (terrainFeatures.dataHub && peutVoirDataHub) ||
+          (terrainFeatures.regionDownload && peut(PERMISSIONS.TERRAIN_READ))
         }
         mapToolbarFeatures={{
-          mapStyle: terrainFeatures.mapStyle,
-          statusLegend: terrainFeatures.statusLegend,
-          zoneOverlay: terrainFeatures.zoneOverlay,
+          mapStyle: terrainFeatures.mapStyle && peut(PERMISSIONS.TERRAIN_MAP),
+          statusLegend: terrainFeatures.statusLegend && peut(PERMISSIONS.TERRAIN_MAP),
+          zoneOverlay: terrainFeatures.zoneOverlay && peut(PERMISSIONS.TERRAIN_ZONES),
           zoneOverlayReady: hasZoneOverlayData,
           zoneOverlayLoading: isClustersLoading,
-          routing: terrainFeatures.routing,
-          grappeTools: terrainFeatures.grappeTools,
-          analytics: terrainFeatures.analytics,
-          heatmap: terrainFeatures.heatmap,
-          regionDownload: terrainFeatures.regionDownload,
-          dataHub: terrainFeatures.dataHub,
+          routing: terrainFeatures.routing && peut(PERMISSIONS.TERRAIN_MAP),
+          grappeTools: terrainFeatures.grappeTools && peut(PERMISSIONS.TERRAIN_ZONES),
+          analytics: terrainFeatures.analytics && peut(PERMISSIONS.TERRAIN_READ),
+          heatmap: terrainFeatures.heatmap && peut(PERMISSIONS.TERRAIN_MAP),
+          regionDownload: terrainFeatures.regionDownload && peut(PERMISSIONS.TERRAIN_READ),
+          dataHub: terrainFeatures.dataHub && peutVoirDataHub,
         }}
       />
 
@@ -887,7 +897,7 @@ const Terrain: React.FC = () => {
       />
 
       {/* 🛠️ PANELS & MODALS */}
-      {terrainFeatures.routing && activePanel === 'routing' && (
+      {terrainFeatures.routing && activePanel === 'routing' && peut(PERMISSIONS.TERRAIN_MAP) && (
         <div className="z-[70] absolute inset-x-3 bottom-[132px] top-auto md:inset-x-auto md:bottom-auto md:top-16 md:right-4">
           <MapRoutingPanel
             onClose={closePanel}
@@ -908,7 +918,7 @@ const Terrain: React.FC = () => {
         />
       )}
 
-      {terrainFeatures.grappeTools && activePanel === 'grappe' && (
+      {terrainFeatures.grappeTools && activePanel === 'grappe' && peut(PERMISSIONS.TERRAIN_ZONES) && (
         <div className="z-[60] pointer-events-auto">
           <GrappeSelectorPanel
             onClose={closePanel}
@@ -921,7 +931,7 @@ const Terrain: React.FC = () => {
           />
         </div>
       )}
-      {terrainFeatures.grappeTools && activePanel === 'grappe_allocation' && (
+      {terrainFeatures.grappeTools && activePanel === 'grappe_allocation' && peut(PERMISSIONS.TERRAIN_ZONES) && (
         <div className="z-[60] pointer-events-auto">
           <MapGrappeAllocationPanel
             onClose={closePanel}
@@ -930,7 +940,7 @@ const Terrain: React.FC = () => {
           />
         </div>
       )}
-      {terrainFeatures.regionDownload && activePanel === 'region' && (
+      {terrainFeatures.regionDownload && activePanel === 'region' && peut(PERMISSIONS.TERRAIN_READ) && (
         <div className="z-[60] pointer-events-auto">
           <MapRegionDownload onClose={closePanel} />
         </div>

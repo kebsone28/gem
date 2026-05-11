@@ -32,6 +32,7 @@ const getTradeIcon = (type: string) => {
 };
 
 const getTradeLabel = (type: string) => {
+  if (!type) return 'Inconnu';
   switch (type) {
     case 'macons':
       return 'Maçonnerie';
@@ -85,8 +86,8 @@ export default function GrappesTab() {
       <div className="flex flex-col gap-6 xl:flex-row xl:items-center xl:justify-between">
         <div>
           <h3 className="text-xl sm:text-2xl font-bold text-white">Planning de Déploiement Terrain</h3>
-          <p className="text-slate-500 font-medium mt-1 max-w-2xl">
-            Gérez le déploiement opérationnel des équipes sur les sous-grappes.
+          <p className="text-slate-400 text-sm mt-3 max-w-2xl leading-relaxed">
+            Gérez le déploiement opérationnel en affectant massivement les équipes sur les zones d'intervention (sous-grappes). Ce panneau vous offre une vue globale sur le taux de couverture métier et les risques d'étranglement par zone.
           </p>
         </div>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between xl:justify-end">
@@ -178,7 +179,7 @@ export default function GrappesTab() {
                 </div>
 
                 <div className="grid grid-cols-4 gap-2 pt-2">
-                  {Array.from(new Set(teams.map((t: Team) => t.tradeKey))).map((key: any) => {
+                  {Array.from(new Set(teams.map((t: Team) => t.tradeKey))).filter(Boolean).map((key: any) => {
                     const Icon = getTradeIcon(key);
                     const assignedTeams = (assignments as any)[key] || [];
                     const isAssigned = assignedTeams.length > 0;
@@ -226,7 +227,7 @@ export default function GrappesTab() {
           </div>
 
           <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5 gap-4 items-start">
-            {Array.from(new Set(teams.map((t: Team) => t.tradeKey))).map((key: any) => {
+            {Array.from(new Set(teams.map((t: Team) => t.tradeKey))).filter(Boolean).map((key: any) => {
               const tradeLabel = getTradeLabel(key);
               const currentBulk = bulkAssignments[key] || [];
 
@@ -357,7 +358,7 @@ export default function GrappesTab() {
             </div>
 
             <div className="space-y-6 max-h-[55vh] overflow-y-auto pr-2">
-              {Array.from(new Set(teams.map((t: Team) => t.tradeKey))).map((key: any) => {
+              {Array.from(new Set(teams.map((t: Team) => t.tradeKey))).filter(Boolean).map((key: any) => {
                 const tradeLabel = getTradeLabel(key);
                 const Icon = getTradeIcon(key);
                 const currentAssignments =

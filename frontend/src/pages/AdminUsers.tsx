@@ -777,8 +777,14 @@ export default function AdminUsers() {
   const executeDelete = async () => {
     if (!deleteTarget) return;
     const name = deleteTarget.name;
+    const toastId = toast.loading('Sécurisation de la suppression...');
     try {
-      await userService.deleteUser(deleteTarget.id);
+      // 1. Demander un jeton de confirmation au serveur
+      const token = await userService.requestDeletion(deleteTarget.id);
+      
+      // 2. Exécuter la suppression avec le jeton
+      await userService.deleteUser(deleteTarget.id, token);
+
       if (user) {
         await auditService.logAction(
           user,
@@ -788,13 +794,13 @@ export default function AdminUsers() {
           'warning'
         );
       }
-      toast(`🗑️  Compte "${name}" supprimé du serveur.`, { icon: '⚠️' });
+      toast.success(`🗑️  Compte "${name}" supprimé définitivement.`, { id: toastId });
       setDeleteTarget(null);
       loadData();
     } catch (err) {
       const errMessage =
         (err as any)?.response?.data?.error || (err instanceof Error ? err.message : String(err));
-      toast.error(`❌  Erreur: ${errMessage}`);
+      toast.error(`❌  Erreur: ${errMessage}`, { id: toastId });
     }
   };
 

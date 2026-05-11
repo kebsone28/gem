@@ -44,7 +44,7 @@ export const getProjectKPIs = async (req, res) => {
             // This happens for newly created local projects not yet synced
             return res.status(200).json({
                 projectId,
-                projectName: 'Projet en attente de synchro',
+                projectName: 'Projet en attente de synchronisation',
                 metrics: null
             });
         }

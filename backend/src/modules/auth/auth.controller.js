@@ -248,6 +248,14 @@ export const login = async (req, res) => {
         console.log('✅ Tokens generated');
       }
 
+      // Set access token in cookie
+      res.cookie('accessToken', accessToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+        maxAge: 4 * 60 * 60 * 1000, // 4 hours (matches typical expiry)
+      });
+
       // Set refresh token in cookie
       res.cookie('refreshToken', refreshToken, {
         httpOnly: true,
@@ -264,8 +272,7 @@ export const login = async (req, res) => {
       }
 
       res.json({
-        user: buildSessionUser(user),
-        accessToken,
+        user: buildSessionUser(user)
       });
       if (process.env.NODE_ENV !== 'production') {
         console.log('✅ Response sent successfully');
@@ -350,8 +357,15 @@ export const refreshToken = async (req, res) => {
 
     const tokens = generateTokens(tokenPayload);
 
+    // Set access token in cookie
+    res.cookie('accessToken', tokens.accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+      maxAge: 4 * 60 * 60 * 1000,
+    });
+
     res.json({
-      accessToken: tokens.accessToken,
       user: buildSessionUser(user),
     });
   } catch (error) {
@@ -396,6 +410,7 @@ export const getMe = async (req, res) => {
 // @route   POST /api/auth/logout
 export const logout = (req, res) => {
   res.clearCookie('refreshToken');
+  res.clearCookie('accessToken');
   res.json({ message: 'Logged out successfully' });
 };
 // @desc    Change user password
@@ -628,6 +643,14 @@ export const verify2FA = async (req, res) => {
       console.log('✅ [2FA] Tokens générés');
     }
 
+    // Set access token in cookie
+    res.cookie('accessToken', tokens.accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+      maxAge: 4 * 60 * 60 * 1000,
+    });
+
     // Set refresh token in cookie
     res.cookie('refreshToken', tokens.refreshToken, {
       httpOnly: true,
@@ -636,12 +659,11 @@ export const verify2FA = async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
     if (process.env.NODE_ENV !== 'production') {
-      console.log('✅ [2FA] Cookie refresh configuré');
+      console.log('✅ [2FA] Cookies configurés');
     }
 
     res.json({
       user: buildSessionUser(user),
-      accessToken: tokens.accessToken,
     });
     if (process.env.NODE_ENV !== 'production') {
       console.log('✅ [2FA] Réponse envoyée avec succès');
@@ -669,15 +691,16 @@ export const impersonateUser = async (req, res) => {
         .json({ error: 'Impossible de lancer une simulation depuis une session déjà simulée.' });
     }
 
-    // 1. Verrou de sécurité : Seul un ADMIN_PROQUELEC peut simuler
-    const isSuperAdmin = adminUser.email === (process.env.SUPER_ADMIN_EMAIL || 'admingem');
-    const isAdminRole =
-      adminUser.role === 'ADMIN_PROQUELEC' ||
-      adminUser.role?.name === 'ADMIN_PROQUELEC' ||
-      adminUser.roleLegacy === 'ADMIN_PROQUELEC';
-    if (!isSuperAdmin && !isAdminRole) {
-      return res.status(403).json({ error: 'Accès interdit : privilèges insuffisants.' });
-    }
+// 1. Verrou de sécurité : Seul un ADMIN_PROQUELEC peut simuler
+     const { ROLES, isSuperAdminEmail } = await import('../../core/config/permissions.js');
+     const isSuperAdmin = isSuperAdminEmail(adminUser.email);
+     const isAdminRole =
+       adminUser.role === ROLES.ADMIN ||
+       adminUser.role?.name === ROLES.ADMIN ||
+       adminUser.roleLegacy === ROLES.ADMIN;
+     if (!isSuperAdmin && !isAdminRole) {
+       return res.status(403).json({ error: 'Accès interdit : privilèges insuffisants.' });
+     }
 
     // 2. Trouver l'utilisateur cible et vérifier le multi-tenant
     const targetUser = await prisma.user.findUnique({
@@ -749,6 +772,14 @@ export const impersonateUser = async (req, res) => {
 
     const { accessToken } = generateTokens(tokenPayload, adminUser);
 
+    // Set access token in cookie
+    res.cookie('accessToken', accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+      maxAge: 30 * 60 * 1000, // 30m for impersonation
+    });
+
     res.json({
       message: `Simulation active : ${targetUser.name}`,
       user: {
@@ -759,8 +790,7 @@ export const impersonateUser = async (req, res) => {
         permissions: finalPermissions,
         organization: targetUser.organization?.name,
         impersonatedBy: adminUser.id,
-      },
-      accessToken,
+      }
     });
   } catch (error) {
     console.error('Impersonation error:', error);
@@ -821,6 +851,14 @@ export const stopImpersonation = async (req, res) => {
     // 🆕 Régénérer un token Admin neuf (Pas d'impersonatorId ici)
     const { accessToken } = generateTokens(tokenPayload);
 
+    // Set access token in cookie
+    res.cookie('accessToken', accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+      maxAge: 4 * 60 * 60 * 1000,
+    });
+
     res.json({
       message: "Retour à l'identité administrateur réussi",
       user: {
@@ -830,8 +868,7 @@ export const stopImpersonation = async (req, res) => {
         name: adminUser.name,
         permissions: adminPermissions,
         organization: adminUser.organization?.name,
-      },
-      accessToken,
+      }
     });
   } catch (error) {
     console.error('Stop impersonation error:', error);

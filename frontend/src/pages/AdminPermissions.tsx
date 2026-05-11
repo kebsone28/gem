@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { PageContainer, PageHeader, ContentArea } from '../components';
-import { PERMISSIONS, PERMISSION_LABELS } from '../utils/permissions';
+import { PERMISSIONS, PERMISSION_LABELS, resolvePermissionDependencies } from '../utils/permissions';
 import adminPermissionsService from '../services/adminPermissionsService';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -52,9 +52,19 @@ export default function AdminPermissions() {
   const toggle = (role: string, p: string) => {
     setRolePerms((prev) => {
       const copy = { ...prev };
-      const currentSet = new Set(copy[role] || []); // nouvelle instance — évite la mutation
-      if (currentSet.has(p)) currentSet.delete(p);
-      else currentSet.add(p);
+      const currentSet = new Set(copy[role] || []);
+      
+      if (currentSet.has(p)) {
+        currentSet.delete(p);
+        // Optionnel: On pourrait aussi décocher ce qui dépend de p, 
+        // mais c'est plus sûr de laisser l'admin décider.
+      } else {
+        currentSet.add(p);
+        // Ajouter automatiquement les dépendances
+        const deps = resolvePermissionDependencies(p);
+        deps.forEach((dep: string) => currentSet.add(dep));
+      }
+      
       copy[role] = currentSet;
       return copy;
     });

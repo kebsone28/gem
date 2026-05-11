@@ -844,6 +844,12 @@ export const clearHistory = async (req, res) => {
       },
     });
 
+    // Mettre à jour updatedAt pour que la conversation remonte dans la liste (même vide)
+    await prisma.chatConversation.update({
+      where: { id: conversationId },
+      data: { updatedAt: new Date() },
+    });
+
     socketService.emit('chat:history:cleared', { conversationId }, getConversationRoom(conversationId));
 
     res.json({ success: true, message: 'Historique vidé pour tous.' });

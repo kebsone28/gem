@@ -99,6 +99,9 @@ export default function TeamLedgerTab({ searchQuery = '' }: TeamLedgerTabProps) 
                 >
                   Consultez et imprimez les ordres de mission terrain
                 </p>
+                <p className={`text-sm mt-3 max-w-2xl leading-relaxed ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+                  Cet espace consolide les équipes créées dans vos paramètres et les associe aux cibles de déploiement (grappes). Il permet de générer des Ordres de Mission PDF officiels certifiant que le matériel et les zones sont prêts pour l'intervention.
+                </p>
               </div>
             </div>
 

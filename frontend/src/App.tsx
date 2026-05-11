@@ -48,6 +48,7 @@ const Dashboard = lazyWithRetry(() => import('./pages/Dashboard'), 'lazy:dashboa
 const Terrain = lazyWithRetry(() => import('./pages/Terrain'), 'lazy:terrain');
 const Cahier = lazyWithRetry(() => import('./pages/Cahier'), 'lazy:cahier');
 const Logistique = lazyWithRetry(() => import('./pages/Logistique'), 'lazy:logistique');
+const Atelier = lazyWithRetry(() => import('./pages/Atelier'), 'lazy:atelier');
 const Charges = lazyWithRetry(() => import('./pages/Charges'), 'lazy:charges');
 const Settings = lazyWithRetry(() => import('./pages/Settings'), 'lazy:settings');
 const Simulation = lazyWithRetry(() => import('./pages/Simulation'), 'lazy:simulation');
@@ -145,8 +146,12 @@ const RoleRoute = ({
 
 // ── App ────────────────────────────────────────────────────────────────────
 function App() {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   useWebSockets();
+
+  if (isLoading) {
+    return <PageLoader />;
+  }
 
   return (
     <Router>
@@ -223,6 +228,17 @@ function App() {
               }
             />
 
+            <Route
+              path="/atelier"
+              element={
+                <ProtectedRoute>
+                  <PermissionRoute permission={PERMISSIONS.LOGISTIQUE_ATELIER}>
+                    <Atelier />
+                  </PermissionRoute>
+                </ProtectedRoute>
+              }
+            />
+
             <Route path="/finances" element={<Navigate to="/charges" replace />} />
 
             <Route
@@ -271,7 +287,7 @@ function App() {
               path="/bordereau"
               element={
                 <ProtectedRoute>
-                  <PermissionRoute permission={PERMISSIONS.LOGISTIQUE_MANAGE}>
+                  <PermissionRoute permission={PERMISSIONS.LOGISTIQUE_OM}>
                     <Bordereau />
                   </PermissionRoute>
                 </ProtectedRoute>
@@ -443,7 +459,7 @@ function App() {
               path="/planning"
               element={
                 <ProtectedRoute>
-                  <PermissionRoute permission={PERMISSIONS.UI_MAP}>
+                  <PermissionRoute permission={PERMISSIONS.MISSIONS_PLANNING}>
                     <Planning />
                   </PermissionRoute>
                 </ProtectedRoute>

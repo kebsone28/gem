@@ -277,14 +277,82 @@ export const updateUser = async (req, res) => {
   }
 };
 
+// @desc    Request a one-time token for user deletion
+// @route   POST /api/users/:id/request-deletion
+export const requestUserDeletion = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { organizationId } = req.user;
+
+    const targetUser = await prisma.user.findFirst({
+      where: { id, organizationId },
+      include: { role: true },
+    });
+
+    if (!targetUser) {
+      return res.status(404).json({ error: 'Utilisateur non trouvé' });
+    }
+
+// Protection des admins
+     const { ROLES, isSuperAdminEmail } = await import('../../core/config/permissions.js');
+     const isProtectedAdmin =
+       targetUser.roleLegacy === ROLES.ADMIN ||
+       targetUser.role?.name === ROLES.ADMIN ||
+       isSuperAdminEmail(targetUser.email);
+    if (isProtectedAdmin) {
+      return res
+        .status(400)
+        .json({ error: 'Impossible de supprimer un compte Administrateur principal.' });
+    }
+
+    // Créer un enregistrement d'approbation comme "token" de confirmation
+    const approval = await prisma.actionApproval.create({
+      data: {
+        organizationId,
+        userId: req.user.id,
+        agentName: 'AdminController',
+        actionType: 'USER_DELETION',
+        riskLevel: 'HIGH',
+        confidence: 1.0,
+        status: 'PENDING',
+        payload: { targetUserId: id, targetEmail: targetUser.email },
+        requestedBy: req.user.id,
+      },
+    });
+
+    res.json({
+      token: approval.id,
+      message: `Confirmation requise pour supprimer ${targetUser.email}`,
+    });
+  } catch (error) {
+    console.error('Request user deletion error:', error);
+    res.status(500).json({ error: 'Server error while requesting deletion token' });
+  }
+};
+
 // @desc    Delete a user
 // @route   DELETE /api/users/:id
 export const deleteUser = async (req, res) => {
   try {
     const { id } = req.params;
+    const { confirmationToken } = req.query; // Le token généré par request-deletion
     const { organizationId } = req.user;
 
+    if (!confirmationToken) {
+      return res.status(400).json({ error: 'Jeton de confirmation manquant. Veuillez d\'abord demander une suppression.' });
+    }
+
+    // Vérifier le jeton
+    const approval = await prisma.actionApproval.findUnique({
+      where: { id: confirmationToken },
+    });
+
+    if (!approval || approval.status !== 'PENDING' || approval.actionType !== 'USER_DELETION' || approval.payload.targetUserId !== id) {
+      return res.status(400).json({ error: 'Jeton de confirmation invalide ou expiré.' });
+    }
+
     const user = await prisma.user.findFirst({ where: { id, organizationId } });
+
     if (!user) {
       return res.status(404).json({ error: 'Utilisateur non trouvé' });
     }
@@ -293,10 +361,11 @@ export const deleteUser = async (req, res) => {
       return res.status(400).json({ error: 'Vous ne pouvez pas supprimer votre propre compte' });
     }
 
-    const isProtectedAdmin =
-      user.roleLegacy === 'ADMIN_PROQUELEC' ||
-      user.role?.name === 'ADMIN_PROQUELEC' ||
-      user.email === (process.env.SUPER_ADMIN_EMAIL || 'admingem');
+const { ROLES, isSuperAdminEmail } = await import('../../core/config/permissions.js');
+     const isProtectedAdmin =
+       user.roleLegacy === ROLES.ADMIN ||
+       user.role?.name === ROLES.ADMIN ||
+       isSuperAdminEmail(user.email);
     if (isProtectedAdmin) {
       return res
         .status(400)
@@ -352,6 +421,16 @@ export const deleteUser = async (req, res) => {
       }
 
       await tx.user.delete({ where: { id } });
+
+      // Marquer le jeton comme exécuté
+      await tx.actionApproval.update({
+        where: { id: confirmationToken },
+        data: {
+          status: 'EXECUTED',
+          executedAt: new Date(),
+          approvedBy: req.user.id,
+        },
+      });
     });
 
     try {
