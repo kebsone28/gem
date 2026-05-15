@@ -123,7 +123,7 @@ async function runGlobalSync() {
                         type: 'SYNC',
                         message: 'Synchronisation Kobo réussie',
                         detail: `${result.applied} formulaires intégrés avec succès (${project.name}).`,
-                        sender: 'SERVEUR GEM'
+                        sender: 'SERVEUR GED OS'
                     });
                 } else {
                     console.log(`[KOBO-CRON] ℹ️ Rien de nouveau pour ${org.name}/${project.name}.`);

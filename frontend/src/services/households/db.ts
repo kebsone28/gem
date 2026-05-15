@@ -11,7 +11,7 @@ class HouseholdDB extends Dexie {
   households!: Dexie.Table<HouseholdEntry, string>;
 
   constructor() {
-    super('gem_household_db');
+    super('ged_os_household_db');
     this.version(1).stores({ households: '&id,last_modified' });
   }
 }

@@ -45,7 +45,7 @@ async function deriveKey(secret: string): Promise<CryptoKey> {
   return crypto.subtle.deriveKey(
     {
       name: 'PBKDF2',
-      salt: enc.encode('gem-saas-salt'),
+      salt: enc.encode('ged-os-platform-salt'),
       iterations: 100000,
       hash: 'SHA-256'
     },

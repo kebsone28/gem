@@ -19,11 +19,12 @@ import logger from '../utils/logger';
 import * as missionApprovalService from '../services/missionApprovalService';
 import * as missionService from '../services/missionService';
 import { organizationService } from '../services/organizationService';
+import { sharedocService } from '../services/sharedocService';
 import { normalizeMissionApprovalRole } from '../utils/roleUtils';
 import { ROLES, normalizeRole } from '../utils/permissions';
 
 // Services & Store
-import { generateMissionOrderPDF } from '../services/missionOrderGenerator';
+import { generateMissionOrderPDF, generateMissionReportPDF } from '../services/missionOrderGenerator';
 import {
   generateMissionOrderWord,
   generateMissionReportWord,
@@ -44,6 +45,7 @@ import { useMissionState } from './mission/hooks/useMissionState';
 import { useMissionSync } from './mission/hooks/useMissionSync';
 import { useMissionWorkflow } from './mission/hooks/useMissionWorkflow';
 import { syncEventBus } from '../utils/syncEventBus';
+import { useLabels } from '../contexts/LabelsContext';
 
 // Core Selectors
 import {
@@ -113,6 +115,7 @@ export default function MissionOrder() {
   const { devis } = useFinances();
   const { peut, PERMISSIONS, role } = usePermissions();
   const { activeProjectId } = useProject();
+  const { getLabel } = useLabels();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Organization Config for DG Visibility
@@ -599,6 +602,43 @@ export default function MissionOrder() {
     }
   };
 
+  const getOrCreateArchivesFolder = async () => {
+    try {
+      const res = await sharedocService.getDocuments({ search: 'Archives Missions' });
+      const docs = res.data?.documents || res.data || [];
+      const existing = (Array.isArray(docs) ? docs : []).find(
+        (d: any) => d.filename === 'Archives Missions' && d.mimeType === 'application/vnd.folder'
+      );
+      if (existing) return existing.id;
+
+      const newFolderRes = await sharedocService.createFolder('Archives Missions');
+      return newFolderRes.data?.id || newFolderRes.id;
+    } catch (err) {
+      logger.warn('Failed to get/create Archives Missions folder', err);
+      return null;
+    }
+  };
+
+  const handleExportReportPDF = async () => {
+    try {
+      const blob = await generateMissionReportPDF(state.formData as MissionOrderData, true);
+      missionState.addAuditEntry('Rapport PDF généré', 'Système');
+      
+      // Automatisation : Upload vers Sharedoc
+      try {
+        const folderId = await getOrCreateArchivesFolder();
+        const pdfFile = new File([blob as Blob], `${getMissionFileStem(state.formData)}_Rapport.pdf`, { type: 'application/pdf' });
+        await sharedocService.uploadDocument(pdfFile, folderId, 'Rapport de mission archivé automatiquement');
+        toast.success('Rapport archivé dans Sharedoc.', { icon: '📁' });
+      } catch (uploadErr) {
+        logger.error('Erreur archivage Rapport Sharedoc:', uploadErr);
+        toast.error('Le rapport est généré mais l\'archivage a échoué.');
+      }
+    } catch (e) {
+      toast.error('Erreur lors de la génération du rapport PDF');
+    }
+  };
+
   const handleExportExcel = () => {
     const data = state.formData as MissionOrderData;
     const wb = XLSX.utils.book_new();
@@ -805,6 +845,19 @@ export default function MissionOrder() {
         });
         await fetchWorkflow();
         toast.success('Mission validée avec succès.');
+
+        // Automatisation : Upload vers Sharedoc des missions validées (DG)
+        try {
+          const folderId = await getOrCreateArchivesFolder();
+          const pdfBlob = await generateMissionOrderPDF(state.formData as MissionOrderData, false);
+          const pdfFile = new File([pdfBlob], `${getMissionFileStem(state.formData)}_OM_certifie.pdf`, { type: 'application/pdf' });
+          await sharedocService.uploadDocument(pdfFile, folderId, 'Ordre de mission validé automatiquement par le workflow');
+          toast.success('Ordre de mission archivé dans Sharedoc.', { icon: '📁' });
+        } catch (uploadErr) {
+          logger.error('Erreur archivage Sharedoc:', uploadErr);
+          toast.error('La validation a réussi mais l\'archivage automatique a échoué.');
+        }
+
       } else {
         toast.error('Échec de la validation finale.');
       }
@@ -1341,10 +1394,10 @@ export default function MissionOrder() {
                             <span>📄</span> Exporter Word Rapport
                           </button>
                           <button
-                            onClick={handleExportPDF}
+                            onClick={handleExportReportPDF}
                             className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl flex items-center justify-center gap-2"
                           >
-                            <span>📑</span> Exporter PDF
+                            <span>📑</span> Exporter PDF Rapport
                           </button>
                         </div>
                       </div>
@@ -1435,7 +1488,7 @@ export default function MissionOrder() {
                                 </div>
                                 <div>
                                   <p className="text-sm font-bold text-slate-900 dark:text-white">
-                                    Rapport Post-Mission (Word)
+                                    Rapport Post-Mission (Word/PDF)
                                   </p>
                                   <p className="text-xs text-slate-500 dark:text-slate-400">
                                     Généré le {new Date().toLocaleDateString('fr-FR')}
@@ -1446,12 +1499,6 @@ export default function MissionOrder() {
                                 <button
                                   onClick={handleExportReportWord}
                                   disabled={!selectedArchiveMission}
-                                  className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg flex items-center gap-1"
-                                >
-                                  <span>⬇️</span> Télécharger
-                                </button>
-                                <button
-                                  onClick={() => setActiveTab('report')}
                                   className="px-3 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 text-xs font-bold rounded-lg"
                                 >
                                   Modifier
@@ -1567,6 +1614,7 @@ export default function MissionOrder() {
                       totalFrais={totalFrais}
                       projectBudget={projectBudget}
                       members={state.members}
+                      excludeFromFinance={state.formData.excludeFromFinance}
                     />
                     <WidgetErrorBoundary title="Indicateurs de Statut">
                       <MissionStatusWidget

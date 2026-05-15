@@ -1,3 +1,6 @@
+import { routePermissionSatisfied } from '../config/permissionNormalization.js';
+import { ROLE_PERMISSIONS as SEED_ROLE_PERMISSIONS } from '../config/permissions.js';
+
 /**
  * Matrice de Permissions - Backend
  */
@@ -85,12 +88,10 @@ export const checkPermission = (user, permission) => {
     if (!user) return false;
     if (user.role === ROLES.ADMIN) return true;
 
-    // 1. Check custom override permissions
-    if (user.permissions && Array.isArray(user.permissions) && user.permissions.length > 0) {
-        return user.permissions.includes(permission);
-    }
-
-    // 2. Fall back to role-based default
-    const rolesPermissions = ROLE_PERMISSIONS[user.role] || [];
-    return rolesPermissions.includes(permission);
+    return routePermissionSatisfied(
+        user.permissions || [],
+        user.role,
+        permission,
+        SEED_ROLE_PERMISSIONS
+    );
 };

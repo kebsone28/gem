@@ -44,9 +44,11 @@ export const useWebSockets = () => {
     initializedRef.current = true;
 
     // 3. Robust URL resolution (Vite dev -> local proxy base, Prod -> direct URL)
-    const BASE_URL = import.meta.env.PROD
-      ? import.meta.env.VITE_API_URL?.replace(/\/api$/, '') || window.location.origin
-      : window.location.origin;
+    const BASE_URL = import.meta.env.VITE_API_URL
+      ? import.meta.env.VITE_API_URL.replace(/\/api$/, '')
+      : import.meta.env.DEV
+        ? 'http://localhost:8888'
+        : window.location.origin;
 
     if (!socketInstance) {
       logger.log('🚀 Initialisation du WebSocket Singleton...');

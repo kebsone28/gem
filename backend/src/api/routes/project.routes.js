@@ -15,6 +15,8 @@ import {
 import { authProtect } from '../middlewares/auth.js';
 import { verifierPermission, verifierAssignation } from '../../middleware/verifierPermission.js';
 import { PERMISSIONS } from '../../core/config/permissions.js';
+import * as projectConfig from '../../modules/projectConfig/projectConfig.controller.js';
+import { getProjectAnalytics } from '../../modules/project/project_analytics.controller.js';
 
 const router = express.Router();
 
@@ -33,5 +35,18 @@ router.delete('/:id', verifierPermission(PERMISSIONS.SUPPRIMER_PROJET), verifier
 router.post('/system/deploy', deployServerUpdate);
 router.post('/system/db-maintenance', dbMaintenance);
 
+// Project pages & modules (scoped by :id project)
+router.get('/:id/template', projectConfig.getProjectTemplate);
+router.get('/:id/pages', projectConfig.listPages);
+router.post('/:id/pages', verifierPermission('project.module.manage'), projectConfig.createPage);
+router.patch('/:id/pages/:pageId', verifierPermission('project.module.manage'), projectConfig.updatePage);
+router.delete('/:id/pages/:pageId', verifierPermission('project.module.manage'), projectConfig.deletePage);
+
+router.get('/:id/modules', projectConfig.listModules);
+router.post('/:id/modules', verifierPermission('project.module.manage'), projectConfig.createModule);
+router.patch('/:id/modules/:moduleId', verifierPermission('project.module.manage'), projectConfig.updateModule);
+router.delete('/:id/modules/:moduleId', verifierPermission('project.module.manage'), projectConfig.deleteModule);
+
+router.get('/:id/analytics', getProjectAnalytics);
 
 export default router;

@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React from 'react';
 // ── Polyfill for crypto.randomUUID (Fix for non-secure HTTP contexts) ────────
 if (typeof crypto !== 'undefined' && !crypto.randomUUID) {
@@ -27,6 +27,12 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { startBackgroundSync } from './services/sync/backgroundSyncService';
 import { initOfflineListener } from './services/offline/offlineService';
 import logger from './utils/logger';
+import { PROJECT_CONFIG } from './config/projectConfig';
+
+// ── Browser Tab Title Initialization ─────────────────────────────────────────
+if (typeof document !== 'undefined') {
+  document.title = PROJECT_CONFIG.appName;
+}
 
 function hardenDomRemoveChild() {
   if (typeof window === 'undefined' || typeof Node === 'undefined') {
@@ -115,15 +121,15 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ErrorBoundary>
       <AuthProvider>
-        <LabelsProvider>
-          <SyncProvider>
-            <ThemeProvider>
-              <ProjectProvider>
+        <ProjectProvider>
+          <LabelsProvider>
+            <SyncProvider>
+              <ThemeProvider>
                 <App />
-              </ProjectProvider>
-            </ThemeProvider>
-          </SyncProvider>
-        </LabelsProvider>
+              </ThemeProvider>
+            </SyncProvider>
+          </LabelsProvider>
+        </ProjectProvider>
       </AuthProvider>
     </ErrorBoundary>
   </React.StrictMode>

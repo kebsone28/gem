@@ -278,7 +278,7 @@ function isStrategyHeading(line: string): boolean {
 
 const CAHIER_TECHNICAL_PRINCIPLES = [
   'Références techniques : appliquer les normes NS 01-001, NF C 15-100 et les prescriptions Senelec selon le périmètre de chaque ouvrage.',
-  'Traçabilité terrain : chaque intervention doit être documentée dans GEM-MINT/Kobo avec numéro d’ordre, photos, GPS, statut et observations.',
+  'Traçabilité terrain : chaque intervention doit être documentée dans GED OS MINT/Kobo avec numéro d’ordre, photos, GPS, statut et observations.',
   'Contrôle qualité : aucun ouvrage ne doit être transmis au lot suivant sans vérification visuelle, contrôle des points critiques et levée des réserves techniques.',
   'Sécurité : les EPI, la consignation, la signalisation et la protection mécanique des ouvrages restent obligatoires pendant toute intervention.',
   'Passage de témoin : le Lot B remet au Lot C un mur, un potelet, un coffret comptage et une installation intérieure contrôlables; le Lot C limite son action au câble préassemblé et au raccordement.',
@@ -317,7 +317,7 @@ const DEFAULT_TASK_LIBRARY: TaskLibrary = sanitizeTaskLibraryForCahier({
       'ART 1.2 - TABLEAU MODULAIRE : Montage d’un coffret modulaire équipé d’un différentiel 25A/30mA et de modulaires C10/C20 certifiés, avec étiquetage clair des circuits. Le tableau doit être fixé à 1,50 m du sol et protégé contre les intempéries.',
       'ART 1.3 - MISE À LA TERRE : Réalisation obligatoire d’un dispositif de terre conforme à la NS 01-001, incluant un piquet en acier cuivré de 1,5 m, une barrette de coupure accessible, et un conducteur en cuivre nu Ø25 mm2. La résistance de terre mesurée doit être < 1500 Ohms pour un dispositif différentiel de 30mA. Toute valeur supérieure entraîne une reprise immédiate aux frais du Titulaire.',
       'ART 1.4 - GÉNIE CIVIL LÉGER : Réalisation des tranchées pour le passage des câbles (profondeur minimale 50 cm, largeur 30 cm), avec enfouissement sécurisé de la prise de terre et protection mécanique des câbles. Les tranchées doivent être rebouchées avec du sable compacté et signalées par un ruban avertisseur.',
-      'ART 1.5 - REPORTING JOURNALIER : Le Chef d’équipe est responsable de la mise à jour quotidienne, avant 18h00, du formulaire Kobo intégré à GEM-PROQUELEC, incluant : état d’avancement (en %), photographies géolocalisées des ouvrages, liste des matériaux utilisés, et incidents éventuels. Toute omission ou retard entraîne une pénalité de 2% du montant journalier du lot.',
+      'ART 1.5 - REPORTING JOURNALIER : Le Chef d’équipe est responsable de la mise à jour quotidienne, avant 18h00, du formulaire Kobo intégré à GED OS-PROQUELEC, incluant : état d’avancement (en %), photographies géolocalisées des ouvrages, liste des matériaux utilisés, et incidents éventuels. Toute omission ou retard entraîne une pénalité de 2% du montant journalier du lot.',
     ],
     materials: [
       '- Matériel fourni par le Client (Kits complets conformes aux normes et cahier de charge)',
@@ -445,22 +445,22 @@ const DEFAULT_TASK_LIBRARY: TaskLibrary = sanitizeTaskLibraryForCahier({
       "ART 4.1 - RESPONSABILITÉ : Le Titulaire reste pleinement responsable de la conformité des installations, même en cas de sous-traitance. Il doit obtenir l'accord écrit du Maître d'Ouvrage pour toute sous-traitance et vérifier que le sous-traitant dispose des certifications requises (qualification Senelec, assurance RC Pro).",
     ],
     finances: [
-      'ART 5.1 - VALIDATION PAR RÉCEPTION FINALE : La réception finale, prononcée par PROQUELEC après vérification de la conformité aux exigences contractuelles, déclenche l\'exigibilité du paiement. Elle est matérialisée par le statut "Réceptionné conforme" dans GEM-PROQUELEC et la signature d\'un PVR.',
-      "ART 5.2 - OBLIGATION DE SAISIE KOBO : Le Titulaire a l'obligation contractuelle de renseigner quotidiennement le formulaire Kobo avant 18h00. Le Chef de Projet assure la liquidation des règlements hebdomadaires sur la base des données validées dans GEM-PROQUELEC.",
+      'ART 5.1 - VALIDATION PAR RÉCEPTION FINALE : La réception finale, prononcée par PROQUELEC après vérification de la conformité aux exigences contractuelles, déclenche l\'exigibilité du paiement. Elle est matérialisée par le statut "Réceptionné conforme" dans GED OS-PROQUELEC et la signature d\'un PVR.',
+      "ART 5.2 - OBLIGATION DE SAISIE KOBO : Le Titulaire a l'obligation contractuelle de renseigner quotidiennement le formulaire Kobo avant 18h00. Le Chef de Projet assure la liquidation des règlements hebdomadaires sur la base des données validées dans GED OS-PROQUELEC.",
       "ART 5.3 - CAUTIONNEMENT FLEXIBLE : La retenue de garantie est limitée à 5-10% du montant des prestations. Le Titulaire peut la substituer par une caution d'assurance délivrée par une compagnie agréée (SONAM, ASKIA), sous réserve de transmission de l’attestation correspondante.",
     ],
     legal: [
       'ART E.1 - RESPONSABILITÉ TECHNIQUE : L’électricien est responsable de la conformité totale de l’installation intérieure aux normes NFC 15-100 et NS 01-001. Toute non-conformité engage sa responsabilité civile et pénale.',
       'ART E.2 - RISQUE ÉLECTRIQUE : Toute installation non sécurisée engage sa responsabilité en cas d’incendie, d’électrocution ou de dommage matériel, conformément au Code pénal sénégalais.',
       'ART E.3 - MISE À LA TERRE : L’absence ou la défaillance du systeme de terre (résistance > 1500 Ohms, conducteur section insuffisante) constitue une faute grave, entraînant le rejet de l’ouvrage et l’application de pénalités de 15% du montant du lot par jour de retard dans la correction.',
-      'ART E.5 - ESSAIS OBLIGATOIRES : Avant validation, des essais de continuité, d’isolement (R > 0,5 MOhms) et de déclenchement du différentiel (IΔn <= 30 mA) doivent être réalisés et consignés dans GEM-PROQUELEC. Leur absence entraîne le rejet systématique de l’ouvrage.',
+      'ART E.5 - ESSAIS OBLIGATOIRES : Avant validation, des essais de continuité, d’isolement (R > 0,5 MOhms) et de déclenchement du différentiel (IΔn <= 30 mA) doivent être réalisés et consignés dans GED OS-PROQUELEC. Leur absence entraîne le rejet systématique de l’ouvrage.',
     ],
     pricing: {
       dailyRate: 25000,
       personnelCount: 5,
       durationDays: 20,
       penalties:
-        '**PÉNALITÉS POUR RETARD OU NON-CONFORMITÉ**\n- **Retard de réalisation** : 5% du montant du lot par semaine de retard (plafonné à 20%).\n- **Non-conformité majeure** (ex : absence de mise à la terre, résistance > 1500 Ohms) : 10% du montant du lot **par jour** jusqu’à correction, sans dépasser 50% du montant total.\n- **Absence de reporting quotidien (Kobo/GEM-PROQUELEC)** : 2% du montant journalier du lot par omission, avec blocage des paiements jusqu’à régularisation.\n- **Falsification des données** (ex : photos truquées, essais non réalisés) : Résiliation immédiate du marché + pénalités de 100% du montant du lot concerné.\n- **Non-respect des EPI** : Arrêt immédiat des travaux + pénalité de 5% du montant journalier du lot par infraction constatée.',
+        '**PÉNALITÉS POUR RETARD OU NON-CONFORMITÉ**\n- **Retard de réalisation** : 5% du montant du lot par semaine de retard (plafonné à 20%).\n- **Non-conformité majeure** (ex : absence de mise à la terre, résistance > 1500 Ohms) : 10% du montant du lot **par jour** jusqu’à correction, sans dépasser 50% du montant total.\n- **Absence de reporting quotidien (Kobo/GED OS-PROQUELEC)** : 2% du montant journalier du lot par omission, avec blocage des paiements jusqu’à régularisation.\n- **Falsification des données** (ex : photos truquées, essais non réalisés) : Résiliation immédiate du marché + pénalités de 100% du montant du lot concerné.\n- **Non-respect des EPI** : Arrêt immédiat des travaux + pénalité de 5% du montant journalier du lot par infraction constatée.',
       currency: 'FCFA',
     },
   },
@@ -499,8 +499,8 @@ const DEFAULT_TASK_LIBRARY: TaskLibrary = sanitizeTaskLibraryForCahier({
       'ART M.4 - FISSURATION POST-RÉCEPTION : Toute fissuration apparue dans les 12 mois suivant la réception engage la responsabilité du Titulaire et donne lieu à une reprise gratuite sous 15 jours, sous peine de pénalités de 5% par semaine de retard.',
     ],
     finances: [
-      'ART 5.1 - VALIDATION PAR RÉCEPTION FINALE : La réception finale est prononcée par PROQUELEC après vérification de la conformité dimensionnelle, mécanique et esthétique des murets. Elle est matérialisée par le statut "Réceptionné conforme" dans GEM-PROQUELEC et la signature d’un PVR.',
-      'ART 5.2 - OBLIGATION KOBO : Saisie quotidienne obligatoire des murets réalisés (dimensions, photos, contrôles) pour permettre le pilotage de la trésorerie par le Chef de Projet via GEM-PROQUELEC. Toute absence de saisie entraîne un blocage des paiements jusqu’à régularisation.',
+      'ART 5.1 - VALIDATION PAR RÉCEPTION FINALE : La réception finale est prononcée par PROQUELEC après vérification de la conformité dimensionnelle, mécanique et esthétique des murets. Elle est matérialisée par le statut "Réceptionné conforme" dans GED OS-PROQUELEC et la signature d’un PVR.',
+      'ART 5.2 - OBLIGATION KOBO : Saisie quotidienne obligatoire des murets réalisés (dimensions, photos, contrôles) pour permettre le pilotage de la trésorerie par le Chef de Projet via GED OS-PROQUELEC. Toute absence de saisie entraîne un blocage des paiements jusqu’à régularisation.',
       'ART 5.3 - CAUTIONNEMENT : Acceptation de la caution d’assurance (SONAM/ASKIA) pour l’avance de démarrage, sous réserve de transmission de l’attestation correspondante avant le premier décaissement.',
     ],
     pricing: {
@@ -604,15 +604,15 @@ const DEFAULT_TASK_LIBRARY: TaskLibrary = sanitizeTaskLibraryForCahier({
       'ART R.4 - SÉCURITÉ PUBLIQUE : Le Titulaire est responsable des risques pour les tiers (chute de câble, électrocution) liés à ses installations. Il doit souscrire une assurance spécifique couvrant ces risques et en fournir la preuve avant le démarrage des travaux.',
     ],
     finances: [
-      'ART 5.1 - RÉCEPTION FINALE : Paiement hebdomadaire à l\'unité (par branchement) après réception finale par PROQUELEC et obtention du statut "Réceptionné conforme" dans GEM-PROQUELEC. Le PVR signé est obligatoire pour le déclenchement du paiement.',
-      "ART 5.2 - FACILITATION GEM : Le systeme GEM-PROQUELEC permet un suivi en temps réel des flux de trésorerie, sur la base des formulaires Kobo renseignés quotidiennement par le prestataire. Les retards de saisie bloquent les paiements jusqu'à régularisation.",
+      'ART 5.1 - RÉCEPTION FINALE : Paiement hebdomadaire à l\'unité (par branchement) après réception finale par PROQUELEC et obtention du statut "Réceptionné conforme" dans GED OS-PROQUELEC. Le PVR signé est obligatoire pour le déclenchement du paiement.',
+      "ART 5.2 - FACILITATION GED OS : Le systeme GED OS-PROQUELEC permet un suivi en temps réel des flux de trésorerie, sur la base des formulaires Kobo renseignés quotidiennement par le prestataire. Les retards de saisie bloquent les paiements jusqu'à régularisation.",
     ],
     pricing: {
       dailyRate: 40000,
       personnelCount: 2,
       durationDays: 15,
       penalties:
-        "**PÉNALITÉS POUR NON-RESPECT DES NORMES DE SÉCURITÉ ET DE DÉLAIS**\n- **Retard de branchement** : 10% du montant du lot par semaine (plafonné à 30%).\n- **Non-respect des distances de sécurité** (ex : câble à < 3 m au-dessus d'une voie) : Reprise immédiate + 15% du montant du lot par jour jusqu'à conformité.\n- **Absence de harnais en hauteur** : Arrêt immédiat des travaux + pénalité de 20% du montant journalier du lot.\n- **Branchement non conforme** (ex : absence de coupe-circuit) : Refus de mise en service par Senelec + 10% du montant du lot par jour de retard.\n- **Non-tracabilité des livraisons** (Kobo/GEM-PROQUELEC) : Blocage des paiements + 3% du montant journalier du lot par omission.\n- **Dégâts sur le réseau Senelec** : Réparation aux frais du Titulaire sous 48h, sinon pénalités de 20% du montant du lot par jour.",
+        "**PÉNALITÉS POUR NON-RESPECT DES NORMES DE SÉCURITÉ ET DE DÉLAIS**\n- **Retard de branchement** : 10% du montant du lot par semaine (plafonné à 30%).\n- **Non-respect des distances de sécurité** (ex : câble à < 3 m au-dessus d'une voie) : Reprise immédiate + 15% du montant du lot par jour jusqu'à conformité.\n- **Absence de harnais en hauteur** : Arrêt immédiat des travaux + pénalité de 20% du montant journalier du lot.\n- **Branchement non conforme** (ex : absence de coupe-circuit) : Refus de mise en service par Senelec + 10% du montant du lot par jour de retard.\n- **Non-tracabilité des livraisons** (Kobo/GED OS-PROQUELEC) : Blocage des paiements + 3% du montant journalier du lot par omission.\n- **Dégâts sur le réseau Senelec** : Réparation aux frais du Titulaire sous 48h, sinon pénalités de 20% du montant du lot par jour.",
       currency: 'FCFA',
     },
   },
@@ -624,7 +624,7 @@ const DEFAULT_TASK_LIBRARY: TaskLibrary = sanitizeTaskLibraryForCahier({
     introduction:
       "ARTICLE 1 - OBJET : Gestion des flux de matériel, transport sécurisé, tracabilité des équipements, et gestion des rebuts, conformément aux exigences de tracabilité numérique du projet. Le Titulaire garantit la livraison intacte et dans les délais des matériaux, ainsi que leur stockage sécurisé sur les sites d'intervention.",
     missions: [
-      'ART 4.1 - TRACABILITÉ NUMÉRIQUE : Enregistrement systématique des mouvements de stock (entrées/sorties) dans GEM-PROQUELEC via les identifiants NumeroOrdre, avec scan des codes-barres et géolocalisation des livraisons. Toute discordance entre les stocks physiques et numériques entraîne un audit immédiat et des pénalités de 5% du montant du lot concerné.',
+      'ART 4.1 - TRACABILITÉ NUMÉRIQUE : Enregistrement systématique des mouvements de stock (entrées/sorties) dans GED OS-PROQUELEC via les identifiants NumeroOrdre, avec scan des codes-barres et géolocalisation des livraisons. Toute discordance entre les stocks physiques et numériques entraîne un audit immédiat et des pénalités de 5% du montant du lot concerné.',
       "ART 4.2 - TRANSPORT SÉCURISÉ : Acheminement des matériaux vers les sites d'intervention avec arrimage certifié des bobines (sangle 2T, protection anti-abrasion), respect des limites de vitesse (40 km/h en zone habitée), et signalisation du convoi. Les véhicules doivent être équipés de systèmes de géolocalisation et de kits de sécurité (extincteurs, trousses de secours).",
       'ART 4.3 - GESTION DES REBUTS : Récupération et tri des chutes de câbles, emballages et matériaux usagés pour traitement centralisé (recyclage ou élimination conforme). Un bordereau de suivi des déchets doit être établi et transmis hebdomadairement au Chef de Projet.',
       'ART 4.4 - CONTRÔLE DES FLUX : Reporting quotidien des quantités livrées vs prévisionnel, avec alerte immédiate en cas de risque de rupture. Les écarts > 10% doivent être justifiés sous 24h, sous peine de pénalités de 3% du montant du lot.',
@@ -633,7 +633,7 @@ const DEFAULT_TASK_LIBRARY: TaskLibrary = sanitizeTaskLibraryForCahier({
     materials: [
       '- Véhicules de transport équipés (géolocalisation, arrimage certifié, extincteurs)',
       '- Systèmes de protection des bobines (sangles, bâches, caisses de transport)',
-      '- Terminaux mobiles de scan et logiciels de tracabilité (GEM-PROQUELEC, Kobo)',
+      '- Terminaux mobiles de scan et logiciels de tracabilité (GED OS-PROQUELEC, Kobo)',
       '- Équipements de sécurité (gilets haute visibilité, kits de premiers secours).',
     ],
     hse: [
@@ -645,12 +645,12 @@ const DEFAULT_TASK_LIBRARY: TaskLibrary = sanitizeTaskLibraryForCahier({
     ],
     legal: [
       "ART L.1 - RESPONSABILITÉ DU TRANSPORT : Le Titulaire est responsable des équipements et matériaux du départ du dépôt jusqu'à leur réception sur site. Toute perte, vol ou détérioration sera facturée au prix du marché majoré de 20%.",
-      "ART L.2 - TRACABILITÉ OBLIGATOIRE : Toute sortie de matériel doit être enregistrée dans GEM-PROQUELEC avant le départ du dépôt. L'absence de tracabilité bloque les paiements jusqu'à régularisation.",
+      "ART L.2 - TRACABILITÉ OBLIGATOIRE : Toute sortie de matériel doit être enregistrée dans GED OS-PROQUELEC avant le départ du dépôt. L'absence de tracabilité bloque les paiements jusqu'à régularisation.",
       "ART L.3 - GESTION DES DÉCHETS : Le non-respect des procédures de tri et d'élimination des rebuts (câbles, emballages) entraîne une pénalité de 5% du montant du lot et peut donner lieu à une exclusion du marché pour non-respect des normes environnementales.",
       "ART L.4 - STOCKAGE SÉCURISÉ : Les matériaux doivent être stockés sur site dans des conditions préservant leur intégrité (abri, protection contre l'humidité). Tout dommage dû à un stockage défectueux est à la charge du Titulaire.",
     ],
     finances: [
-      'ART 5.1 - PAIEMENT : Règlement hebdomadaire après réception finale des flux de matériel et validation des données dans GEM-PROQUELEC par le Chef de Projet. Les bordereaux de livraison signés et les preuves de tracabilité sont obligatoires.',
+      'ART 5.1 - PAIEMENT : Règlement hebdomadaire après réception finale des flux de matériel et validation des données dans GED OS-PROQUELEC par le Chef de Projet. Les bordereaux de livraison signés et les preuves de tracabilité sont obligatoires.',
       "ART 5.2 - OBLIGATION KOBO : La tracabilité des livraisons via les formulaires Kobo est obligatoire pour déclencher les facilités de trésorerie. Toute absence de saisie bloque les paiements jusqu'à régularisation.",
       "ART 5.3 - GARANTIE : Retenue de garantie limitée à 5-10%, libérable par caution d'assurance (SONAM/ASKIA) sur présentation de l'attestation correspondante.",
     ],
@@ -659,7 +659,7 @@ const DEFAULT_TASK_LIBRARY: TaskLibrary = sanitizeTaskLibraryForCahier({
       personnelCount: 2,
       durationDays: 15,
       penalties:
-        '**PÉNALITÉS POUR PERTE, RETARD OU NON-TRACABILITÉ**\n- **Perte ou endommagement de matériel** : Remboursement au prix du marché majoré de 20% + pénalité de 10% du montant du lot par unité perdue.\n- **Retard de livraison** (> 24h) : 5% du montant du lot par jour de retard (plafonné à 30%).\n- **Non-respect des procédures de tracabilité** (Kobo/GEM-PROQUELEC) : Blocage des paiements + 5% du montant journalier du lot par omission.\n- **Excès de vitesse ou infraction routière** : 5% du montant journalier du lot par infraction, cumulable en cas de récidive.\n- **Transport de passagers non autorisés** : Immobilisation du véhicule + pénalité de 10% du montant du lot.\n- **Non-gestion des rebuts** (câbles, emballages) : Pénalité de 7% du montant du lot + obligation de nettoyage aux frais du Titulaire.',
+        '**PÉNALITÉS POUR PERTE, RETARD OU NON-TRACABILITÉ**\n- **Perte ou endommagement de matériel** : Remboursement au prix du marché majoré de 20% + pénalité de 10% du montant du lot par unité perdue.\n- **Retard de livraison** (> 24h) : 5% du montant du lot par jour de retard (plafonné à 30%).\n- **Non-respect des procédures de tracabilité** (Kobo/GED OS-PROQUELEC) : Blocage des paiements + 5% du montant journalier du lot par omission.\n- **Excès de vitesse ou infraction routière** : 5% du montant journalier du lot par infraction, cumulable en cas de récidive.\n- **Transport de passagers non autorisés** : Immobilisation du véhicule + pénalité de 10% du montant du lot.\n- **Non-gestion des rebuts** (câbles, emballages) : Pénalité de 7% du montant du lot + obligation de nettoyage aux frais du Titulaire.',
       currency: 'FCFA',
     },
   },
@@ -672,13 +672,13 @@ const DEFAULT_TASK_LIBRARY: TaskLibrary = sanitizeTaskLibraryForCahier({
       "ARTICLE 1 - OBJET : Surveillance, essai et validation finale de l'ensemble des ouvrages (Génie Civil, Réseau, Intérieur) pour garantir leur conformité aux normes techniques (NFC 15-100, NS 01-001, doctrine Senelec) et aux exigences du présent Cahier des Charges. Le contrôleur PROQUELEC agit en totale indépendance et son avis est souverain pour la réception des travaux.",
     missions: [
       "ART 5.1 - AUDIT MAÇONNERIE : Vérification de la verticalité des murs (+/- 2 mm/m), du dosage du béton (350 kg/m3 pour les fondations), de la solidité mécanique des potelets, et de l'étanchéité des coffrets. Les essais de charge (1,5x la charge nominale) sont réalisés en présence du Titulaire.",
-      "ART 5.2 - AUDIT RÉSEAU : Contrôle du branchement (tension mécanique du câble, présence et calibrage du coupe-circuit, étanchéité du hublot Senelec). Les mesures de résistance d'isolement (R > 0,5 MOhms) et de continuité sont consignées dans GEM-PROQUELEC.",
+      "ART 5.2 - AUDIT RÉSEAU : Contrôle du branchement (tension mécanique du câble, présence et calibrage du coupe-circuit, étanchéité du hublot Senelec). Les mesures de résistance d'isolement (R > 0,5 MOhms) et de continuité sont consignées dans GED OS-PROQUELEC.",
       "ART 5.3 - AUDIT ÉLECTRICIEN : Test de déclenchement du différentiel 30mA, vérification du disjoncteur 5/15A, et mesure de la résistance de terre (< 1500 Ohms). Les essais sont réalisés conformément à la norme NFC 15-100 et leurs résultats sont transmis au Maître d'Ouvrage sous 24h.",
       "ART 5.4 - CONFORMITÉ LOT 24 : Inspection visuelle des gaines, canalisations et fixations pour prévenir tout risque d'incendie ou d'électrocution. Les non-conformités sont consignées dans un Procès-Verbal de Non-Conformité (PVNC) et notifiées au Titulaire sous 48h.",
-      "ART 5.5 - VALIDATION NUMÉRIQUE : Signature électronique du PV de réception dans Kobo/GEM-PROQUELEC, incluant les photographies géolocalisées des ouvrages, les résultats des essais, et l'avis du contrôleur. Ce PV est une condition préalable à tout paiement.",
+      "ART 5.5 - VALIDATION NUMÉRIQUE : Signature électronique du PV de réception dans Kobo/GED OS-PROQUELEC, incluant les photographies géolocalisées des ouvrages, les résultats des essais, et l'avis du contrôleur. Ce PV est une condition préalable à tout paiement.",
     ],
     materials: [
-      '- Tablette tactile avec applications GEM-PROQUELEC/Kobo (géolocalisation, signature électronique)',
+      '- Tablette tactile avec applications GED OS-PROQUELEC/Kobo (géolocalisation, signature électronique)',
       '- Multimètre et telluromètre (étalonnés, certificat de conformité valide)',
       "- VAT (Vérificateur d'Absence de Tension) conforme à la norme NFC 18-510",
       '- Appareil photo haute résolution avec horodatage et géolocalisation.',
@@ -693,12 +693,12 @@ const DEFAULT_TASK_LIBRARY: TaskLibrary = sanitizeTaskLibraryForCahier({
     legal: [
       'ART C.1 - INDÉPENDANCE DU CONTRÔLEUR : Le contrôleur PROQUELEC agit de manière autonome et indépendante des équipes de réalisation. Ses décisions sont souveraines et ne peuvent faire l’objet de pression ou d’influence.',
       'ART C.2 - POUVOIR DE REFUS : Tout ouvrage non conforme aux normes ou présentant un risque pour la sécurité est rejeté jusqu’à reprise complète et validation par PROQUELEC. Le Titulaire ne peut contester ce rejet sans preuve écrite de conformité.',
-      'ART C.3 - CERTIFICATION FINALE : La validation dans GEM-PROQUELEC par le contrôleur PROQUELEC constitue le seul acte déclenchant le processus de paiement. Aucune réception verbale ou partielle n’est opposable au Maître d’Ouvrage.',
+      'ART C.3 - CERTIFICATION FINALE : La validation dans GED OS-PROQUELEC par le contrôleur PROQUELEC constitue le seul acte déclenchant le processus de paiement. Aucune réception verbale ou partielle n’est opposable au Maître d’Ouvrage.',
       'ART C.4 - RESPONSABILITÉ DU CONTRÔLEUR : Le contrôleur engage sa responsabilité en cas de validation d’un ouvrage dangereux ou non conforme. Il doit signaler toute tentative de fraude ou de falsification des données.',
     ],
     finances: [
       'ART 5.1 - HONORAIRES : Règlement basé sur le volume d’ouvrages audités et validés, selon un barème fixe par type de contrôle (maçonnerie, réseau, électricité). Les honoraires sont dus dès la signature du PV de réception.',
-      'ART 5.2 - FACILITATION GEM : Utilisation de GEM-PROQUELEC pour le suivi des audits et l’accélération des validations. Les retards de saisie des rapports bloquent les paiements jusqu’à régularisation.',
+      'ART 5.2 - FACILITATION GED OS : Utilisation de GED OS-PROQUELEC pour le suivi des audits et l’accélération des validations. Les retards de saisie des rapports bloquent les paiements jusqu’à régularisation.',
     ],
     pricing: {
       dailyRate: 50000,
@@ -785,7 +785,7 @@ export default function Cahier() {
         return restoreTaskLibraryIcons(projectHistory[0].library);
       }
 
-      const localSaved = safeStorage.getItem('gem_cahier_library');
+      const localSaved = safeStorage.getItem('ged_os_cahier_library');
       if (localSaved) {
         const parsed = JSON.parse(localSaved);
         if (parsed['Électricien']) {
@@ -805,7 +805,7 @@ export default function Cahier() {
         return mergeContractLibraryWithDefaults(serverLibrary);
       }
 
-      const saved = safeStorage.getItem('gem_contract_library');
+      const saved = safeStorage.getItem('ged_os_contract_library');
       if (saved) {
         const parsed = JSON.parse(saved) as ContractTemplateLibrary;
         if (parsed['LOT A']) return mergeContractLibraryWithDefaults(parsed);
@@ -825,7 +825,7 @@ export default function Cahier() {
           return serverStrategy;
         }
 
-        const saved = safeStorage.getItem('gem_operational_strategy');
+        const saved = safeStorage.getItem('ged_os_operational_strategy');
         if (saved) {
           const parsed = JSON.parse(saved) as OperationalStrategyTemplate;
           if (Array.isArray(parsed.content) && parsed.content.length > 0) return parsed;
@@ -853,11 +853,11 @@ export default function Cahier() {
     (image: any) => Array.isArray(image.notes) && image.notes.length > 0
   ) as
     | {
-        url: string;
-        label: string;
-        notes: Array<{ title: string; lines: string[] }>;
-        legend?: string[];
-      }
+      url: string;
+      label: string;
+      notes: Array<{ title: string; lines: string[] }>;
+      legend?: string[];
+    }
     | undefined;
   const synopticLeftNotes = synopticSchema
     ? synopticSchema.notes.slice(0, Math.ceil(synopticSchema.notes.length / 2))
@@ -1003,7 +1003,7 @@ export default function Cahier() {
 
     try {
       if (!hasServerCahier) {
-        const localCahier = safeStorage.getItem('gem_cahier_library');
+        const localCahier = safeStorage.getItem('ged_os_cahier_library');
         if (localCahier) {
           const parsed = JSON.parse(localCahier);
           if (parsed?.['Électricien']) {
@@ -1017,7 +1017,7 @@ export default function Cahier() {
       }
 
       if (!hasServerContracts) {
-        const localContracts = safeStorage.getItem('gem_contract_library');
+        const localContracts = safeStorage.getItem('ged_os_contract_library');
         if (localContracts) {
           const parsed = JSON.parse(localContracts) as ContractTemplateLibrary;
           if (parsed?.['LOT A']) {
@@ -1031,7 +1031,7 @@ export default function Cahier() {
       }
 
       if (!hasServerStrategy) {
-        const localStrategy = safeStorage.getItem('gem_operational_strategy');
+        const localStrategy = safeStorage.getItem('ged_os_operational_strategy');
         if (localStrategy) {
           const parsed = JSON.parse(localStrategy) as OperationalStrategyTemplate;
           if (Array.isArray(parsed?.content) && parsed.content.length > 0) {
@@ -1050,9 +1050,9 @@ export default function Cahier() {
       migratedProjectRef.current = project.id;
       void persistCahierConfig(updates).then((saved) => {
         if (saved) {
-          safeStorage.removeItem('gem_cahier_library');
-          safeStorage.removeItem('gem_contract_library');
-          safeStorage.removeItem('gem_operational_strategy');
+          safeStorage.removeItem('ged_os_cahier_library');
+          safeStorage.removeItem('ged_os_contract_library');
+          safeStorage.removeItem('ged_os_operational_strategy');
         } else {
           migratedProjectRef.current = null;
         }
@@ -1063,14 +1063,15 @@ export default function Cahier() {
   /**
    * Synchronise le taux automatique avec l'état d'édition si disponible
    */
+  const editDataDailyRate = editData.pricing.dailyRate;
   useEffect(() => {
-    if (automatedRate && isEditing && editData.pricing.dailyRate === 0) {
+    if (automatedRate && isEditing && editDataDailyRate === 0) {
       setEditData((prev) => ({
         ...prev,
         pricing: { ...prev.pricing, dailyRate: automatedRate },
       }));
     }
-  }, [automatedRate, isEditing, editData.pricing.dailyRate]);
+  }, [automatedRate, isEditing, editDataDailyRate]);
 
   useEffect(() => {
     setContractDraft(currentContract.content.join('\n'));
@@ -1536,11 +1537,10 @@ export default function Cahier() {
                 </button>
                 <button
                   onClick={() => setShowAdvancedSections((v) => !v)}
-                  className={`flex items-center gap-2 px-3 md:px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${
-                    showAdvancedSections
+                  className={`flex items-center gap-2 px-3 md:px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${showAdvancedSections
                       ? 'bg-amber-500/20 border border-amber-500/40 text-amber-400'
                       : 'bg-slate-800 text-slate-400 hover:text-white'
-                  }`}
+                    }`}
                   title={
                     showAdvancedSections
                       ? 'Masquer les sections avancées'
@@ -1586,11 +1586,10 @@ export default function Cahier() {
                 <button
                   key={item.key}
                   onClick={() => setDocumentMode(item.key)}
-                  className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-[10px] font-bold uppercase tracking-[0.14em] transition-colors ${
-                    active
+                  className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-[10px] font-bold uppercase tracking-[0.14em] transition-colors ${active
                       ? 'bg-slate-100 text-slate-950'
                       : 'text-slate-400 hover:bg-slate-900 hover:text-white'
-                  }`}
+                    }`}
                 >
                   <Icon size={14} />
                   {item.label}
@@ -1610,16 +1609,14 @@ export default function Cahier() {
                     <button
                       key={template.lot}
                       onClick={() => setSelectedContractLot(template.lot)}
-                      className={`flex min-w-[13rem] flex-shrink-0 items-center gap-3 rounded-xl border p-4 text-left transition-colors ${
-                        active
+                      className={`flex min-w-[13rem] flex-shrink-0 items-center gap-3 rounded-xl border p-4 text-left transition-colors ${active
                           ? 'border-emerald-500/70 bg-emerald-500/10 text-white'
                           : 'border-slate-800 bg-slate-950/40 text-slate-400 hover:border-slate-700 hover:bg-slate-900 hover:text-white'
-                      }`}
+                        }`}
                     >
                       <div
-                        className={`flex h-10 w-10 items-center justify-center rounded-lg ${
-                          active ? 'bg-emerald-500/15' : 'bg-slate-900'
-                        }`}
+                        className={`flex h-10 w-10 items-center justify-center rounded-lg ${active ? 'bg-emerald-500/15' : 'bg-slate-900'
+                          }`}
                       >
                         <FileText
                           size={18}
@@ -1710,13 +1707,12 @@ export default function Cahier() {
                           return (
                             <p
                               key={`${line}-${index}`}
-                              className={`${
-                                titleLine
+                              className={`${titleLine
                                   ? 'text-center text-xl font-black uppercase tracking-wide text-slate-950 md:text-2xl'
                                   : heading
                                     ? 'mt-6 text-base font-black text-slate-950'
                                     : 'mt-3 text-sm leading-7 text-slate-700'
-                              }`}
+                                }`}
                             >
                               {line}
                             </p>
@@ -1802,13 +1798,12 @@ export default function Cahier() {
                         return (
                           <p
                             key={`${line}-${index}`}
-                            className={`${
-                              titleLine
+                            className={`${titleLine
                                 ? 'text-center text-xl font-black uppercase tracking-wide text-slate-950 md:text-2xl'
                                 : heading
                                   ? 'mt-6 text-base font-black text-slate-950'
                                   : 'mt-3 text-sm leading-7 text-slate-700'
-                            }`}
+                              }`}
                           >
                             {line}
                           </p>
@@ -1847,11 +1842,10 @@ export default function Cahier() {
                       onClick={() => handleRoleChange(name)}
                       className={`
                       min-w-[16rem] md:min-w-0 h-full min-h-[14rem] flex flex-col items-start gap-4 p-4 md:p-5 rounded-2xl transition-colors border text-left
-                      ${
-                        isSelected
+                      ${isSelected
                           ? 'bg-orange-500/[0.08] text-white border-orange-500/60 shadow-[0_0_0_1px_rgba(249,115,22,0.08)]'
                           : 'bg-slate-950/30 text-slate-400 border-slate-800 hover:bg-slate-900/70 hover:text-white'
-                      }
+                        }
                     `}
                     >
                       <div
@@ -1875,9 +1869,8 @@ export default function Cahier() {
                         </span>
                         {getCadence(name) && (
                           <span
-                            className={`mt-2 block text-xs leading-6 ${
-                              isSelected ? 'text-orange-100/90' : 'text-orange-300'
-                            }`}
+                            className={`mt-2 block text-xs leading-6 ${isSelected ? 'text-orange-100/90' : 'text-orange-300'
+                              }`}
                           >
                             {getCadence(name)}
                           </span>
@@ -2204,28 +2197,25 @@ export default function Cahier() {
                             {currentTask.materials.map((m: string, i: number) => (
                               <div
                                 key={i}
-                                className={`rounded-2xl border p-4 md:p-5 transition-colors ${
-                                  m.startsWith('Materiel') || m.includes('Réalisation')
+                                className={`rounded-2xl border p-4 md:p-5 transition-colors ${m.startsWith('Materiel') || m.includes('Réalisation')
                                     ? 'border-orange-500/15 bg-orange-500/[0.05]'
                                     : 'border-white/8 bg-slate-900/35 hover:border-orange-500/20'
-                                }`}
+                                  }`}
                               >
                                 <div className="flex items-start gap-3">
                                   <div
-                                    className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
-                                      m.startsWith('Materiel') || m.includes('Réalisation')
+                                    className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${m.startsWith('Materiel') || m.includes('Réalisation')
                                         ? 'bg-orange-500/10 text-orange-400'
                                         : 'bg-slate-800 text-slate-400'
-                                    }`}
+                                      }`}
                                   >
                                     <Package size={16} />
                                   </div>
                                   <span
-                                    className={`text-sm leading-7 ${
-                                      m.startsWith('Materiel') || m.includes('Réalisation')
+                                    className={`text-sm leading-7 ${m.startsWith('Materiel') || m.includes('Réalisation')
                                         ? 'font-semibold uppercase tracking-[0.08em] text-orange-200'
                                         : 'text-slate-300'
-                                    }`}
+                                      }`}
                                   >
                                     {m}
                                   </span>
@@ -2721,7 +2711,7 @@ export default function Cahier() {
                           <span className="text-white font-bold italic">
                             « Réceptionné conforme »
                           </span>{' '}
-                          dans GEM.
+                          dans GED OS.
                         </p>
                       </div>
                       <div className="shrink-0 bg-indigo-500/20 px-6 py-3 rounded-2xl border border-indigo-500/30 shadow-lg min-w-[160px] text-center">

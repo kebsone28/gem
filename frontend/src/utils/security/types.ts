@@ -1,5 +1,5 @@
 /**
- * 🔐 Security Types & Constants - GEM SAAS
+ * 🔐 Security Types & Constants - GED OS
  */
 
 // 1️⃣ RÉFÉRENTIEL DES TENANTS
@@ -7,7 +7,7 @@ export const TENANTS = {
   PROQUELEC: 'proquelec',
   SENELEC: 'senelec',
   CLIENT_LSE: 'client_lse',
-  GEM: 'gem',
+  GED_OS: 'ged_os',
 } as const;
 
 export type TenantId = (typeof TENANTS)[keyof typeof TENANTS];
@@ -191,7 +191,7 @@ export const PERMISSIONS = {
   UI_TEAMS: 'ui.teams',
   UI_DASHBOARD: 'ui.dashboard',
 
-  // ── IA (WANEKOO) ──
+  // ── IA (GED OS AI) ──
   IA_USE: 'ia.use',
   IA_METRICS: 'ia.metrics',
   IA_SIMULATION: 'ia.simulation',
@@ -224,4 +224,25 @@ export const LEGACY_MAPPING: Record<string, string> = {
   voir_equipes: PERMISSIONS.UI_TEAMS,
   utiliser_ia: PERMISSIONS.IA_USE,
   gerer_utilisateurs: PERMISSIONS.SYSTEM_USERS,
+
+  /**
+   * Jetons historiques du MODULE_REGISTRY (notation `domaine.action`) et autres alias.
+   * Permet à `hasPermission(user, 'mission.view')` de résoudre vers les atomes actuels.
+   */
+  'mission.view': PERMISSIONS.MISSIONS_READ,
+  'project.view': PERMISSIONS.UI_PROJECTS,
+  'household.view': PERMISSIONS.TERRAIN_READ,
+  /** Ancien jeton module « rapports » : accès large (préférer les atomes explicites côté registry) */
+  'report.view': PERMISSIONS.MISSIONS_READ,
+  'chat.view': PERMISSIONS.UI_CHAT,
+  'project.edit': PERMISSIONS.MISSIONS_UPDATE,
+  'audit.view': PERMISSIONS.SYSTEM_AUDIT,
+  'formation.view': PERMISSIONS.UI_TRAINING,
+  'kobo.manage': PERMISSIONS.SETTINGS_KOBO,
+
+  /** Alignement API / authorize (même cible que le backend PERMISSION_KEY_TO_ATOM) */
+  'project.template.create': PERMISSIONS.MODULES_MANAGE,
+  'project.template.update': PERMISSIONS.MODULES_MANAGE,
+  'project.template.delete': PERMISSIONS.MODULES_MANAGE,
+  'project.template.manage': PERMISSIONS.MODULES_MANAGE,
 };

@@ -1,7 +1,7 @@
 import prisma, { basePrisma } from '../../core/utils/prisma.js';
 import { tracerAction } from '../../services/audit.service.js';
 
-const getUserName = (user) => user?.name || user?.email || 'Système GEM';
+const getUserName = (user) => user?.name || user?.email || 'Système GED OS';
 
 // Types PV valides (alignés avec PVAIEngine.ts côté frontend)
 const VALID_PV_TYPES = ['PVNC', 'PVR', 'PVHSE', 'PVRET', 'PVRD', 'PVRES', 'PVINE'];

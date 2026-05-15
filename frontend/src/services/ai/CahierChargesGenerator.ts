@@ -23,7 +23,7 @@ import type { MissionOrderData } from '../../pages/mission/core/missionTypes';
 export const cahierChargesGenerator = {
   async generateContract(data: MissionOrderData) {
     const qrResponse = await fetch(
-      `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(`https://gem.proquelec.com/contract/${data.orderNumber}`)}`
+      `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(`https://ged-os.proquelec.com/contract/${data.orderNumber}`)}`
     );
     const qrData = qrResponse.ok ? await qrResponse.arrayBuffer() : null;
 
@@ -106,7 +106,7 @@ export const cahierChargesGenerator = {
               heading: HeadingLevel.HEADING_2,
             }),
             new Paragraph({
-              text: "L'entrepreneur accepte la procédure d'audit 'MissionSage Vision'. Chaque étape cruciale de l'installation (câblage, raccordement, pose compteur) devra faire l'objet d'un cliché transmis via l'interface GEM-MINT pour analyse instantanée par l'Intelligence Artificielle de PROQUELEC.",
+              text: "L'entrepreneur accepte la procédure d'audit 'MissionSage Vision'. Chaque étape cruciale de l'installation (câblage, raccordement, pose compteur) devra faire l'objet d'un cliché transmis via l'interface GED OS MINT pour analyse instantanée par l'Intelligence Artificielle de PROQUELEC.",
               spacing: { after: 300 },
             }),
 
@@ -160,7 +160,7 @@ export const cahierChargesGenerator = {
             }),
 
             new Paragraph({
-              text: '\nDocument certifié par le système GEM-MINT de PROQUELEC',
+              text: '\nDocument certifié par le système GED OS MINT de PROQUELEC',
               alignment: AlignmentType.CENTER,
               italics: true,
               spacing: { before: 600 },

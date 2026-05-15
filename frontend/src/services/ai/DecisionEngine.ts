@@ -1,8 +1,8 @@
-﻿ 
+ 
 /**
  * 🏛️ DG DECISION ENGINE (V3.0 SUPREME+)
- * Système d'Aide à la Décision (DSS) & Moteur Prédictif PROQUELEC.
- * 🆕 V3.0 : Score IGPP multi-facteurs | Seuils dynamiques | Détection anomalies renforcée
+ * Système d'Aide à la Décision (DSS) & Moteur Prédictif GEM SAAS.
+ * 🆕 V3.0 : Score IGP multi-facteurs | Seuils dynamiques | Détection anomalies renforcée
  */
 
 import type { MissionStats } from '../missionStatsService';
@@ -20,14 +20,14 @@ export interface DGInsight {
 }
 
 /**
- * 📊 CALCUL DU SCORE IGPP 3.0 (Indice Global de Performance PROQUELEC)
+ * 📊 CALCUL DU SCORE IGP 3.0 (Indice de Performance Global)
  * Pondération multi-facteurs :
  * - 50% Taux de certification (résultats terrain)
  * - 25% Efficience budgétaire (maîtrise des coûts)
  * - 15% Avancement terrain (ménages finalisés)
  * - 10% Bonus qualité (taux ≥ 80% = bonus)
  */
-export function computeIGPPScore(stats: MissionStats, households?: Household[]): number {
+export function computeIGPScore(stats: MissionStats, households?: Household[]): number {
   if (!stats.totalMissions) return 0;
 
   // Facteur 1 : Taux de certification (50%)
@@ -214,17 +214,17 @@ export function analyzeDG(
   let allInsights: DGInsight[] = [];
   if (!stats) return allInsights;
 
-  // 1. Score IGPP 3.0
-  const igpp = computeIGPPScore(stats, households);
-  const igppLabel =
-    igpp >= 80 ? 'EXCELLENT' : igpp >= 60 ? 'STABLE' : igpp >= 40 ? 'INSUFFISANT' : 'CRITIQUE';
-  const igppType = igpp >= 60 ? 'info' : 'alert';
+  // 1. Score IGP 3.0
+  const igp = computeIGPScore(stats, households);
+  const igpLabel =
+    igp >= 80 ? 'EXCELLENT' : igp >= 60 ? 'STABLE' : igp >= 40 ? 'INSUFFISANT' : 'CRITIQUE';
+  const igpType = igp >= 60 ? 'info' : 'alert';
 
   allInsights.push({
-    type: igppType,
-    priority: igpp < 40 ? 'high' : igpp < 60 ? 'medium' : 'low',
-    message: `🏛️ **INDICE IGPP 3.0 : ${igpp}/100 — ${igppLabel}**`,
-    recommendation: igpp < 60 ? "Intervention d'urgence sur la validation recommandée." : undefined,
+    type: igpType,
+    priority: igp < 40 ? 'high' : igp < 60 ? 'medium' : 'low',
+    message: `🏛️ **INDICE IGP 3.0 : ${igp}/100 — ${igpLabel}**`,
+    recommendation: igp < 60 ? "Intervention d'urgence sur la validation recommandée." : undefined,
   });
 
   // 2. Alertes budgétaires

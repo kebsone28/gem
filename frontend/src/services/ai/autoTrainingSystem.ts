@@ -399,17 +399,18 @@ export const autoTrainingSystem = {
     patternsDetected: number;
     pendingSuggestions: number;
   }> {
-    const [negativeFeedbacks, satisfactionRate, patterns] = await Promise.all([
-      userFeedbackService.getNegativeFeedback(1000).then((f) => f.length),
+    const [negativeList, satisfactionRate, patterns, totalFeedbacks] = await Promise.all([
+      userFeedbackService.getNegativeFeedback(1000),
       userFeedbackService.getSatisfactionRate(),
       patternDetectionService.analyzeQueries(),
+      db.user_feedback.count().catch(async () => (await db.user_feedback.toArray()).length),
     ]);
 
     const suggestions = await this.generateAllSuggestions();
 
     return {
-      totalFeedbacks: negativeFeedbacks, // Approximation
-      negativeFeedbacks,
+      totalFeedbacks,
+      negativeFeedbacks: negativeList.length,
       satisfactionRate,
       patternsDetected: patterns.length,
       pendingSuggestions: suggestions.length,

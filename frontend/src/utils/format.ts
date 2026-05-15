@@ -1,6 +1,6 @@
-﻿ 
+ 
 /**
- * ASCII-safe number formatter for GEM SaaS.
+ * ASCII-safe number formatter for GED OS.
  * Uses plain spaces ( ) as thousands separator — no Unicode thin-spaces.
  * Works in both the browser and jsPDF.
  */

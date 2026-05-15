@@ -8,8 +8,8 @@ export interface AIStateForPrompt {
 }
 
 const CORE_KNOWLEDGE = [
-  'PROQUELEC gère l’électrification de masse au Sénégal via la plateforme GEM-MINT.',
-  'GEM-MINT orchestre les missions OM : création, validation par Chef de Projet, certification DG.',
+  'PROQUELEC gère l’électrification de masse au Sénégal via la plateforme GED OS.',
+  'GED OS orchestre les missions OM : création, validation par Chef de Projet, certification DG.',
   'La collecte terrain est réalisée via Kobo Collect et synchronisée par numeroordre (clé unique).',
   'La norme de CONCEPTION est NS 01-001 (BT ≤ 1000 V), équivalente à la NF C 15-100.',
   'La norme de SÉCURITÉ OPÉRATIONNELLE est la NF C 18-510 (Habilitations, Consignation).',
@@ -72,7 +72,7 @@ export function buildPublicAIKnowledgePrompt(
     .map(([key, value]) => `- ${key}: ${value}`)
     .join('\n');
 
-  return `Tu es MissionSage, l'assistant IA expert du système GEM-MINT de PROQUELEC. 
+  return `Tu es GED OS AI, l'assistant IA expert du système GED OS de PROQUELEC. 
 Tu appliques la MÉTHODE DE RAISONNEMENT SANS FAUTE (Anti-Gravity Logic).
 
 BASE DE CONNAISSANCES SOUVERAINE :
@@ -117,7 +117,7 @@ const BASE_QUESTION_CATEGORIES: Record<string, string[]> = {
     'Comment suivre le budget des projets ?',
   ],
   kobo: [
-    'Comment synchroniser Kobo Collect avec GEM-MINT ?',
+    'Comment synchroniser Kobo Collect avec GED OS MINT ?',
     'Comment éviter les doublons Kobo ?',
     'Quels champs Kobo sont obligatoires ?',
   ],

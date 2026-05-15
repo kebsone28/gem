@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import {
   getAIEngineConfig,
   saveAIEngineConfig,
@@ -12,6 +13,7 @@ import {
 } from '../../services/ai/AIEngineConfig';
 import {
   Bot,
+  ChevronLeft,
   Brain,
   Server,
   Sliders,
@@ -777,8 +779,13 @@ export default function AIEngineAdminPanel({ user, onClose, standalone = false }
     return (
       <div className="min-h-screen bg-slate-950 p-4 sm:p-6 lg:p-10 flex flex-col items-center">
         <div className="w-full max-w-4xl">
-          <div className="mb-8 flex items-center justify-between">
-            <div>
+          <div className="mb-8 flex flex-col items-start gap-4">
+            <Link to="/admin/hub" className="inline-flex items-center gap-1.5 text-sm font-semibold uppercase tracking-widest text-slate-500 hover:text-white transition-colors">
+              <ChevronLeft size={16} className="text-blue-500" />
+              Retour au Centre de Contrôle
+            </Link>
+            <div className="flex w-full items-center justify-between">
+              <div>
               <h1 className="text-3xl font-black text-white flex items-center gap-3">
                 <Brain className="text-blue-500" />
                 Console IA Souveraine

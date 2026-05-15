@@ -19,7 +19,7 @@ import {
     purgeMissions
 } from '../../modules/mission/mission.controller.js';
 import { authProtect, authorize } from '../middlewares/auth.js';
-import { verifierPermission } from '../../middleware/verifierPermission.js';
+import { verifierPermission, verifierModule } from '../../middleware/verifierPermission.js';
 import { PERMISSIONS } from '../../core/config/permissions.js';
 import multer from 'multer';
 
@@ -34,6 +34,7 @@ router.get('/verify/:identifier/document', downloadMissionCertifiedDocumentPubli
 
 // Secure routes - require authentication
 router.use(authProtect);
+router.use(verifierModule('mission'));
 
 // =============================================
 // RÔLES CANONIQUES (après normalisation dans authorize()) :

@@ -15,7 +15,7 @@ const dirname =
 const apiProxyTarget = (
   process.env.VITE_API_PROXY_TARGET ||
   process.env.GEM_API_PROXY_TARGET ||
-  `http://localhost:${process.env.GEM_API_PORT || process.env.PORT || '5008'}`
+  `http://localhost:${process.env.GEM_API_PORT || process.env.PORT || '8888'}`
 ).replace(/\/$/, '');
 
 // More info at: https://storybook.js.org/docs/next/writing-tests/integrations/vitest-addon
@@ -70,7 +70,11 @@ export default defineConfig({
           /^\/node_modules\//,
         ],
         // Exclure les images très volumineuses du precache
-        globIgnores: ['assets/images/**/*.png', 'assets/images/**/*.jpg', 'assets/images/**/*.webp'],
+        globIgnores: [
+          'assets/images/**/*.png',
+          'assets/images/**/*.jpg',
+          'assets/images/**/*.webp',
+        ],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/kf\.kobotoolbox\.org\/api\/v2\/.*/i,
@@ -139,7 +143,7 @@ export default defineConfig({
     }),
   ],
   server: {
-    port: 5173,
+    port: 8889, // Isolated port for GEM frontend
     strictPort: true,
     allowedHosts: true,
     proxy: {
@@ -182,7 +186,7 @@ export default defineConfig({
     },
   },
   preview: {
-    port: 4173,
+    port: 8890, // Isolated port for GEM preview
     allowedHosts: true,
     proxy: {
       '/api': {
@@ -236,7 +240,7 @@ export default defineConfig({
       'jspdf',
       'jspdf-autotable',
       'framer-motion',
-      'lucide-react'
+      'lucide-react',
     ],
   },
   resolve: {

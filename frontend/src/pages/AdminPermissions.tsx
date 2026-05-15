@@ -3,6 +3,8 @@ import { PageContainer, PageHeader, ContentArea } from '../components';
 import { PERMISSIONS, PERMISSION_LABELS, resolvePermissionDependencies } from '../utils/permissions';
 import adminPermissionsService from '../services/adminPermissionsService';
 import { useAuth } from '../contexts/AuthContext';
+import { Shield, Save, Download, Upload, Check, AlertCircle } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const permissions = Object.values(PERMISSIONS);
 
@@ -94,23 +96,52 @@ export default function AdminPermissions() {
 
   if (loading)
     return (
-      <PageContainer>
-        <PageHeader title="Permissions" subtitle="Chargement..." />
+      <PageContainer className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" />
+          <p className="text-slate-500 font-black uppercase tracking-widest text-[10px]">Matrices de sécurité...</p>
+        </div>
       </PageContainer>
     );
 
   return (
-    <PageContainer>
+    <PageContainer className="min-h-screen bg-slate-950 py-8">
       <PageHeader
-        title="Gestion des permissions"
-        subtitle="Modifier la matrice roles × permissions"
+        backLink={{ to: '/admin/hub', label: 'Retour au Centre de Contrôle' }}
+        title="Matrice de Sécurité"
+        subtitle="Contrôle d'accès granulaire RBAC pour tous les rôles du système"
+        icon={<Shield size={24} className="text-indigo-400" />}
       />
-      <ContentArea>
-        <div className="flex items-center justify-between mb-4">
-          <div />
-          <div className="flex gap-2">
+
+      <ContentArea className="mt-8 p-0 bg-transparent border-none">
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex gap-4">
+            <AnimatePresence>
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="flex items-center gap-2 px-4 py-2 bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-xl text-xs font-bold"
+                >
+                  <AlertCircle size={14} /> {error}
+                </motion.div>
+              )}
+              {notice && (
+                <motion.div
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl text-xs font-bold"
+                >
+                  <Check size={14} /> {notice}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+          <div className="flex gap-3">
             <button
-              className="px-3 py-1 bg-green-600 text-white rounded"
+              className="flex items-center gap-2 px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-black uppercase tracking-widest transition-all border border-slate-700"
               onClick={async () => {
                 try {
                   const data = await adminPermissionsService.exportRolePermissions();
@@ -132,11 +163,11 @@ export default function AdminPermissions() {
                 }
               }}
             >
-              Exporter
+              <Download size={14} /> Exporter
             </button>
 
-            <label className="px-3 py-1 bg-slate-200 text-slate-800 rounded cursor-pointer">
-              Importer
+            <label className="flex items-center gap-2 px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-black uppercase tracking-widest transition-all border border-slate-700 cursor-pointer">
+              <Upload size={14} /> Importer
               <input
                 type="file"
                 accept="application/json"
@@ -166,54 +197,60 @@ export default function AdminPermissions() {
           </div>
         </div>
 
-        {error && (
-          <div className="mb-4 rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">
-            {error}
-          </div>
-        )}
-        {notice && (
-          <div className="mb-4 rounded border border-green-300 bg-green-50 px-3 py-2 text-sm text-green-700">
-            {notice}
-          </div>
-        )}
-
-        <div className="overflow-auto">
-          <table className="min-w-full table-auto border-collapse">
+        <div className="relative overflow-hidden rounded-[2.5rem] border border-white/5 bg-slate-900/40 backdrop-blur-3xl shadow-2xl overflow-x-auto custom-scrollbar">
+          <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="text-left border-b">
-                <th className="p-2">Permission</th>
+              <tr className="bg-slate-900/60 border-b border-white/5">
+                <th className="p-8 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] sticky left-0 bg-slate-900/60 backdrop-blur-md z-10">Permission & Clé</th>
                 {roles.map((r) => (
-                  <th key={r} className="p-2 text-center">
-                    <div className="font-medium">{r}</div>
+                  <th key={r} className="p-8 text-center min-w-[200px]">
+                    <div className="text-sm font-black text-white uppercase tracking-wider mb-4">{r}</div>
                     <button
-                      className="mt-2 px-2 py-1 text-xs bg-blue-600 text-white rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-black uppercase tracking-widest rounded-xl transition-all shadow-lg shadow-indigo-600/20 disabled:opacity-30 disabled:grayscale"
                       onClick={() => saveRole(r)}
                       disabled={savingRole === r}
                     >
-                      {savingRole === r ? 'Enregistrement…' : 'Enregistrer'}
+                      {savingRole === r ? <div className="w-3 h-3 border-2 border-white/20 border-t-white rounded-full animate-spin" /> : <Save size={12} />}
+                      Sauvegarder
                     </button>
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody>
-              {permissions.map((p) => (
-                <tr key={p} className="align-top border-b">
-                  <td className="p-2 align-top">
-                    <div className="font-medium">{PERMISSION_LABELS[p] || p}</div>
-                    <div className="text-xs text-slate-400">{p}</div>
+            <tbody className="divide-y divide-white/[0.03]">
+              {permissions.map((p, idx) => (
+                <motion.tr
+                  key={p}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: Math.min(0.5, idx * 0.02) }}
+                  className="group hover:bg-white/[0.02] transition-colors"
+                >
+                  <td className="p-8 sticky left-0 bg-slate-950/40 backdrop-blur-md group-hover:bg-slate-900/60 transition-colors z-10">
+                    <div className="font-black text-sm text-white group-hover:text-indigo-400 transition-colors">
+                      {PERMISSION_LABELS[p] || p}
+                    </div>
+                    <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1 opacity-50">{p}</div>
                   </td>
                   {roles.map((r) => (
-                    <td key={r + p} className="p-2 border text-center">
-                      <input
-                        type="checkbox"
-                        checked={!!(rolePerms[r] && rolePerms[r].has(p))}
-                        onChange={() => toggle(r, p)}
-                        aria-label={`${r}:${p}`}
-                      />
+                    <td key={r + p} className="p-8 text-center border-l border-white/[0.03]">
+                      <div className="flex justify-center">
+                        <label className="relative flex items-center justify-center w-10 h-10 cursor-pointer group/cb">
+                          <input
+                            type="checkbox"
+                            checked={!!(rolePerms[r] && rolePerms[r].has(p))}
+                            onChange={() => toggle(r, p)}
+                            className="peer hidden"
+                            aria-label={`${r}:${p}`}
+                          />
+                          <div className="w-6 h-6 border-2 border-slate-700 rounded-lg bg-slate-800 transition-all peer-checked:bg-indigo-600 peer-checked:border-indigo-500 peer-checked:shadow-[0_0_15px_rgba(79,70,229,0.4)] flex items-center justify-center group-hover/cb:border-indigo-500/50">
+                            <Check size={14} className="text-white opacity-0 peer-checked:opacity-100 transition-opacity" />
+                          </div>
+                        </label>
+                      </div>
                     </td>
                   ))}
-                </tr>
+                </motion.tr>
               ))}
             </tbody>
           </table>

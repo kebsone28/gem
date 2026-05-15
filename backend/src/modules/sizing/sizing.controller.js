@@ -110,7 +110,7 @@ export const applySizingScale = async (req, res) => {
             
             // Clean dummy email format
             const cleanEmailString = baseName.toLowerCase().replace(/ç/g, 'c').replace(/é/g, 'e');
-            const email = `chef-${cleanEmailString}${counts[roleKey]}@gem.local`;
+            const email = `chef-${cleanEmailString}${counts[roleKey]}@ged-os.local`;
 
             // 1. Create the User (CHEF_EQUIPE)
             const user = await prisma.user.create({

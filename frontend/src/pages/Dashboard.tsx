@@ -9,6 +9,7 @@ import TeamDashboard from './DashboardViews/TeamDashboard';
 import ProjectManagerDashboard from './DashboardViews/ProjectManagerDashboard';
 import AccountingDashboard from './DashboardViews/AccountingDashboard';
 import AssetManagementDashboard from './DashboardViews/AssetManagementDashboard';
+// SubcontractorDashboard / SenelecDashboard : vues dédiées non montées ici (routage par rôle non trivial ; réutilisables ailleurs).
 
 export default function Dashboard() {
   const { user } = useAuth();

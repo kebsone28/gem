@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 import { useState, type ComponentType, type ReactNode } from 'react';
 import {
   ShieldCheck,
@@ -458,7 +458,7 @@ export default function SecuritySettings() {
           </div>
         )}
 
-        <PageHeader
+        <PageHeader backLink={{ to: '/admin/hub', label: 'Retour au Centre de Contrôle' }}
           title="Paramètres de Sécurité"
           subtitle="Gestion des mots de passe et de l'authentification — Admin seulement"
           icon={<ShieldCheck size={24} className="text-white" />}

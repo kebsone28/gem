@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../store/db';
-import { hasPermission, PERMISSIONS, isPlatformAdmin, normalizeRole, ROLES } from '../utils/permissions';
+import { PERMISSIONS, hasPermission } from '../utils/permissions';
 import logger from '../utils/logger';
 import toast from 'react-hot-toast';
 
@@ -39,196 +39,166 @@ export interface ProjectAssignment {
   lastAccessed?: Date;
 }
 
+/**
+ * Vérifie si un rôle correspond à un admin global (bypass complet des filtres)
+ * Inclut tous les alias connus pour éviter toute dépendance aux chaînes de normalisation.
+ */
+function isAdminRole(role?: string): boolean {
+  if (!role) return false;
+  const r = role.trim().toUpperCase();
+  return [
+    'PLATFORM_ADMIN',
+    'ADMIN',
+    'ADMIN_PROQUELEC',
+    'PROQUELEC_ADMIN',
+    'DIRECTEUR',
+    'DG',
+    'DG_PROQUELEC',
+    'PROQUELEC_DG',
+    'SOUS_TRAITANT_DIRECTEUR',
+  ].includes(r);
+}
+
 export function useProjectSelector() {
   const { user } = useAuth();
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [userAssignments, setUserAssignments] = useState<ProjectAssignment[]>([]);
-  const [selectedProject, setSelectedProject] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+
+  // 1. Observer la base Dexie de manière réactive.
+  //    useLiveQuery retourne `undefined` pendant le premier chargement (pas encore résolu),
+  //    et un tableau (possiblement vide) ensuite.
+  const rawDbProjects = useLiveQuery(() => db.projects.toArray());
+
+  // Tant que Dexie n'a pas répondu, on est en état "loading"
+  const isHydrating = rawDbProjects === undefined;
+  const allDbProjectsFromDb = rawDbProjects ?? [];
+
+  // 2. L'utilisateur est-il un admin global ?
+  const isGlobalAdmin = useMemo(() => {
+    if (!user) return false;
+    return (user as any).isPlatformAdmin === true || isAdminRole(user.role);
+  }, [user]);
+
+  // 3. Moteur de Visibilité — calcule les projets accessibles
+  const accessibleProjects = useMemo(() => {
+    if (!user) return [];
+    if (isHydrating) return []; // Dexie pas encore prêt
+
+    logger.debug(`[ProjectSelector] DB: ${allDbProjectsFromDb.length} projet(s), admin=${isGlobalAdmin}`);
+
+    if (isGlobalAdmin) {
+      // L'admin voit tout sauf les projets explicitement archivés
+      return allDbProjectsFromDb.filter(p => p.isArchived !== true);
+    }
+
+    // Pour les autres, vérifier l'assignation explicite
+    const userId = user.id;
+    const userEmail = (user as any).email || '';
+
+    return allDbProjectsFromDb.filter(p => {
+      if (p.isArchived === true) return false;
+
+      // Permission globale via le système PERMISSIONS
+      if (hasPermission(user as any, PERMISSIONS.UI_PROJECTS)) return true;
+
+      // Vérification directe des assignedUsers (root ou config)
+      const assignedRoot: string[] = Array.isArray(p.assignedUsers) ? p.assignedUsers : [];
+      const assignedConfig: string[] = Array.isArray((p as any).config?.assignedUsers)
+        ? (p as any).config.assignedUsers
+        : [];
+      const allAssigned = [...new Set([...assignedRoot, ...assignedConfig])];
+
+      return (
+        allAssigned.includes(userId) ||
+        allAssigned.includes(userEmail) ||
+        (p as any).createdBy === userId
+      );
+    });
+  }, [allDbProjectsFromDb, user, isGlobalAdmin, isHydrating]);
+
+  // 4. Assignations dérivées
+  const userAssignments = useMemo((): ProjectAssignment[] => {
+    return accessibleProjects.map(project => ({
+      projectId: project.id,
+      userId: user?.id || '',
+      role: (isGlobalAdmin ? 'admin' : 'member') as ProjectAssignment['role'],
+      assignedAt: project.createdAt ? new Date(project.createdAt) : new Date(),
+      assignedBy: 'system',
+      permissions: isGlobalAdmin ? ['all'] : ['view'],
+      canSwitch: true,
+      lastAccessed: new Date(),
+    }));
+  }, [accessibleProjects, user, isGlobalAdmin]);
+
+  // 5. Filtres et sélection
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [projectFilter, setProjectFilter] = useState<'all' | 'active' | 'completed' | 'my'>('all');
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Vérifier si l'utilisateur a accès aux projets
-  const canAccessProjects = useMemo(() => {
-    if (!user) return false;
-    return isPlatformAdmin(user) || hasPermission(user, PERMISSIONS.UI_PROJECTS);
-  }, [user]);
-
-  // Charger les projets
-  const loadProjects = async () => {
-    if (!canAccessProjects) {
-      setProjects([]);
-      setUserAssignments([]);
-      setLoading(false);
-      return;
-    }
-
-    try {
-      // Charger tous les projets depuis IndexedDB
-      const allDbProjects = await db.projects.toArray();
-      
-      // Déterminer le rôle
-      const nRole = normalizeRole(user.role);
-      const isGlobalAdmin = isPlatformAdmin(user) || nRole === ROLES.ADMIN || nRole === ROLES.DG;
-
-      // 🛡️ Filtrage de visibilité Enterprise
-      const accessibleProjects = isGlobalAdmin 
-        ? allDbProjects 
-        : allDbProjects.filter(p => (p.assignedUsers || []).includes(user.id) || (p.assignedUsers || []).includes(user.email));
-
-      // Créer les assignments réels ou simulés pour la navigation
-      const assignments: ProjectAssignment[] = accessibleProjects.map(project => {
-        const isAssigned = (project.assignedUsers || []).includes(user.id) || (project.assignedUsers || []).includes(user.email);
-        return {
-          projectId: project.id,
-          userId: user.id,
-          role: isGlobalAdmin ? 'admin' : 'member',
-          assignedAt: project.createdAt,
-          assignedBy: 'system',
-          permissions: isGlobalAdmin ? ['all'] : ['view'],
-          canSwitch: isGlobalAdmin || isAssigned,
-          lastAccessed: new Date(),
-        };
-      });
-
-      // Filtrer les projets archivés pour la vue principale
-      const activeProjects = accessibleProjects.filter(p => !p.isArchived);
-
-      setProjects(activeProjects);
-      setUserAssignments(assignments);
-
-      // Sélectionner automatiquement le projet
-      if (!selectedProject && activeProjects.length > 0) {
-        // 🥇 Priorité 1 : Projet Kobo Global
-        const globalProject = activeProjects.find(p => p.name.toLowerCase().includes('global') || p.name.toLowerCase().includes('kobo'));
-        
-        // 🥈 Priorité 2 : Premier projet accessible
-        const firstAccessibleProject = globalProject?.id || assignments.find(a => a.canSwitch)?.projectId || activeProjects[0]?.id;
-        
-        if (firstAccessibleProject) {
-          setSelectedProject(firstAccessibleProject);
-        }
-      }
-    } catch (error) {
-      logger.error('[useProjectSelector] Error loading projects:', error);
-      toast.error('Erreur lors du chargement des projets');
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // 6. Sélection automatique du projet global/kobo en priorité
   useEffect(() => {
-    loadProjects();
-  }, [user, canAccessProjects]);
-
-  // Projets filtrés selon le filtre et la recherche
-  const filteredProjects = useMemo(() => {
-    let filtered = projects;
-
-    // Filtrer par statut
-    if (projectFilter === 'active') {
-      filtered = filtered.filter(p => p.status === 'active');
-    } else if (projectFilter === 'completed') {
-      filtered = filtered.filter(p => p.status === 'completed');
-    } else if (projectFilter === 'my') {
-      // Projets où l'utilisateur est assigné
-      const userProjectIds = userAssignments
-        .filter(assignment => assignment.canSwitch)
-        .map(assignment => assignment.projectId);
-      filtered = filtered.filter(p => userProjectIds.includes(p.id));
+    if (!selectedProjectId && accessibleProjects.length > 0) {
+      const globalProject = accessibleProjects.find(p =>
+        p.name?.toLowerCase().includes('global') ||
+        p.name?.toLowerCase().includes('kobo')
+      );
+      setSelectedProjectId(globalProject?.id || accessibleProjects[0]?.id);
     }
+  }, [accessibleProjects, selectedProjectId]);
 
-    // Filtrer par recherche
-    if (searchTerm) {
+  // 7. Filtrage final pour l'UI — défensif et insensible à la casse
+  const filteredProjects = useMemo(() => {
+    let filtered = accessibleProjects;
+
+    if (projectFilter === 'active') {
+      filtered = filtered.filter(p => p.status?.toLowerCase() === 'active');
+    } else if (projectFilter === 'completed') {
+      filtered = filtered.filter(p => p.status?.toLowerCase() === 'completed');
+    } else if (projectFilter === 'my') {
+      const switchableIds = new Set(
+        userAssignments.filter(a => a.canSwitch).map(a => a.projectId)
+      );
+      filtered = filtered.filter(p => switchableIds.has(p.id));
+    }
+    // 'all' → pas de filtre supplémentaire
+
+    if (searchTerm.trim()) {
+      const lowerSearch = searchTerm.toLowerCase();
       filtered = filtered.filter(p =>
-        p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.client.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
+        p.name?.toLowerCase().includes(lowerSearch) ||
+        (p.description || '').toLowerCase().includes(lowerSearch)
       );
     }
 
     return filtered;
-  }, [projects, userAssignments, projectFilter, searchTerm]);
+  }, [accessibleProjects, userAssignments, projectFilter, searchTerm]);
 
-  // Obtenir les détails du projet sélectionné
-  const selectedProjectDetails = useMemo(() => {
-    if (!selectedProject) return null;
-    return projects.find(p => p.id === selectedProject) || null;
-  }, [projects, selectedProject]);
-
-  // Obtenir l'assignment de l'utilisateur pour le projet sélectionné
-  const userAssignment = useMemo(() => {
-    if (!selectedProject || !user) return null;
-    return userAssignments.find(a => a.projectId === selectedProject) || null;
-  }, [userAssignments, selectedProject, user]);
-
-  // Changer de projet
   const switchProject = async (projectId: string) => {
     if (!user) return;
-
-    try {
-      // Vérifier si l'utilisateur a accès à ce projet
-      const assignment = userAssignments.find(a => a.projectId === projectId);
-      if (!assignment || !assignment.canSwitch) {
-        toast.error('Vous n\'avez pas accès à ce projet');
-        return;
-      }
-
-      // Mettre à jour la date de dernier accès si l'assignation existe en base
-      if (assignment.id) {
-        await db.projectAssignments.update(assignment.id, {
-          lastAccessed: new Date(),
-        });
-      }
-
-      setSelectedProject(projectId);
-      toast.success(`Projet "${projects.find(p => p.id === projectId)?.name}" sélectionné`);
-
-      // Logger l'action
-      logger.info(`[useProjectSelector] User ${user.id} switched to project ${projectId}`);
-    } catch (error) {
-      logger.error('[useProjectSelector] Error switching project:', error);
-      toast.error('Erreur lors du changement de projet');
-    }
+    setSelectedProjectId(projectId);
+    toast.success('Projet changé');
   };
 
-  // Statistiques des projets
-  const projectStats = useMemo(() => {
-    const total = projects.length;
-    const active = projects.filter(p => p.status === 'active').length;
-    const completed = projects.filter(p => p.status === 'completed').length;
-    const myProjects = userAssignments.filter(a => a.canSwitch).length;
-
-    return {
-      total,
-      active,
-      completed,
-      myProjects,
-      archived: projects.filter(p => p.isArchived).length,
-    };
-  }, [projects, userAssignments]);
-
   return {
-    // Données
-    projects,
+    projects: accessibleProjects,
     userAssignments,
-    selectedProject,
-    selectedProjectDetails,
-    userAssignment,
+    selectedProject: selectedProjectId,
+    selectedProjectDetails: accessibleProjects.find(p => p.id === selectedProjectId) || null,
+    userAssignment: userAssignments.find(a => a.projectId === selectedProjectId) || null,
     filteredProjects,
-    projectStats,
-    loading,
-    canAccessProjects,
-
-    // Actions
+    projectStats: {
+      total: accessibleProjects.length,
+      active: accessibleProjects.filter(p => p.status?.toLowerCase() === 'active').length,
+      completed: accessibleProjects.filter(p => p.status?.toLowerCase() === 'completed').length,
+      myProjects: userAssignments.filter(a => a.canSwitch).length,
+      archived: 0,
+    },
+    canAccessProjects: isGlobalAdmin || accessibleProjects.length > 0,
     switchProject,
     setProjectFilter,
     setSearchTerm,
-    refreshProjects: loadProjects,
-
-    // État
+    refreshProjects: () => {},
     projectFilter,
     searchTerm,
+    // loading = true uniquement pendant l'hydration Dexie initiale
+    loading: isHydrating && !!user,
   };
 }

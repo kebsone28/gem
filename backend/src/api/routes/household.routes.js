@@ -12,25 +12,13 @@ import {
     rejectHouseholdStep
 } from '../../modules/household/household.controller.js';
 import { authProtect } from '../middlewares/auth.js';
-import { verifierPermission, verifierAssignation } from '../../middleware/verifierPermission.js';
+import { verifierPermission, verifierAssignation, verifierModule } from '../../middleware/verifierPermission.js';
 import { PERMISSIONS } from '../../core/config/permissions.js';
 
 const router = express.Router();
 
-// DEBUG: Temporary route to test without auth
-router.get('/debug/list', async (req, res) => {
-    try {
-        const { default: prisma } = await import('../../core/utils/prisma.js');
-        const households = await prisma.household.findMany({
-            select: { id: true, name: true, location: true, numeroordre: true, status: true }
-        });
-        res.json({ count: households.length, households });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
-
 router.use(authProtect);
+router.use(verifierModule('terrain'));
 
 // Server-Sent Events stream for households updates
 router.get('/stream', authProtect, (req, res) => {
@@ -58,7 +46,7 @@ router.get('/stream', authProtect, (req, res) => {
 
     // keep-alive comment every 20s
     const keepAlive = setInterval(() => {
-        try { res.write(': ping\n\n'); } catch (e) {}
+        try { res.write(': ping\n\n'); } catch (e) { }
     }, 20000);
 
     req.on('close', () => {

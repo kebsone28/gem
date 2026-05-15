@@ -10,8 +10,8 @@ interface AppLabels {
   household: {
     singular: string;
     plural: string;
-    definite: string; // e.g., "le ménage"
-    indefinite: string; // e.g., "un ménage"
+    definite: string;
+    indefinite: string;
   };
   zone: {
     singular: string;
@@ -24,6 +24,25 @@ interface AppLabels {
   mission: {
     singular: string;
     plural: string;
+  };
+  trade: {
+    singular: string;
+    plural: string;
+    livraison: string;
+    macons: string;
+    reseau: string;
+    installation: string;
+    controle: string;
+  };
+  phase: {
+    singular: string;
+    plural: string;
+    formation: string;
+    livraison: string;
+    maconnerie: string;
+    reseau: string;
+    installation: string;
+    controle: string;
   };
 }
 
@@ -46,44 +65,94 @@ const DEFAULT_LABELS: AppLabels = {
     singular: 'Mission',
     plural: 'Missions',
   },
+  trade: {
+    singular: 'Métier',
+    plural: 'Métiers',
+    livraison: 'Livraison',
+    macons: 'Maçons',
+    reseau: 'Réseau',
+    installation: 'Installation',
+    controle: 'Contrôle',
+  },
+  phase: {
+    singular: 'Phase',
+    plural: 'Phases',
+    formation: 'Formation',
+    livraison: 'Livraison matériel',
+    maconnerie: 'Travaux maçonnerie',
+    reseau: 'Travaux réseau',
+    installation: 'Travaux intérieur',
+    controle: 'Suivi contrôle et reporting',
+  },
 };
 
 interface LabelsContextType {
   labels: AppLabels;
-  getLabel: (path: string, count?: number) => string;
+  getLabel: (path: string, countOrFallback?: number | string) => string;
 }
 
 const LabelsContext = createContext<LabelsContextType | undefined>(undefined);
 
-export const LabelsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user } = useAuth();
+import { useProject } from './ProjectContext';
+ 
+ export const LabelsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+   const { user } = useAuth();
+   const { project } = useProject();
+ 
+   const labels = useMemo(() => {
+     // 1. Labels de l'organisation (Global)
+     const orgLabels = (user?.organizationConfig as any)?.labels || {};
+     
+     // 2. Labels du projet actif (SaaS Customization)
+     const projectLabels = (project?.config as any)?.labels || {};
+     
+     return {
+       household: { 
+         ...DEFAULT_LABELS.household, 
+         ...orgLabels.household,
+         ...projectLabels.household 
+       },
+       zone: { 
+         ...DEFAULT_LABELS.zone, 
+         ...orgLabels.zone,
+         ...projectLabels.zone 
+       },
+       project: { 
+         ...DEFAULT_LABELS.project, 
+         ...orgLabels.project,
+         ...projectLabels.project 
+       },
+       mission: { 
+         ...DEFAULT_LABELS.mission, 
+         ...orgLabels.mission,
+         ...projectLabels.mission 
+       },
+       trade: { 
+         ...DEFAULT_LABELS.trade, 
+         ...orgLabels.trade,
+         ...projectLabels.trade 
+       },
+       phase: { 
+         ...DEFAULT_LABELS.phase, 
+         ...orgLabels.phase,
+         ...projectLabels.phase 
+       },
+     };
+   }, [user?.organizationConfig?.labels, project?.config?.labels]);
 
-  const labels = useMemo(() => {
-    const configLabels = (user?.organizationConfig as any)?.labels || {};
-    return {
-      household: { ...DEFAULT_LABELS.household, ...(configLabels.household || {}) },
-      zone: { ...DEFAULT_LABELS.zone, ...(configLabels.zone || {}) },
-      project: { ...DEFAULT_LABELS.project, ...(configLabels.project || {}) },
-      mission: { ...DEFAULT_LABELS.mission, ...(configLabels.mission || {}) },
-    };
-  }, [user?.organizationConfig?.labels]);
-
-  /**
-   * Helper to get a label dynamically
-   * @param path e.g., "household.plural"
-   * @param count if > 1, returns plural automatically if path is just "household"
-   */
   const getLabel = useCallback(
-    (path: string, count?: number): string => {
+    (path: string, countOrFallback?: number | string): string => {
+      const fallback = typeof countOrFallback === 'string' ? countOrFallback : path;
+      const count = typeof countOrFallback === 'number' ? countOrFallback : undefined;
+
       const [category, sub] = path.split('.');
       const cat = (labels as any)[category];
-      if (!cat) return path;
+      if (!cat) return fallback;
 
-      if (sub) return cat[sub] || path;
+      if (sub) return cat[sub] || fallback;
 
-      // Auto pluralize if only category is provided
       if (count !== undefined && count > 1) return cat.plural;
-      return cat.singular;
+      return cat.singular || fallback;
     },
     [labels]
   );

@@ -28,13 +28,12 @@ if (isProduction && (!jwtSecret || !refreshSecret)) {
 }
 
 const localCorsOrigins = [
-    'http://localhost:5173',
-    'http://127.0.0.1:5173',
-    'http://0.0.0.0:5173',
-    'http://localhost:4173',
-    'http://127.0.0.1:4173',
-    'http://localhost:3000',
-    'http://127.0.0.1:3000'
+    'http://localhost:8889',
+    'http://127.0.0.1:8889',
+    'http://0.0.0.0:8889',
+    'http://localhost:8890',
+    'http://127.0.0.1:8890',
+    'http://localhost:8891'
 ];
 
 const productionCorsOrigins = [
@@ -85,7 +84,17 @@ export const config = {
             }
         },
         credentials: true,
-        methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS']
+        methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+        allowedHeaders: [
+          'Content-Type',
+          'Authorization',
+          'X-Requested-With',
+          'Accept',
+          'Origin',
+          'x-project-id',
+          'x-organization-id',
+          'x-impersonate-user-id'
+        ]
     },
     sentry: {
         dsn: process.env.SENTRY_DSN
@@ -112,11 +121,11 @@ export const config = {
         model: process.env.OPENAI_MODEL || 'gpt-4.1-mini',
         maxTokens: parseInt(process.env.OPENAI_MAX_TOKENS || '700', 10),
         temperature: parseFloat(process.env.OPENAI_TEMPERATURE || '0.3'),
-        provider: process.env.AI_PROVIDER || 'PUBLIC_POLLINATIONS',
+        provider: process.env.AI_PROVIDER || 'OLLAMA',
         anthropicKey: process.env.ANTHROPIC_API_KEY || '',
         anthropicModel: process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20241022',
         anthropicTimeoutMs: parseInt(process.env.ANTHROPIC_TIMEOUT_MS || '12000', 10),
-        ollamaBaseUrl: process.env.OLLAMA_BASE_URL || 'https://proquelec.wanekoohost.com',
+        ollamaBaseUrl: process.env.OLLAMA_BASE_URL || 'http://127.0.0.1:11434',
         ollamaModel: process.env.OLLAMA_MODEL || 'qwen2.5-coder:7b',
         pollinationsModel: process.env.POLLINATIONS_MODEL || 'openai',
         cacheTtlSeconds: parseInt(process.env.AI_CACHE_TTL_SECONDS || '300', 10)

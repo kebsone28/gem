@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * clusterWorker.ts — Village Region Mode
  *
@@ -252,7 +251,7 @@ self.onmessage = (event) => {
         name: key, // Now "Region | Village"
         count: points.length,
         type: 'village',
-        bbox: computeBBox(points) as any,
+        bbox: computeBBox(points) as [number, number][] | null,
         color,
       });
     }

@@ -26,10 +26,16 @@ export const generateTokens = (user, impersonator = null) => {
         { expiresIn: expiry }
     );
 
+    const refreshPayload = { id: user.id || user._id };
+    if (impersonator) {
+        refreshPayload.impersonatorId = impersonator.id;
+        refreshPayload.isSimulation = true;
+    }
+
     const refreshToken = jwt.sign(
-        { id: user.id || user._id },
+        refreshPayload,
         config.jwt.refreshSecret,
-        { expiresIn: config.jwt.refreshExpiry }
+        { expiresIn: impersonator ? '30m' : config.jwt.refreshExpiry }
     );
 
     return { accessToken, refreshToken };

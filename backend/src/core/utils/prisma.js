@@ -1,5 +1,7 @@
 /* eslint-disable no-console */
 import { PrismaClient } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
+import pg from 'pg';
 import { config } from '../config/config.js';
 import { getOrganizationId, getUserId, getProjectId } from '../context/storage.js';
 import { isPrismaSchemaDriftError } from './prismaCompat.js';
@@ -8,7 +10,9 @@ if (process.env.NODE_ENV !== 'production') {
   console.log('🔧 Initializing Prisma for DB:', config.dbUrl);
 }
 
-export const basePrisma = new PrismaClient();
+const pool = new pg.Pool({ connectionString: config.dbUrl });
+const adapter = new PrismaPg(pool);
+export const basePrisma = new PrismaClient({ adapter });
 
 // Modèles sans colonne organizationId: ne jamais y injecter de filtre tenant.
 // Formation junction tables (FormationSessionModule, FormationParticipant) have no direct
@@ -28,10 +32,27 @@ const EXCLUDED_MODELS = [
   'FormationSessionModule', // junction table — no direct org column
   'FormationParticipant', // junction table — no direct org column
   'spatial_ref_sys',
+  'WorkflowAction', // if it exists
+  'SystemConfig', // Global configuration table
 ];
 
 // Liste des modèles filtrés par projectId si présent dans le contexte
-const PROJECT_LEVEL_MODELS = ['Zone', 'Team', 'Mission', 'PerformanceLog', 'Alert'];
+const PROJECT_LEVEL_MODELS = [
+  'Zone',
+  'Team',
+  'Mission',
+  'PerformanceLog',
+  'Alert',
+  'Household',
+  'Workflow',
+  'PVRecord',
+  'FinancialCharge',
+  'Budget',
+  'ProjectModule',
+  'ProjectPage',
+  'WorkflowState',
+  'WorkflowTransition',
+];
 
 /**
  * CLIENT PRISMA ÉTENDU - ISOLATION MULTI-TENANTE & AUDIT AUTOMATIQUE
@@ -58,7 +79,6 @@ export const prisma = basePrisma.$extends({
           const filter = { organizationId: orgId };
 
           // ISOLATION PROJET (Si configurée dans le contexte)
-          // ✅ NOTE: Household est intentionnellement EXCLU du filtrage auto-projet.
           if (projId && PROJECT_LEVEL_MODELS.includes(model)) {
             filter.projectId = projId;
           }
@@ -74,6 +94,10 @@ export const prisma = basePrisma.$extends({
             const newOp = operation === 'findUnique' ? 'findFirst' : 'findFirstOrThrow';
             args.where = { ...(args.where || {}), ...filter };
             const modelName = model.charAt(0).toLowerCase() + model.slice(1);
+            if (!basePrisma[modelName]) {
+              console.error(`[PRISMA-CRITICAL] Model ${modelName} not found on basePrisma! model=${model}`);
+              throw new Error(`Model ${modelName} not found on Prisma client`);
+            }
             return basePrisma[modelName][newOp](args);
           }
 
@@ -99,7 +123,15 @@ export const prisma = basePrisma.$extends({
         }
 
         // Exécution de la requête
-        const result = await query(args);
+        let result;
+        try {
+          result = await query(args);
+        } catch (queryError) {
+          if (process.env.NODE_ENV !== 'production') {
+            console.error(`[PRISMA-ERROR] Failed op=${operation} on model=${model}:`, queryError.message);
+          }
+          throw queryError;
+        }
 
         // AUDIT AUTOMATIQUE (fire-and-forget)
         if (

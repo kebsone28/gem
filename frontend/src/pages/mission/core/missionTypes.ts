@@ -52,6 +52,7 @@ export interface MissionOrderData {
   narrativeReport?: string;
   isCertified?: boolean;
   isSubmitted?: boolean;
+  excludeFromFinance?: boolean; // New: Exclude from project finance
   signatureImage?: string; // Base64 string
   features?: {
     map: boolean;

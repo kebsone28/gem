@@ -133,9 +133,9 @@ const STOP_WORDS = new Set([
 
 const OPERATIONAL_REFERENTIAL: Record<string, OperationalReferenceEntry> = {
   global: {
-    title: 'GEM-MINT',
+    title: 'GED OS MINT',
     summary:
-      "GEM-MINT centralise le terrain, les missions, le pilotage et le contrôle financier dans une même chaîne de vérité.",
+      "GED OS MINT centralise le terrain, les missions, le pilotage et le contrôle financier dans une même chaîne de vérité.",
     meaning:
       "L'objectif n'est pas d'empiler des modules. Le système doit garder la cohérence entre ce qui est collecté sur le terrain, ce qui est validé et ce qui est indemnisé.",
     anchors: [
@@ -144,17 +144,17 @@ const OPERATIONAL_REFERENTIAL: Record<string, OperationalReferenceEntry> = {
       'Le dashboard consolide KPIs, retards et lecture régionale.',
       'Le contrôle financier relie budget, indemnités et écarts.',
     ],
-    references: ['MISSION_SAGE_INTEGRATION_README', 'AIKnowledgeBase GEM-MINT'],
+    references: ['MISSION_SAGE_INTEGRATION_README', 'AIKnowledgeBase GED OS MINT'],
     smartReplies: ['Mes missions', 'Terrain Kobo', 'Dashboard', 'Budget'],
     actionLine:
       'La bonne décision consiste toujours à rapprocher le terrain, le statut mission et le niveau de validation avant de conclure.',
-    keywords: ['gem', 'gem mint', 'proquelec', 'plateforme', 'systeme', 'système'],
+    keywords: ['ged', 'ged os', 'ged os mint', 'proquelec', 'plateforme', 'systeme', 'système'],
     templates: [
-      'Quel est le rôle global de GEM-MINT dans PROQUELEC ?',
-      'Comment GEM-MINT relie-t-il le terrain, la mission et la finance ?',
-      'Quelle est la logique métier générale de la plateforme GEM-MINT ?',
-      'Pourquoi GEM-MINT doit-il garder une seule chaîne de vérité ?',
-      'Comment expliquer GEM-MINT à un responsable opérationnel ?',
+      'Quel est le rôle global de GED OS MINT dans PROQUELEC ?',
+      'Comment GED OS MINT relie-t-il le terrain, la mission et la finance ?',
+      'Quelle est la logique métier générale de la plateforme GED OS MINT ?',
+      'Pourquoi GED OS MINT doit-il garder une seule chaîne de vérité ?',
+      'Comment expliquer GED OS MINT à un responsable opérationnel ?',
     ],
   },
   mission: {
@@ -176,7 +176,7 @@ const OPERATIONAL_REFERENTIAL: Record<string, OperationalReferenceEntry> = {
     keywords: ['mission', 'om', 'ordre mission', 'ordre de mission', 'certifier', 'valider'],
     templates: [
       'Comment créer une mission OM proprement ?',
-      'Quelles sont les étapes d’une mission dans GEM-MINT ?',
+      'Quelles sont les étapes d’une mission dans GED OS MINT ?',
       'Qui contrôle puis certifie une mission ?',
       'Comment corriger une mission rejetée ?',
       'Quels éléments rendent une mission prête pour la certification ?',
@@ -219,13 +219,13 @@ const OPERATIONAL_REFERENTIAL: Record<string, OperationalReferenceEntry> = {
       'Les écarts doivent être rapprochés du matériel, de la logistique et des reprises.',
       'Un seuil d’alerte demande une revue de pilotage avant dérapage complet.',
     ],
-    references: ['AIKnowledgeBase GEM-MINT', 'Bilan financier prévisionnel interne'],
+    references: ['AIKnowledgeBase GED OS MINT', 'Bilan financier prévisionnel interne'],
     smartReplies: ['Audit financier global', 'Indemnités de mission', 'Budget certifié', 'Que faire en cas de dépassement budgétaire ?'],
     actionLine:
       'Avant toute conclusion budgétaire, rapprocher les coûts certifiés, les volumes terrain et les anomalies de reprise.',
     keywords: ['finance', 'budget', 'indemnite', 'indemnité', 'cout', 'coût'],
     templates: [
-      'Comment contrôler les indemnités dans GEM-MINT ?',
+      'Comment contrôler les indemnités dans GED OS MINT ?',
       'Que faire en cas de dépassement budgétaire ?',
       'Comment lire correctement le budget d’un projet terrain ?',
       'Quels sont les signaux d’alerte d’un dérive financière ?',
@@ -244,13 +244,13 @@ const OPERATIONAL_REFERENTIAL: Record<string, OperationalReferenceEntry> = {
       'Les anomalies répétées distinguent incident ponctuel et dérive de méthode.',
       'Le dashboard doit rester lisible pour l’action, pas seulement pour la consultation.',
     ],
-    references: ['MISSION_SAGE_INTEGRATION_README', 'AIKnowledgeBase GEM-MINT'],
+    references: ['MISSION_SAGE_INTEGRATION_README', 'AIKnowledgeBase GED OS MINT'],
     smartReplies: ['Score IGPP', 'Risque de retard DG', 'Analyse stratégique DG', 'Voir Dashboard'],
     actionLine:
       'Avant d’escalader une alerte, vérifier si le KPI se traduit par une décision réelle et immédiatement actionnable.',
     keywords: ['dashboard', 'kpi', 'igpp', 'retard', 'pilotage'],
     templates: [
-      'Comment interpréter le dashboard GEM-MINT ?',
+      'Comment interpréter le dashboard GED OS MINT ?',
       'Quels KPIs sont réellement utiles pour piloter le projet ?',
       'Comment détecter un risque de retard depuis le dashboard ?',
       'Que signifie un taux de certification faible ?',
@@ -260,7 +260,7 @@ const OPERATIONAL_REFERENTIAL: Record<string, OperationalReferenceEntry> = {
   kobo: {
     title: 'Kobo et collecte terrain',
     summary:
-      'Kobo capture le terrain au plus près de l’exécution, puis rapproche les formulaires avec GEM-MINT via le numeroordre.',
+      'Kobo capture le terrain au plus près de l’exécution, puis rapproche les formulaires avec GED OS MINT via le numeroordre.',
     meaning:
       "Une bonne collecte Kobo se juge sur la qualité du rapprochement avec le ménage, le GPS, les photos et l'état réel du chantier.",
     anchors: [
@@ -269,7 +269,7 @@ const OPERATIONAL_REFERENTIAL: Record<string, OperationalReferenceEntry> = {
       'Les champs critiques et les photos de preuve doivent être complets avant validation.',
       'La synchronisation doit préserver la vérité du terrain sans doublon ni perte silencieuse.',
     ],
-    references: ['KOBO_STANDARDS', 'MISSION_SAGE_INTEGRATION_README', 'AIKnowledgeBase GEM-MINT'],
+    references: ['KOBO_STANDARDS', 'MISSION_SAGE_INTEGRATION_README', 'AIKnowledgeBase GED OS MINT'],
     smartReplies: ['Synchronisation Kobo', 'Que faire si Kobo ne remonte pas ?', 'Quels champs Kobo sont obligatoires ?', 'Comment éviter les doublons Kobo ?'],
     actionLine:
       'Avant de conclure à une panne Kobo, vérifier le numeroordre, la connectivité, les champs critiques et la cohérence GPS.',
@@ -301,7 +301,7 @@ const OPERATIONAL_REFERENTIAL: Record<string, OperationalReferenceEntry> = {
     keywords: ['droit', 'droits', 'permission', 'rbac', 'securite', 'sécurité'],
     templates: [
       'Pourquoi certains rôles ne peuvent-ils pas modifier certaines données ?',
-      'Comment fonctionnent les droits dans GEM-MINT ?',
+      'Comment fonctionnent les droits dans GED OS MINT ?',
       'À quoi servent les logs d’audit dans la sécurité ?',
       'Pourquoi une donnée certifiée ne doit-elle pas être modifiée librement ?',
       'Comment protéger la traçabilité des validations ?',
@@ -319,13 +319,13 @@ const OPERATIONAL_REFERENTIAL: Record<string, OperationalReferenceEntry> = {
       'Il doit rester traçable après diffusion.',
       'Le contenu doit rester exploitable par un responsable non technique.',
     ],
-    references: ['WordReportService', 'PVDocGenerator', 'Rapports internes GEM-MINT'],
+    references: ['WordReportService', 'PVDocGenerator', 'Rapports internes GED OS MINT'],
     smartReplies: ['Générer un rapport Word', 'Exporter un rapport PDF', 'Contenu du rapport stratégique', 'Comment partager un rapport ?'],
     actionLine:
       'Avant diffusion, vérifier que le rapport permet à la fois la compréhension rapide et l’audit détaillé.',
     keywords: ['rapport', 'word', 'pdf', 'export', 'pv'],
     templates: [
-      'Que doit contenir un bon rapport GEM-MINT ?',
+      'Que doit contenir un bon rapport GED OS MINT ?',
       'Comment structurer un rapport pour la DG ?',
       'Pourquoi un rapport doit-il relier observation et décision ?',
       'Quelle différence entre une extraction brute et un rapport exploitable ?',
@@ -344,7 +344,7 @@ const OPERATIONAL_REFERENTIAL: Record<string, OperationalReferenceEntry> = {
       'Distinguer incident ponctuel et dérive structurelle.',
       'Formuler un arbitrage clair et actionnable.',
     ],
-    references: ['DecisionEngine', 'KPIs projet', 'AIKnowledgeBase GEM-MINT'],
+    references: ['DecisionEngine', 'KPIs projet', 'AIKnowledgeBase GED OS MINT'],
     smartReplies: ['Analyse stratégique DG', 'Risque de retard DG', 'Rapport stratégique DG', 'Voir Dashboard'],
     actionLine:
       'Avant d’émettre une recommandation DG, rattacher chaque alerte à un impact mesurable et à un arbitrage concret.',

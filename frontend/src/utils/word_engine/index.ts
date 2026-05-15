@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/utils/word_engine/index.ts
 import {
   Document,
@@ -11,6 +10,7 @@ import {
   TableOfContents,
   BorderStyle,
   TextRun,
+  type ISectionOptions,
 } from 'docx';
 import { saveAs } from 'file-saver';
 import { COLORS, createText } from './utils/styles';
@@ -67,7 +67,7 @@ const DOCUMENT_HEADER = new Header({
     new Paragraph({
       children: [
         createText('BORDEREAU TECHNIQUE ET CONTRACTUEL ', { color: COLORS.SLATE, size: 16 }),
-        createText(' | GEM-PROQUELEC', { bold: true, color: COLORS.PRIMARY, size: 16 }),
+        createText(' | GED OS', { bold: true, color: COLORS.PRIMARY, size: 16 }),
       ],
       border: { bottom: { style: BorderStyle.SINGLE, size: 1, space: 1, color: COLORS.BORDER } },
       alignment: AlignmentType.RIGHT,
@@ -80,7 +80,7 @@ const DOCUMENT_FOOTER = new Footer({
     new Paragraph({
       alignment: AlignmentType.CENTER,
       children: [
-        createText('Copyright © 2026 PROQUELEC - Généré via la plateforme GEM-PROQUELEC - Page ', {
+        createText('Copyright © 2026 — Généré via la plateforme GED OS - Page ', {
           size: 16,
           color: COLORS.SLATE,
         }),
@@ -104,7 +104,7 @@ export const exportCahiersToWord = async (
     return;
   }
 
-  const allSections: any[] = [];
+  const allSections: ISectionOptions[] = [];
   const commonProps = {
     ...PAGE_PROPERTIES,
     headers: { default: DOCUMENT_HEADER },
@@ -151,7 +151,22 @@ export const exportCahiersToWord = async (
 
   // 3. Trade Sections
   for (const task of tasks) {
-    const children = await createRoleSection(task as any, qrBuffer);
+    // Convert ExportData to RoleSectionData format
+    const roleSectionData = {
+      role: task.role,
+      name: task.responsible || 'Non spécifié',
+      dailyIndemnity: task.pricing?.dailyRate || 0,
+      transport: 0,
+      days: task.pricing?.durationDays || 0,
+      signatureImage: task.imagePath,
+      introduction: task.introduction,
+      missions: task.missions,
+      materials: task.materials,
+      hse: task.hse,
+      subcontracting: task.subcontracting,
+      finances: task.finances,
+    };
+    const children = await createRoleSection(roleSectionData, qrBuffer);
     if (tasks.indexOf(task) < tasks.length - 1) {
       children.push(new Paragraph({ children: [new PageBreak()] }));
     }
@@ -162,7 +177,7 @@ export const exportCahiersToWord = async (
   }
 
   const doc = new Document({
-    creator: 'GEM-PROQUELEC',
+    creator: 'GED OS',
     title: isMultiple ? 'Cahiers des Charges Complets' : `Cahier des Charges ${tasks[0].role}`,
     sections: allSections,
   });

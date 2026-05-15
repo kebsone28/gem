@@ -1,8 +1,6 @@
-import { PrismaClient } from '@prisma/client';
+import { basePrisma as prisma } from '../core/utils/prisma.js';
 import { missionNotificationService } from './notification.service.js';
 import logger from '../utils/logger.js';
-
-const prisma = new PrismaClient();
 
 const ROLE_MAP = {
     1: 'CHEF_PROJET',

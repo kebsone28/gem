@@ -2,6 +2,13 @@ import { verifyAccessToken } from '../../core/utils/jwt.js';
 import logger from '../../utils/logger.js';
 import { runWithContext } from '../../core/context/storage.js';
 import { normalizeRole } from '../../core/utils/roles.js';
+import { verifierProjet } from '../../middleware/verifierPermission.js';
+import { routePermissionSatisfied } from '../../core/config/permissionNormalization.js';
+import { ROLE_PERMISSIONS } from '../../core/config/permissions.js';
+
+/** Chaîne de permission (legacy snake_case ou jeton namespacé minuscule). */
+const looksLikePermissionKey = (s) =>
+  typeof s === 'string' && s === s.toLowerCase() && (s.includes('_') || s.includes('.'));
 
 export const authProtect = async (req, res, next) => {
     try {
@@ -17,7 +24,7 @@ export const authProtect = async (req, res, next) => {
 
         if (!token) {
             logger.warn(`[AUTH-401] No token provided. Endpoint: ${endpoint}. Header Present: ${!!authHeader}`);
-            return res.status(401).json({ 
+            return res.status(401).json({
                 error: 'Not authorized, no token',
                 code: 'NO_TOKEN'
             });
@@ -26,7 +33,7 @@ export const authProtect = async (req, res, next) => {
         // Check if token is a string "undefined" or "null" (safety net for storage issues)
         if (token === 'undefined' || token === 'null' || token.length < 20) {
             logger.error(`[AUTH-401] Malformed or corrupt token string: "${token.substring(0, 20)}..."`);
-            return res.status(401).json({ 
+            return res.status(401).json({
                 error: 'Malformed session token',
                 code: 'MALFORMED_TOKEN'
             });
@@ -35,11 +42,11 @@ export const authProtect = async (req, res, next) => {
         let decoded;
         try {
             decoded = verifyAccessToken(token);
-            
+
             // Critical Payload Validation
             if (!decoded.id || !decoded.organizationId) {
                 logger.error(`[AUTH-401] Incomplete Token Payload: id=${decoded.id}, org=${decoded.organizationId}`);
-                return res.status(401).json({ 
+                return res.status(401).json({
                     error: 'Invalid session payload',
                     code: 'INCOMPLETE_PAYLOAD'
                 });
@@ -47,9 +54,9 @@ export const authProtect = async (req, res, next) => {
         } catch (jwtError) {
             const isExpired = jwtError.name === 'TokenExpiredError';
             logger.error(`[AUTH-401] Token verification failed: ${jwtError.message}. Reason: ${isExpired ? 'EXPIRED' : 'INVALID'}. Endpoint: ${endpoint}`);
-            
-            return res.status(401).json({ 
-                error: 'Not authorized, token failed', 
+
+            return res.status(401).json({
+                error: 'Not authorized, token failed',
                 reason: isExpired ? 'expired' : 'invalid',
                 code: isExpired ? 'TOKEN_EXPIRED' : 'TOKEN_INVALID'
             });
@@ -73,14 +80,23 @@ export const authProtect = async (req, res, next) => {
         };
 
         // 🚀 CRITICAL: Run entire request chain within async context for Prisma multi-tenant filtering.
-        // contextStorage.run() keeps the AsyncLocalStorage store alive for all async operations
-        // triggered by next(), including controller awaits.
-        return runWithContext({ 
-            userId: decoded.id, 
+        return runWithContext({
+            userId: decoded.id,
             organizationId: decoded.organizationId,
-            projectId: req.headers['x-project-id'] || null, 
+            projectId: req.headers['x-project-id'] || null,
             role: decoded.role
-        }, next);
+        }, async () => {
+            // 🛡️ [QUAL qual_006] Selective project verification
+            // Avoid calling verifierProjet for global routes to prevent breakage if header is stale.
+            const projectScopedPrefixes = ['/api/projects', '/api/missions', '/api/teams', '/api/finance', '/api/planning', '/api/logistics', '/api/inventory', '/api/grappes', '/api/pv'];
+            const isProjectRoute = projectScopedPrefixes.some(prefix => req.originalUrl.startsWith(prefix));
+            
+            if (isProjectRoute) {
+                await verifierProjet(req, res, next);
+            } else {
+                return next();
+            }
+        });
 
     } catch (error) {
         logger.error('[AUTH-CRITICAL] Unexpected error in auth middleware:', error);
@@ -89,68 +105,57 @@ export const authProtect = async (req, res, next) => {
 };
 
 export const authorize = (...args) => {
-    // Si on reçoit plusieurs arguments et le premier n'est pas un tableau, 
-    // on traite tout comme une liste de rôles.
     let requiredPermission = null;
     let authorizedRoles = [];
 
     if (args.length === 1 && Array.isArray(args[0])) {
         authorizedRoles = args[0];
     } else if (args.length >= 1) {
-        // Est-ce que le premier argument ressemble à une permission (minuscules avec underscore ?)
         const firstArg = args[0];
-        if (typeof firstArg === 'string' && (firstArg.includes('_') && firstArg === firstArg.toLowerCase())) {
+        const rest = args.slice(1);
+        const hasRoleArray = rest.length === 1 && Array.isArray(rest[0]);
+        const roleSlice = hasRoleArray ? rest[0] : rest;
+
+        if (looksLikePermissionKey(firstArg)) {
             requiredPermission = firstArg;
-            authorizedRoles = Array.isArray(args[1]) ? args[1] : args.slice(1);
+            authorizedRoles = roleSlice;
         } else {
-            // Tout est considéré comme des rôles
             authorizedRoles = args.flat();
         }
     }
 
-    // 🔑 Mapping de normalisation : variantes → rôle canonique
-    // Règle métier :
-    //   ADMIN_PROQUELEC = Super Admin (bypass total, voit tout)
-    //   DIRECTEUR       = Directeur Général (approuve tout, passe par les routes normales)
-    //   CHEF_PROJET/CP  = Chef de Projet (voit ses missions uniquement)
-
     return (req, res, next) => {
         const rawUserRole = req.user.role?.toUpperCase();
-        const userRole = normalizeRole(rawUserRole); // Normalisation systématique
-        const emailStr = req.user.email?.toLowerCase() || "";
+        const userRole = normalizeRole(rawUserRole);
+        const emailStr = req.user.email?.toLowerCase() || '';
 
-        // 1. SYSTEM ADMIN BYPASS (God Mode)
-        // Seul ADMIN_PROQUELEC a le bypass total de toutes les routes
-        // DG_PROQUELEC a les droits d'approbation mais passe par les vérifications normales
-        const isAdmin = userRole === 'ADMIN_PROQUELEC' ||
-            emailStr === 'admin@proquelec.com';
+        const isAdmin =
+            userRole === 'ADMIN_PROQUELEC' || emailStr === 'admin@proquelec.com';
 
-        // 2. GRANULAR PERMISSION CHECK
-        const hasExplicitPermissionsSet = req.user.permissionsWasManuallySet;
-        const hasExplicitAllow = requiredPermission && req.user.permissions.includes(requiredPermission);
+        const normalizedAuthorizedRoles = authorizedRoles.map((r) => normalizeRole(r));
+        const roleMatches =
+            normalizedAuthorizedRoles.length === 0 ||
+            normalizedAuthorizedRoles.includes(userRole);
 
-        // 3. ROLE FALLBACK — comparer les rôles normalisés
-        const normalizedAuthorizedRoles = authorizedRoles.map(r => normalizeRole(r));
-        const roleMatches = normalizedAuthorizedRoles.length === 0 || normalizedAuthorizedRoles.includes(userRole);
+        const permOk =
+            !!requiredPermission &&
+            routePermissionSatisfied(
+                req.user.permissions || [],
+                req.user.role,
+                requiredPermission,
+                ROLE_PERMISSIONS
+            );
 
-        // 4. LOGIQUE D'AUTORISATION :
-        // -isAdmin: God Mode 
-        // -hasExplicitAllow: L'utilisateur a la permission stricte demandée par la route
-        // -(!requiredPermission && roleMatches): La route ne demande aucune permission, on se fie uniquement au Rôle.
-        // -(!hasExplicitPermissionsSet && roleMatches): La route demande une permission, mais l'utilisateur n'a aucune permission configurée (legacy), on fallback sur son rôle.
-        if (
-            isAdmin || 
-            hasExplicitAllow || 
-            (!requiredPermission && roleMatches) || 
-            (!hasExplicitPermissionsSet && roleMatches)
-        ) {
+        if (isAdmin || (requiredPermission ? permOk : roleMatches)) {
             return next();
         }
 
-        logger.warn(`[AUTH] 🚫 RBAC DENIED: User Role '${rawUserRole}' (→${userRole}) not in [${authorizedRoles.join(', ')}]`);
+        logger.warn(
+            `[AUTH] 🚫 RBAC DENIED: User Role '${rawUserRole}' (→${userRole}) not in [${authorizedRoles.join(', ')}] requiredPerm=${requiredPermission || 'none'}`
+        );
         return res.status(403).json({
             error: 'Access denied: insufficient permissions',
-            details: { userRole, requiredRoles: authorizedRoles }
+            details: { userRole, requiredRoles: authorizedRoles, requiredPermission }
         });
     };
 };

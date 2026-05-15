@@ -168,6 +168,10 @@ export class VectorMemoryService {
    * Used by AI Router to provide context without LLM call
    */
   async findRelevantContext(userId, query, threshold = 0.7) {
+    if (!config.ai.openaiKey) {
+      return { found: false, context: [], reason: 'No OpenAI key for embeddings' };
+    }
+
     try {
       const results = await this.semanticSearch(userId, query, 10);
       const relevant = results.filter((r) => r.similarity >= threshold);
@@ -183,7 +187,7 @@ export class VectorMemoryService {
       };
     } catch (error) {
       logger.error('Find relevant context failed', { error: error.message });
-      throw error;
+      return { found: false, context: [], error: error.message };
     }
   }
 

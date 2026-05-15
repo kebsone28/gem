@@ -12,12 +12,13 @@ import {
 import { getRegions } from '../../modules/team/region.controller.js';
 import { getGrappes, syncGrappes } from '../../modules/team/grappe.controller.js';
 import { authProtect } from '../middlewares/auth.js';
-import { verifierPermission } from '../../middleware/verifierPermission.js';
+import { verifierPermission, verifierModule } from '../../middleware/verifierPermission.js';
 import { PERMISSIONS } from '../../core/config/permissions.js';
 
 const router = express.Router();
 
 router.use(authProtect);
+router.use(verifierModule('users'));
 
 router.get('/', getTeams);
 router.get('/tree', getTeamsTree);

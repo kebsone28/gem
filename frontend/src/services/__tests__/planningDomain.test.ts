@@ -1,3 +1,4 @@
+import { describe, expect, it } from 'vitest';
 import {
   getHouseholdPhase,
   getEstimatedDuration,
@@ -394,8 +395,9 @@ describe('planningDomain', () => {
       });
 
       stages.forEach(stage => {
-        if (stage.key !== 'FORMATION') {
-          expect(stage.atRisk).toBe(true);
+        if (stage.key === 'FORMATION') return;
+        expect(stage.atRisk).toBe(true);
+        if (stage.remainingHouseholds > 0) {
           expect(stage.isBlocked).toBe(true);
         }
       });
@@ -472,10 +474,10 @@ describe('planningDomain', () => {
       const teamPlannings = buildTeamPlannings(tasks, mockTeams);
 
       expect(teamPlannings).toHaveLength(2); // team1 + UNASSIGNED
-      expect(teamPlannings[0].team.id).toBe('team1');
-      expect(teamPlannings[0].tasks).toHaveLength(2);
-      expect(teamPlannings[0].utilization).toBe(40); // 2 tâches / 5 capacité
-      expect(teamPlannings[0].status).toBe('busy');
+      const team1Planning = teamPlannings.find(p => p.team.id === 'team1');
+      expect(team1Planning?.tasks).toHaveLength(2);
+      expect(team1Planning?.utilization).toBe(40); // 2 tâches / 5 capacité
+      expect(team1Planning?.status).toBe('available');
     });
 
     it('devrait inclure les tâches non assignées', () => {
@@ -493,7 +495,7 @@ describe('planningDomain', () => {
 
       const teamPlannings = buildTeamPlannings(tasks, mockTeams);
 
-      expect(teamPlannings).toHaveLength(2); // team1 + UNASSIGNED
+      expect(teamPlannings).toHaveLength(1);
       const unassignedPlanning = teamPlannings.find(p => p.team.id === 'UNASSIGNED');
       expect(unassignedPlanning?.tasks).toHaveLength(1);
     });

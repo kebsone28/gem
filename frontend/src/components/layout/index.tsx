@@ -1,5 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React from 'react';
+import { Link } from 'react-router-dom';
+import { ChevronLeft } from 'lucide-react';
 import { COMMON_CLASSES } from '../../styles/tokens';
 import { withAnalytics } from '../../utils/designSystemAnalytics';
 
@@ -30,6 +32,7 @@ interface PageHeaderProps {
     | 'simulation'
     | 'bordereau'
     | 'formation';
+  backLink?: { to: string; label: string };
 }
 
 const PAGE_HEADER_ACCENTS: Record<
@@ -93,11 +96,19 @@ function renderIcon(icon?: React.ReactNode | React.ComponentType<any>) {
 }
 
 export const PageHeader: React.FC<PageHeaderProps> = React.memo(withAnalytics(
-  ({ title, subtitle, icon, actions, className = '', variant = 'default', accent = 'default' }) => {
+  ({ title, subtitle, icon, actions, className = '', variant = 'default', accent = 'default', backLink }) => {
     const accentStyles = PAGE_HEADER_ACCENTS[accent];
     if (variant === 'gradient') {
       return (
         <div className={`page-header mb-6 ${className}`}>
+          {backLink && (
+            <div className="mb-4 relative z-10">
+              <Link to={backLink.to} className="inline-flex items-center gap-2 text-sm font-medium text-white/60 hover:text-white transition-colors">
+                <ChevronLeft size={16} />
+                {backLink.label}
+              </Link>
+            </div>
+          )}
           <div className="flex items-center justify-between relative z-10">
             <div className="flex items-center gap-3">
               {icon && (
@@ -120,8 +131,16 @@ export const PageHeader: React.FC<PageHeaderProps> = React.memo(withAnalytics(
 
     // Variant default
     return (
-      <div className={`${COMMON_CLASSES.pageHeader} ${accentStyles.border} ${className}`}>
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+      <div className={`${COMMON_CLASSES.pageHeader} flex flex-col ${accentStyles.border} ${className}`}>
+        {backLink && (
+          <div className="mb-5">
+            <Link to={backLink.to} className="inline-flex items-center gap-1.5 text-sm font-semibold uppercase tracking-widest text-[var(--color-text-secondary)] hover:text-white transition-colors">
+              <ChevronLeft size={16} className="text-blue-500" />
+              {backLink.label}
+            </Link>
+          </div>
+        )}
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between w-full">
           <div className="flex items-start gap-2.5 min-w-0 flex-1 sm:items-center sm:gap-3">
             {icon && (
               <div

@@ -1,0 +1,24 @@
+🔒 PROTECTED GEM CONFIGURATION FILES
+
+⚠️ WARNING: The following files contain reserved port configurations for GEM SAAS.
+These ports MUST NOT BE MODIFIED to avoid breaking the application.
+
+PROTECTED PORTS:
+- 8888 (Backend API)
+- 8889 (Frontend Dev Server)
+- 8890 (Frontend Preview Server)
+
+DO NOT MODIFY THESE FILES:
+✘ backend/.env (PORT variable)
+✘ package.json (dev:frontend script)
+✘ frontend/vite.config.ts (server.port & preview.port)
+✘ backend/src/core/config/config.js (localCorsOrigins array)
+✘ backend/src/server.js (FRONTEND_URL fallback)
+
+If you accidentally modify these files, run:
+  npm run validate-ports:fix
+
+For more information, see: GEM_PORTS_RESERVED.md
+
+Last Protected: 2026-05-12
+Application: PROQUELEC GEM SAAS

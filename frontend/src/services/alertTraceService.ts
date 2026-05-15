@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /**
- * SERVICE : AlertTraceService (Axe 3 — Plan d'Amélioration Continue GEM-SAAS)
+ * SERVICE : AlertTraceService (Axe 3 — Plan d'Amélioration Continue GED OS SaaS)
  * Enregistrement du statut de livraison des alertes SMS/Email pour la traçabilité
  * juridique et l'audit des notifications envoyées aux prestataires terrain.
  */
@@ -163,8 +163,8 @@ export const dispatchPVAlerts = async (params: {
   const result: { smsTrace?: AlertTrace; emailTrace?: AlertTrace } = {};
 
   const message =
-    `[GEM-PROQUELEC] PV ${pvType} emis pour le lot ${numerolot}. ` +
-    `Veuillez consulter votre espace GEM pour les details et actions requises.`;
+    `[GED OS] PV ${pvType} emis pour le lot ${numerolot}. ` +
+    `Veuillez consulter votre espace GED OS pour les details et actions requises.`;
 
   if (phoneNumber) {
     result.smsTrace = await sendSMSAlert({

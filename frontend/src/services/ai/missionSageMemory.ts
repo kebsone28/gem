@@ -11,7 +11,7 @@ export interface MissionSageSessionMemory {
   lastUpdated: number;
 }
 
-const MEMORY_KEY = 'gem_mint_memory_';
+const MEMORY_KEY = 'ged_os_memory_';
 const MEMORY_TTL_MS = 3_600_000;
 
 function emptyMemory(): MissionSageSessionMemory {

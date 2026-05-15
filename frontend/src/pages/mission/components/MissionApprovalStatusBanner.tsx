@@ -1,21 +1,33 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any */
 import React from 'react';
 import { XCircle, Clock, MessageSquare, ShieldCheck, User } from 'lucide-react';
+import { useLabels } from '../../../contexts/LabelsContext';
 
 interface MissionApprovalStatusBannerProps {
   workflow: any;
+  resourceName?: string; // e.g. "mission", "contract", "task"
 }
 
 export const MissionApprovalStatusBanner: React.FC<MissionApprovalStatusBannerProps> = ({
   workflow,
+  resourceName = 'mission',
 }) => {
+  const { getLabel } = useLabels();
   if (!workflow) return null;
 
   const isApproved = workflow.overallStatus === 'approved';
   const isRejected = workflow.overallStatus === 'rejected';
 
+  // Labels dynamiques
+  const labelValidated = getLabel(`${resourceName}.validated`, `${resourceName === 'mission' ? 'Mission Validée' : 'Élément Validé'}`);
+  const labelRejected = getLabel(`${resourceName}.rejected`, `${resourceName === 'mission' ? 'Mission Rejetée' : 'Élément Rejeté'}`);
+  const labelPending = getLabel(`${resourceName}.pending_approval`, 'Validation en cours');
+  
+  const labelSuccessDesc = getLabel(`${resourceName}.validation_success_desc`, `Votre ${resourceName === 'mission' ? 'ordre de mission' : 'élément'} est officiel`);
+  const labelFailureDesc = getLabel(`${resourceName}.validation_failure_desc`, `L'élément nécessite des corrections`);
+  const labelPendingDesc = getLabel(`${resourceName}.validation_pending_desc`, 'En attente de validation finale');
+
   // Find the last decided step to show feedback
-  const decidedSteps = [...(workflow.steps || [])]
+  const decidedSteps = [...(workflow.steps || workflow.approvalSteps || [])]
     .filter(
       (s) =>
         s.status === 'APPROUVE' ||
@@ -24,8 +36,8 @@ export const MissionApprovalStatusBanner: React.FC<MissionApprovalStatusBannerPr
         s.status === 'rejected'
     )
     .sort((a, b) => {
-      const timeB = b.updatedAt || b.approvedAt || 0;
-      const timeA = a.updatedAt || a.approvedAt || 0;
+      const timeB = b.updatedAt || b.approvedAt || b.decidedAt || 0;
+      const timeA = a.updatedAt || a.approvedAt || a.decidedAt || 0;
       return new Date(timeB).getTime() - new Date(timeA).getTime();
     });
 
@@ -82,10 +94,10 @@ export const MissionApprovalStatusBanner: React.FC<MissionApprovalStatusBannerPr
             <div className="flex items-center gap-2 mb-1">
               <h4 className={`text-[10px] font-black uppercase tracking-[0.2em] ${textColor}`}>
                 {isApproved
-                  ? 'Mission Validée'
+                  ? labelValidated
                   : isRejected
-                    ? 'Mission Rejetée'
-                    : 'Validation en cours'}
+                    ? labelRejected
+                    : labelPending}
               </h4>
               {workflow.orderNumber && isApproved && (
                 <span className="bg-emerald-500 text-white text-[9px] font-black px-2 py-0.5 rounded-md uppercase tracking-tighter shadow-lg">
@@ -95,10 +107,10 @@ export const MissionApprovalStatusBanner: React.FC<MissionApprovalStatusBannerPr
             </div>
             <p className="text-xl font-black text-slate-900 dark:text-white tracking-tight">
               {isApproved
-                ? 'Votre ordre de mission est officiel'
+                ? labelSuccessDesc
                 : isRejected
-                  ? 'La mission nécessite des corrections'
-                  : 'En attente de validation finale'}
+                  ? labelFailureDesc
+                  : labelPendingDesc}
             </p>
           </div>
         </div>

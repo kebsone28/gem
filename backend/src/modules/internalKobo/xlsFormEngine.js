@@ -274,10 +274,10 @@ function normalizePulldataKey(value) {
 function getPulldataRecord(values, sourceName) {
     const source = normalizePulldataKey(sourceName);
     const candidates = [
-        values[`_gem_pulldata_${sourceName}`],
-        values[`_gem_pulldata_${source}`],
+        values[`_ged_os_pulldata_${sourceName}`],
+        values[`_ged_os_pulldata_${source}`],
         values._gemPulldata,
-        values._gem_pulldata
+        values._ged_os_pulldata
     ];
 
     for (const candidate of candidates) {
@@ -825,7 +825,7 @@ export function buildXlsFormDefinition({ survey = [], choices = [], settings = {
     };
 
     return {
-        engine: 'gem-xlsform-universal',
+        engine: 'ged-os-xlsform-universal',
         engineVersion: XLSFORM_ENGINE_VERSION,
         formKey,
         formVersion,

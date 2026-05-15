@@ -1,8 +1,8 @@
-import { GEM_MINT_KNOWLEDGE_BASE } from './GEM_MINT_KNOWLEDGE_BASE.js';
+import { GED_OS_KNOWLEDGE_BASE } from './GED_OS_PLATFORM_GUIDE.js';
 
 /**
- * SYSTÈME D'AMÉLIORATION DES RÉPONSES STATIQUES
- * Basé sur l'analyse des réponses IA cohérentes
+ * SYSTÈME D'AMÉLIORATION DES RÉPONSES STATIQUES - GED OS
+ * Basé sur l'analyse des réponses IA cohérentes pour le pilotage d'écosystèmes
  */
 
 export class StaticResponseImprover {
@@ -10,7 +10,7 @@ export class StaticResponseImprover {
   constructor() {
     this.improvedResponses = new Map();
     this.responsePatterns = {
-      // Patterns de réponses réussies observés
+      // Patterns de réponses réussies observés pour GED OS
       workflow: {
         structure: "Étape 1 → Étape 2 → Étape 3",
         include_roles: true,
@@ -18,7 +18,7 @@ export class StaticResponseImprover {
       },
       technique: {
         structure: "• Règle 1\n• Règle 2\n• Règle 3",
-        include_normes: "NS 01-001",
+        include_standards: "NS 01-001 / ISO",
         add_examples: true
       },
       securite: {
@@ -32,35 +32,35 @@ export class StaticResponseImprover {
   // AMÉLIORATIONS BASÉES SUR LES RÉPONSES IA RÉUSSIES
 
   improveWorkflowResponses() {
-    // Amélioration du workflow missions
+    // Amélioration du workflow GED OS
     this.improvedResponses.set('workflow_missions', {
       original: "Créer mission → Valider → Approuver",
-      improved: `Workflow complet des missions OM:
+      improved: `Workflow complet des missions dans GED OS:
 
-1. **Création** (ADMIN_PROQUELEC)
+1. **Création & Paramétrage** (ADMIN)
    - Saisie numéro OM, zone, budget
-   - Définition équipes et équipements
+   - Définition des modules actifs (Terrain, IA, etc.)
 
-2. **Validation Technique** (CHEF_PROJET)
-   - Vérification conformité NS 01-001
-   - Validation budgétaire et planning
+2. **Validation Opérationnelle** (CHEF_PROJET)
+   - Vérification de la faisabilité technique
+   - Validation budgétaire et planning Gantt
 
-3. **Certification Finale** (DIRECTEUR)
-   - Approbation stratégique
-   - Autorisation paiement indemnités
+3. **Certification Stratégique** (DIRECTEUR)
+   - Approbation DG avec signature numérique
+   - Autorisation de décaissement des perdiems
 
 4. **Exécution Terrain** (TECHNICIENS)
-   - Collecte Kobo Collect
-   - Synchronisation données
+   - Collecte via GED OS Collect (Kobo)
+   - Synchronisation en temps réel avec le serveur
 
-5. **Contrôle & Paiement**
-   - Validation conformité
-   - Indemnisation ménages`,
+5. **Clôture & Audit**
+   - Validation de conformité finale
+   - Archivage sécurisé dans le journal d'audit`,
 
       improvements: [
         "Structure numérotée claire",
-        "Rôles explicites entre parenthèses",
-        "Contexte technique ajouté",
+        "Rôles GED OS explicites",
+        "Contexte écosystème ajouté",
         "Étapes détaillées avec actions spécifiques"
       ]
     });
@@ -68,35 +68,30 @@ export class StaticResponseImprover {
 
   improveTechnicalResponses() {
     // Amélioration des réponses techniques
-    this.improvedResponses.set('regles_branchement', {
-      original: "Coffret à 1.60m, câbles enterrés",
-      improved: `Règles techniques branchement Senelec (NS 01-001):
+    this.improvedResponses.set('regles_metier', {
+      original: "Configuration multi-tenant et PostGIS",
+      improved: `Architecture technique GED OS:
 
-**📍 Coffret Compteur:**
-• Position: En limite propriété
-• Hauteur hublot: 1.60m du sol
-• Accessibilité: Sans outils spéciaux
+**📍 Infrastructure:**
+• Backend: Node.js ESM / Prisma 7
+• Database: PostgreSQL 16 + PostGIS (Spatial)
+• Cache: Redis pour KPIs haute performance
 
-**🪢 Câblage:**
-• Enterrement: 0.5m sous grillage rouge
-• Protection: PVC obligatoire
-• Hauteur: ≥4m (ruelles), ≥6m (routes)
-• Sections standard: 1.5mm², 2.5mm², 4mm²
+**🪢 Synchronisation:**
+• Moteur: GED OS Engine (Data Flow Kobo)
+• Matching: numeroordre (Unique Business Key)
+• GPS: Smart Selection C2/C4 avec filtrage de distance
 
-**⚡ Protection Électrique:**
-• DDR: Dispositif coupure fuite terre (obligatoire)
-• PE: Prise terre vert/jaune
-• Interdictions: Poteaux bois pourris, barrettes terre extérieures
-
-**🔧 Terminologie:**
-• Partie active: Conducteur sous tension (phase, neutre)
-• Masse: Pièce touchable pouvant être sous tension`,
+**⚡ Pilotage IA:**
+• Mentor: GED OS AI avec contexte serveur
+• Automation: Génération auto de PV et rapports
+• Vision: Pré-diagnostic photo assisté par IA`,
 
       improvements: [
         "Format visuel avec emojis",
         "Sections organisées logiquement",
-        "Détails techniques précis",
-        "Terminologie claire avec définitions"
+        "Détails techniques précis Prisma 7",
+        "Vision IA intégrée"
       ]
     });
   }
@@ -105,75 +100,30 @@ export class StaticResponseImprover {
     // Amélioration des réponses sécurité
     this.improvedResponses.set('authentification', {
       original: "JWT avec refresh token",
-      improved: `Architecture de sécurité GEM-MINT:
+      improved: `Architecture de sécurité GED OS:
 
-**🔐 Authentification JWT:**
-• Access Token: 15 minutes (sub, email, role, organizationId)
-• Refresh Token: 7 jours (stocké DB, rotation possible)
-• Logout: Revocation refresh token
+**🔐 Authentification Souveraine:**
+• Access Token: 15 minutes (Payload: sub, orgId, role)
+• Refresh Token: 7 jours (Rotation auto & Stockage DB)
+• Impersonation: God Mode audité avec traçabilité complète
 
 **🛡️ Protections Implémentées:**
-• XSS: DOMPurify, no innerHTML
-• CSRF: SameSite cookies, validation CORS
-• Injection SQL: Prisma ORM uniquement
-• Brute Force: Lockout après 5 échecs
-• Rate Limiting: 5req/s (login), 20req/s (API)
+• CORS: Whitelist stricte (Access-Control-Allow-Origin)
+• XSS: DOMPurify & Sanitization des flux
+• Injection SQL: Protection native via Prisma ORM
+• Brute Force: Lockout temporaire après échecs répétés
+• Rate Limiting: Protection contre les attaques DoS
 
-**🔧 Middleware Sécurité:**
-• Helmet: HSTS, CSP, X-Frame-Options
-• CORS: Gestion multi-origines
-• Compression: Gzip automatique
-• Morgan: Logging requêtes
-• AuthProtect: Vérification JWT
-• AuthorizationMiddleware: Contrôle accès rôles`,
+**🔧 Gouvernance & Audit:**
+• Audit Logs: Tracabilité immuable de chaque action
+• Multi-Tenant: Étanchéité totale des données par organisation
+• 2FA: Double authentification par question de sécurité`,
 
       improvements: [
-        "Durées explicites",
+        "Focus sur la souveraineté",
         "Liste complète des protections",
-        "Middleware détaillés",
-        "Contexte technique précis"
-      ]
-    });
-  }
-
-  improveKoboResponses() {
-    // Amélioration des réponses Kobo
-    this.improvedResponses.set('sync_kobo', {
-      original: "Sync par numeroordre",
-      improved: `Synchronisation Kobo Collect:
-
-**🎯 Stratégie de Matching:**
-• Identifiant métier: numeroordre (clé UNIQUE)
-• Logique: UPDATE si existe, CREATE sinon
-• Format: Numérique (ex: 4526)
-
-**📊 Extraction de Champs:**
-• numeroordre/numero_ordre: Identifiant unique
-• coordinates: Latitude/Longitude (formats multiples)
-• owner: Prénom+Nom, Téléphone
-• regional: Région/Département/Commune/Village
-• status: Checkpoints validation
-
-**🔄 Formats GPS Supportés:**
-• "lat lon" ou "lon lat"
-• GeoJSON Point [longitude, latitude]
-• Séparateur décimal: . ou ,
-
-**⚡ Validation Statut:**
-1. Priorité: "Situation du Ménage" (non_eligible)
-2. Fallback: Checkpoints validation
-3. Default: "Non débuté"
-
-**🚫 Prévention Doublons:**
-• Contrainte UNIQUE sur numeroordre
-• Résolution conflits: version + updatedAt
-• Master local prioritaire`,
-
-      improvements: [
-        "Stratégie de matching claire",
-        "Formats supportés détaillés",
-        "Logique de validation expliquée",
-        "Solutions anti-doublons"
+        "Gouvernance multi-tenant",
+        "Contexte technique GED OS"
       ]
     });
   }
@@ -182,7 +132,6 @@ export class StaticResponseImprover {
     this.improveWorkflowResponses();
     this.improveTechnicalResponses();
     this.improveSecurityResponses();
-    this.improveKoboResponses();
 
     return this.improvedResponses;
   }
@@ -202,36 +151,19 @@ export class StaticResponseImprover {
     if (response.includes('•') || response.includes('1.') || response.includes('**')) {
       analysis.score += 2;
       analysis.strengths.push('Structure organisée');
-    } else {
-      analysis.weaknesses.push('Structure peut être améliorée');
-      analysis.suggestions.push('Ajouter listes à puces ou numérotation');
     }
 
     // Analyse de précision technique
-    const technicalTerms = ['NS 01-001', 'JWT', 'numeroordre', 'coffret', 'DDR'];
+    const technicalTerms = ['GED OS', 'Prisma', 'JWT', 'PostGIS', 'multi-tenant'];
     const foundTerms = technicalTerms.filter(term =>
       response.toLowerCase().includes(term.toLowerCase())
     );
     analysis.score += foundTerms.length;
-    if (foundTerms.length > 0) {
-      analysis.strengths.push(`Termes techniques utilisés: ${foundTerms.join(', ')}`);
-    }
 
     // Analyse de contexte métier
-    if (response.toLowerCase().includes('proquelec') ||
-        response.toLowerCase().includes('gem-mint')) {
+    if (response.toLowerCase().includes('ged os')) {
       analysis.score += 1;
-      analysis.strengths.push('Contexte métier présent');
-    } else {
-      analysis.weaknesses.push('Contexte métier peut être renforcé');
-    }
-
-    // Analyse de longueur et détail
-    if (response.length > 200) {
-      analysis.score += 1;
-      analysis.strengths.push('Réponse détaillée');
-    } else if (response.length < 100) {
-      analysis.weaknesses.push('Réponse peut être plus détaillée');
+      analysis.strengths.push('Branding GED OS respecté');
     }
 
     return analysis;

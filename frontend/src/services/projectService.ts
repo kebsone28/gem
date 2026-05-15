@@ -27,8 +27,8 @@ export const projectService = {
     await apiClient.post('/projects/assign-user', { userId, projectIds });
   },
 
-  deleteProject: async (id: string): Promise<void> => {
-    await apiClient.delete(`/projects/${id}`);
+  deleteProject: async (id: string, password?: string): Promise<void> => {
+    await apiClient.delete(`/projects/${id}`, { data: { password } });
   },
 
   getProjectBordereau: async (id: string): Promise<{ households: unknown[]; summary: unknown }> => {

@@ -1,5 +1,5 @@
 /**
- * AudioService (Axe 4 — Plan d'Amélioration Continue GEM-SAAS)
+ * AudioService (Axe 4 — Plan d'Amélioration Continue GED OS SaaS)
  * Fournit des feedbacks sonores subtils pour améliorer l'immersion et la réactivité.
  */
 

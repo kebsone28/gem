@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState } from 'react';
 import {
   Map as MapIcon,
@@ -23,6 +23,7 @@ import {
   BrainCircuit,
   QrCode,
   ShieldAlert,
+  Globe,
 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -71,7 +72,7 @@ function ScreenshotGallery() {
   const s = SCREENSHOTS[active];
 
   return (
-    <div className={`${COMMON_CLASSES.card} overflow-hidden shadow-md`}>
+    <div className="relative overflow-hidden rounded-[1.6rem] border border-white/5 bg-gradient-to-br from-slate-900 to-slate-950 shadow-[0_18px_50px_rgba(2,6,23,0.22)]">
       {/* Main image */}
       <div className="relative group cursor-zoom-in" onClick={() => setLightbox(true)}>
         <img
@@ -100,7 +101,7 @@ function ScreenshotGallery() {
         <button
           aria-label="Image précédente"
           onClick={prev}
-          className={`${COMMON_CLASSES.btnSecondary} p-2 rounded-xl`}
+          className="flex items-center justify-center w-10 h-10 bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl transition-all border border-slate-700"
         >
           <ChevronLeft size={18} />
         </button>
@@ -118,7 +119,7 @@ function ScreenshotGallery() {
         <button
           aria-label="Image suivante"
           onClick={next}
-          className={`${COMMON_CLASSES.btnSecondary} p-2 rounded-xl`}
+          className="flex items-center justify-center w-10 h-10 bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl transition-all border border-slate-700"
         >
           <ChevronRight size={18} />
         </button>
@@ -158,13 +159,29 @@ function ScreenshotGallery() {
 /* ─── Main page ─────────────────────────────────────────────────── */
 export default function Aide() {
   const { isDarkMode } = useTheme();
-  const [openSection, setOpenSection] = useState<string | null>('gem_mint_ia');
+  const [openSection, setOpenSection] = useState<string | null>('ged_os_ia');
   const toggleSection = (id: string) => setOpenSection(openSection === id ? null : id);
 
   const overviewData = [
     {
-      id: 'gem_mint_ia',
-      title: 'GEM-MINT IA — Intelligence Artificielle & Mentor',
+      id: 'ged_os_vision',
+      title: 'GED OS — Vision & Écosystème',
+      icon: Globe,
+      color: 'blue',
+      bg: 'bg-blue-100 dark:bg-blue-900/50 text-blue-900 dark:text-blue-100',
+      zap: 'text-blue-900 dark:text-blue-100',
+      content: [
+        'Plateforme intelligente multidomaine pour créer, piloter et automatiser des écosystèmes métiers.',
+        'Système d’Exploitation Métier : orchestrateur de workflows et centralisateur de données souveraines.',
+        'Secteurs : Infrastructures, Énergie, Agriculture, Santé, Gouvernance, Logistique.',
+        'Supervision en temps réel avec traçabilité, IA et automatisation native.',
+      ],
+      utility: "GED OS permet aux États, entreprises et institutions de déployer rapidement des solutions souveraines adaptées à leurs réalités locales.",
+      example: "Déployer en moins de 48h un système complet de suivi de l'électrification rurale avec gestion des stocks et validation DG.",
+    },
+    {
+      id: 'ged_os_ia',
+      title: 'GED OS AI — Intelligence Artificielle Souveraine',
       icon: BrainCircuit,
       color: 'violet',
       bg: 'bg-violet-100 dark:bg-violet-900/50 text-violet-900 dark:text-violet-100',
@@ -213,7 +230,7 @@ export default function Aide() {
         'Backend Haute Performance : Node.js avec moteur Prisma et accélération Redis.',
       ],
       utility:
-        "Supervision stratégique de haut niveau. Permet de piloter l'ensemble du projet GEM d'un coup d'œil et de réagir aux alertes critiques.",
+        "Supervision stratégique de haut niveau. Permet de piloter l'ensemble de l'écosystème GED OS d'un coup d'œil et de réagir aux alertes critiques.",
       example:
         'Visualiser que la région de Matam est à 85% de raccordements avec un budget consommé de 12,4M FCFA.',
     },
@@ -341,7 +358,7 @@ export default function Aide() {
       utility:
         'Reporting officiel à haute valeur ajoutée. Destiné à être envoyé aux bailleurs et partenaires pour prouver le travail accompli avec des graphiques certifiés.',
       example:
-        "Générer un rapport d'avancement certifié par GEM-MINT IA pour la réunion hebdomadaire avec le client LSE.",
+        "Générer un rapport d'avancement certifié par GED OS AI pour la réunion hebdomadaire avec le client LSE.",
     },
     {
       id: 'finances',
@@ -438,9 +455,9 @@ export default function Aide() {
       id: 'hub',
       title: 'Le Hub Central & Command Palette',
       icon: Target,
-      color: 'indigo',
-      bg: 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-900 dark:text-indigo-100',
-      zap: 'text-indigo-900 dark:text-indigo-100',
+      color: 'blue',
+      bg: 'bg-blue-100 dark:bg-blue-900/50 text-blue-900 dark:text-blue-100',
+      zap: 'text-blue-900 dark:text-blue-100',
       content: [
         'Navigation ultra-rapide et accès direct via raccourci clavier universel (Ctrl+K ou Cmd+K).',
         'Tableau de bord organisé par pôles stratégiques (Exploration, Intelligence, Outils Experts).',
@@ -478,7 +495,7 @@ export default function Aide() {
       bg: 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-900 dark:text-emerald-100',
       zap: 'text-emerald-900 dark:text-emerald-100',
       content: [
-        'Mapping Intelligent : Conversion automatique des flux XML KoboToolbox en modèles de données Household/Audit GEM.',
+        'Mapping Intelligent : Conversion automatique des flux XML KoboToolbox en modèles de données GED OS.',
         'Validation par NumeroOrdre : Stratégie d’upsert robuste empêchant les doublons lors des synchronisations massives.',
         'Géolocalisation Inverse : Calcul automatique des zones (Grappes) et régions basé sur les coordonnées GPS Kobo.',
         'Fil rouge technique : Récupération des photos d’installations et des signatures électroniques des bénéficiaires.',
@@ -491,32 +508,34 @@ export default function Aide() {
   ];
 
   return (
-    <PageContainer>
+    <PageContainer className="min-h-screen bg-slate-950 py-4 sm:py-8">
       <PageHeader
-        title="Aide & Tour d'Horizon"
-        subtitle="Guide produit et mode d'emploi interne — données de référence lues depuis le serveur, avec fonctions IA disponibles, assistées ou avancées."
-        icon={HelpCircle}
+        variant="gradient"
+        accent="formation"
+        title="Aide & Écosystème GED OS"
+        subtitle="Guide interactif et mode d'emploi de la plateforme intelligente souveraine."
+        icon={<HelpCircle size={24} className="text-blue-400" />}
       />
 
       <Section title="Statut du Module IA">
         <ContentArea>
           <div className={`${COMMON_CLASSES.card} p-5 md:p-6`}>
             <div className="grid gap-3 md:grid-cols-3">
-              <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4">
+              <div className="rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/10 to-emerald-900/10 p-5 shadow-lg shadow-emerald-500/5 backdrop-blur-sm">
                 <p className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-400">Disponible</p>
-                <p className="mt-2 text-sm font-semibold leading-relaxed">
+                <p className="mt-2 text-sm font-medium leading-relaxed text-slate-300">
                   Chat mentor avec contexte serveur, base normative, lecture des ménages, équipes et activité récente.
                 </p>
               </div>
-              <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4">
+              <div className="rounded-2xl border border-amber-500/20 bg-gradient-to-br from-amber-500/10 to-amber-900/10 p-5 shadow-lg shadow-amber-500/5 backdrop-blur-sm">
                 <p className="text-[10px] font-black uppercase tracking-[0.18em] text-amber-400">Assisté</p>
-                <p className="mt-2 text-sm font-semibold leading-relaxed">
+                <p className="mt-2 text-sm font-medium leading-relaxed text-slate-300">
                   Vision photo utile pour le pré-diagnostic terrain, mais qui reste un appui et non une validation automatique.
                 </p>
               </div>
-              <div className="rounded-2xl border border-blue-500/20 bg-blue-500/10 p-4">
+              <div className="rounded-2xl border border-blue-500/20 bg-gradient-to-br from-blue-500/10 to-blue-900/10 p-5 shadow-lg shadow-blue-500/5 backdrop-blur-sm">
                 <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-400">Cadre</p>
-                <p className="mt-2 text-sm font-semibold leading-relaxed">
+                <p className="mt-2 text-sm font-medium leading-relaxed text-slate-300">
                   Les recommandations IA restent des propositions d'aide à la décision. La validation métier reste humaine.
                 </p>
               </div>
@@ -633,7 +652,7 @@ export default function Aide() {
             </div>
 
             <div className={`${COMMON_CLASSES.card} p-4`}>
-              <h4 className="font-bold mb-2">5. Module IA & ASSISTANT (Wanekoo AI)</h4>
+              <h4 className="font-bold mb-2">5. Module IA & ASSISTANT (GED OS AI)</h4>
               <ul className="list-disc pl-5 space-y-1">
                 <li>UTILISER_IA : Accès à l'assistant intelligent.</li>
                 <li>GERER_MEMOIRE_IA : Gérer les préférences et la "mémoire" de l'assistant pour l'organisation.</li>
@@ -761,13 +780,9 @@ export default function Aide() {
         </ContentArea>
       </Section>
 
-      <div
-        className={`${COMMON_CLASSES.card} text-center ${isDarkMode ? 'bg-indigo-900/20 border-indigo-500/20' : 'bg-indigo-50 border-indigo-100'}`}
-      >
-        <p
-          className={`${COMMON_CLASSES.body} font-bold ${isDarkMode ? 'text-indigo-300' : 'text-indigo-700'}`}
-        >
-          GEM SaaS v4.5 — GEM-MINT IA · Clustering 200k · Smart-Sync Fingerprint · OSRM Routing · QR Traceability
+      <div className="mt-8 relative overflow-hidden rounded-[1.6rem] border border-blue-500/20 bg-gradient-to-br from-blue-900/20 to-slate-900/40 p-6 text-center backdrop-blur-sm shadow-xl">
+        <p className="text-sm font-black text-blue-400 uppercase tracking-widest">
+          GED OS v5.0 — Système d’Exploitation Métier Souverain · IA Native · Clustering 200k · OSRM Routing · QR Traceability
         </p>
       </div>
     </PageContainer>

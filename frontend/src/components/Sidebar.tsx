@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, react-hooks/exhaustive-deps */
 import { useEffect, useMemo, useState } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
   LayoutGrid,
@@ -29,6 +29,9 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Brain,
+  Folder,
+  Home,
+  ServerCog
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSync } from '../hooks/useSync';
@@ -40,14 +43,45 @@ import type { UserRole } from '../utils/security/types';
 import { useProject } from '../contexts/ProjectContext';
 import { NotificationCenter } from './layout';
 import { organizationService } from '../services/organizationService';
+import { modulesManagementService } from '../services/modulesManagementService';
+import { PROJECT_CONFIG } from '../config/projectConfig';
+
+import { MODULE_REGISTRY, getAllModules } from '../modules/MODULE_REGISTRY';
+
+const LUCIDE_ICONS: Record<string, any> = {
+  Home,
+  LayoutDashboard,
+  Calculator,
+  BarChart3,
+  Users,
+  FileText,
+  Folder,
+  ShieldCheck,
+  Map: MapIcon,
+  MessagesSquare,
+  Calendar,
+  GraduationCap,
+  Truck,
+  LayoutGrid,
+  ClipboardList,
+  ServerCog,
+  Activity,
+  Terminal,
+  ClipboardCheck,
+  Building2,
+  Settings,
+  Brain,
+  HelpCircle,
+};
 
 /**
- * Sidebar – Navigation principale Wanekoo (Deep Navy).
+ * Sidebar – Navigation principale GED OS (Deep Navy).
  * Design unifié sans switch de thème.
  */
 export default function Sidebar() {
   const { user, logout, stopImpersonation } = useAuth();
-  const { project } = useProject();
+  const location = useLocation();
+  const { project, t } = useProject();
   const { forceSync } = useSync();
   // En SaaS, on simule l'état de sync (le store Dexie est géré par BackgroundServices)
   const isSyncing = false;
@@ -55,10 +89,10 @@ export default function Sidebar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [sidebarMode, setSidebarMode] = useState<'wide' | 'compact' | 'rail'>(() => {
     if (typeof window === 'undefined') return 'wide';
-    const storedMode = window.localStorage.getItem('gem-sidebar-mode');
+    const storedMode = window.localStorage.getItem('ged-os-sidebar-mode');
     if (storedMode === 'wide' || storedMode === 'compact' || storedMode === 'rail')
       return storedMode;
-    return window.localStorage.getItem('gem-sidebar-density') === 'compact' ? 'compact' : 'wide';
+    return window.localStorage.getItem('ged-os-sidebar-density') === 'compact' ? 'compact' : 'wide';
   });
 
   // 1️⃣ Normalisation et bypass sécurisé via helpers
@@ -72,7 +106,7 @@ export default function Sidebar() {
       nRole === AppRole.COMPTABLE,
     [isMaster, nRole]
   );
-  const missionLabel = 'Missions';
+  const missionLabel = t('mission', 'Missions');
   const roleLabels: Record<string, string> = {
     [AppRole.ADMIN]: 'Admin',
     [AppRole.DIRECTEUR]: 'Direction générale',
@@ -85,21 +119,38 @@ export default function Sidebar() {
   };
   const roleDisplay = (nRole && roleLabels[nRole]) || user?.role || 'Utilisateur';
   const organizationName =
-    (user?.organizationConfig as any)?.branding?.organizationName || 'GEM SAAS';
-  const projectLabel = project?.name || 'Wanekoo Core';
+    (user?.organizationConfig as any)?.branding?.organizationName || PROJECT_CONFIG.appName;
+  // Nom du projet actif — ne jamais tomber sur un texte générique confusant
+  const activeProjectName = project?.name || null;
 
   const handleLogout = () => {
     logout();
     window.location.href = '/login';
   };
 
+  // 🛡️ [ORCHESTRATION] Détecter si on est dans le "Cœur du Système" (Global Admin)
+  const isGlobalAdminContext = useMemo(() => {
+    const globalRoutes = [
+      '/admin/modules',
+      '/admin/users',
+      '/admin/diagnostic',
+      '/admin/organization',
+      '/admin/security',
+      '/admin/project-creation',
+      '/admin/ai-config',
+      '/admin/permissions',
+      '/settings'
+    ];
+    return globalRoutes.some(route => location.pathname.startsWith(route));
+  }, [location.pathname]);
+
   const cycleDesktopMode = () => {
     const nextMode =
       sidebarMode === 'wide' ? 'compact' : sidebarMode === 'compact' ? 'rail' : 'wide';
     setSidebarMode(nextMode);
     if (typeof window !== 'undefined') {
-      window.localStorage.setItem('gem-sidebar-mode', nextMode);
-      window.localStorage.setItem('gem-sidebar-density', nextMode === 'wide' ? 'wide' : 'compact');
+      window.localStorage.setItem('ged-os-sidebar-mode', nextMode);
+      window.localStorage.setItem('ged-os-sidebar-density', nextMode === 'wide' ? 'wide' : 'compact');
     }
   };
 
@@ -108,20 +159,21 @@ export default function Sidebar() {
     organizationService
       .getConfig()
       .then(setOrgConfig)
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   const visibleMissionPanels = useMemo(() => orgConfig?.mission_panels_dg || [], [orgConfig]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    document.documentElement.dataset.gemSidebarMode = sidebarMode;
+    document.documentElement.dataset.gedOsSidebarMode = sidebarMode;
     window.dispatchEvent(
-      new CustomEvent('gem:sidebar-mode-change', { detail: { mode: sidebarMode } })
+      new CustomEvent('ged-os:sidebar-mode-change', { detail: { mode: sidebarMode } })
     );
   }, [sidebarMode]);
 
   interface NavItem {
+    id: string;
     to: string;
     icon: any;
     label: string;
@@ -131,208 +183,130 @@ export default function Sidebar() {
     category: 'PILOTAGE' | 'OPÉRATIONS' | 'SYSTÈME';
   }
 
-  const navItems: NavItem[] = useMemo(
-    () => [
-      {
-        to: '/dashboard',
-        icon: LayoutDashboard,
-        label: 'Tableau de Bord',
-        title: "Vue d'ensemble de la mission et indicateurs clés",
-        category: 'PILOTAGE',
-      },
-      {
-        to: '/simulation',
-        icon: Calculator,
-        label: 'Simulation',
-        title: 'Calculez vos budgets et simulez des scénarios financiers',
-        permission: PERMISSIONS.IA_SIMULATION,
-        category: 'PILOTAGE',
-      },
-      {
-        to: '/charges',
-        icon: BarChart3,
-        label: 'Charge',
-        title: 'Renseignez les budgets prévus, coûts réels et écarts financiers',
-        permission: [PERMISSIONS.FINANCE_READ, PERMISSIONS.FINANCE_PAYMENTS],
-        visible: canAccessCharges,
-        category: 'PILOTAGE',
-      },
-      {
-        to: '/bordereau',
-        icon: Users,
-        label: 'Bordereau',
-        title: 'Gérez la logistique des équipes et les affectations terrain',
-        permission: PERMISSIONS.LOGISTIQUE_OM,
-        category: 'PILOTAGE',
-      },
-      {
-        to: '/cahier',
-        icon: FileText,
-        label: 'Cahier de Charge',
-        title: 'Consultez les spécifications techniques et les rapports détaillés',
-        permission: [PERMISSIONS.TERRAIN_READ, PERMISSIONS.FINANCE_READ],
-        category: 'PILOTAGE',
-      },
-      {
-        to: '/admin/pv-automation',
-        icon: ShieldCheck,
-        label: 'Automatisation PV',
-        title: 'Générez et gérez les procès-verbaux automatiquement',
-        permission: PERMISSIONS.DOCS_PV,
-        category: 'PILOTAGE',
-      },
-      {
-        to: '/terrain',
-        icon: MapIcon,
-        label: 'Terrain',
-        title: 'Suivez les ménages sur la carte interactive en temps réel',
-        permission: PERMISSIONS.UI_MAP,
-        category: 'OPÉRATIONS',
-      },
-      {
-        to: '/communication',
-        icon: MessagesSquare,
-        label: 'Communication',
-        title: 'Messagerie équipe en direct, salons communs et discussions privées',
-        category: 'OPÉRATIONS',
-      },
-      {
-        to: '/planning',
-        icon: Calendar,
-        label: 'Planning',
-        title: 'Planification intelligente des travaux par équipe',
-        permission: PERMISSIONS.MISSIONS_PLANNING,
-        category: 'OPÉRATIONS',
-      },
-      {
-        to: '/planning-formation',
-        icon: GraduationCap,
-        label: 'Formations',
-        title: 'Planification des formations par région et session',
-        permission: PERMISSIONS.UI_MAP,
-        category: 'OPÉRATIONS',
-      },
-      {
-        to: '/logistique',
-        icon: Truck,
-        label: 'Logistique',
-        title: 'Gestion du déploiement et des ressources matérielles',
-        permission: PERMISSIONS.LOGISTIQUE_MANAGE,
-        category: 'OPÉRATIONS',
-      },
-      {
-        to: '/atelier',
-        icon: LayoutGrid,
-        label: 'Atelier',
-        title: 'Saisie et journalisation de la préparation des kits',
-        permission: PERMISSIONS.LOGISTIQUE_ATELIER,
-        category: 'OPÉRATIONS',
-      },
-      {
-        to: '/admin/approval',
-        icon: ShieldCheck,
-        label: 'Approbation',
-        title: 'Validez ou rejetez les interventions effectuées sur le terrain',
-        permission: PERMISSIONS.MISSIONS_VALIDATE,
-        category: 'OPÉRATIONS',
-      },
-      {
-        to: '/admin/mission',
-        icon: ClipboardList,
-        label: missionLabel,
-        title: 'Planifiez vos prochaines missions et objectifs',
-        permission: PERMISSIONS.MISSIONS_CREATE,
-        visible: nRole === AppRole.DIRECTEUR ? visibleMissionPanels.length > 0 : true,
-        category: 'OPÉRATIONS',
-      },
-      {
-        to: '/admin/users',
-        icon: Users,
-        label: 'Utilisateurs',
-        title: 'Gérez les comptes, les rôles et les accès de votre équipe',
-        permission: PERMISSIONS.SYSTEM_USERS,
-        category: 'SYSTÈME',
-      },
-      {
-        to: '/admin/diagnostic',
-        icon: Activity,
-        label: 'Diagnostic Santé',
-        title: 'Vérifiez l’état technique du serveur et de la synchronisation',
-        permission: PERMISSIONS.SYSTEM_AUDIT,
-        category: 'SYSTÈME',
-      },
-      {
-        to: '/admin/kobo-terminal',
-        icon: Terminal,
-        label: 'Terminal KoboToolbox',
-        title: 'API officielle KoboCollect pour la synchronisation',
-        permission: PERMISSIONS.TERRAIN_TERMINAL,
-        category: 'SYSTÈME',
-      },
-      {
-        to: '/admin/internal-kobo',
-        icon: ClipboardCheck,
-        label: 'GEM Toolbox',
-        title: 'GEM Toolbox - Fiches terrain natives soumises directement au VPS',
-        permission: PERMISSIONS.TERRAIN_TERMINAL,
-        category: 'SYSTÈME',
-      },
-      {
-        to: '/admin/gem-collect',
-        icon: Activity,
-        label: 'GEM Collect',
-        title: 'GEM Collect - Moteur de saisie terrain universel GEM',
-        permission: PERMISSIONS.UI_MAP,
-        category: 'SYSTÈME',
-      },
-      {
-        to: '/admin/organization',
-        icon: Building2,
-        label: 'Organisation',
-        title: 'Configurez votre identité visuelle et les paramètres de structure',
-        permission: PERMISSIONS.SYSTEM_CONFIG,
-        category: 'SYSTÈME',
-      },
-      {
-        to: '/settings',
-        icon: Settings,
-        label: 'Paramètres',
-        title: 'Réglages globaux de l’application et préférences personnelles',
-        permission: PERMISSIONS.SYSTEM_CONFIG,
-        category: 'SYSTÈME',
-      },
-      {
-        to: '/admin/security',
-        icon: ShieldCheck,
-        label: 'Sécurité',
-        title: "Journal d'audit et contrôles de sécurité avancés",
-        permission: PERMISSIONS.SYSTEM_CONFIG,
-        category: 'SYSTÈME',
-      },
-      {
-        to: '/admin/ai-config',
-        icon: Brain,
-        label: 'Configuration IA',
-        title: 'Configuration du cerveau IA, modes et auto-entraînement souverain',
-        permission: PERMISSIONS.IA_CONFIG,
-        category: 'SYSTÈME',
-      },
-      {
-        to: '/aide',
-        icon: HelpCircle,
-        label: "Centre d'Aide",
-        title: "Besoin d'un guide ? Consultez notre documentation complète",
-        category: 'SYSTÈME',
-      },
-    ],
-    [PERMISSIONS, canAccessCharges, isMaster, missionLabel, nRole, visibleMissionPanels]
-  );
+  const navItems: NavItem[] = useMemo(() => {
+    const allModules = getAllModules();
+    const context = {
+      canAccessCharges,
+      isMaster,
+      missionLabel,
+      nRole,
+      visibleMissionPanels,
+    };
+
+    return allModules.map((module) => {
+      // 🔄 [ADAPTATION] On surcharge les labels si nécessaire (i18n / dynamic)
+      let label = module.name;
+      if (module.key === 'dashboard') label = t('dashboard', 'Tableau de Bord');
+      if (module.key === 'simulation') label = t('simulation', 'Simulation');
+      if (module.key === 'charges') label = t('charges', 'Charge');
+      if (module.key === 'bordereau') label = t('bordereau', 'Bordereau');
+      if (module.key === 'cahier') label = t('cahier', 'Cahier de Charge');
+      if (module.key === 'sharedoc') label = t('sharedoc', 'Documents Partagés');
+      if (module.key === 'pv_automation') label = t('pv_automation', 'Automatisation PV');
+      if (module.key === 'terrain') label = t('terrain', 'Terrain');
+      if (module.key === 'communication') label = t('communication', 'Communication');
+      if (module.key === 'planning') label = t('planning', 'Planning');
+      if (module.key === 'formation') label = t('formation', 'Formations');
+      if (module.key === 'logistique') label = t('logistique', 'Logistique');
+      if (module.key === 'atelier') label = t('atelier', 'Atelier');
+      if (module.key === 'approval') label = t('approval', 'Approbation');
+      if (module.key === 'users') label = t('users', 'Utilisateurs');
+      if (module.key === 'mission') label = missionLabel;
+
+      // 🔄 [ADAPTATION] On surcharge les descriptions si nécessaire
+      let title = module.description;
+      if (module.key === 'terrain')
+        title = t('terrain_desc', 'Suivez les entités sur la carte interactive en temps réel');
+
+      return {
+        id: module.key,
+        to: module.route,
+        icon: LUCIDE_ICONS[module.icon] || HelpCircle,
+        label,
+        title,
+        permission: module.requiredPermission as string | string[],
+        visible: module.visible ? module.visible(context) : true,
+        category: module.category,
+      };
+    });
+  }, [
+    canAccessCharges,
+    isMaster,
+    missionLabel,
+    nRole,
+    visibleMissionPanels,
+    t,
+  ]);
 
   // 🚀 [REACTIVITY] Re-calculate items when user or permissions change
+  const [globalModulesConfig, setGlobalModulesConfig] = useState<any>(null);
+  useEffect(() => {
+    modulesManagementService.getGlobalModulesConfig().then(setGlobalModulesConfig);
+  }, []);
+
   const memoGroupedItems = useMemo(() => {
+    // Liste des modules activés pour ce projet
+    const enabledModules = project?.config?.enabledModules || null;
+
     return navItems.reduce(
       (acc, item) => {
         if (item.visible === false) return acc;
+
+        const moduleMapping: Record<string, string> = {
+          approval: 'approbation',
+          atelier: 'logistique',
+          cahier: 'documents',
+          sharedoc: 'documents',
+          ged_os_toolbox: 'documents',
+          ged_os_collect: 'documents',
+          pv_automation: 'documents',
+          charges: 'advanced_analytics',
+          ai_config: 'ai_assistant',
+          simulation: 'ai_assistant',
+          formation: 'formation',
+          planning: 'planning',
+          bordereau: 'bordereau'
+        };
+        const targetModuleId = moduleMapping[item.id] || item.id;
+
+        // 🛡️ [ORCHESTRATION] Mode "Configuration Système" : n'afficher que les éléments essentiels
+        if (isGlobalAdminContext) {
+          if (!['home', 'modules', 'users'].includes(item.id)) return acc;
+          // Bypass tous les autres filtres pour ces items — on vérifie juste la permission
+          const canSee = isMaster || !item.permission || peut(item.permission);
+          if (canSee) {
+            if (!acc[item.category]) acc[item.category] = [];
+            acc[item.category].push(item);
+          }
+          return acc;
+        }
+
+        // 🛡️ [SAAS GLOBAL] Vérifier si le module est activé globalement
+        if (globalModulesConfig && item.id !== 'home') {
+          const config = globalModulesConfig[targetModuleId];
+          if (config && config.enabled === false) return acc;
+        }
+
+        // 🛡️ Filtre par module (Config Projet - isolation tenante)
+        if (item.id !== 'home') {
+          if (enabledModules) {
+            const isSystemPage = [
+              'modules', 'diagnostic', 'kobo_terminal', 'ged_os_toolbox', 'ged_os_collect',
+              'organization', 'settings', 'security', 'help', 'users', 'ai_config'
+            ].includes(item.id);
+
+            const bypassModuleCheck = isSystemPage && isMaster;
+            if (!bypassModuleCheck && !enabledModules.includes(targetModuleId)) return acc;
+          } else {
+            // Sans projet chargé : les pages système passent toujours pour les admins
+            const isSystemPage = [
+              'modules', 'diagnostic', 'kobo_terminal', 'ged_os_toolbox', 'ged_os_collect',
+              'organization', 'settings', 'security', 'help', 'users', 'ai_config'
+            ].includes(item.id);
+            if (!isSystemPage && !PROJECT_CONFIG.isModuleEnabled(item.id)) return acc;
+          }
+        }
+
         const canSee = isMaster || !item.permission || peut(item.permission);
         if (canSee) {
           if (!acc[item.category]) acc[item.category] = [];
@@ -342,7 +316,7 @@ export default function Sidebar() {
       },
       {} as Record<string, NavItem[]>
     );
-  }, [navItems, isMaster, peut]);
+  }, [navItems, isMaster, peut, project?.config?.enabledModules, globalModulesConfig, isGlobalAdminContext]);
 
   const categoryConfig = {
     PILOTAGE: { color: 'blue', label: 'STRATÉGIE', glow: 'shadow-blue-500/10' },
@@ -422,9 +396,9 @@ export default function Sidebar() {
             className={`mb-2 flex items-center gap-3 lg:mb-2.5 ${isRailDesktop ? 'justify-center' : 'justify-between'}`}
           >
             {!isRailDesktop && (
-              <div className="inline-flex items-center gap-2 rounded-full border border-blue-400/15 bg-blue-400/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-blue-200">
-                <span className="h-1.5 w-1.5 rounded-full bg-blue-300" />
-                Control Deck
+              <div className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${isGlobalAdminContext ? 'border-amber-400/20 bg-amber-400/10 text-amber-200' : 'border-blue-400/15 bg-blue-400/10 text-blue-200'}`}>
+                <span className={`h-1.5 w-1.5 rounded-full ${isGlobalAdminContext ? 'bg-amber-400 animate-pulse' : 'bg-blue-300'}`} />
+                {isGlobalAdminContext ? 'GED OS Orchestration' : 'GED OS | Pilotage'}
               </div>
             )}
             <button
@@ -473,11 +447,11 @@ export default function Sidebar() {
                     {organizationName}
                   </h1>
                   <div className="mt-1 flex flex-col gap-0.5 lg:mt-1.5">
-                    <span className="truncate text-[10.5px] font-semibold uppercase tracking-[0.16em] text-blue-300">
-                      {projectLabel}
+                    <span className={`truncate text-[10.5px] font-semibold uppercase tracking-[0.16em] ${isGlobalAdminContext ? 'text-amber-400' : 'text-blue-300'}`}>
+                      {isGlobalAdminContext ? 'Configuration Système' : (activeProjectName ?? 'Aucun projet sélectionné')}
                     </span>
                     <span className="text-[10px] font-medium uppercase tracking-[0.16em] text-slate-500">
-                      {project?.name ? 'Projet actif' : 'Espace principal'}
+                      {isGlobalAdminContext ? 'Platform Governance' : (activeProjectName ? 'Projet actif' : 'Accueil → Sélectionner')}
                     </span>
                   </div>
                 </div>
@@ -500,22 +474,20 @@ export default function Sidebar() {
               <button
                 onClick={() => forceSync()}
                 disabled={isSyncing || !navigator.onLine}
-                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] transition ${
-                  isSyncing
+                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] transition ${isSyncing
                     ? 'border-blue-500/20 bg-blue-500/10 text-blue-300'
                     : 'border-white/8 bg-white/[0.04] text-slate-300 hover:border-white/12 hover:bg-white/[0.06] hover:text-white'
-                }`}
+                  }`}
                 title="Lancer une synchronisation"
               >
                 <RefreshCw size={11} className={isSyncing ? 'animate-spin' : ''} />
                 {isSyncing ? 'Sync...' : 'Sync'}
               </button>
               <span
-                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 ${
-                  navigator.onLine
+                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 ${navigator.onLine
                     ? 'border-emerald-500/15 bg-emerald-500/10 text-emerald-300'
                     : 'border-rose-500/15 bg-rose-500/10 text-rose-300'
-                }`}
+                  }`}
               >
                 <Activity size={8} className={navigator.onLine ? 'animate-pulse' : ''} />
                 {navigator.onLine ? 'En ligne' : 'Hors ligne'}
@@ -527,21 +499,19 @@ export default function Sidebar() {
               <button
                 onClick={() => forceSync()}
                 disabled={isSyncing || !navigator.onLine}
-                className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl border transition ${
-                  isSyncing
+                className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl border transition ${isSyncing
                     ? 'border-blue-500/20 bg-blue-500/10 text-blue-300'
                     : 'border-white/8 bg-white/[0.04] text-slate-300 hover:border-white/12 hover:bg-white/[0.06] hover:text-white'
-                }`}
+                  }`}
                 title="Lancer une synchronisation"
               >
                 <RefreshCw size={14} className={isSyncing ? 'animate-spin' : ''} />
               </button>
               <span
-                className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl border ${
-                  navigator.onLine
+                className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl border ${navigator.onLine
                     ? 'border-emerald-500/15 bg-emerald-500/10 text-emerald-300'
                     : 'border-rose-500/15 bg-rose-500/10 text-rose-300'
-                }`}
+                  }`}
                 title={navigator.onLine ? 'En ligne' : 'Hors ligne'}
               >
                 <Activity size={12} className={navigator.onLine ? 'animate-pulse' : ''} />
@@ -590,11 +560,10 @@ export default function Sidebar() {
                       onClick={() => setMobileOpen(false)}
                       className={({ isActive }) => `
                       group relative flex items-center overflow-visible rounded-2xl transition-all duration-300
-                      ${
-                        isActive
+                      ${isActive
                           ? 'border border-blue-500/20 bg-blue-500/10 text-white shadow-[0_12px_30px_rgba(37,99,235,0.12)]'
                           : 'border border-transparent text-slate-400 hover:border-white/8 hover:bg-white/[0.04] hover:text-white'
-                      }
+                        }
                       ${isRailDesktop ? 'justify-center px-0 py-3' : 'gap-3 px-3 py-2.5 lg:py-3'}
                     `}
                     >
@@ -613,17 +582,15 @@ export default function Sidebar() {
                             />
                           )}
                           <div
-                            className={`relative z-10 flex h-9 w-9 items-center justify-center rounded-xl border lg:h-10 lg:w-10 ${
-                              isActive
+                            className={`relative z-10 flex h-9 w-9 items-center justify-center rounded-xl border lg:h-10 lg:w-10 ${isActive
                                 ? 'border-blue-400/20 bg-blue-400/10'
                                 : 'border-white/5 bg-white/[0.03]'
-                            }`}
+                              }`}
                           >
                             <item.icon
                               size={18}
-                              className={`transition-transform duration-300 group-hover:scale-110 ${
-                                isActive ? 'text-blue-300' : 'text-slate-500'
-                              }`}
+                              className={`transition-transform duration-300 group-hover:scale-110 ${isActive ? 'text-blue-300' : 'text-slate-500'
+                                }`}
                             />
                           </div>
                           {isRailDesktop && (
@@ -635,9 +602,8 @@ export default function Sidebar() {
                           {!isRailDesktop && (
                             <div className="relative z-10 min-w-0 flex-1">
                               <span
-                                className={`block ${isCompactDesktop ? 'truncate' : 'line-clamp-2'} text-[12.5px] font-semibold tracking-[0.04em] lg:text-[13px] lg:tracking-[0.06em] ${
-                                  isActive ? 'text-white' : 'text-slate-300'
-                                }`}
+                                className={`block ${isCompactDesktop ? 'truncate' : 'line-clamp-2'} text-[12.5px] font-semibold tracking-[0.04em] lg:text-[13px] lg:tracking-[0.06em] ${isActive ? 'text-white' : 'text-slate-300'
+                                  }`}
                               >
                                 {item.label}
                               </span>

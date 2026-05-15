@@ -22,6 +22,7 @@ interface ProjectContextType {
   ) => Promise<{ success: boolean; error?: string }>;
   isLoading: boolean;
   syncError: string | null;
+  t: (key: string, defaultValue: string) => string;
 }
 
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
@@ -91,25 +92,16 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const syncProjectsFromServer = async (preferredProjectId?: string | null) => {
     setSyncError(null);
     try {
-      if (!getStoredAccessToken()) {
-        logger.warn('⚠️ [PROJECT] Synchronisation serveur ignorée: aucun token disponible.');
-        const localProjects = await db.projects.toArray();
-        const nextActiveId =
-          preferredProjectId && localProjects.some((project) => project.id === preferredProjectId)
-            ? preferredProjectId
-            : activeProjectId && localProjects.some((project) => project.id === activeProjectId)
-              ? activeProjectId
-              : localProjects[0]?.id || null;
-
-        persistActiveProjectId(nextActiveId);
-        return localProjects;
-      }
-
+      // 🔑 Ne pas bloquer sur le token localStorage : l'apiClient utilise
+      // les cookies HttpOnly et gère le refresh automatiquement.
+      // On tente toujours l'appel réseau si l'utilisateur est authentifié.
       const response = await apiClient.get('/projects');
-      const serverProjects: Project[] = response.data.projects || response.data || [];
+      const data = response?.data || {};
+      const serverProjects: Project[] = data.projects || (Array.isArray(data) ? data : []);
+
+      logger.debug(`[PROJECT] Serveur a renvoyé ${serverProjects.length} projet(s)`);
 
       // Transaction atomique : si bulkPut échoue, clear() est annulé → base jamais vide
-      // Cast `db` en `any` pour éviter l'inférence sur Team.children (référence circulaire TS)
       await (db as any).transaction('rw', db.projects, async () => {
         await db.projects.clear();
         if (serverProjects.length > 0) {
@@ -129,25 +121,37 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       logger.debug(`♻️ [STORE] ${serverProjects.length} projets synchronisés depuis le serveur`);
       return serverProjects;
     } catch (err: any) {
-      const errorMessage =
-        err?.response?.data?.error || err?.message || 'Erreur de synchronisation des projets';
+      // En cas d'erreur réseau, utiliser le cache local sans vider la base
+      logger.warn('⚠️ [PROJECT] Sync réseau échouée, utilisation du cache local', err);
+      const localProjects = await db.projects.toArray();
+      if (localProjects.length > 0) {
+        const nextActiveId = preferredProjectId && localProjects.some(p => p.id === preferredProjectId)
+          ? preferredProjectId
+          : localProjects[0]?.id || null;
+        persistActiveProjectId(nextActiveId);
+        return localProjects;
+      }
+      const errorMessage = err?.response?.data?.error || err?.message || 'Erreur de synchronisation des projets';
       setSyncError(errorMessage);
       logger.error('❌ [PROJECT] Erreur lors de la synchronisation des projets', err);
-      throw err;
+      return [];
     }
   };
 
-  // 🔄 Auto-Sync server-first: à chaque nouvelle session, le serveur réaligne le cache local.
+  // 🔄 Auto-Sync server-first: synchronise dès que l'utilisateur est authentifié.
+  // La vérification du token est supprimée : apiClient gère l'auth via cookies HttpOnly.
   useEffect(() => {
     const fetchInitialProjects = async () => {
-      if (!user?.id || !getStoredAccessToken()) {
+      if (!user?.id) {
         lastSyncedUserIdRef.current = null;
         return;
       }
+      // Forcer une nouvelle synchro à chaque changement d'utilisateur
       if (lastSyncedUserIdRef.current === user.id) return;
 
       lastSyncedUserIdRef.current = user.id;
       try {
+        logger.debug(`🔄 [PROJECT] Déclenchement sync initiale pour user ${user.id}`);
         await syncProjectsFromServer();
       } catch (err) {
         logger.error('❌ Échec de synchronisation initiale des projets', err);
@@ -198,6 +202,20 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
+  const t = (key: string, defaultValue: string): string => {
+    if (!activeProject?.config?.labels) return defaultValue;
+    const label = activeProject.config.labels[key];
+    if (!label) return defaultValue;
+    
+    // Si c'est un objet (ex: {singular, plural}), on renvoie le pluriel par défaut (pour la Sidebar)
+    if (typeof label === 'object' && label.plural) {
+      return label.plural;
+    }
+    
+    // Sinon c'est une chaîne simple
+    return typeof label === 'string' ? label : defaultValue;
+  };
+
   return (
     <ProjectContext.Provider
       value={{
@@ -211,6 +229,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         deleteProject,
         isLoading: activeProject === undefined,
         syncError,
+        t,
       }}
     >
       {children}

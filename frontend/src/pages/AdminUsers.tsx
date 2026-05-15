@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { appSecurity } from '../services/appSecurity';
 import { useAuth } from '../contexts/AuthContext';
+import { useProject } from '../contexts/ProjectContext';
 import { PageContainer, PageHeader, ContentArea, Modal } from '../components';
 // Import des icônes pour le tableau
 import { 
@@ -433,6 +434,7 @@ export default function AdminUsers() {
   const [pendingApplyPerms, setPendingApplyPerms] = useState<string[] | null>(null);
   const [pendingApplyRole, setPendingApplyRole] = useState<string | null>(null);
   const { user, impersonate } = useAuth();
+  const { setActiveProjectId } = useProject();
   const [users, setUsers] = useState<User[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
@@ -454,6 +456,10 @@ export default function AdminUsers() {
   const [showDelPass, setShowDelPass] = useState(false);
   const [deleteConfirmedName, setDeleteConfirmedName] = useState('');
   const [activeSecurityQuestion, setActiveSecurityQuestion] = useState('');
+
+  // ── Impersonate modal state ──
+  const [impersonateTarget, setImpersonateTarget] = useState<User | null>(null);
+  const [impersonateProjects, setImpersonateProjects] = useState<Project[]>([]);
 
   // ── Organization Config State ──
   const [orgConfig, setOrgConfig] = useState<Record<string, unknown>>({
@@ -662,6 +668,10 @@ export default function AdminUsers() {
 
     if (!editId && (form.password?.length ?? 0) < 6) {
       toast.error('Le mot de passe doit faire au moins 6 caractères.');
+      return;
+    }
+    if (editId && form.password?.trim() && form.password.trim().length < 6) {
+      toast.error('Le nouveau mot de passe doit faire au moins 6 caractères.');
       return;
     }
     setSaving(true);
@@ -1238,7 +1248,7 @@ export default function AdminUsers() {
         )}
       </AnimatePresence>
 
-      <PageHeader
+      <PageHeader backLink={{ to: '/admin/hub', label: 'Retour au Centre de Contrôle' }}
         title="Utilisateurs"
         subtitle="Gestion des comptes et des accès"
         icon={<Users size={24} />}
@@ -1470,7 +1480,14 @@ export default function AdminUsers() {
             isMasterAdminEmail={isMasterAdminEmail}
             onEdit={openEdit}
             onDelete={openDelete}
-            onImpersonate={(u) => impersonate(u)}
+            onImpersonate={(u) => {
+              const uProjects = projects.filter((p) => {
+                const assigned = (p.config as any)?.assignedUsers || [];
+                return assigned.includes(u.id);
+              });
+              setImpersonateProjects(uProjects);
+              setImpersonateTarget(u);
+            }}
           />
         </div>
 
@@ -1550,7 +1567,7 @@ export default function AdminUsers() {
                 {/* Password */}
                 <div>
                   <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2">
-                    Mot de passe *
+                    Mot de passe {editId ? <span className="text-slate-600 normal-case font-normal">(laisser vide pour ne pas changer)</span> : '*'}
                   </label>
                   <div className="relative">
                     <input
@@ -1559,7 +1576,7 @@ export default function AdminUsers() {
                       onChange={(e) =>
                         setForm((f: UserForm) => ({ ...f, password: e.target.value }))
                       }
-                      placeholder="Min. 6 caractères"
+                      placeholder={editId ? 'Nouveau mot de passe (optionnel)' : 'Min. 6 caractères'}
                       title="Mot de passe"
                       autoComplete="new-password"
                       className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 pr-12 text-white font-mono font-medium placeholder:text-slate-600 dark:text-slate-400 focus:ring-2 focus:ring-indigo-500 outline-none"
@@ -1713,24 +1730,23 @@ export default function AdminUsers() {
                   </p>
                 </div>
 
-                {/* 2FA (Admin only) */}
-                {normalizeRole(form.role) === AppRole.ADMIN && (
-                  <label className="flex items-center gap-3 cursor-pointer">
+                {/* 2FA - visible for ALL roles */}
+                <label className="flex items-center gap-3 cursor-pointer p-4 rounded-2xl border border-slate-800/50 bg-slate-950/50 hover:border-indigo-500/30 transition-all">
+                  <div
+                    onClick={() =>
+                      setForm((f: UserForm) => ({ ...f, requires2FA: !f.requires2FA }))
+                    }
+                    className={`w-10 h-6 rounded-full transition-all flex items-center px-0.5 ${form.requires2FA ? 'bg-indigo-600' : 'bg-slate-700'}`}
+                  >
                     <div
-                      onClick={() =>
-                        setForm((f: UserForm) => ({ ...f, requires2FA: !f.requires2FA }))
-                      }
-                      className={`w-10 h-6 rounded-full transition-all flex items-center px-0.5 ${form.requires2FA ? 'bg-indigo-600' : 'bg-slate-700'}`}
-                    >
-                      <div
-                        className={`w-5 h-5 bg-white dark:bg-slate-900 rounded-full shadow transition-transform ${form.requires2FA ? 'translate-x-4' : ''}`}
-                      />
-                    </div>
-                    <span className="text-slate-300 font-medium text-sm">
-                      Activer la double authentification (2FA)
-                    </span>
-                  </label>
-                )}
+                      className={`w-5 h-5 bg-white dark:bg-slate-900 rounded-full shadow transition-transform ${form.requires2FA ? 'translate-x-4' : ''}`}
+                    />
+                  </div>
+                  <div>
+                    <span className="text-slate-200 font-bold text-sm block">Double authentification (2FA)</span>
+                    <span className="text-slate-500 text-xs">Demander un code de sécurité à chaque connexion</span>
+                  </div>
+                </label>
 
                 {/* 🔐 Permissions Editor */}
                 <div className="col-span-1 mt-6 pt-6 border-t border-slate-200 dark:border-slate-800">
@@ -2138,6 +2154,58 @@ export default function AdminUsers() {
               </form>
             </div>
           </div>
+        )}
+
+        {/* ── Impersonate Gateway Modal ── */}
+        {impersonateTarget && (
+          <Modal title="Passerelle God Mode" onClose={() => setImpersonateTarget(null)}>
+            <div className="space-y-6">
+              <div className="p-4 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-100 text-sm font-medium">
+                Vous êtes sur le point de prendre le contrôle de <strong>{impersonateTarget.name || impersonateTarget.email}</strong>.
+                Ce compte a accès à <strong>{impersonateProjects.length}</strong> projet(s).
+                Veuillez sélectionner le contexte de projet dans lequel vous souhaitez atterrir.
+              </div>
+
+              <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-2 custom-scrollbar">
+                {impersonateProjects.map(proj => (
+                  <button
+                    key={proj.id}
+                    onClick={() => {
+                      setActiveProjectId(proj.id);
+                      impersonate(impersonateTarget);
+                    }}
+                    className="w-full text-left p-4 rounded-xl border border-white/10 hover:border-indigo-500/50 hover:bg-indigo-500/10 transition-all flex items-center justify-between group"
+                  >
+                    <div>
+                      <h4 className="font-bold text-white group-hover:text-indigo-400">{proj.name}</h4>
+                      <p className="text-xs text-slate-400 mt-1">Cliquez pour simuler sur ce projet</p>
+                    </div>
+                    <Briefcase size={20} className="text-slate-600 group-hover:text-indigo-500" />
+                  </button>
+                ))}
+                {impersonateProjects.length === 0 && (
+                  <div className="text-center p-6 border border-dashed border-white/10 rounded-xl text-slate-500 text-sm">
+                    Cet utilisateur n'est assigné à aucun projet spécifique.
+                  </div>
+                )}
+              </div>
+
+              <div className="pt-4 border-t border-white/10 flex justify-end gap-3">
+                <button
+                  onClick={() => setImpersonateTarget(null)}
+                  className="px-6 py-2.5 rounded-xl font-bold text-slate-400 hover:text-white hover:bg-white/5 transition-all"
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={() => impersonate(impersonateTarget)}
+                  className="px-6 py-2.5 rounded-xl font-bold bg-indigo-600 text-white hover:bg-indigo-500 transition-all shadow-lg shadow-indigo-500/25"
+                >
+                  Continuer par défaut
+                </button>
+              </div>
+            </div>
+          </Modal>
         )}
       </ContentArea>
     </PageContainer>

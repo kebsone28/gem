@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { usePermissions } from '../../hooks/usePermissions';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../store/db';
+import { useLabels } from '../../contexts/LabelsContext';
 import { motion } from 'framer-motion';
 import {
   ShieldCheck,
@@ -76,6 +77,7 @@ interface ComplianceMetrics {
 export default function AccountingDashboard() {
   const { user } = useAuth();
   const { peut, PERMISSIONS } = usePermissions();
+  const { getLabel } = useLabels();
   const navigate = useNavigate();
   const households = useLiveQuery(() => db.households.toArray()) || [];
   const teams = useLiveQuery(() => db.teams.toArray()) || [];
@@ -217,8 +219,8 @@ export default function AccountingDashboard() {
       <div className="absolute top-0 left-0 w-full h-[500px] bg-gradient-to-b from-blue-600/10 via-blue-600/5 to-transparent pointer-events-none" />
 
       <PageHeader
-        title="TABLEAU DE BORD COMPTABILITÉ"
-        subtitle="Gestion financière, budget et conformité des projets"
+        title={getLabel('finance.dashboard_title', 'TABLEAU DE BORD COMPTABILITÉ')}
+        subtitle={getLabel('finance.dashboard_subtitle', 'Gestion financière, budget et conformité des projets')}
         icon={
           <ShieldCheck
             size={28}
@@ -760,3 +762,41 @@ export default function AccountingDashboard() {
     </PageContainer>
   );
 }
+
+const ProgressBar = ({
+  label,
+  count,
+  percentage,
+  status = 'info',
+}: {
+  label: string;
+  count: string;
+  percentage: number;
+  status?: 'success' | 'warning' | 'info' | 'danger';
+}) => {
+  const colors = {
+    success: 'bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.4)]',
+    warning: 'bg-amber-500 shadow-[0_0_12px_rgba(245,158,11,0.4)]',
+    info: 'bg-blue-500 shadow-[0_0_12px_rgba(59,130,246,0.4)]',
+    danger: 'bg-rose-500 shadow-[0_0_12px_rgba(244,63,94,0.4)]',
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+          {label}
+        </span>
+        <span className="text-[10px] font-black tabular-nums text-white">{count}</span>
+      </div>
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/5 p-0.5 backdrop-blur-sm">
+        <motion.div
+          initial={{ width: 0 }}
+          animate={{ width: `${Math.min(100, percentage)}%` }}
+          transition={{ duration: 1, ease: 'easeOut' }}
+          className={`h-full rounded-full ${colors[status]}`}
+        />
+      </div>
+    </div>
+  );
+};

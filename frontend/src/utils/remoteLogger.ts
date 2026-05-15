@@ -1,8 +1,11 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * SERVICE : Remote Logger (Surveillance Proactive)
  */
 import logger from './logger';
+
+interface LogContext {
+  [key: string]: unknown;
+}
 
 class RemoteLogger {
   private static instance: RemoteLogger;
@@ -21,7 +24,7 @@ class RemoteLogger {
   /**
    * Envoie un log d'erreur au serveur
    */
-  public async error(message: string, error: any, context?: any) {
+  public async error(message: string, error: Error | unknown, context?: LogContext) {
     logger.error(`🔴 [REMOTE LOG] ${message}`, error, context);
 
     if (!this.isEnabled) return;
@@ -33,7 +36,7 @@ class RemoteLogger {
         body: JSON.stringify({
           level: 'error',
           message,
-          stack: error?.stack,
+          stack: error instanceof Error ? error.stack : undefined,
           context: {
             ...context,
             url: window.location.href,
@@ -47,7 +50,7 @@ class RemoteLogger {
     }
   }
 
-  public warn(message: string, context?: any) {
+  public warn(message: string, context?: LogContext) {
     if (import.meta.env.DEV) {
       logger.warn(`🟠 [REMOTE LOG] ${message}`, context);
     }

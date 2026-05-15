@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * mapGeoJsonWorker.ts
  *
@@ -218,7 +217,7 @@ self.onmessage = (event) => {
     const coordCount: Record<string, number> = {};
 
     const features = households
-      .map((h: any) => {
+      .map((h: Household) => {
         // ✅ SUPPORT MULTI-SOURCE COORDINATES (Nested GeoJSON OR Top-level Lat/Lon)
         // CRITICAL: use ?? instead of || to ensure 0 values are preserved
         let lng = Number(h.location?.coordinates?.[0] ?? h.longitude);
@@ -288,8 +287,8 @@ self.onmessage = (event) => {
       );
 
     // ── Business Key Deduplication ── (Deduplicate by numeroordre, keep oldest)
-    const seenNumeros = new Map<string, any>();
-    features.forEach((feature: any) => {
+    const seenNumeros = new Map<string, GeoJSON.Feature>();
+    features.forEach((feature: GeoJSON.Feature) => {
       const identifier = String(feature.properties?.numeroordre || feature.properties?.id || feature.id || '');
       if (!identifier) return;
       if (!seenNumeros.has(identifier)) {

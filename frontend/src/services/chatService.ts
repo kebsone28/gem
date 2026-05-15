@@ -10,6 +10,8 @@ export interface ChatUserSummary {
   online: boolean;
   blocked: boolean;
   blockedReason?: string | null;
+  chatStatus?: 'ONLINE' | 'AWAY' | 'DND' | 'OFFLINE';
+  chatStatusText?: string | null;
 }
 
 export interface ChatParticipant {
@@ -17,6 +19,7 @@ export interface ChatParticipant {
   userId: string;
   role: string;
   joinedAt: string;
+  lastReadAt?: string;
   isCurrentUser: boolean;
   user: ChatUserSummary;
 }
@@ -159,6 +162,14 @@ const chatService = {
   async markAsRead(conversationId: string) {
     const response = await apiClient.post<{ success: boolean }>(
       `/chat/conversations/${conversationId}/read`
+    );
+    return response.data;
+  },
+
+  async updateUserStatus(status: string, statusText?: string) {
+    const response = await apiClient.put<{ success: boolean; data: { userId: string; chatStatus: string; chatStatusText: string | null } }>(
+      '/chat/status',
+      { status, statusText }
     );
     return response.data;
   },

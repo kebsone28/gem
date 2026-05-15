@@ -33,7 +33,7 @@ describe('missionSageMemory', () => {
   });
 
   it('returns empty memory when stored data is corrupted', () => {
-    localStorage.setItem('gem_mint_memory_user-1', '{bad-json');
+    localStorage.setItem('ged_os_memory_user-1', '{bad-json');
     const memory = getMemory('user-1');
     expect(memory.history).toEqual([]);
     expect(memory.contextHistory).toEqual([]);
@@ -41,7 +41,7 @@ describe('missionSageMemory', () => {
 
   it('expires old memory', () => {
     localStorage.setItem(
-      'gem_mint_memory_user-2',
+      'ged_os_memory_user-2',
       JSON.stringify({
         history: ['old'],
         contextHistory: [],
@@ -63,7 +63,7 @@ describe('missionSageMemory', () => {
     };
 
     saveMemory('user-3', memory);
-    const saved = JSON.parse(localStorage.getItem('gem_mint_memory_user-3') || '{}');
+    const saved = JSON.parse(localStorage.getItem('ged_os_memory_user-3') || '{}');
     expect(saved.history).toHaveLength(50);
     expect(saved.contextHistory.length).toBeLessThanOrEqual(30);
   });

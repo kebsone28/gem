@@ -121,7 +121,7 @@ export default function AlertsPage() {
 
   return (
     <PageContainer>
-      <PageHeader
+      <PageHeader backLink={{ to: '/admin/hub', label: 'Retour au Centre de Contrôle' }}
         title="Centre des Alertes"
         subtitle="Gestion centralisée des alertes en temps réel"
         icon={Bell}

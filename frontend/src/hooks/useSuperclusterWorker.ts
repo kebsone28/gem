@@ -4,7 +4,7 @@ import type { Feature, Point } from 'geojson';
 import logger from '../utils/logger';
 
 /**
- * useSuperclusterWorker.ts (Axe 4 — Plan d'Amélioration Continue GEM-SAAS)
+ * useSuperclusterWorker.ts (Axe 4 — Plan d'Amélioration Continue GED OS SaaS)
  * Communication asynchrone avec le WebWorker pour le clustering massif.
  */
 export const useSuperclusterWorker = () => {

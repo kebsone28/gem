@@ -1,11 +1,11 @@
 async function callPublicFreeAI(query, user, state) {
-  // Enrichir le prompt avec le contexte métier GEM-MINT
+  // Enrichir le prompt avec le contexte métier GED OS
   const contextPrompt = `
-Tu es MissionSage, l'assistant IA intelligent du système GEM-MINT de PROQUELEC.
+Tu es GED OS AI, l'assistant IA intelligent du système GED OS de PROQUELEC.
 
-CONTEXTE MÉTIER GEM-MINT:
+CONTEXTE MÉTIER GED OS:
 - PROQUELEC est une entreprise sénégalaise d'électrification de masse
-- GEM-MINT gère les missions d'ordres de mission (OM) pour l'électrification
+- GED OS gère les missions d'ordres de mission (OM) pour l'électrification
 - Les missions suivent les normes NS 01-001 pour installations BT ≤1000V
 - Les techniciens utilisent Kobo Collect pour la collecte de données terrain
 - Les données sont validées par les Chefs de Projet puis certifiées par la DG
@@ -53,7 +53,7 @@ QUESTION UTILISATEUR: ${query}
 
 async function test() {
   const mockUser = {
-    role: 'ADMIN_PROQUELEC',
+    role: 'ADMIN_GED_OS',
     displayName: 'Test User',
     email: 'test@proquelec.sn'
   };

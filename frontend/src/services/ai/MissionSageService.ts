@@ -9,7 +9,7 @@ import type { MissionStats } from '../missionStatsService';
 import { db } from '../../store/db';
 import apiClient from '../../api/client';
 import { ELECTRICIAN_GUIDE, KOBO_STANDARDS, getTechnicalAnswer } from './ElectricianQuran';
-import { analyzeDG, computeIGPPScore } from './DecisionEngine';
+import { analyzeDG, computeIGPScore } from './DecisionEngine';
 import { getAIEngineConfig, type AIEngineSettings } from './AIEngineConfig';
 import { findGeneratedMissionSageOverride } from './generatedMissionSageOverrides';
 import { mentorTrainingService } from './mentorTrainingService';
@@ -190,7 +190,7 @@ const QUESTION_CATALOG: Record<string, string[]> = {
     'Comment corriger une erreur Kobo ?',
     'Comment valider un formulaire Kobo ?',
     'Quels champs Kobo sont obligatoires ?',
-    'Comment lier Kobo à GEM-MINT ?',
+    'Comment lier Kobo à GED OS MINT ?',
   ],
   norme: [
     'Norme NS 01-001',
@@ -901,7 +901,7 @@ function getRoleAwareBusinessReplies(user?: any): string[] {
 function buildGemSaasScopeRedirect(user?: any): AIResponse {
   return {
     message:
-      'Je reste centré sur GEM-SaaS. Je peux vous aider sur les missions OM, l’approbation DG, Kobo, les normes électriques, les finances, le dashboard et les rapports.',
+      'Je reste centré sur GED OS SaaS. Je peux vous aider sur les missions OM, l’approbation DG, Kobo, les normes électriques, les finances, le dashboard et les rapports.',
     type: 'info',
     smartReplies: getRoleAwareBusinessReplies(user),
     _engine: 'RULES',
@@ -911,7 +911,7 @@ function buildGemSaasScopeRedirect(user?: any): AIResponse {
 function buildGemSaasWorkRedirect(user?: any): AIResponse {
   return {
     message:
-      'Je peux vous aider à prioriser le travail dans GEM-SaaS. Indiquez le module concerné : missions, approbation DG, terrain Kobo, finances, dashboard ou rapports.',
+      'Je peux vous aider à prioriser le travail dans GED OS SaaS. Indiquez le module concerné : missions, approbation DG, terrain Kobo, finances, dashboard ou rapports.',
     type: 'info',
     smartReplies: getRoleAwareBusinessReplies(user),
     _engine: 'RULES',
@@ -1196,9 +1196,9 @@ const semanticGuide = {
 
 const SEMANTIC_KNOWLEDGE_LIBRARY: Record<SemanticEntryKey, SemanticKnowledgeEntry> = {
   global: {
-    title: 'GEM-MINT',
+    title: 'GED OS MINT',
     summary:
-      "GEM-MINT centralise le terrain, les missions, le pilotage et le contrôle financier dans un même système d'exploitation métier.",
+      "GED OS MINT centralise le terrain, les missions, le pilotage et le contrôle financier dans un même système d'exploitation métier.",
     meaning:
       "L'intérêt n'est pas d'accumuler des écrans, mais de garder une seule chaîne de vérité entre le ménage, la mission, la validation et l'indemnisation.",
     anchors: [
@@ -1207,13 +1207,13 @@ const SEMANTIC_KNOWLEDGE_LIBRARY: Record<SemanticEntryKey, SemanticKnowledgeEntr
       'Pilotage : KPIs, retards, alertes et suivi régional.',
       'Finance : budget, indemnités et contrôle des écarts.',
     ],
-    references: ['MISSION_SAGE_INTEGRATION_README', 'AIKnowledgeBase GEM-MINT'],
+    references: ['MISSION_SAGE_INTEGRATION_README', 'AIKnowledgeBase GED OS MINT'],
     smartReplies: ['Mes missions', 'Terrain Kobo', 'Dashboard', 'Budget'],
   },
   kobo: {
     title: 'Kobo et collecte terrain',
     summary:
-      'Kobo sert à capturer le terrain au plus près de l’exécution, puis à rapprocher chaque formulaire avec GEM-MINT via le numeroordre.',
+      'Kobo sert à capturer le terrain au plus près de l’exécution, puis à rapprocher chaque formulaire avec GED OS MINT via le numeroordre.',
     meaning:
       "Le point important est le suivant : une bonne collecte Kobo ne vaut pas seulement par les champs remplis, mais par la qualité du rapprochement avec le ménage, le GPS et l'état réel du chantier.",
     anchors: [
@@ -1232,7 +1232,7 @@ const SEMANTIC_KNOWLEDGE_LIBRARY: Record<SemanticEntryKey, SemanticKnowledgeEntr
       'Coordonnées GPS décalées par rapport à la concession.',
       'Formulaire validé alors que les observations de terrain sont incomplètes.',
     ],
-    references: ['KOBO_STANDARDS', 'AIKnowledgeBase GEM-MINT', 'kobo.mapping.js'],
+    references: ['KOBO_STANDARDS', 'AIKnowledgeBase GED OS MINT', 'kobo.mapping.js'],
     smartReplies: [
       'Synchronisation Kobo',
       'Que faire si Kobo ne remonte pas ?',
@@ -1298,7 +1298,7 @@ const SEMANTIC_KNOWLEDGE_LIBRARY: Record<SemanticEntryKey, SemanticKnowledgeEntr
       'Les écarts viennent-ils du terrain, du matériel ou de la logistique ?',
       'Le niveau d’alerte justifie-t-il une revue DG ?',
     ],
-    references: ['AIKnowledgeBase GEM-MINT', 'Bilan financier prévisionnel interne'],
+    references: ['AIKnowledgeBase GED OS MINT', 'Bilan financier prévisionnel interne'],
     smartReplies: ['Audit financier global', 'Indemnités de mission', 'Budget certifié', 'Que faire en cas de dépassement budgétaire ?'],
   },
   dashboard: {
@@ -1317,7 +1317,7 @@ const SEMANTIC_KNOWLEDGE_LIBRARY: Record<SemanticEntryKey, SemanticKnowledgeEntr
       'Le chiffre affiché est-il cohérent avec le volume réel de terrain ?',
       'Une anomalie répétée traduit-elle un problème de méthode ?',
     ],
-    references: ['MISSION_SAGE_INTEGRATION_README', 'AIKnowledgeBase GEM-MINT'],
+    references: ['MISSION_SAGE_INTEGRATION_README', 'AIKnowledgeBase GED OS MINT'],
     smartReplies: ['Score IGPP', 'Voir Dashboard', 'Risque de retard DG', 'Analyse stratégique DG'],
   },
   security: {
@@ -1345,7 +1345,7 @@ const SEMANTIC_KNOWLEDGE_LIBRARY: Record<SemanticEntryKey, SemanticKnowledgeEntr
       'Les conflits doivent être résolus avec une règle explicite.',
       'Une resynchronisation ne doit pas dégrader un statut validé.',
     ],
-    references: ['syncService', 'kobo.mapping.js', 'AIKnowledgeBase GEM-MINT'],
+    references: ['syncService', 'kobo.mapping.js', 'AIKnowledgeBase GED OS MINT'],
     smartReplies: ['Synchronisation Kobo', 'Que faire si Kobo ne remonte pas ?', 'Conflit de données', 'Actualiser'],
   },
   org: {
@@ -1370,7 +1370,7 @@ const SEMANTIC_KNOWLEDGE_LIBRARY: Record<SemanticEntryKey, SemanticKnowledgeEntr
       "Le sens du référentiel MFR est d'éviter les raccordements non conformes à la cible sociale et technique du programme.",
     anchors: semanticGuide.mfr.specs,
     checkpoints: semanticGuide.mfr.criticalChecks,
-    references: [semanticGuide.mfr.norm, 'Guide MFR', 'AIKnowledgeBase GEM-MINT'],
+    references: [semanticGuide.mfr.norm, 'Guide MFR', 'AIKnowledgeBase GED OS MINT'],
     smartReplies: ['Critères éligibilité', 'Branchement Senelec', 'Installation intérieure', 'Ménages raccordés'],
   },
   norme: {
@@ -1459,7 +1459,7 @@ const SEMANTIC_KNOWLEDGE_LIBRARY: Record<SemanticEntryKey, SemanticKnowledgeEntr
       'Identifier les régions ou chaînes métier réellement sous tension.',
       'Distinguer incident ponctuel et dérive structurelle.',
     ],
-    references: ['DecisionEngine', 'KPIs projet', 'AIKnowledgeBase GEM-MINT'],
+    references: ['DecisionEngine', 'KPIs projet', 'AIKnowledgeBase GED OS MINT'],
     smartReplies: ['Analyse stratégique DG', 'Risque de retard DG', 'Rapport stratégique DG', 'Voir Dashboard'],
   },
   report: {
@@ -1473,7 +1473,7 @@ const SEMANTIC_KNOWLEDGE_LIBRARY: Record<SemanticEntryKey, SemanticKnowledgeEntr
       'Relier les observations aux décisions prises.',
       'Conserver une traçabilité exploitable après diffusion.',
     ],
-    references: ['WordReportService', 'PVDocGenerator', 'Rapports internes GEM-MINT'],
+    references: ['WordReportService', 'PVDocGenerator', 'Rapports internes GED OS MINT'],
     smartReplies: ['Générer un rapport Word', 'Exporter un rapport PDF', 'Contenu du rapport stratégique', 'Comment partager un rapport ?'],
   },
 };
@@ -1525,7 +1525,7 @@ function buildSemanticFocus(query: string, entryKey: SemanticEntryKey): string {
       return 'Sur la partie GPS, le bon niveau d’exigence consiste à vérifier que le point correspond réellement à la concession observée sur site, pas seulement à un point proche.';
     }
     if (/doublon|numeroordre|numero ordre/.test(normalized)) {
-      return 'Sur les doublons, la première vérification porte sur le `numeroordre`, car c’est lui qui structure le rapprochement entre Kobo et GEM-MINT.';
+      return 'Sur les doublons, la première vérification porte sur le `numeroordre`, car c’est lui qui structure le rapprochement entre Kobo et GED OS MINT.';
     }
     if (/champ|obligatoire|formulaire/.test(normalized)) {
       return 'Pour les champs obligatoires, il faut distinguer les champs purement descriptifs des champs de contrôle qui conditionnent vraiment la qualité de la synchronisation.';
@@ -2007,7 +2007,7 @@ async function runRulesEngine(
     // Réponse générique technique améliorée
     return {
       message:
-        `**Référentiel technique GEM-MINT**\n\n` +
+        `**Référentiel technique GED OS MINT**\n\n` +
         `Sortie attendue : verdict, gravité et action corrective.\n\n` +
         `Domaines couverts :\n` +
         `- Branchement Senelec\n` +

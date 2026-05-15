@@ -134,7 +134,7 @@ export const useTerrainUIStore = create<TerrainUIState>((set) => ({
   showWarehouses: true,
   showDatabaseStats: false,
   showLegend: false,
-  mapStyle: ((safeStorage.getItem('gem-map-theme') as any) || 'light') as
+  mapStyle: ((safeStorage.getItem('ged-os-map-theme') as any) || 'light') as
     | 'light'
     | 'dark'
     | 'satellite',
@@ -148,7 +148,7 @@ export const useTerrainUIStore = create<TerrainUIState>((set) => ({
     set((state) => {
       const styles: ('dark' | 'light' | 'satellite')[] = ['dark', 'light', 'satellite'];
       const next = styles[(styles.indexOf(state.mapStyle) + 1) % styles.length];
-      safeStorage.setItem('gem-map-theme', next);
+      safeStorage.setItem('ged-os-map-theme', next);
       return { mapStyle: next };
     }),
 

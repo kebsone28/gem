@@ -239,15 +239,15 @@ function usePVAutomation(): PVLogic {
       const userSecret = `sig-secret-${currentUser?.id || 'anonymous'}`;
       
       if (signatureData) {
-        await storeSignatureWithTTL('gem_pv_sig', signatureData, userSecret);
+        await storeSignatureWithTTL('ged_os_pv_sig', signatureData, userSecret);
       } else {
-        localStorage.removeItem('gem_pv_sig');
+        localStorage.removeItem('ged_os_pv_sig');
       }
       
       if (bossSignatureData) {
-        await storeSignatureWithTTL('gem_pv_boss_sig', bossSignatureData, userSecret);
+        await storeSignatureWithTTL('ged_os_pv_boss_sig', bossSignatureData, userSecret);
       } else {
-        localStorage.removeItem('gem_pv_boss_sig');
+        localStorage.removeItem('ged_os_pv_boss_sig');
       }
     };
     
@@ -260,10 +260,10 @@ function usePVAutomation(): PVLogic {
       if (!currentUser?.id) return;
       const userSecret = `sig-secret-${currentUser.id}`;
       
-      const sig = await getSignatureWithTTL('gem_pv_sig', userSecret);
+      const sig = await getSignatureWithTTL('ged_os_pv_sig', userSecret);
       if (sig) setSignatureData(sig);
       
-      const bSig = await getSignatureWithTTL('gem_pv_boss_sig', userSecret);
+      const bSig = await getSignatureWithTTL('ged_os_pv_boss_sig', userSecret);
       if (bSig) setBossSignatureData(bSig);
     };
     
@@ -322,7 +322,7 @@ function usePVAutomation(): PVLogic {
             ...pv,
             projectId: pv.projectId || 'N/A',
             content: pv.content || '',
-            createdBy: pv.createdBy || 'Système GEM',
+            createdBy: pv.createdBy || 'Système GED OS',
           } as PVRecord);
         }
       });
@@ -371,7 +371,7 @@ function usePVAutomation(): PVLogic {
       setIsGenerating(true);
       try {
         const currentUser = useAuthStore.getState().user;
-        const issuerName = currentUser?.name || 'Système GEM';
+        const issuerName = currentUser?.name || 'Système GED OS';
 
         // Clé d'id unique par ménage+type pour éviter les doublons au clic répétitif
         const stableId = `${submission.id}_${type}`;
@@ -411,7 +411,7 @@ function usePVAutomation(): PVLogic {
         await createNotification({
           title: `✅ ${type} généré`,
           message: `PV pour ${lotLabel} transmis.`,
-          sender: 'Système GEM',
+          sender: 'Système GED OS',
           type: type === 'PVNC' || type === 'PVHSE' ? 'rejection' : 'approval',
           projectId: submission.projectId,
           dedupKey: `pv-${stableId}`,
@@ -605,7 +605,7 @@ function usePVAutomation(): PVLogic {
                         children: [
                           new Paragraph({
                             children: [
-                              new TextRun({ text: 'ÉMETTEUR GEM', color: 'ffffff', bold: true }),
+                              new TextRun({ text: 'ÉMETTEUR GED OS', color: 'ffffff', bold: true }),
                             ],
                           }),
                         ],
@@ -960,7 +960,7 @@ function usePVAutomation(): PVLogic {
       });
 
       const blob = await Packer.toBlob(doc);
-      saveAs(blob, `GEM_PV_GLOBAL_${type}_${Date.now()}.docx`);
+      saveAs(blob, `GED OS_PV_GLOBAL_${type}_${Date.now()}.docx`);
       toast.success('PV Global généré !');
     } catch (e) {
       logger.error('[PVAutomation] Global export failed', e);
@@ -1033,7 +1033,7 @@ function usePVAutomation(): PVLogic {
       const ws = XLSX.utils.json_to_sheet(data);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Anomalies Terrain');
-      XLSX.writeFile(wb, `GEM_Anomalies_Export_${format(new Date(), 'yyyyMMdd_HHmm')}.xlsx`);
+      XLSX.writeFile(wb, `GED OS_Anomalies_Export_${format(new Date(), 'yyyyMMdd_HHmm')}.xlsx`);
       toast.success(`${anomalyHouseholds.length} anomalies exportées`);
     } catch (err) {
       toast.error("Échec de l'export des anomalies");
@@ -1081,7 +1081,7 @@ export default function PVAutomation() {
 
   return (
     <PageContainer>
-      <PageHeader
+      <PageHeader backLink={{ to: '/admin/hub', label: 'Retour au Centre de Contrôle' }}
         title="Automatisation des Rapports"
         subtitle="Pilotage contractuel par IA"
         icon={FileText}
@@ -1766,7 +1766,7 @@ function PVArchivePanel({
     const worksheet = XLSX.utils.json_to_sheet(data);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Registre_PV');
-    XLSX.writeFile(workbook, `GEM_Registre_PV_${new Date().getTime()}.xlsx`);
+    XLSX.writeFile(workbook, `GED OS_Registre_PV_${new Date().getTime()}.xlsx`);
     toast.success('Excel généré avec succès');
   };
 

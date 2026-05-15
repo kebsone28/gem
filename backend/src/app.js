@@ -1,6 +1,6 @@
 import express from 'express';
 import path from 'path';
-import prisma from './core/utils/prisma.js';
+import prisma, { basePrisma } from './core/utils/prisma.js';
 import { redisConnection } from './core/utils/queueManager.js';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -29,7 +29,7 @@ app.get('/api/ping', async (req, res) => {
   } catch (e) {
     dbStatus = `error: ${e.message}`;
   }
-  res.json({ status: 'ok', msg: 'Core API is alive', db: dbStatus, version: '1.0.3-MANUAL-CORS' });
+  res.json({ status: 'ok', msg: 'GED OS Core API is alive', db: dbStatus, version: '1.0.3-MANUAL-CORS' });
 });
 
 // 2. Request Parsing
@@ -69,6 +69,7 @@ if (config.env === 'development') {
 import authRoutes from './api/routes/auth.routes.js';
 import syncRoutes from './api/routes/sync.routes.js';
 import projectRoutes from './api/routes/project.routes.js';
+import projectTemplateRoutes from './api/routes/projectTemplate.routes.js';
 import householdRoutes from './api/routes/household.routes.js';
 import zoneRoutes from './api/routes/zone.routes.js';
 import kpiRoutes from './api/routes/kpi.routes.js';
@@ -92,11 +93,15 @@ import internalKoboRoutes from './modules/internalKobo/internalKobo.routes.js';
 import debugRoutes from './api/routes/debug.routes.js';
 import adminPermissionRoutes from './api/routes/admin.permissions.routes.js';
 import { notFoundHandler } from './middleware/errorHandler.js';
+import { tenantResolver } from './middleware/tenantResolver.js';
 
 app.use('/api/auth', authRoutes);
+// Tenant resolver: always populate AsyncLocalStorage with org/project when available
+app.use(tenantResolver);
 app.use('/api/users', userRoutes);
 app.use('/api/sync', syncRoutes);
 app.use('/api/projects', projectRoutes);
+app.use('/api/project-templates', projectTemplateRoutes);
 app.use('/api/households', householdRoutes);
 app.use('/api/zones', zoneRoutes);
 app.use('/api/kpi', kpiRoutes);
@@ -163,7 +168,34 @@ app.use(notFoundHandler);
 
 // 7. Global Error Handler
 app.use((err, req, res, _next) => {
+  const status = err.status || 500;
+  const message = err.message || 'Internal Server Error';
+  
   console.error('🔥 GLOBAL ERROR:', err.stack);
+
+  // 🛡️ PERSISTENCE DE L'ERREUR POUR DIAGNOSTIC
+  // On ne loggue pas en DB si l'erreur est déjà une erreur de connexion DB (boucle infinie sinon)
+  const isDbError = err.message?.includes("Can't reach database server") || err.code?.startsWith('P');
+
+  if (status >= 500 && !isDbError) {
+    const { organizationId, userId, projectId } = req.user || {};
+    // 🛡️ [SECURITY sec_002] Utiliser basePrisma pour éviter les boucles de middleware ou l'isolation erronée
+    basePrisma.systemError.create({
+      data: {
+        organizationId,
+        userId,
+        projectId,
+        code: err.code || 'UNEXPECTED_ERROR',
+        message: String(message).substring(0, 1000),
+        stack: String(err.stack).substring(0, 5000),
+        context: {
+          url: req.originalUrl,
+          method: req.method,
+          userAgent: req.headers['user-agent']
+        }
+      }
+    }).catch(e => console.error('[SYSTEM_ERROR_LOGGER] Persistence failed:', e.message));
+  }
 
   // Specific handling for DB errors in the global handler
   if (err.message?.includes("Can't reach database server")) {
@@ -174,9 +206,9 @@ app.use((err, req, res, _next) => {
     });
   }
 
-  res.status(err.status || 500).json({
-    error: 'Internal Server Error',
-    message: err.message,
+  res.status(status).json({
+    error: status === 500 ? 'Internal Server Error' : 'Request Error',
+    message: message,
     stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
   });
 });

@@ -79,7 +79,7 @@ export const useAuthStore = create<AuthState>()(
         },
       }),
       {
-        name: 'gem-auth-store',
+        name: 'ged-os-auth-store',
         // Only persist non-sensitive metadata (token stays in safeStorage, not store)
         partialize: (state) => ({ user: state.user }),
       }

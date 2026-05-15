@@ -1,4 +1,4 @@
-const PRODUCTION_FRONTEND_URL = 'https://gem.proquelec.sn';
+const PRODUCTION_FRONTEND_URL = 'https://ged-os.proquelec.sn';
 
 function isLocalUrl(url) {
   return /\/\/(localhost|127\.0\.0\.1)(:\d+)?/i.test(url);
@@ -16,8 +16,8 @@ export function getPublicFrontendUrl() {
     const parsed = new URL(configuredUrl);
     if (isProduction) {
       parsed.protocol = 'https:';
-      if (parsed.hostname === 'www.gem.proquelec.sn') {
-        parsed.hostname = 'gem.proquelec.sn';
+      if (parsed.hostname === 'www.ged-os.proquelec.sn') {
+        parsed.hostname = 'ged-os.proquelec.sn';
       }
     }
     parsed.pathname = parsed.pathname.replace(/\/+$/, '');

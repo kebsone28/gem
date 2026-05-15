@@ -4,11 +4,17 @@ import { verifierPermission } from '../../middleware/verifierPermission.js';
 import { PERMISSIONS } from '../../core/config/permissions.js';
 import prisma from '../../core/utils/prisma.js';
 import { tracerAction } from '../../services/audit.service.js';
+import { normalizePermissionsToAtoms } from '../../core/config/permissionNormalization.js';
+import { getModulesConfig, updateModulesConfig } from '../../modules/system/system.controller.js';
 
 const router = express.Router();
 
 // All admin permission routes require authentication
 router.use(authProtect);
+
+// --- Modules Configuration ---
+router.get('/modules/config', verifierPermission(PERMISSIONS.GERER_PARAMETRES), getModulesConfig);
+router.post('/modules/config', verifierPermission(PERMISSIONS.GERER_PARAMETRES), updateModulesConfig);
 
 // Only user managers may edit role permissions
 router.get('/role-permissions', verifierPermission(PERMISSIONS.GERER_UTILISATEURS), async (req, res) => {
@@ -23,12 +29,14 @@ router.get('/role-permissions', verifierPermission(PERMISSIONS.GERER_UTILISATEUR
 
         const result = roles.map(r => ({
             role: r.name,
-            permissions: (r.permissions || []).map(p => p.permission.key)
+            permissions: normalizePermissionsToAtoms(
+                (r.permissions || []).map(p => p.permission.key)
+            )
         }));
 
-        // Also return canonical permission list
+        // Also return canonical permission list (atomes + clés DB non mappées conservées via findMany)
         const allPermissions = await prisma.permission.findMany();
-        const keys = allPermissions.map(p => p.key);
+        const keys = normalizePermissionsToAtoms(allPermissions.map(p => p.key));
 
         return res.json({ ok: true, roles: result, permissions: keys });
     } catch (err) {
@@ -43,7 +51,12 @@ router.get('/role-permissions/export', verifierPermission(PERMISSIONS.GERER_UTIL
         const roles = await prisma.role.findMany({
             include: { permissions: { include: { permission: true } } }
         });
-        const result = roles.map(r => ({ role: r.name, permissions: (r.permissions || []).map(p => p.permission.key) }));
+        const result = roles.map(r => ({
+            role: r.name,
+            permissions: normalizePermissionsToAtoms(
+                (r.permissions || []).map(p => p.permission.key)
+            )
+        }));
         return res.json({ ok: true, exportedAt: new Date().toISOString(), roles: result });
     } catch (err) {
         console.error('Failed to export role-permissions', err);
@@ -54,11 +67,13 @@ router.get('/role-permissions/export', verifierPermission(PERMISSIONS.GERER_UTIL
 // Update permissions for a single role (replace set)
 router.post('/role-permissions/:role', verifierPermission(PERMISSIONS.GERER_UTILISATEURS), async (req, res) => {
     const roleName = req.params.role;
-    const { permissions } = req.body;
+    const { permissions: rawPermissions } = req.body;
 
-    if (!Array.isArray(permissions)) {
+    if (!Array.isArray(rawPermissions)) {
         return res.status(400).json({ error: 'permissions must be an array of keys' });
     }
+
+    const permissions = normalizePermissionsToAtoms(rawPermissions);
 
     try {
         const role = await prisma.role.findFirst({ where: { name: { equals: roleName, mode: 'insensitive' } } });
@@ -119,7 +134,13 @@ router.post('/role-permissions/import', verifierPermission(PERMISSIONS.GERER_UTI
 
     try {
         // Collect all permissions keys and ensure they exist
-        const allKeys = Array.from(new Set(payload.roles.flatMap(r => Array.isArray(r.permissions) ? r.permissions : [])));
+        const allKeys = Array.from(
+            new Set(
+                normalizePermissionsToAtoms(
+                    payload.roles.flatMap(r => (Array.isArray(r.permissions) ? r.permissions : []))
+                )
+            )
+        );
         const existing = await prisma.permission.findMany({ where: { key: { in: allKeys } } });
         const existingKeys = existing.map(p => p.key);
         const missing = allKeys.filter(k => !existingKeys.includes(k));
@@ -137,7 +158,7 @@ router.post('/role-permissions/import', verifierPermission(PERMISSIONS.GERER_UTI
                     role = await tx.role.create({ data: { name: r.role } });
                 }
 
-                const perms = Array.isArray(r.permissions) ? r.permissions : [];
+                const perms = normalizePermissionsToAtoms(Array.isArray(r.permissions) ? r.permissions : []);
                 const permsRecords = await tx.permission.findMany({ where: { key: { in: perms } } });
 
                 await tx.rolePermission.deleteMany({ where: { roleId: role.id } });

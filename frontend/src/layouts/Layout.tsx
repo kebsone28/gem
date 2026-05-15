@@ -7,7 +7,7 @@ import { CommandPalette } from '../components/common/CommandPalette';
 import { useBackgroundSync } from '../hooks/useBackgroundSync';
 
 /**
- * Layout – Shell principal de l'application GEM SAAS.
+ * Layout – Shell principal de l'application GED OS.
  *
  * Structure :
  *   ┌─────────────────────────────────────────┐
@@ -33,7 +33,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const hideSidebar = location.pathname === '/communication' || location.pathname === '/home';
   const [sidebarMode, setSidebarMode] = useState<'wide' | 'compact' | 'rail'>(() => {
     if (typeof window === 'undefined') return 'wide';
-    const storedMode = window.localStorage.getItem('gem-sidebar-mode');
+    const storedMode = window.localStorage.getItem('ged-os-sidebar-mode');
     return storedMode === 'compact' || storedMode === 'rail' || storedMode === 'wide'
       ? storedMode
       : 'wide';
@@ -43,7 +43,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     if (typeof window === 'undefined') return;
 
     const syncMode = () => {
-      const storedMode = window.localStorage.getItem('gem-sidebar-mode');
+      const storedMode = window.localStorage.getItem('ged-os-sidebar-mode');
       setSidebarMode(
         storedMode === 'compact' || storedMode === 'rail' || storedMode === 'wide'
           ? storedMode
@@ -62,11 +62,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
     syncMode();
     window.addEventListener('storage', syncMode);
-    window.addEventListener('gem:sidebar-mode-change', handleModeChange as EventListener);
+    window.addEventListener('ged-os:sidebar-mode-change', handleModeChange as EventListener);
 
     return () => {
       window.removeEventListener('storage', syncMode);
-      window.removeEventListener('gem:sidebar-mode-change', handleModeChange as EventListener);
+      window.removeEventListener('ged-os:sidebar-mode-change', handleModeChange as EventListener);
     };
   }, []);
 
@@ -95,7 +95,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     // h-dvh : viewport height réel (respecte la barre d'adresse mobile)
     // overflow-hidden : empêche tout débordement — le scroll est géré à l'intérieur de <main>
-    <div className="gem-app-shell flex h-dvh flex-col overflow-hidden bg-[linear-gradient(135deg,#020817_0%,#071226_38%,#0a1833_72%,#0d2041_100%)] text-[#E8F0FF] md:flex-row">
+    <div className="ged-os-app-shell flex h-dvh flex-col overflow-hidden bg-[linear-gradient(135deg,#020817_0%,#071226_38%,#0a1833_72%,#0d2041_100%)] text-[#E8F0FF] md:flex-row">
       <CommandPalette />
       {/* Sidebar cachée automatiquement sur /communication pour libérer tout l'écran */}
       {!hideSidebar && <Sidebar />}

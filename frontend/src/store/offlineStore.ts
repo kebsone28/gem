@@ -54,7 +54,7 @@ export const useOfflineStore = create<OfflineState>()(
         setSyncInProgress: (inProgress) => set({ syncInProgress: inProgress }),
       }),
       {
-        name: 'gem-offline-store',
+        name: 'ged-os-offline-store',
         partialize: (state) => ({
           lastOnlineAt: state.lastOnlineAt,
           connectionType: state.connectionType,

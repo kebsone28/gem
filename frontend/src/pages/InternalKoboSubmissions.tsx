@@ -60,28 +60,24 @@ import {
 } from 'lucide-react';
 import { PageContainer, PageHeader, ContentArea } from '../components';
 import {
+  fetchInternalKoboDiagnostics,
+  fetchInternalKoboFormDefinition,
   fetchInternalKoboFormDefinitions,
   fetchInternalKoboImportedFormDefinition,
-  fetchInternalKoboDiagnostics,
   fetchInternalKoboSubmissionsReport,
-  createInternalKoboFormDefinition,
-  downloadInternalKoboSubmissionsExport,
-  downloadInternalKoboMediaExport,
   importInternalKoboXlsForm,
   importInternalKoboXlsFormFromUrl,
   reviewInternalKoboSubmission,
   updateInternalKoboFormDefinitionStatus,
-  type InternalKoboAttachment,
   type InternalKoboImportedFormSummary,
   type InternalKoboSubmissionDiagnostics,
   type InternalKoboSubmissionRecord,
-  type InternalKoboSubmissionStatus,
 } from '../services/internalKoboSubmissionService';
 import {
-  formatInternalGemValue,
-  INTERNAL_GEM_CHOICES,
-  INTERNAL_GEM_FORM_SETTINGS,
-  INTERNAL_GEM_SECTIONS,
+  formatInternalGedOsValue,
+  INTERNAL_GED_OS_CHOICES,
+  INTERNAL_GED_OS_FORM_SETTINGS,
+  INTERNAL_GED_OS_SECTIONS,
 } from '../components/terrain/internalKoboFormDefinition';
 import {
   formatKoboSourceColumnLabel,
@@ -105,7 +101,7 @@ type MainTab = 'summary' | 'form' | 'data' | 'settings';
 type DataTab = 'table' | 'reports' | 'gallery' | 'downloads' | 'map';
 type WorkspaceSection = 'new' | 'deployed' | 'drafts' | 'archives';
 type NewProjectStep = 'source' | 'details' | null;
-type BuilderMode = 'blank' | 'template' | 'import' | 'url' | 'internal_gem';
+type BuilderMode = 'blank' | 'template' | 'import' | 'url' | 'internal_ged_os';
 type BuilderQuestionType =
   | 'begin_group'
   | 'begin_repeat'
@@ -235,8 +231,8 @@ const projectSectors = [
   'Autre',
 ];
 const projectCountries = ['Senegal', 'Gambie', 'Mali', 'Guinee', 'Autre'];
-const savedDataFiltersStorageKey = 'gem-internal-kobo-saved-data-filters:v1';
-const STORAGE_KEY_FILTERS = 'gem-internal-kobo-filters-v2';
+const savedDataFiltersStorageKey = 'ged-os-internal-kobo-saved-data-filters:v1';
+const STORAGE_KEY_FILTERS = 'ged-os-internal-kobo-filters-v2';
 
 const builderLanguages: Array<{ id: BuilderLanguage; label: string; xlsLabel: string }> = [
   { id: 'fr', label: 'Francais', xlsLabel: 'Francais (fr)' },
@@ -493,7 +489,6 @@ const getBlankBuilderQuestions = (): BuilderQuestion[] => [
     required: true,
   },
 ];
-
 const getTemplateBuilderQuestions = (): BuilderQuestion[] => [
   ...getBlankBuilderQuestions(),
   {
@@ -514,11 +509,11 @@ const getTemplateBuilderQuestions = (): BuilderQuestion[] => [
   },
 ];
 
-const getInternalGemBuilderQuestions = (): BuilderQuestion[] => {
+const getInternalGedOsBuilderQuestions = (): BuilderQuestion[] => {
   const questions: BuilderQuestion[] = [];
   const usedNames = new Set<string>();
 
-  INTERNAL_GEM_SECTIONS.forEach((section) => {
+  INTERNAL_GED_OS_SECTIONS.forEach((section) => {
     section.fields.forEach((field) => {
       const typePart = field.type.split(' ')[0];
       const type = (
@@ -562,8 +557,8 @@ const getInternalGemBuilderQuestions = (): BuilderQuestion[] => {
         field.listName || (field.type.includes(' ') ? field.type.split(' ')[1] : undefined);
 
       const choices =
-        listName && (INTERNAL_GEM_CHOICES as any)[listName]
-          ? (INTERNAL_GEM_CHOICES as any)[listName].map((c: any) => ({
+        listName && (INTERNAL_GED_OS_CHOICES as any)[listName]
+          ? (INTERNAL_GED_OS_CHOICES as any)[listName].map((c: any) => ({
               name: c.name,
               label: c.label,
             }))
@@ -697,7 +692,7 @@ const auditBuilderProject = (
   const issues: BuilderAuditIssue[] = [];
   const names = questions.map((question) => question.name.trim()).filter(Boolean);
   const duplicateNames = names.filter((name, index) => names.indexOf(name) !== index);
-  const normalizedRoleNames = new Set(INTERNAL_GEM_CHOICES.roles.map((role) => role.name));
+  const normalizedRoleNames = new Set(INTERNAL_GED_OS_CHOICES.roles.map((role) => role.name));
 
   if (!projectDraft.title.trim()) {
     issues.push({
@@ -880,7 +875,7 @@ const auditBuilderProject = (
     issues.push({
       level: 'error',
       title: 'Passage role absent',
-      detail: 'La logique metier GEM/Kobo depend du champ role pour ouvrir les etapes.',
+      detail: 'La logique metier GED OS/Kobo depend du champ role pour ouvrir les etapes.',
     });
   } else {
     if (roleQuestion.type !== 'select_one' || roleQuestion.listName !== 'roles') {
@@ -891,7 +886,7 @@ const auditBuilderProject = (
         questionId: roleQuestion.id,
       });
     }
-    const roleChoices = (roleQuestion.choices || INTERNAL_GEM_CHOICES.roles).map(
+    const roleChoices = (roleQuestion.choices || INTERNAL_GED_OS_CHOICES.roles).map(
       (choice) => choice.name
     );
     if (!roleChoices.some((role) => normalizedRoleNames.has(role))) {
@@ -1049,7 +1044,7 @@ const formatKoboTableCellValue = (
   const value = getKoboTableValue(submission, column);
   if (column.kind === 'date') return formatDateTime(String(value || ''));
   if (column.listName)
-    return formatInternalGemValue(String(value || ''), column.listName) || String(value || '');
+    return formatInternalGedOsValue(String(value || ''), column.listName) || String(value || '');
   if (Array.isArray(value)) return value.join(', ');
   return String(value ?? '');
 };
@@ -1057,7 +1052,7 @@ const formatKoboTableCellValue = (
 const normalizeBucketLabel = (bucket: 'status' | 'role' | 'sync' | 'version', value: string) => {
   if (bucket === 'status') return statusLabels[value] || value || 'Non defini';
   if (bucket === 'role')
-    return formatInternalGemValue(value, 'roles') || value || 'Role non defini';
+    return formatInternalGedOsValue(value, 'roles') || value || 'Role non defini';
   if (bucket === 'sync') return value || 'Non synchronise';
   return value ? `v${value}` : 'Version inconnue';
 };
@@ -1402,7 +1397,7 @@ export default function InternalKoboSubmissions() {
     defaultLanguage: 'fr',
     languages: ['fr'],
     ownerTeam: 'terrain',
-    allowedRoles: INTERNAL_GEM_CHOICES.roles.map((role) => role.name),
+    allowedRoles: INTERNAL_GED_OS_CHOICES.roles.map((role) => role.name),
     allowOffline: true,
     requireLatestVersion: true,
     draftMigrationMode: 'migrate',
@@ -1543,7 +1538,7 @@ export default function InternalKoboSubmissions() {
       );
     } catch (loadError) {
       setError(
-        loadError instanceof Error ? loadError.message : 'Impossible de charger les soumissions GEM'
+        loadError instanceof Error ? loadError.message : 'Impossible de charger les soumissions GED OS'
       );
     } finally {
       setIsLoading(false);
@@ -1870,8 +1865,8 @@ export default function InternalKoboSubmissions() {
     let questions: BuilderQuestion[] = [];
     if (mode === 'blank') {
       questions = getBlankBuilderQuestions();
-    } else if (mode === 'internal_gem') {
-      questions = getInternalGemBuilderQuestions();
+    } else if (mode === 'internal_ged_os') {
+      questions = getInternalGedOsBuilderQuestions();
     } else {
       questions = getTemplateBuilderQuestions();
     }
@@ -1881,15 +1876,15 @@ export default function InternalKoboSubmissions() {
       ...current,
       title:
         current.title ||
-        (mode === 'internal_gem'
-          ? 'GEM Collect Natif'
+        (mode === 'internal_ged_os'
+          ? 'GED OS Collect Natif'
           : mode === 'template'
             ? 'Copie de Suivi Electrification menages V2'
             : ''),
       description:
         current.description ||
-        (mode === 'internal_gem'
-          ? 'Structure native du moteur de saisie terrain GEM.'
+        (mode === 'internal_ged_os'
+          ? 'Structure native du moteur de saisie terrain GED OS.'
           : mode === 'template'
             ? 'Formulaire cree a partir de la structure Kobo active.'
             : ''),
@@ -2322,14 +2317,14 @@ export default function InternalKoboSubmissions() {
           languages: projectDraft.languages.map(
             (language) => getBuilderLanguageMeta(language).xlsLabel
           ),
-          gem_permissions: {
+          ged_os_permissions: {
             ownerTeam: projectDraft.ownerTeam,
             allowedRoles: projectDraft.allowedRoles,
             allowOffline: projectDraft.allowOffline,
             requireLatestVersion: projectDraft.requireLatestVersion,
             draftMigrationMode: projectDraft.draftMigrationMode,
           },
-          gem_sync_policy: {
+          ged_os_policy: {
             retry: 'exponential-backoff',
             duplicateControl: 'clientSubmissionId+mediaHash',
             preserveDraftsOnVersionChange: projectDraft.draftMigrationMode !== 'block',
@@ -2412,13 +2407,13 @@ export default function InternalKoboSubmissions() {
       const questions = convertDefinitionToBuilderQuestions(definition);
       setProjectDraft({
         title: `${form.title || form.formKey} - copie editable`,
-        description: 'Copie creee depuis la definition XLSForm active pour modification dans GEM.',
+        description: 'Copie creee depuis la definition XLSForm active pour modification dans GED OS.',
         sector: 'Energie',
         country: 'Senegal',
         defaultLanguage: 'fr',
         languages: ['fr', 'en'],
         ownerTeam: 'terrain',
-        allowedRoles: INTERNAL_GEM_CHOICES.roles.map((role) => role.name),
+        allowedRoles: INTERNAL_GED_OS_CHOICES.roles.map((role) => role.name),
         allowOffline: true,
         requireLatestVersion: true,
         draftMigrationMode: 'migrate',
@@ -2510,8 +2505,8 @@ export default function InternalKoboSubmissions() {
         title,
         description:
           mode === 'template'
-            ? 'Modèle créé depuis la définition GEM active.'
-            : 'Clone créé depuis la définition GEM active.',
+            ? 'Modèle créé depuis la définition GED OS active.'
+            : 'Clone créé depuis la définition GED OS active.',
         sector: 'Energie',
         country: 'Senegal',
         sourceType: mode,
@@ -2540,18 +2535,18 @@ export default function InternalKoboSubmissions() {
     }
   };
 
-  const handleDeployInternalGemForm = async () => {
+  const handleDeployInternalGedOsForm = async () => {
     setIsSavingBuilder(true);
     setError('');
     try {
-      const questions = getInternalGemBuilderQuestions();
-      const title = 'GEM Collect Natif Dynamique';
+      const questions = getInternalGedOsBuilderQuestions();
+      const title = 'GED OS Collect Natif Dynamique';
       const result = await createInternalKoboFormDefinition({
         title,
-        description: 'Structure native GEM migree en definition dynamique.',
+        description: 'Structure native GED OS migree en definition dynamique.',
         sector: 'Energie',
         country: 'Senegal',
-        sourceType: 'internal_gem',
+        sourceType: 'internal_ged_os',
         activate: true,
         survey: buildBuilderSurvey(),
         choices: buildBuilderChoices(questions),
@@ -2560,9 +2555,9 @@ export default function InternalKoboSubmissions() {
           default_language: getBuilderLanguageMeta(projectDraft.defaultLanguage).xlsLabel,
           style: 'pages',
           languages: projectDraft.languages.map((l) => getBuilderLanguageMeta(l).xlsLabel),
-          gem_permissions: {
+          ged_os_permissions: {
             ownerTeam: 'admin',
-            allowedRoles: INTERNAL_GEM_CHOICES.roles.map((r) => r.name),
+            allowedRoles: INTERNAL_GED_OS_CHOICES.roles.map((r) => r.name),
             allowOffline: true,
             requireLatestVersion: true,
             draftMigrationMode: 'block',
@@ -2833,7 +2828,7 @@ export default function InternalKoboSubmissions() {
           if (!filter) return true;
           const rawValue = getKoboTableValue(submission, column);
           const displayValue = column.listName
-            ? formatInternalGemValue(String(rawValue || ''), column.listName) || rawValue
+            ? formatInternalGedOsValue(String(rawValue || ''), column.listName) || rawValue
             : rawValue;
           return String(displayValue || '')
             .toLowerCase()
@@ -2895,9 +2890,9 @@ export default function InternalKoboSubmissions() {
   return (
     <>
       <PageContainer className="min-h-screen bg-slate-950 py-8">
-        <PageHeader
-          title="GEM Toolbox"
-          subtitle="Console d'administration pour vérifier, exporter et auditer les fiches terrain GEM"
+        <PageHeader backLink={{ to: '/admin/hub', label: 'Retour au Centre de Contrôle' }}
+          title="GED OS Toolbox"
+          subtitle="Console d'administration pour vérifier, exporter et auditer les fiches terrain GED OS"
           icon={<ClipboardCheck size={24} />}
           actions={
             <div className="flex flex-wrap gap-2">
@@ -2982,13 +2977,13 @@ export default function InternalKoboSubmissions() {
               <div className="grid grid-cols-1 xl:grid-cols-[260px_1fr]">
                 <aside className="border-b border-white/10 bg-slate-950/35 p-4 xl:border-b-0 xl:border-r">
                   <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-100">
-                    Workspace GEM Toolbox
+                    Workspace GED OS Toolbox
                   </p>
                   <h2 className="mt-2 text-lg font-black text-white">
                     {KOBO_SOURCE_SNAPSHOT.name}
                   </h2>
                   <p className="mt-1 text-[11px] font-semibold text-slate-500">
-                    Miroir interne GEM, soumission directe au VPS.
+                    Miroir interne GED OS, soumission directe au VPS.
                   </p>
                   <div className="mt-4 space-y-2">
                     {koboSideStats.map((item) => {
@@ -3399,7 +3394,7 @@ export default function InternalKoboSubmissions() {
                                   >
                                     <option value="">Afficher tout</option>
                                     {(column.listName
-                                      ? INTERNAL_GEM_CHOICES[column.listName] || []
+                                      ? INTERNAL_GED_OS_CHOICES[column.listName] || []
                                       : []
                                     ).map((choice) => (
                                       <option key={choice.name} value={choice.label}>
@@ -3522,7 +3517,7 @@ export default function InternalKoboSubmissions() {
                                 `Menage ${selectedSubmission.numeroOrdre || '-'}`}
                             </h3>
                             <p className="mt-1 text-sm font-semibold text-slate-600">
-                              {formatInternalGemValue(selectedSubmission.role || '', 'roles')} -{' '}
+                              {formatInternalGedOsValue(selectedSubmission.role || '', 'roles')} -{' '}
                               {formatDateTime(selectedSubmission.savedAt)}
                             </p>
                             <button
@@ -3638,7 +3633,7 @@ export default function InternalKoboSubmissions() {
                     className="h-12 rounded-2xl border border-white/10 bg-slate-900 px-4 text-xs font-black uppercase tracking-[0.1em] text-white outline-none"
                   >
                     <option value="">Tous roles</option>
-                    {INTERNAL_GEM_CHOICES.roles.map((role) => (
+                    {INTERNAL_GED_OS_CHOICES.roles.map((role) => (
                       <option key={role.name} value={role.name}>
                         {role.label}
                       </option>
@@ -3717,7 +3712,7 @@ export default function InternalKoboSubmissions() {
                   {newProjectStep === 'source' ? (
                     <div className="p-6">
                       <p className="max-w-2xl text-sm font-semibold leading-relaxed text-slate-300">
-                        Comme KoboToolbox, GEM peut demarrer depuis un formulaire vierge, un modele
+                        Comme KoboToolbox, GED OS peut demarrer depuis un formulaire vierge, un modele
                         terrain, un fichier XLSForm ou une URL XLSForm.
                       </p>
                       <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -3726,11 +3721,11 @@ export default function InternalKoboSubmissions() {
                             id: 'blank' as BuilderMode,
                             label: 'Construction du formulaire',
                             icon: Pencil,
-                            help: 'Creer les questions une par une dans le builder GEM.',
+                            help: 'Creer les questions une par une dans le builder GED OS.',
                           },
                           {
-                            id: 'internal_gem' as BuilderMode,
-                            label: 'GEM Collect Natif',
+                            id: 'internal_ged_os' as BuilderMode,
+                            label: 'GED OS Collect Natif',
                             icon: Activity,
                             help: 'Importer la structure native du moteur de saisie terrain.',
                           },
@@ -3937,7 +3932,7 @@ export default function InternalKoboSubmissions() {
                     </button>
                     <button
                       type="button"
-                      onClick={handleDeployInternalGemForm}
+                      onClick={handleDeployInternalGedOsForm}
                       disabled={isSavingBuilder}
                       className="inline-flex items-center justify-center gap-2 rounded-full border border-emerald-300/25 bg-emerald-400/10 px-4 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-100 hover:bg-emerald-400/15 disabled:opacity-50"
                     >
@@ -4342,7 +4337,7 @@ export default function InternalKoboSubmissions() {
                             })}
                           </div>
                           <div className="mt-3 flex flex-wrap gap-2">
-                            {INTERNAL_GEM_CHOICES.roles.map((role) => {
+                            {INTERNAL_GED_OS_CHOICES.roles.map((role) => {
                               const enabled = projectDraft.allowedRoles.includes(role.name);
                               return (
                                 <button
@@ -5139,7 +5134,7 @@ export default function InternalKoboSubmissions() {
                                     Raccourcis role
                                   </p>
                                   <div className="mt-2 flex flex-wrap gap-2">
-                                    {INTERNAL_GEM_CHOICES.roles.map((role) => (
+                                    {INTERNAL_GED_OS_CHOICES.roles.map((role) => (
                                       <button
                                         key={role.name}
                                         type="button"
@@ -5208,7 +5203,7 @@ export default function InternalKoboSubmissions() {
                                 </label>
                                 <div className="rounded-xl border border-cyan-200 bg-cyan-50 p-3 text-[11px] font-semibold leading-relaxed text-cyan-900">
                                   Les calculs et contraintes sont sauvegardes dans la definition
-                                  XLSForm et controles par le moteur GEM au moment de la saisie.
+                                  XLSForm et controles par le moteur GED OS au moment de la saisie.
                                 </div>
                               </>
                             ) : null}
@@ -5533,7 +5528,7 @@ export default function InternalKoboSubmissions() {
                           <p className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">
                             Proprietaire
                           </p>
-                          <p className="mt-1 text-sm font-bold text-white">Equipe GEM</p>
+                          <p className="mt-1 text-sm font-bold text-white">Equipe GED OS</p>
                         </div>
                         <div>
                           <p className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">
@@ -5812,7 +5807,7 @@ export default function InternalKoboSubmissions() {
                             Migration Formulaire Natif
                           </h3>
                           <p className="mt-1 text-sm font-semibold text-slate-400">
-                            Transformer la structure GEM Collect codée en dur en une définition
+                            Transformer la structure GED OS Collect codée en dur en une définition
                             dynamique éditable.
                           </p>
                         </div>
@@ -5823,7 +5818,7 @@ export default function InternalKoboSubmissions() {
                       <div className="mt-6">
                         <button
                           type="button"
-                          onClick={() => startProjectFromSource('internal_gem')}
+                          onClick={() => startProjectFromSource('internal_ged_os')}
                           className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-6 py-3 text-xs font-black uppercase tracking-[0.12em] text-white hover:bg-blue-700 shadow-lg shadow-blue-900/20 transition-all hover:scale-[1.02]"
                         >
                           <Pencil size={14} />
@@ -5843,7 +5838,7 @@ export default function InternalKoboSubmissions() {
                           <h3 className="text-lg font-black text-white">Import Rapide Kobo</h3>
                           <p className="mt-1 text-sm font-semibold text-slate-400">
                             Charger un fichier XLSForm existant pour le porter sur l'infrastructure
-                            GEM.
+                            GED OS.
                           </p>
                         </div>
                         <div className="grid h-12 w-12 place-items-center rounded-2xl bg-emerald-500/20 text-emerald-300">
@@ -6453,14 +6448,14 @@ export default function InternalKoboSubmissions() {
                       ['Formulaire source', KOBO_SOURCE_SNAPSHOT.name],
                       ['Asset UID Kobo', KOBO_SOURCE_SNAPSHOT.assetUid],
                       ['Version Kobo active', KOBO_SOURCE_SNAPSHOT.currentVersionId],
-                      ['Moteur', 'GEM XLSForm interne'],
+                      ['Moteur', 'GED OS XLSForm interne'],
                       ['Validation serveur', 'Active'],
-                      ['Soumission', 'VPS GEM'],
+                      ['Soumission', 'VPS GED OS'],
                       ['Colonnes table Kobo', KOBO_SOURCE_SNAPSHOT.selectedColumns.length],
                       ['Champs export Kobo', KOBO_SOURCE_SNAPSHOT.exportFieldCount],
                       [
                         'Version serveur',
-                        globalDiagnostics?.serverFormVersion || INTERNAL_GEM_FORM_SETTINGS.version,
+                        globalDiagnostics?.serverFormVersion || INTERNAL_GED_OS_FORM_SETTINGS.version,
                       ],
                     ].map(([label, value]) => (
                       <div
@@ -6507,7 +6502,7 @@ export default function InternalKoboSubmissions() {
                         Colonnes Kobo aspirees
                       </p>
                       <p className="mt-1 text-xs font-semibold text-slate-500">
-                        Ordre exact des colonnes visibles dans le tableau Kobo. GEM les garde comme
+                        Ordre exact des colonnes visibles dans le tableau Kobo. GED OS les garde comme
                         reference d'audit et d'export.
                       </p>
                     </div>
@@ -6574,7 +6569,7 @@ export default function InternalKoboSubmissions() {
                   <div className="mt-5 rounded-2xl border border-white/10 p-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-bold text-white">Equipe GEM (Proprietaire)</p>
+                        <p className="text-sm font-bold text-white">Equipe GED OS (Proprietaire)</p>
                         <p className="text-[10px] font-semibold text-slate-500">Tous les droits</p>
                       </div>
                     </div>
@@ -6654,7 +6649,7 @@ export default function InternalKoboSubmissions() {
                       </p>
                       <p className="mt-1 text-[11px] font-semibold text-slate-500">
                         Version serveur:{' '}
-                        {globalDiagnostics?.serverFormVersion || INTERNAL_GEM_FORM_SETTINGS.version}
+                        {globalDiagnostics?.serverFormVersion || INTERNAL_GED_OS_FORM_SETTINGS.version}
                       </p>
                     </div>
                     <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] font-black text-slate-300">
@@ -6710,7 +6705,7 @@ export default function InternalKoboSubmissions() {
                             <p className="mt-1 truncate text-[11px] font-semibold text-slate-400">
                               Numero{' '}
                               {submission.numeroOrdre || submission.household?.numeroordre || '-'} -{' '}
-                              {formatInternalGemValue(submission.role || '', 'roles') ||
+                              {formatInternalGedOsValue(submission.role || '', 'roles') ||
                                 'Role non renseigne'}
                             </p>
                             <p className="mt-1 truncate text-[10px] font-semibold text-slate-600">
@@ -6763,7 +6758,7 @@ export default function InternalKoboSubmissions() {
                                 `Menage ${selectedSubmission.numeroOrdre || '-'}`}
                             </h3>
                             <p className="mt-1 text-[11px] font-semibold text-slate-400">
-                              {formatInternalGemValue(selectedSubmission.role || '', 'roles')} -{' '}
+                              {formatInternalGedOsValue(selectedSubmission.role || '', 'roles')} -{' '}
                               {formatDateTime(selectedSubmission.savedAt)}
                             </p>
                           </div>

@@ -336,7 +336,7 @@ export default function Simulation() {
         pdf.setFontSize(8);
         pdf.setTextColor(150, 150, 150);
         pdf.text(`Page ${i}/${pageCount}`, pageWidth - 30, pageHeight - 10);
-        pdf.text('Généré automatiquement par GEM SAAS', 20, pageHeight - 10);
+        pdf.text('Généré automatiquement par GED OS SAAS', 20, pageHeight - 10);
       }
 
       // Téléchargement

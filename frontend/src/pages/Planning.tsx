@@ -62,6 +62,7 @@ import { useProject } from '../contexts/ProjectContext';
 import { usePlanningData } from '../hooks/usePlanningData';
 import { usePlanningAuditHistory } from '../hooks/usePlanningAuditHistory';
 import { usePlanningDelayAlerts } from '../hooks/usePlanningDelayAlerts';
+import { useLabels } from '../contexts/LabelsContext';
 import logger from '../utils/logger';
 import {
   PHASE_COLORS,
@@ -91,89 +92,8 @@ type ViewMode = 'calendar' | 'timeline' | 'kanban' | 'gantt';
 
 const GANTT_WINDOW_DAYS = 21;
 
-const REGIONAL_CAPACITY_METRICS = [
-  { actualKey: 'livraison', theoreticalKey: 'livraison', label: 'Livraison' },
-  { actualKey: 'macons', theoreticalKey: 'macons', label: 'Maçons' },
-  { actualKey: 'reseau', theoreticalKey: 'reseau', label: 'Réseau' },
-  { actualKey: 'interieur_type1', theoreticalKey: 'interieur', label: 'Installation' },
-  { actualKey: 'controle', theoreticalKey: 'controle', label: 'Contrôle' },
-] as const;
-
-const TRADE_FILTER_OPTIONS = [
-  { value: 'ALL', label: 'Tous les métiers' },
-  { value: 'logistique', label: 'Livraison' },
-  { value: 'macons', label: 'Maçonnerie' },
-  { value: 'reseau', label: 'Réseau' },
-  { value: 'interieur_type1', label: 'Installation' },
-  { value: 'controle', label: 'Contrôle' },
-] as const;
-
-const GANTT_PHASE_METADATA = [
-  {
-    stageKey: 'FORMATION' as const,
-    phase: undefined,
-    label: 'Formation électricien',
-    dependencies: [] as Array<
-      'FORMATION' | 'LIVRAISON' | 'MACONNERIE' | 'RESEAU' | 'INSTALLATION' | 'CONTROLE'
-    >,
-    chipClass: 'border-amber-400/20 bg-amber-500/10 text-amber-200',
-    fillColor: '#f59e0b',
-  },
-  {
-    stageKey: 'LIVRAISON' as const,
-    phase: 'LIVRAISON' as const,
-    label: 'Livraison matériel',
-    dependencies: ['FORMATION'] as Array<
-      'FORMATION' | 'LIVRAISON' | 'MACONNERIE' | 'RESEAU' | 'INSTALLATION' | 'CONTROLE'
-    >,
-    chipClass: 'border-cyan-400/20 bg-cyan-500/10 text-cyan-200',
-    fillColor: '#06b6d4',
-  },
-  {
-    stageKey: 'MACONNERIE' as const,
-    phase: 'MACONNERIE' as const,
-    label: 'Travaux maçonnerie',
-    dependencies: ['LIVRAISON'] as Array<
-      'FORMATION' | 'LIVRAISON' | 'MACONNERIE' | 'RESEAU' | 'INSTALLATION' | 'CONTROLE'
-    >,
-    chipClass: 'border-amber-400/20 bg-amber-500/10 text-amber-200',
-    fillColor: '#f59e0b',
-  },
-  {
-    stageKey: 'RESEAU' as const,
-    phase: 'RESEAU' as const,
-    label: 'Travaux réseau',
-    dependencies: ['LIVRAISON'] as Array<
-      'FORMATION' | 'LIVRAISON' | 'MACONNERIE' | 'RESEAU' | 'INSTALLATION' | 'CONTROLE'
-    >,
-    chipClass: 'border-blue-400/20 bg-blue-500/10 text-blue-200',
-    fillColor: '#3b82f6',
-  },
-  {
-    stageKey: 'INSTALLATION' as const,
-    phase: 'INTERIEUR' as const,
-    label: 'Travaux intérieur',
-    dependencies: ['FORMATION', 'MACONNERIE', 'RESEAU'] as Array<
-      'FORMATION' | 'LIVRAISON' | 'MACONNERIE' | 'RESEAU' | 'INSTALLATION' | 'CONTROLE'
-    >,
-    chipClass: 'border-violet-400/20 bg-violet-500/10 text-violet-200',
-    fillColor: '#8b5cf6',
-  },
-  {
-    stageKey: 'CONTROLE' as const,
-    phase: 'CONTROLE' as const,
-    label: 'Suivi contrôle et reporting',
-    dependencies: ['INSTALLATION'] as Array<
-      'FORMATION' | 'LIVRAISON' | 'MACONNERIE' | 'RESEAU' | 'INSTALLATION' | 'CONTROLE'
-    >,
-    chipClass: 'border-emerald-400/20 bg-emerald-500/10 text-emerald-200',
-    fillColor: '#10b981',
-  },
-] as const;
-
-type VisibleStageKey = (typeof GANTT_PHASE_METADATA)[number]['stageKey'];
 type VisiblePhase = 'LIVRAISON' | 'MACONNERIE' | 'RESEAU' | 'INTERIEUR' | 'CONTROLE';
-type DependencyKey = 'FORMATION' | VisibleStageKey;
+type DependencyKey = 'FORMATION' | 'LIVRAISON' | 'MACONNERIE' | 'RESEAU' | 'INSTALLATION' | 'CONTROLE';
 
 type StageExecutionPlan = {
   stageKey: DependencyKey;
@@ -335,6 +255,7 @@ export default function Planning() {
   const [planningMode, setPlanningMode] = useState<PlanningMode>('automatic');
   const [showAudit, setShowAudit] = useState(false);
   const [showManualPlanner, setShowManualPlanner] = useState(false);
+  const [showOptimizationPanel, setShowOptimizationPanel] = useState(false);
   const [userFilter, setUserFilter] = useState('');
   const [aiRecommendation, setAiRecommendation] = useState<AIResponse | null>(null);
   const [isAnalyzingAI, setIsAnalyzingAI] = useState(false);
@@ -944,12 +865,12 @@ export default function Planning() {
                   text:
                     row.effectiveStart && row.effectiveEnd
                       ? `${format(row.effectiveStart, 'dd/MM/yyyy', { locale: fr })} → ${format(
-                          row.effectiveEnd,
-                          'dd/MM/yyyy',
-                          {
-                            locale: fr,
-                          }
-                        )}`
+                        row.effectiveEnd,
+                        'dd/MM/yyyy',
+                        {
+                          locale: fr,
+                        }
+                      )}`
                       : '-',
                 }),
               ],
@@ -1086,7 +1007,7 @@ export default function Planning() {
     <PageContainer>
       <PageHeader
         title="Planning des Travaux"
-        subtitle="Coordination par equipe, zone et phase"
+        subtitle="Orchestrez et pilotez l'exécution complète des travaux : planifiez les équipes par métier (livraison, maçonnerie, réseau, installation, contrôle), ajustez manuellement les dates et durées, visualisez l'avancement en temps réel via 4 vues (chronologie, calendrier, Gantt, flux), et optimisez les affectations grâce aux recommandations IA de MissionSage."
         icon={Calendar}
         accent="planning"
         actions={
@@ -1110,25 +1031,23 @@ export default function Planning() {
         <ModulePageShell accent="planning" className="p-4 sm:p-6">
           <ContentArea className="bg-transparent border-none shadow-none p-0">
             {/* ── MOTEUR D'ORCHESTRATION DYNAMIQUE ── */}
-            <div
-              className={`relative mb-4 rounded-3xl border p-3 sm:mb-5 sm:p-4 lg:p-5 ${planningAccent.surface}`}
-            >
+            <div className="relative mb-5 rounded-2xl border border-white/10 bg-slate-900/60 backdrop-blur-xl p-5 shadow-lg shadow-slate-900/20 sm:mb-6 sm:p-6 lg:p-7">
               <div className="absolute top-0 right-0 hidden sm:block p-5 opacity-5">
                 <Zap size={72} className="text-indigo-400" />
               </div>
 
-              <div className="relative z-10 grid gap-3 lg:gap-4 xl:grid-cols-[minmax(220px,0.85fr)_minmax(0,1.15fr)_auto] xl:items-center">
-                <div className="space-y-1">
-                  <h3 className="text-sm sm:text-base font-semibold text-white">
-                    Objectif de realisation
+              <div className="relative z-10 grid gap-4 lg:gap-5 xl:grid-cols-[minmax(220px,0.85fr)_minmax(0,1.15fr)_auto] xl:items-center">
+                <div className="space-y-1.5">
+                  <h3 className="text-base font-semibold text-white">
+                    Objectif de réalisation
                   </h3>
-                  <p className="text-[11px] sm:text-xs text-indigo-200/70">
-                    Calcul dynamique des ressources necessaires par zone.
+                  <p className="text-xs text-indigo-200/70 leading-relaxed">
+                    Calcul dynamique des ressources nécessaires par zone.
                   </p>
                 </div>
 
-                <div className="grid w-full grid-cols-1 gap-2 rounded-2xl border border-white/5 bg-slate-950/50 p-3 sm:grid-cols-[auto,1fr,auto,auto] sm:items-center sm:gap-3 min-w-0 xl:min-w-[31rem]">
-                  <span className="text-[10px] font-semibold text-slate-400 sm:ml-2">Region</span>
+                <div className="grid w-full grid-cols-1 gap-3 rounded-xl border border-white/5 bg-slate-950/40 p-4 sm:grid-cols-[auto,1fr,auto,auto] sm:items-center sm:gap-3 min-w-0 xl:min-w-[31rem]">
+                  <span className="text-xs font-medium text-slate-400 sm:ml-1">Région</span>
                   <select
                     value={selectedRegion} // selectedRegion est déjà 'ALL' par défaut
                     onChange={(e) => setSelectedRegion(e.target.value)}
@@ -1143,8 +1062,8 @@ export default function Planning() {
                     ))}
                   </select>
 
-                  <span className="text-[10px] font-semibold text-slate-400 sm:ml-2">
-                    Duree cible
+                  <span className="text-xs font-medium text-slate-400 sm:ml-1">
+                    Durée cible
                   </span>
                   <div className="flex items-center gap-2">
                     <input
@@ -1159,7 +1078,7 @@ export default function Planning() {
                   </div>
                 </div>
 
-                <label className="flex min-h-10 w-full items-center gap-3 rounded-2xl border border-white/5 bg-slate-950/50 px-3.5 py-2.5 text-sm text-slate-200 xl:w-auto xl:max-w-[18rem]">
+                <label className="flex min-h-10 w-full items-center gap-3 rounded-xl border border-white/5 bg-slate-950/40 px-4 py-2.5 text-sm text-slate-200 xl:w-auto xl:max-w-[18rem]">
                   <input
                     type="checkbox"
                     checked={includeSaturday}
@@ -1171,38 +1090,38 @@ export default function Planning() {
               </div>
 
               {theoreticalNeeds && (
-                <div className="mt-4 grid grid-cols-2 gap-2.5 md:grid-cols-5 sm:gap-3">
+                <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-5">
                   {[
                     {
-                      label: 'Équipes Livraison',
+                      label: 'Livraison',
                       value: theoreticalNeeds.livraison,
                       rate: theoreticalNeeds.effectiveRates.livraison,
                       icon: Users,
                       color: 'text-cyan-400',
                     },
                     {
-                      label: 'Équipes Maçons',
+                      label: 'Maçons',
                       value: theoreticalNeeds.macons,
                       rate: theoreticalNeeds.effectiveRates.macons,
                       icon: Hammer,
                       color: 'text-amber-500',
                     },
                     {
-                      label: 'Équipes Réseau',
+                      label: 'Réseau',
                       value: theoreticalNeeds.reseau,
                       rate: theoreticalNeeds.effectiveRates.reseau,
                       icon: Zap,
                       color: 'text-blue-500',
                     },
                     {
-                      label: 'Équipes Installation',
+                      label: 'Installation',
                       value: theoreticalNeeds.interieur,
                       rate: theoreticalNeeds.effectiveRates.interieur,
                       icon: Wrench,
                       color: 'text-purple-500',
                     },
                     {
-                      label: 'Contrôleurs',
+                      label: 'Contrôle',
                       value: theoreticalNeeds.controle,
                       rate: theoreticalNeeds.effectiveRates.controle,
                       icon: ShieldCheck,
@@ -1211,18 +1130,18 @@ export default function Planning() {
                   ].map((need, idx) => (
                     <div
                       key={idx}
-                      className="bg-slate-950/45 p-3 sm:p-4 rounded-2xl border border-white/5 flex items-center gap-3"
+                      className="rounded-xl border border-white/5 bg-slate-950/40 p-4 flex items-center gap-3 transition-all hover:border-white/10 hover:bg-slate-950/60"
                     >
                       <div className={`p-2 rounded-lg bg-white/5 ${need.color}`}>
                         <need.icon size={16} />
                       </div>
                       <div>
-                        <p className="text-[11px] font-medium text-slate-400">{need.label}</p>
-                        <p className="text-lg sm:text-xl font-semibold text-white leading-none">
+                        <p className="text-xs font-medium text-slate-400">{need.label}</p>
+                        <p className="text-xl font-semibold text-white leading-none mt-0.5">
                           {need.value}
                         </p>
                         <p className="mt-1 text-[10px] text-slate-500">
-                          {need.rate.toFixed(1)} ménages/équipe/j
+                          {need.rate.toFixed(1)} mén./j
                         </p>
                       </div>
                     </div>
@@ -1232,38 +1151,38 @@ export default function Planning() {
             </div>
 
             {workflowStages.length > 0 && (
-              <div className="mb-4 rounded-3xl border border-white/5 bg-slate-900/50 p-4 sm:mb-6 sm:p-6">
+              <div className="mb-5 rounded-2xl border border-white/10 bg-slate-900/60 backdrop-blur-xl p-5 shadow-lg shadow-slate-900/20 sm:mb-6 sm:p-6">
                 <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                   <div>
                     <h3 className="text-base font-semibold text-white">
-                      Workflow synchronisé des travaux
+                      Workflow synchronisé
                     </h3>
-                    <p className="mt-1 text-sm text-slate-400">
+                    <p className="mt-1 text-sm text-slate-400 leading-relaxed">
                       Formation, livraison, maçonnerie, réseau, installation et contrôle sont
                       recalés sur les ménages, les équipes actives, la durée projet, le rythme ouvré
                       et la capacité réelle configurée sur chaque équipe.
                     </p>
                   </div>
-                  <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+                  <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-5">
                     {[
-                      { label: 'Jours/semaine', value: workflowSummary.workDaysPerWeek },
-                      { label: 'Durée projet', value: `${targetMonths} mois` },
-                      { label: 'Horizon cible', value: `${workflowSummary.targetCalendarDays} j` },
+                      { label: 'Jours/sem.', value: workflowSummary.workDaysPerWeek },
+                      { label: 'Durée', value: `${targetMonths} mois` },
+                      { label: 'Cible', value: `${workflowSummary.targetCalendarDays} j` },
                       {
-                        label: 'Horizon projeté',
+                        label: 'Projeté',
                         value:
                           workflowSummary.projectedCalendarDays === null
                             ? 'Bloqué'
                             : `${workflowSummary.projectedCalendarDays} j`,
                       },
-                      { label: 'Étapes à risque', value: workflowSummary.blockedStages },
+                      { label: 'Risques', value: workflowSummary.blockedStages },
                     ].map((item) => (
                       <div
                         key={item.label}
-                        className="rounded-2xl border border-white/5 bg-slate-950/40 px-4 py-3"
+                        className="rounded-xl border border-white/5 bg-slate-950/40 px-3 py-2.5 text-center"
                       >
-                        <div className="text-[11px] font-medium text-slate-500">{item.label}</div>
-                        <div className="mt-1 text-lg font-semibold text-white">{item.value}</div>
+                        <div className="text-[10px] font-medium text-slate-500">{item.label}</div>
+                        <div className="mt-0.5 text-base font-semibold text-white">{item.value}</div>
                       </div>
                     ))}
                   </div>
@@ -1276,11 +1195,10 @@ export default function Planning() {
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: idx * 0.1 }}
-                      className={`group relative rounded-3xl border p-5 transition-all hover:scale-[1.01] ${
-                        stage.atRisk
-                          ? 'border-rose-500/30 bg-[linear-gradient(110deg,rgba(244,63,94,0.1),rgba(15,23,42,0.6))]'
-                          : 'border-white/10 bg-[linear-gradient(110deg,rgba(15,23,42,0.8),rgba(2,6,23,0.9))] hover:border-white/20'
-                      }`}
+                      className={`group relative rounded-3xl border p-5 transition-all hover:scale-[1.01] ${stage.atRisk
+                        ? 'border-rose-500/30 bg-[linear-gradient(110deg,rgba(244,63,94,0.1),rgba(15,23,42,0.6))]'
+                        : 'border-white/10 bg-[linear-gradient(110deg,rgba(15,23,42,0.8),rgba(2,6,23,0.9))] hover:border-white/20'
+                        }`}
                     >
                       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.03),transparent)] pointer-events-none" />
 
@@ -1465,21 +1383,19 @@ export default function Planning() {
                   <div className="grid grid-cols-2 rounded-xl border border-white/8 bg-slate-950/40 p-1">
                     <button
                       onClick={() => setPlanningMode('automatic')}
-                      className={`px-3 py-2 rounded-lg text-[11px] sm:text-xs font-semibold transition-all ${
-                        planningMode === 'automatic'
-                          ? 'bg-cyan-500 text-slate-950'
-                          : 'text-slate-400 hover:text-white'
-                      }`}
+                      className={`px-3 py-2 rounded-lg text-[11px] sm:text-xs font-semibold transition-all ${planningMode === 'automatic'
+                        ? 'bg-cyan-500 text-slate-950'
+                        : 'text-slate-400 hover:text-white'
+                        }`}
                     >
                       Auto
                     </button>
                     <button
                       onClick={() => setPlanningMode('manual')}
-                      className={`px-3 py-2 rounded-lg text-[11px] sm:text-xs font-semibold transition-all ${
-                        planningMode === 'manual'
-                          ? 'bg-amber-400 text-slate-950'
-                          : 'text-slate-400 hover:text-white'
-                      }`}
+                      className={`px-3 py-2 rounded-lg text-[11px] sm:text-xs font-semibold transition-all ${planningMode === 'manual'
+                        ? 'bg-amber-400 text-slate-950'
+                        : 'text-slate-400 hover:text-white'
+                        }`}
                     >
                       Manuel
                     </button>
@@ -1496,14 +1412,21 @@ export default function Planning() {
                     Réglages{manualOverrideCount > 0 ? ` (${manualOverrideCount})` : ''}
                   </button>
 
+                  <button
+                    onClick={() => setShowOptimizationPanel(true)}
+                    className="min-h-11 shrink-0 rounded-xl border border-indigo-500/20 bg-indigo-500/10 px-4 text-indigo-200 transition-colors hover:bg-indigo-500/20"
+                    title="Ouvrir le centre d'optimisation unifié"
+                  >
+                    ⚡ Optimisation
+                  </button>
+
                   <div
-                    className={`min-h-11 shrink-0 whitespace-nowrap px-3 rounded-xl border text-xs font-semibold flex items-center justify-center ${
-                      dataSource === 'server'
-                        ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300'
-                        : dataSource === 'local'
-                          ? 'border-amber-500/20 bg-amber-500/10 text-amber-300'
-                          : 'border-slate-700 bg-slate-900/60 text-slate-400'
-                    }`}
+                    className={`min-h-11 shrink-0 whitespace-nowrap px-3 rounded-xl border text-xs font-semibold flex items-center justify-center ${dataSource === 'server'
+                      ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300'
+                      : dataSource === 'local'
+                        ? 'border-amber-500/20 bg-amber-500/10 text-amber-300'
+                        : 'border-slate-700 bg-slate-900/60 text-slate-400'
+                      }`}
                     title="Source de données du planning"
                   >
                     {dataSource === 'server'
@@ -1568,20 +1491,18 @@ export default function Planning() {
                     {targetMonths} mois
                   </span>
                   <span
-                    className={`rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] ${
-                      includeSaturday
-                        ? 'border-emerald-400/20 bg-emerald-500/10 text-emerald-200'
-                        : 'border-slate-700 bg-slate-950/40 text-slate-400'
-                    }`}
+                    className={`rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] ${includeSaturday
+                      ? 'border-emerald-400/20 bg-emerald-500/10 text-emerald-200'
+                      : 'border-slate-700 bg-slate-950/40 text-slate-400'
+                      }`}
                   >
                     {includeSaturday ? 'Samedi inclus' : 'Lun-Ven'}
                   </span>
                   <span
-                    className={`rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] ${
-                      planningMode === 'manual'
-                        ? 'border-amber-400/20 bg-amber-500/10 text-amber-200'
-                        : 'border-cyan-400/20 bg-cyan-500/10 text-cyan-200'
-                    }`}
+                    className={`rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] ${planningMode === 'manual'
+                      ? 'border-amber-400/20 bg-amber-500/10 text-amber-200'
+                      : 'border-cyan-400/20 bg-cyan-500/10 text-cyan-200'
+                      }`}
                   >
                     {planningMode === 'manual' ? 'Mode manuel' : 'Mode auto'}
                   </span>
@@ -1677,30 +1598,59 @@ export default function Planning() {
               </motion.div>
             )}
 
+            {/* ── BARRE DE PROGRESSION GLOBALE ── */}
+            <div className="mb-6 overflow-hidden rounded-2xl border border-white/10 bg-slate-900/60 backdrop-blur-xl p-5 shadow-lg shadow-slate-900/20">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-blue-500/10 text-blue-400">
+                    <TrendingUp size={18} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-white">Avancement Global du Projet</h3>
+                    <p className="text-[10px] text-slate-400 uppercase tracking-widest mt-0.5">Calculé sur l'ensemble des corps de métier</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="text-2xl font-black text-white tracking-tighter">{Math.round(stats.completed / (stats.total || 1) * 100)}%</span>
+                  <span className="text-[10px] font-black text-slate-500 ml-1">%</span>
+                </div>
+              </div>
+              <div className="relative h-3 w-full bg-slate-950/50 rounded-full border border-white/5 overflow-hidden p-[2px]">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${(stats.completed / (stats.total || 1)) * 100}%` }}
+                  transition={{ duration: 1.5, ease: "easeOut" }}
+                  className="h-full rounded-full bg-gradient-to-r from-blue-600 via-blue-400 to-cyan-400 shadow-[0_0_15px_rgba(59,130,246,0.5)] relative"
+                >
+                  <div className="absolute inset-0 bg-[linear-gradient(90deg,transparent_0%,rgba(255,255,255,0.2)_50%,transparent_100%)] animate-[shimmer_2s_infinite] -translate-x-full" />
+                </motion.div>
+              </div>
+            </div>
+
             {/* ── STATISTIQUES ── */}
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4">
-              <div className="bg-slate-900/50 border border-white/5 rounded-2xl p-4">
+              <div className="bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-2xl p-4 shadow-lg shadow-slate-900/20 transition-all hover:bg-slate-900/70">
                 <div className="flex items-center gap-2 mb-2">
                   <Home size={14} className="text-blue-400" />
-                  <span className="text-[11px] font-medium text-slate-400">Total</span>
+                  <span className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">Total</span>
                 </div>
                 <span className="text-xl sm:text-2xl font-semibold text-white">{stats.total}</span>
               </div>
 
-              <div className="bg-slate-900/50 border border-white/5 rounded-2xl p-4">
+              <div className="bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-2xl p-4 shadow-lg shadow-slate-900/20 transition-all hover:bg-slate-900/70">
                 <div className="flex items-center gap-2 mb-2">
                   <CheckCircle2 size={14} className="text-emerald-400" />
-                  <span className="text-[11px] font-medium text-slate-400">Termines</span>
+                  <span className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">Terminés</span>
                 </div>
                 <span className="text-xl sm:text-2xl font-semibold text-emerald-400">
                   {stats.completed}
                 </span>
               </div>
 
-              <div className="bg-slate-900/50 border border-white/5 rounded-2xl p-4">
+              <div className="bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-2xl p-4 shadow-lg shadow-slate-900/20 transition-all hover:bg-slate-900/70">
                 <div className="flex items-center gap-2 mb-2">
                   <AlertTriangle size={14} className="text-rose-400" />
-                  <span className="text-[11px] font-medium text-slate-400">En retard</span>
+                  <span className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">En retard</span>
                 </div>
                 <span className="text-xl sm:text-2xl font-semibold text-rose-400">
                   {stats.delayed}
@@ -1713,7 +1663,7 @@ export default function Planning() {
                 return (
                   <div
                     key={phase}
-                    className="bg-slate-900/50 border border-white/5 rounded-2xl p-4"
+                    className="bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-2xl p-4 shadow-lg shadow-slate-900/20 transition-all hover:bg-slate-900/70"
                   >
                     <div className="flex items-center gap-2 mb-2">
                       <div className={`w-2 h-2 rounded-full ${color}`} />
@@ -1728,7 +1678,7 @@ export default function Planning() {
             </div>
 
             {/* ── GRAPHIQUE COMPARATIF BESOINS THÉORIQUES VS RÉELLEMENT AFFECTÉS PAR RÉGION ── */}
-            <div className="mt-4 overflow-hidden rounded-[28px] border border-white/8 bg-[radial-gradient(circle_at_top_left,rgba(14,165,233,0.08),transparent_28%),linear-gradient(180deg,rgba(15,23,42,0.82),rgba(2,6,23,0.92))] p-4 shadow-[0_24px_70px_rgba(2,6,23,0.28)] sm:mt-8 sm:p-6">
+            <div className="mt-4 overflow-hidden rounded-[28px] border border-white/10 bg-slate-900/60 backdrop-blur-xl p-4 shadow-lg shadow-slate-900/20 sm:mt-8 sm:p-6">
               <div className="mb-4 sm:mb-6">
                 <div className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-300/70">
                   Capacité régionale
@@ -1917,7 +1867,7 @@ export default function Planning() {
                               Début
                             </div>
                             <div className="font-semibold text-white">
-                              {format(row.effectiveStart, 'dd MMM yyyy', { locale: fr })}
+                              {format(row.effectiveStart, 'dd/MM/yyyy', { locale: fr })}
                             </div>
                           </div>
                           <div className="rounded-2xl border border-white/5 bg-white/[0.03] px-3 py-2.5">
@@ -1925,7 +1875,7 @@ export default function Planning() {
                               Fin
                             </div>
                             <div className="font-semibold text-white">
-                              {format(row.effectiveEnd, 'dd MMM yyyy', { locale: fr })}
+                              {format(row.effectiveEnd, 'dd/MM/yyyy', { locale: fr })}
                             </div>
                           </div>
                           <div className="rounded-2xl border border-white/5 bg-white/[0.03] px-3 py-2.5">
@@ -1977,30 +1927,30 @@ export default function Planning() {
                   </div>
                   <div className="hidden md:block overflow-x-auto">
                     <table className="w-full min-w-full sm:min-w-[980px]">
-                      <thead className="bg-slate-950/46">
-                        <tr>
-                          <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-500 uppercase">
+                      <thead>
+                        <tr className="border-b border-white/10 bg-slate-950/30">
+                          <th className="px-5 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wide">
                             Corps métier
                           </th>
-                          <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-500 uppercase">
+                          <th className="px-5 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wide">
                             Étape
                           </th>
-                          <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-500 uppercase">
+                          <th className="px-5 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wide">
                             Début
                           </th>
-                          <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-500 uppercase">
+                          <th className="px-5 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wide">
                             Fin
                           </th>
-                          <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-500 uppercase">
+                          <th className="px-5 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wide">
                             Capacité
                           </th>
-                          <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-500 uppercase">
+                          <th className="px-5 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wide">
                             Mode
                           </th>
-                          <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-500 uppercase">
+                          <th className="px-5 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wide">
                             Avancement
                           </th>
-                          <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-500 uppercase">
+                          <th className="px-5 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wide">
                             Statut
                           </th>
                         </tr>
@@ -2009,53 +1959,58 @@ export default function Planning() {
                         {planningRows.map((row) => (
                           <tr
                             key={row.id}
-                            className={`transition-colors hover:bg-white/[0.04] ${row.atRisk ? 'bg-rose-900/10' : ''}`}
+                            className={`transition-colors hover:bg-white/[0.03] ${row.atRisk ? 'bg-rose-900/5' : ''}`}
                           >
-                            <td className="px-4 py-3">
-                              <div className="flex items-center gap-2">
+                            <td className="px-5 py-3">
+                              <div className="flex items-center gap-2.5">
                                 <div
-                                  className="h-2 w-2 rounded-full"
+                                  className="h-2.5 w-2.5 rounded-full shadow-sm"
                                   style={{ '--bg-color': row.fillColor } as React.CSSProperties}
                                 />
-                                <span className="text-xs font-bold text-white">{row.teamName}</span>
+                                <span className="text-sm font-medium text-white">{row.teamName}</span>
                               </div>
                             </td>
-                            <td className="px-4 py-3 text-xs text-slate-300">{row.label}</td>
-                            <td className="px-4 py-3 text-xs text-slate-300">
+                            <td className="px-5 py-3 text-sm text-slate-300">{row.label}</td>
+                            <td className="px-5 py-3 text-sm text-slate-300 font-mono">
                               {format(row.effectiveStart, 'dd/MM/yyyy', { locale: fr })}
                             </td>
-                            <td className="px-4 py-3 text-xs text-slate-300">
+                            <td className="px-5 py-3 text-sm text-slate-300 font-mono">
                               {format(row.effectiveEnd, 'dd/MM/yyyy', { locale: fr })}
                             </td>
-                            <td className="px-4 py-3 text-xs font-semibold text-white">
-                              {row.teamCount}/{row.requiredTeams}
+                            <td className="px-5 py-3">
+                              <span className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-sm font-medium text-white">
+                                {row.teamCount}/{row.requiredTeams}
+                              </span>
                             </td>
-                            <td className="px-4 py-3 text-xs text-slate-300">
-                              {planningMode === 'manual' && manualPlanningOverrides[row.id]
-                                ? 'Manuel'
-                                : 'Auto'}
+                            <td className="px-5 py-3">
+                              <span className={`text-sm ${planningMode === 'manual' && manualPlanningOverrides[row.id] ? 'text-amber-400' : 'text-slate-400'}`}>
+                                {planningMode === 'manual' && manualPlanningOverrides[row.id]
+                                  ? 'Manuel'
+                                  : 'Auto'}
+                              </span>
                             </td>
-                            <td className="px-4 py-3">
-                              <div className="flex items-center gap-2">
-                                <div className="w-24 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                            <td className="px-5 py-3">
+                              <div className="flex items-center gap-2.5">
+                                <div className="w-20 h-1.5 bg-slate-900/50 rounded-full border border-white/5 overflow-hidden p-[1px]">
                                   <div
-                                    className="h-full rounded-full"
+                                    className="h-full rounded-full transition-all duration-1000 shadow-[0_0_8px] shadow-current"
                                     style={
                                       {
-                                        '--progress': `${Math.min(row.progress, 100)}%`,
-                                        '--bg-color': row.fillColor,
+                                        width: `${Math.min(row.progress, 100)}%`,
+                                        backgroundColor: row.fillColor,
+                                        color: row.fillColor, // for shadow-current
                                       } as React.CSSProperties
                                     }
                                   />
                                 </div>
-                                <span className="text-[10px] font-bold text-slate-400">
+                                <span className="text-xs font-medium text-slate-400 w-8">
                                   {row.progress}%
                                 </span>
                               </div>
                             </td>
-                            <td className="px-4 py-3">
+                            <td className="px-5 py-3">
                               <span
-                                className={`text-[10px] font-bold ${getPlanningRowStatusClass(row)}`}
+                                className={`text-xs font-medium ${getPlanningRowStatusClass(row)}`}
                               >
                                 {getPlanningRowStatusLabel(row)}
                               </span>
@@ -2355,7 +2310,7 @@ export default function Planning() {
                             Début
                           </div>
                           <div className="mt-1 font-semibold text-white">
-                            {format(row.effectiveStart, 'dd MMM yyyy', { locale: fr })}
+                            {format(row.effectiveStart, 'dd/MM/yyyy', { locale: fr })}
                           </div>
                         </div>
                         <div className="rounded-[20px] border border-white/6 bg-white/[0.03] p-3">
@@ -2363,7 +2318,7 @@ export default function Planning() {
                             Fin
                           </div>
                           <div className="mt-1 font-semibold text-white">
-                            {format(row.effectiveEnd, 'dd MMM yyyy', { locale: fr })}
+                            {format(row.effectiveEnd, 'dd/MM/yyyy', { locale: fr })}
                           </div>
                         </div>
                         <div className="rounded-[20px] border border-white/6 bg-white/[0.03] p-3">
@@ -2385,13 +2340,14 @@ export default function Planning() {
                           </div>
                         </div>
                       </div>
-                      <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-800">
+                      <div className="mt-4 h-2 bg-slate-900/50 border border-white/5 rounded-full overflow-hidden p-[1px]">
                         <div
-                          className="h-full rounded-full"
+                          className="h-full rounded-full shadow-[0_0_10px] shadow-current transition-all duration-1000"
                           style={
                             {
-                              '--progress': `${Math.min(row.progress, 100)}%`,
-                              '--bg-color': row.fillColor,
+                              width: `${Math.min(row.progress, 100)}%`,
+                              backgroundColor: row.fillColor,
+                              color: row.fillColor,
                             } as React.CSSProperties
                           }
                         />
@@ -2474,11 +2430,10 @@ export default function Planning() {
                         return (
                           <div
                             key={day.toISOString()}
-                            className={`min-h-24 sm:min-h-28 p-1.5 sm:p-2 rounded-[18px] border transition-all ${
-                              isCurrentDay
-                                ? 'bg-blue-500/20 border-blue-500/40 shadow-lg shadow-blue-500/10'
-                                : 'bg-slate-800/30 border-white/5'
-                            }`}
+                            className={`min-h-24 sm:min-h-28 p-1.5 sm:p-2 rounded-[18px] border transition-all ${isCurrentDay
+                              ? 'bg-blue-500/20 border-blue-500/40 shadow-lg shadow-blue-500/10'
+                              : 'bg-slate-800/30 border-white/5'
+                              }`}
                           >
                             <div
                               className={`text-xs font-bold mb-1 ${isCurrentDay ? 'text-blue-400' : 'text-slate-500'}`}
@@ -2514,7 +2469,7 @@ export default function Planning() {
             </AnimatePresence>
 
             {/* ── GRAPHIQUE DE CHARGE PAR ÉQUIPE ── */}
-            <div className="bg-slate-900/50 border border-white/5 rounded-2xl p-4 sm:p-6 mt-4 sm:mt-8">
+            <div className="bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-2xl p-4 shadow-lg shadow-slate-900/20 sm:p-6 mt-4 sm:mt-8">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
                 <h3 className="text-sm sm:text-base font-semibold text-white">
                   Charge des équipes
@@ -2543,13 +2498,12 @@ export default function Planning() {
                           </div>
                         </div>
                         <span
-                          className={`text-[10px] font-bold px-2 py-1 rounded-full ${
-                            tp.status === 'overloaded'
-                              ? 'bg-rose-500/30 text-rose-400 border border-rose-500/20'
-                              : tp.status === 'busy'
-                                ? 'bg-amber-500/30 text-amber-400 border border-amber-500/20'
-                                : 'bg-emerald-500/30 text-emerald-400 border border-emerald-500/20'
-                          }`}
+                          className={`text-[10px] font-bold px-2 py-1 rounded-full ${tp.status === 'overloaded'
+                            ? 'bg-rose-500/30 text-rose-400 border border-rose-500/20'
+                            : tp.status === 'busy'
+                              ? 'bg-amber-500/30 text-amber-400 border border-amber-500/20'
+                              : 'bg-emerald-500/30 text-emerald-400 border border-emerald-500/20'
+                            }`}
                         >
                           {tp.status === 'overloaded'
                             ? 'Surchargé'
@@ -2559,14 +2513,19 @@ export default function Planning() {
                         </span>
                       </div>
                       <div className="flex items-center gap-4">
-                        <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+                        <div className="w-full h-2 bg-slate-900/50 border border-white/5 rounded-full overflow-hidden p-[1px]">
                           <div
-                            className="h-full rounded-full transition-all"
+                            className="h-full rounded-full transition-all duration-1000 shadow-[0_0_12px] shadow-current"
                             style={
                               {
-                                '--progress': `${Math.min(tp.utilization, 100)}%`,
-                                '--bg-color':
+                                width: `${Math.min(tp.utilization, 100)}%`,
+                                backgroundColor:
                                   tp.utilization > 100
+                                    ? '#ef4444'
+                                    : tp.utilization > 70
+                                      ? '#f59e0b'
+                                      : '#10b981',
+                                color: tp.utilization > 100
                                     ? '#ef4444'
                                     : tp.utilization > 70
                                       ? '#f59e0b'
@@ -2696,11 +2655,10 @@ export default function Planning() {
                 {manualPlannerRows.map((row) => (
                   <div
                     key={`manual-${row.id}`}
-                    className={`rounded-[24px] border p-4 shadow-[0_18px_44px_rgba(2,6,23,0.24)] ${
-                      row.hasManualOverride
-                        ? 'border-amber-400/25 bg-amber-950/10'
-                        : 'border-white/6 bg-slate-950/34'
-                    }`}
+                    className={`rounded-[24px] border p-4 shadow-[0_18px_44px_rgba(2,6,23,0.24)] ${row.hasManualOverride
+                      ? 'border-amber-400/25 bg-amber-950/10'
+                      : 'border-white/6 bg-slate-950/34'
+                      }`}
                   >
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div className="min-w-0">
@@ -2717,11 +2675,10 @@ export default function Planning() {
                           {row.phase ? PHASE_LABELS[row.phase] : row.label}
                         </span>
                         <span
-                          className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-semibold ${
-                            row.hasManualOverride
-                              ? 'border-amber-400/20 bg-amber-500/10 text-amber-200'
-                              : 'border-white/8 bg-white/[0.04] text-slate-300'
-                          }`}
+                          className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-semibold ${row.hasManualOverride
+                            ? 'border-amber-400/20 bg-amber-500/10 text-amber-200'
+                            : 'border-white/8 bg-white/[0.04] text-slate-300'
+                            }`}
                         >
                           {row.hasManualOverride ? 'Manuel' : 'Auto'}
                         </span>
@@ -2881,6 +2838,280 @@ export default function Planning() {
                     </div>
                   </div>
                 ))}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ── PANNEAU D'OPTIMISATION UNIFIÉ ── */}
+      <AnimatePresence>
+        {showOptimizationPanel && (
+          <div className="fixed inset-0 z-[96] flex justify-end">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowOptimizationPanel(false)}
+              className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 24, stiffness: 210 }}
+              className="relative h-full w-full max-w-3xl overflow-y-auto border-l border-white/10 bg-slate-900 p-4 shadow-2xl sm:p-6"
+            >
+              <div className="mb-6 flex items-start justify-between gap-3">
+                <div>
+                  <div className="text-[10px] font-black uppercase tracking-[0.24em] text-indigo-300/70">
+                    Centre d'optimisation
+                  </div>
+                  <h3 className="mt-2 text-lg font-semibold text-white">
+                    Optimisation du Planning
+                  </h3>
+                  <p className="mt-1 text-sm text-slate-400">
+                    Ajustez dates, durées et bénéficiez des recommandations IA pour optimiser les affectations.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowOptimizationPanel(false)}
+                  className="rounded-xl p-2 text-slate-400 transition-colors hover:bg-white/5"
+                  title="Fermer"
+                  aria-label="Fermer le panneau d'optimisation"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+
+              {/* ── Onglets ── */}
+              <div className="mb-5 flex gap-2">
+                <button
+                  onClick={() => setShowManualPlanner(true)}
+                  className="flex-1 rounded-xl border border-amber-400/20 bg-amber-500/10 px-4 py-3 text-sm font-semibold text-amber-200 transition-all hover:bg-amber-500/20"
+                >
+                  📅 Dates & Durées
+                </button>
+                <button
+                  onClick={handleRequestAiAnalysis}
+                  disabled={isAnalyzingAI}
+                  className="flex-1 rounded-xl border border-blue-500/20 bg-blue-500/10 px-4 py-3 text-sm font-semibold text-blue-200 transition-all hover:bg-blue-500/20 disabled:opacity-50"
+                >
+                  🤖 Analyse IA
+                </button>
+              </div>
+
+              {/* ── Résumé des métriques ── */}
+              <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <div className="rounded-2xl border border-white/6 bg-white/[0.03] px-4 py-3">
+                  <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">
+                    Lignes
+                  </div>
+                  <div className="mt-2 text-2xl font-semibold text-white">
+                    {planningRows.length}
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-amber-400/20 bg-amber-500/10 px-4 py-3">
+                  <div className="text-[10px] font-black uppercase tracking-[0.18em] text-amber-200/70">
+                    Réglages manuels
+                  </div>
+                  <div className="mt-2 text-2xl font-semibold text-amber-100">
+                    {manualOverrideCount}
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3">
+                  <div className="text-[10px] font-black uppercase tracking-[0.18em] text-rose-300/70">
+                    Métiers sous tension
+                  </div>
+                  <div className="mt-2 text-2xl font-semibold text-rose-200">
+                    {planningRows.filter((r) => r.atRisk).length}
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3">
+                  <div className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-300/70">
+                    Équipes actives
+                  </div>
+                  <div className="mt-2 text-2xl font-semibold text-emerald-200">
+                    {activeTeams.length}
+                  </div>
+                </div>
+              </div>
+
+              {/* ── Recommandations IA (si disponibles) ── */}
+              {aiRecommendation && formattedAiRecommendation && (
+                <div className="mb-5 rounded-2xl border border-blue-500/20 bg-blue-500/10 p-4">
+                  <div className="mb-3 flex items-center gap-2">
+                    <Zap size={18} className="text-blue-400" />
+                    <h4 className="text-sm font-semibold text-blue-300">Recommandations MissionSage</h4>
+                  </div>
+                  <p className="text-sm text-slate-200 mb-4">{formattedAiRecommendation.lead}</p>
+                  {formattedAiRecommendation.sections.length > 0 && (
+                    <div className="space-y-3">
+                      {formattedAiRecommendation.sections.map((section) => (
+                        <div
+                          key={section.title}
+                          className="rounded-xl border border-blue-400/10 bg-slate-950/40 p-3"
+                        >
+                          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-blue-200 mb-2">
+                            {section.title}
+                          </p>
+                          <ul className="space-y-1.5">
+                            {section.items.map((item) => (
+                              <li
+                                key={item}
+                                className="flex gap-2 text-xs text-slate-300"
+                              >
+                                <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-blue-400" />
+                                <span>{item}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ── Actions rapides ── */}
+              <div className="mb-5">
+                <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500 mb-3">
+                  Actions rapides
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => {
+                      setPlanningMode('manual');
+                      setShowManualPlanner(true);
+                    }}
+                    className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-medium text-slate-300 transition-all hover:bg-white/[0.06] hover:border-white/20"
+                  >
+                    <span className="block text-lg mb-1">📝</span>
+                    Mode manuel
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIncludeSaturday(true);
+                      toast.success('Samedi inclus dans les calculs');
+                    }}
+                    className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-medium text-slate-300 transition-all hover:bg-white/[0.06] hover:border-white/20"
+                  >
+                    <span className="block text-lg mb-1">📆</span>
+                    Inclure samedi
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (planningRows.filter((r) => r.atRisk).length > 0) {
+                        setPlanningMode('manual');
+                        setShowManualPlanner(true);
+                        toast('Consultez les métiers sous tension dans le panneau de réglages');
+                      } else {
+                        toast.success('Aucun métier sous tension !');
+                      }
+                    }}
+                    className="rounded-xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm font-medium text-rose-200 transition-all hover:bg-rose-500/20"
+                  >
+                    <span className="block text-lg mb-1">⚠️</span>
+                    Voir retards ({planningRows.filter((r) => r.atRisk).length})
+                  </button>
+                  <button
+                    onClick={handleRefresh}
+                    className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-medium text-slate-300 transition-all hover:bg-white/[0.06] hover:border-white/20"
+                  >
+                    <span className="block text-lg mb-1">🔄</span>
+                    Actualiser
+                  </button>
+                </div>
+              </div>
+
+              {/* ── Liste des métiers avec réglages rapides ── */}
+              <div>
+                <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500 mb-3">
+                  Réglages rapides par métier
+                </div>
+                <div className="space-y-3">
+                  {planningRows.map((row) => (
+                    <div
+                      key={`opt-${row.id}`}
+                      className={`rounded-2xl border p-4 transition-all ${row.atRisk
+                        ? 'border-rose-500/20 bg-rose-950/10'
+                        : manualPlanningOverrides[row.id]
+                          ? 'border-amber-400/20 bg-amber-950/10'
+                          : 'border-white/6 bg-slate-950/34'
+                        }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <div
+                              className="h-2 w-2 rounded-full"
+                              style={{ backgroundColor: row.fillColor }}
+                            />
+                            <h4 className="text-sm font-semibold text-white">{row.teamName}</h4>
+                            {row.atRisk && (
+                              <span className="rounded-full border border-rose-500/20 bg-rose-500/10 px-2 py-0.5 text-[10px] font-medium text-rose-300">
+                                Sous tension
+                              </span>
+                            )}
+                            {manualPlanningOverrides[row.id] && (
+                              <span className="rounded-full border border-amber-400/20 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-200">
+                                Manuel
+                              </span>
+                            )}
+                          </div>
+                          <div className="mt-2 grid grid-cols-3 gap-2 text-xs text-slate-400">
+                            <div>
+                              <span className="text-[10px] uppercase">Début:</span>{ }
+                              <span className="text-white font-mono">
+                                {format(row.effectiveStart, 'dd/MM')}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-[10px] uppercase">Fin:</span>{ }
+                              <span className="text-white font-mono">
+                                {format(row.effectiveEnd, 'dd/MM')}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-[10px] uppercase">Durée:</span>{ }
+                              <span className="text-white font-mono">
+                                {row.effectiveDurationDays}j
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex flex-col gap-2">
+                          <button
+                            onClick={() => {
+                              setPlanningMode('manual');
+                              setManualPlanningOverrides((current) => ({
+                                ...current,
+                                [row.id]: {
+                                  start: toDateInputValue(row.effectiveStart),
+                                  end: toDateInputValue(row.effectiveEnd),
+                                  durationDays: row.effectiveDurationDays,
+                                },
+                              }));
+                              setShowManualPlanner(true);
+                              toast(`Réglage manuel activé pour ${row.teamName}`);
+                            }}
+                            className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-slate-300 transition-all hover:bg-white/[0.06]"
+                          >
+                            Modifier
+                          </button>
+                          {manualPlanningOverrides[row.id] && (
+                            <button
+                              onClick={() => clearManualPlanningRow(row.id)}
+                              className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-slate-300 transition-all hover:bg-white/[0.06]"
+                            >
+                              Réinitialiser
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </motion.div>
           </div>

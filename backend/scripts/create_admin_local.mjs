@@ -1,5 +1,5 @@
 import bcrypt from 'bcryptjs';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '../src/generated/prisma/index.js';
 
 const prisma = new PrismaClient();
 
@@ -16,13 +16,26 @@ async function createAdmin() {
 
     let org = await prisma.organization.findFirst({ where: { name: 'PROQUELEC' } });
     if (!org) {
-      org = await prisma.organization.create({ data: { name: 'PROQUELEC' } });
+      org = await prisma.organization.create({
+        data: {
+          name: 'PROQUELEC',
+          slug: 'proquelec-admin'
+        }
+      });
+      console.log('   Organization created with slug: proquelec-admin');
+    } else if (!org.slug) {
+      // Update existing org with slug if missing
+      org = await prisma.organization.update({
+        where: { id: org.id },
+        data: { slug: 'proquelec-admin' }
+      });
+      console.log('   Organization slug updated: proquelec-admin');
     }
 
-    const existing = await prisma.user.findUnique({ where: { email: 'admingem' } });
+    const existing = await prisma.user.findFirst({ where: { email: 'admingem' } });
     if (existing) {
       await prisma.user.update({
-        where: { email: 'admingem' },
+        where: { id: existing.id },
         data: {
           passwordHash,
           name: 'Administrateur PROQUELEC',

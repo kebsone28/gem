@@ -14,9 +14,10 @@ import {
   clearHistory,
   clearMyHistory,
   updateRetention,
-  editMessage,
   deleteMessageForMe,
   resolveEntity,
+  updateUserStatus,
+  editMessage,
 } from './chat.controller.js';
 
 const router = express.Router();
@@ -24,6 +25,7 @@ const router = express.Router();
 router.use(authProtect);
 
 router.get('/bootstrap', getChatBootstrap);
+router.put('/status', updateUserStatus);
 router.get('/resolve', resolveEntity);
 router.post('/conversations', createConversation);
 router.get('/conversations/:conversationId/messages', getConversationMessages);

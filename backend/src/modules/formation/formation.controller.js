@@ -58,8 +58,8 @@ const DEFAULT_MODULES = [
     order: 5,
   },
   {
-    name: 'Application GEM-KOBO',
-    description: "Utilisation de l'application GEM-KOBO terrain",
+    name: 'Application GED OS-KOBO',
+    description: "Utilisation de l'application GED OS-KOBO terrain",
     duration: 2,
     order: 6,
   },

@@ -127,7 +127,7 @@ const SLATE_800: [number, number, number] = [30, 41, 59];
 /**
  * Génère le fichier PDF pour une grappe donnée
  */
-export const generateGrappePDF = (grappe: GrappeData, projectName: string = 'Projet GEM') => {
+export const generateGrappePDF = (grappe: GrappeData, projectName: string = 'Projet GED OS') => {
   // Landscape A4 pour plus d'espace sur les colonnes
   const doc = new jsPDF({ orientation: 'landscape', format: 'a4' });
   const dateStr = format(new Date(), 'dd MMMM yyyy HH:mm', { locale: fr });

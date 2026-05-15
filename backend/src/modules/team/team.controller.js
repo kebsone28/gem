@@ -360,32 +360,64 @@ export const assignTeamToZone = async (req, res) => {
     }
 };
 
-// @desc    Get real-time positions of teams
+/**
+ * Jitter déterministe [0,1) à partir d'une chaîne (positions mock stables par équipe).
+ * @param {string} seed
+ */
+function deterministicUnit(seed) {
+    let h = 0;
+    const s = String(seed || '');
+    for (let i = 0; i < s.length; i += 1) {
+        h = (Math.imul(31, h) + s.charCodeAt(i)) | 0;
+    }
+    const u = (h >>> 0) / 4294967296;
+    return u;
+}
+
+// @desc    Positions terrain des équipes (DTO aligné sur le frontend TeamTracking)
+// @route   GET /api/teams/positions
+// @query   projectId (optionnel) — filtre les équipes du projet
 export const getTeamPositions = async (req, res) => {
     try {
         const { organizationId } = req.user;
         const { projectId } = req.query;
 
+        const where = {
+            organizationId,
+            deletedAt: null
+        };
+        if (projectId) {
+            where.projectId = projectId;
+        }
+
         const teams = await prisma.team.findMany({
-            where: { organizationId, projectId, deletedAt: null },
-            include: { zone: { select: { name: true } } }
+            where,
+            include: { zone: { select: { name: true } } },
+            orderBy: { name: 'asc' }
         });
 
-        // Mock positions for now (Real GPS data comes from another service)
+        // Mock positions (remplacer plus tard par Redis / traceur GPS réel)
         const baseLat = 14.7167;
         const baseLng = -17.4677;
 
-        const positions = teams.map((team) => ({
-            id: team.id,
-            name: team.name,
-            role: team.role,
-            zoneName: team.zone?.name || 'Inconnue',
-            coordinates: {
-                lat: baseLat + (Math.random() - 0.5) * 0.1,
-                lng: baseLng + (Math.random() - 0.5) * 0.1
-            },
-            lastUpdate: new Date()
-        }));
+        const positions = teams.map((team) => {
+            const uLat = deterministicUnit(`${team.id}:lat`);
+            const uLng = deterministicUnit(`${team.id}:lng`);
+            const lat = baseLat + (uLat - 0.5) * 0.18;
+            const lng = baseLng + (uLng - 0.5) * 0.18;
+            const updatedAt = new Date().toISOString();
+
+            return {
+                userId: team.id,
+                name: team.name,
+                role: team.role || 'INSTALLATION',
+                lat,
+                lon: lng,
+                updatedAt,
+                zoneName: team.zone?.name || null,
+                source: 'mock'
+            };
+        });
 
         res.json({ positions });
     } catch (error) {

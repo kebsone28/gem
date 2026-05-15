@@ -2,6 +2,7 @@ import { db } from '../store/db';
 import { auditService } from './auditService';
 import logger from '../utils/logger';
 import apiClient from '../api/client';
+import { MODULE_REGISTRY, getAllModules } from '../modules/MODULE_REGISTRY';
 
 // Types pour la gestion des modules
 export interface ModuleConfig {
@@ -26,172 +27,22 @@ export interface UserModuleAccess {
 }
 
 // Configuration des modules disponibles
-export const AVAILABLE_MODULES: ModuleConfig[] = [
-  // Modules CORE - Toujours actifs
-  {
-    id: 'dashboard',
-    name: 'Tableaux de Bord',
-    description: 'Dashboards par rôle et entreprise',
-    category: 'core',
+// Configuration des modules disponibles
+// Dynamic generation from Registry
+export const AVAILABLE_MODULES: ModuleConfig[] = getAllModules()
+  .filter(m => m.isPackage)
+  .map(m => ({
+    id: m.key,
+    name: m.name,
+    description: m.description,
+    category: m.packageCategory || 'advanced',
     enabled: true,
-    global: false, // Non désactivable globalement
-    permissions: ['voir_dashboard'],
-    icon: 'BarChart3',
-  },
-  {
-    id: 'missions',
-    name: 'Gestion des Missions',
-    description: 'Création, suivi et validation des missions',
-    category: 'core',
-    enabled: true,
-    global: false, // Non désactivable globalement
-    permissions: ['voir_missions', 'creer_mission'],
-    icon: 'Target',
-  },
-  {
-    id: 'users',
-    name: 'Gestion des Utilisateurs',
-    description: 'Administration des comptes et permissions',
-    category: 'core',
-    enabled: true,
-    global: false, // Non désactivable globalement
-    permissions: ['gerer_utilisateurs'],
-    icon: 'Users',
-  },
-  {
-    id: 'planning',
-    name: 'Planning et Ordonnancement',
-    description: 'Gestion du planning de projet',
-    category: 'core',
-    enabled: true,
-    global: false, // Non désactivable globalement
-    permissions: ['gerer_planning'],
-    icon: 'Calendar',
-  },
-
-  // Modules ADVANCED - Désactivables globalement
-  {
-    id: 'ai_assistant',
-    name: 'Assistant IA Wanekoo',
-    description: 'Assistant intelligent pour aide à la décision',
-    category: 'advanced',
-    enabled: true,
-    global: true, // Peut être désactivé globalement
-    permissions: ['utiliser_ia'],
-    icon: 'Zap',
-    settings: {
-      model: 'gpt-4',
-      temperature: 0.7,
-      maxTokens: 2000,
-    },
-  },
-  {
-    id: 'advanced_analytics',
-    name: 'Analytics Avancés',
-    description: 'Analyse prédictive et tableaux de bord personnalisés',
-    category: 'advanced',
-    enabled: true,
-    global: true, // Peut être désactivé globalement
-    permissions: ['voir_metriques_ia'],
-    icon: 'TrendingUp',
-    settings: {
-      realTimeUpdates: true,
-      predictiveAnalytics: true,
-      customDashboards: false,
-    },
-  },
-  {
-    id: 'multi_tenant',
-    name: 'Multi-Entreprises',
-    description: 'Gestion multi-entreprises et isolation des données',
-    category: 'advanced',
-    enabled: true,
-    global: true, // Peut être désactivé globalement
-    permissions: ['gerer_entreprises'],
-    icon: 'Building',
-    settings: {
-      enabledCompanies: ['PROQUELEC', 'LSE', 'SENELEC'],
-      dataIsolation: true,
-    },
-  },
-  {
-    id: 'automated_workflows',
-    name: 'Workflows Automatisés',
-    description: 'Automatisation des processus métier',
-    category: 'advanced',
-    enabled: true,
-    global: true, // Peut être désactivé globalement
-    permissions: ['gerer_workflows'],
-    icon: 'Settings',
-    settings: {
-      autoApprovalMissions: false,
-      autoReportGeneration: true,
-      notificationRules: true,
-    },
-  },
-
-  // Modules EXPERIMENTAL - Désactivables globalement
-  {
-    id: 'real_time_collaboration',
-    name: 'Collaboration Temps Réel',
-    description: 'Édition collaborative en temps réel',
-    category: 'experimental',
-    enabled: false, // Désactivé par défaut
-    global: true, // Peut être désactivé globalement
-    permissions: ['collaboration_temps_reel'],
-    icon: 'Users',
-    settings: {
-      maxConcurrentUsers: 10,
-      conflictResolution: 'manual',
-    },
-  },
-  {
-    id: 'blockchain_audit',
-    name: 'Audit Blockchain',
-    description: 'Traçabilité immuable des actions',
-    category: 'experimental',
-    enabled: false, // Désactivé par défaut
-    global: true, // Peut être désactivé globalement
-    permissions: ['voir_audit_blockchain'],
-    icon: 'Shield',
-    settings: {
-      blockchainProvider: 'ethereum',
-      gasLimit: 21000,
-    },
-  },
-
-  // Modules ADMIN - Désactivables globalement
-  {
-    id: 'god_mode',
-    name: 'Mode Dieu (God Mode)',
-    description: 'Accès complet et bypass des restrictions',
-    category: 'admin',
-    enabled: false, // Désactivé par défaut
-    global: true, // Peut être désactivé globalement
-    permissions: ['acces_god_mode'],
-    icon: 'ShieldCheck',
-    settings: {
-      requireConfirmation: true,
-      auditAllActions: true,
-      bypassPermissions: true,
-    },
-  },
-  {
-    id: 'system_maintenance',
-    name: 'Maintenance Système',
-    description: 'Outils de maintenance et diagnostics',
-    category: 'admin',
-    enabled: true,
-    global: true, // Peut être désactivé globalement
-    permissions: ['voir_diagnostic', 'gerer_parametres'],
-    icon: 'Wrench',
-    settings: {
-      allowScheduledMaintenance: true,
-      enableDiagnostics: true,
-      performanceMonitoring: true,
-    },
-  },
-];
+    global: m.global ?? true,
+    permissions: Array.isArray(m.requiredPermission) 
+      ? [...m.requiredPermission] 
+      : m.requiredPermission ? [m.requiredPermission] : [],
+    icon: m.icon,
+  }));
 
 class ModulesManagementService {
   private readonly MODULES_KEY = 'global_modules_config';
@@ -202,11 +53,21 @@ class ModulesManagementService {
     try {
       // Priorité 1 : API backend (source de vérité)
       try {
-        const response = await apiClient.get('/api/admin/modules/config');
-        const config = response.data?.config || {};
+        const response = await apiClient.get('admin/modules/config');
+        const apiConfig = response.data?.config || {};
+
+        // On fusionne avec AVAILABLE_MODULES pour s'assurer que tous les champs existent
+        const mergedConfig: Record<string, ModuleConfig> = {};
+        AVAILABLE_MODULES.forEach((module) => {
+          mergedConfig[module.id] = {
+            ...module,
+            ...(apiConfig[module.id] || {}),
+          };
+        });
+
         // Cache dans localStorage pour offline
-        localStorage.setItem(this.MODULES_KEY, JSON.stringify(config));
-        return config;
+        localStorage.setItem(this.MODULES_KEY, JSON.stringify(mergedConfig));
+        return mergedConfig;
       } catch (apiErr) {
         logger.warn('[ModulesManagementService] API indisponible, fallback localStorage', apiErr);
         // Priorité 2 : localStorage (fallback)
@@ -220,7 +81,6 @@ class ModulesManagementService {
         AVAILABLE_MODULES.forEach((module) => {
           defaultConfig[module.id] = module;
         });
-        localStorage.setItem(this.MODULES_KEY, JSON.stringify(defaultConfig));
         return defaultConfig;
       }
     } catch (error) {
@@ -234,7 +94,7 @@ class ModulesManagementService {
     try {
       // Sauvegarder sur le backend (source de vérité)
       try {
-        await apiClient.post('/api/admin/modules/config', { config });
+        await apiClient.post('admin/modules/config', { config });
         logger.info('[ModulesManagementService] Global modules config saved to backend');
       } catch (apiErr) {
         logger.warn('[ModulesManagementService] Failed to save to backend, using localStorage', apiErr);

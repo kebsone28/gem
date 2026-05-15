@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { UserRole as SecurityUserRole } from './security/types';
 
 export type UserRole = SecurityUserRole;
@@ -101,6 +100,7 @@ export interface Household {
   createdAt?: string; // ✅ AJOUT
   manualOverrides?: string[]; // ✅ AJOUT: Liste des champs forcés manuellement
   source?: 'local' | 'kobo' | 'import';
+  metadata?: Record<string, any>;
   deletedAt?: Date | null;
 }
 
@@ -219,7 +219,7 @@ export interface CahierTaskGuideBlock {
 
 export interface CahierTask {
   color: string;
-  icon: any;
+  icon: string | React.ComponentType;
   image: string;
   defaultCadence: string;
   introduction: string;
@@ -265,6 +265,11 @@ export interface Warehouse {
 
 export interface ProjectConfig {
   teams?: Team[];
+  client?: string;
+  description?: string;
+  assignedUsers?: string[];
+  enabledModules?: string[];
+  labels?: Record<string, any>;
   grappesConfig?: Record<string, unknown>;
   kitComposition?: { item: string; quantity: number }[];
   warehouses?: Warehouse[]; // NEW: per-region warehouses
@@ -315,17 +320,23 @@ export interface ProjectConfig {
   materialCatalog?: CatalogItem[];
   subTeamAllocations?: Record<string, SubTeamEquipment[]>; // mapping subTeamId -> equipments
   cahierHistory?: CahierVersion[];
+  customFields?: { id: string; label: string; type: string }[];
 }
 
 export interface Project {
   id: string;
   organizationId: string;
   name: string;
+  client?: string;
+  description?: string;
   status: string;
   version: number;
   duration?: number;
   totalHouses?: number;
   config: ProjectConfig;
+  updatedAt?: string;
+  updatedBy?: { name: string; email: string };
+  _count?: { zones: number };
 }
 
 export type TradeKey = string;

@@ -6,6 +6,7 @@
 import { alertsService } from '../modules/alerts/alerts.service.js';
 import prisma from '../core/utils/prisma.js';
 import logger from '../utils/logger.js';
+import { withJobContext } from '../core/utils/jobContext.js';
 
 export const startAlertEscalationAgent = () => {
   // Exécuter toutes les heures
@@ -30,7 +31,7 @@ export const startIGPPAlertAgent = async () => {
   const interval = setInterval(async () => {
     try {
       logger.info('[IGPP-ALERT-AGENT] Checking KPI thresholds...');
-      
+
       // Récupérer tous les projets actifs
       const projects = await prisma.project.findMany({
         where: { status: 'ACTIVE' },
@@ -39,12 +40,16 @@ export const startIGPPAlertAgent = async () => {
 
       for (const project of projects) {
         try {
-          await checkProjectKPIsAndCreateAlerts(project.id, project.organizationId);
+          // Run with proper context for Prisma auto-filtering
+          await withJobContext(
+            { organizationId: project.organizationId, projectId: project.id },
+            () => checkProjectKPIsAndCreateAlerts(project.id, project.organizationId)
+          );
         } catch (err) {
           logger.error(`[IGPP-ALERT-AGENT] Error checking project ${project.id}:`, err);
         }
       }
-      
+
       logger.info('[IGPP-ALERT-AGENT] KPI check completed');
     } catch (err) {
       logger.error('[IGPP-ALERT-AGENT] Error during KPI check:', err);

@@ -1,4 +1,4 @@
-# Gestion Électrification de Masse - Application Bureau (Electron)
+# GED OS - Gestionnaire Écosystème Digital (Ex-GEM)
 
 Ce dépôt contient une version web statique de l'application. Le scaffold Electron permet d'exécuter l'application localement comme application de bureau.
 

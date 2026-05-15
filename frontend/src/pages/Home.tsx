@@ -2,27 +2,32 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useProject } from '../contexts/ProjectContext';
 import { normalizeRole, ROLES, isPlatformAdmin } from '../utils/permissions';
 import { useProjectSelector } from '../hooks/useProjectSelector';
 import {
-  Building,
-  Users,
-  Target,
-  Calendar,
-  Clock,
-  AlertTriangle,
-  CheckCircle2,
-  Settings,
-  Bell,
-  Search,
-  ArrowRight,
   Plus,
+  Search,
   Grid,
   List,
-  LogOut,
-  HelpCircle,
+  Target,
+  Clock,
   Activity,
+  Calendar,
+  CheckCircle2,
+  AlertTriangle,
+  ArrowRight,
+  Pencil,
+  Trash2,
+  Lock,
+  Building,
+  Users,
+  Settings,
+  Bell,
+  HelpCircle,
+  LogOut,
 } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 
 export default function Home() {
   const { user, logout } = useAuth();
@@ -37,6 +42,8 @@ export default function Home() {
     setSearchTerm,
     projectFilter, // source unique de vérité pour l'état du filtre actif
   } = projectSelectorData;
+
+  const { refreshProjects, deleteProject, setActiveProjectId } = useProject();
 
   const normalizedRole = normalizeRole(user?.role || '');
 
@@ -54,13 +61,18 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState('');
   // filterStatus supprimé — projectFilter du hook est la seule source
 
+  // 🔄 Forcer une synchro au montage de la Home page
+  // Le Layout cache la sidebar sur /home, ce qui empêche le déclenchement
+  // automatique. Cette synchro garantit que les projets sont toujours à jour.
   useEffect(() => {
     if (!user) {
       navigate('/login', { replace: true });
       return;
     }
-
-    // L'utilisateur reste sur Home pour choisir son projet activement
+    // Déclencher une synchro si la liste est vide
+    if (projects.length === 0) {
+      refreshProjects().catch(() => {});
+    }
   }, [user, navigate]);
 
   const getRoleColor = (role: string) => {
@@ -113,9 +125,30 @@ export default function Home() {
   };
 
   const handleProjectSelect = (projectId: string) => {
+    // ✅ Persist the selected project globally (updates sidebar + X-Project-Id header)
+    setActiveProjectId(projectId);
+    // Also update local hook state for UI consistency on the Home page
     switchProject(projectId);
     navigate('/dashboard');
   };
+
+  const handleProjectDelete = async (e: React.MouseEvent, projectId: string, projectName: string) => {
+    e.stopPropagation();
+    if (window.confirm(`Êtes-vous sûr de vouloir supprimer le projet "${projectName}" ?`)) {
+      try {
+        const result = await deleteProject(projectId, '');
+        if (result.success) {
+          toast.success('Projet supprimé');
+          refreshProjects();
+        } else {
+          toast.error(result.error || 'Erreur lors de la suppression');
+        }
+      } catch (err) {
+        toast.error('Erreur lors de la suppression');
+      }
+    }
+  };
+
 
   const getNotifications = () => {
     return [
@@ -235,7 +268,7 @@ export default function Home() {
                   <Building size={20} className="text-white" />
                 </div>
                 <div>
-                  <h1 className="text-xl font-black text-white">GEM SAAS</h1>
+                  <h1 className="text-xl font-black text-white">GED OS</h1>
                   <p className="text-xs text-slate-400">Gestion Multi-Projets</p>
                 </div>
               </div>
@@ -259,11 +292,19 @@ export default function Home() {
                 <div className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></div>
               </button>
 
-              <button className="p-2 bg-slate-800 rounded-lg hover:bg-slate-700 transition-all">
+              <button 
+                onClick={() => navigate('/aide')}
+                className="p-2 bg-slate-800 rounded-lg hover:bg-slate-700 transition-all"
+                title="Aide & Tour d'Horizon"
+              >
                 <HelpCircle size={18} className="text-slate-300" />
               </button>
 
-              <button className="p-2 bg-slate-800 rounded-lg hover:bg-slate-700 transition-all">
+              <button 
+                onClick={() => navigate('/admin/hub')}
+                className="p-2 bg-slate-800 rounded-lg hover:bg-slate-700 transition-all"
+                title="Centre de Contrôle Global"
+              >
                 <Settings size={18} className="text-slate-300" />
               </button>
 
@@ -331,12 +372,11 @@ export default function Home() {
               <h1 className="text-5xl lg:text-7xl font-black text-white mb-6 leading-tight">
                 Bienvenue sur <br />
                 <span className="bg-gradient-to-r from-blue-400 via-purple-500 to-emerald-400 bg-clip-text text-transparent">
-                  GEM SAAS
+                  GED OS
                 </span>
               </h1>
               <p className="text-xl text-slate-400 mb-8 max-w-2xl leading-relaxed">
-                Votre tour de contrôle intelligente pour une gestion de projets d'excellence.
-                Sélectionnez votre espace de travail et pilotez vos performances en temps réel.
+                Connecter le terrain, automatiser les opérations, piloter l’avenir.
               </p>
             </motion.div>
 
@@ -587,10 +627,42 @@ export default function Home() {
                       </div>
                       <div>
                         <h3 className="text-lg font-black text-white mb-1">{project.name}</h3>
-                        <p className="text-sm text-slate-400">{project.client}</p>
+                        <p className="text-sm text-slate-400">{(project as any).config?.client || project.client || 'Client non spécifié'}</p>
                       </div>
                     </div>
-                    <ArrowRight size={18} className="text-slate-400" />
+                    <div className="flex items-center gap-2">
+                      {isGlobalAdmin && (
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/admin/project-edit/${project.id}`);
+                            }}
+                            className="p-2 rounded-xl bg-slate-800 hover:bg-indigo-600 text-slate-400 hover:text-white border border-slate-700 hover:border-indigo-500 transition-all"
+                            title="Modifier le projet"
+                          >
+                            <Pencil size={14} />
+                          </button>
+                          {project.name === 'GEM SAAS' ? (
+                            <div 
+                              className="p-2 rounded-xl bg-slate-800/50 text-amber-500/50 border border-amber-500/20 cursor-not-allowed"
+                              title="Projet système verrouillé"
+                            >
+                              <Lock size={14} />
+                            </div>
+                          ) : (
+                            <button
+                              onClick={(e) => handleProjectDelete(e, project.id, project.name)}
+                              className="p-2 rounded-xl bg-slate-800 hover:bg-rose-600 text-slate-400 hover:text-white border border-slate-700 hover:border-rose-500 transition-all"
+                              title="Supprimer le projet"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          )}
+                        </div>
+                      )}
+                      <ArrowRight size={18} className="text-slate-400" />
+                    </div>
                   </div>
 
                   <p className="text-sm text-slate-400 mb-4 line-clamp-2">{project.description}</p>

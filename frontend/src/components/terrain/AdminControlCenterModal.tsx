@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import toast from 'react-hot-toast';
@@ -221,7 +221,7 @@ export const AdminControlCenterModal: React.FC<AdminControlCenterModalProps> = (
                   <Settings className="w-4 h-4 sm:w-5 sm:h-5 text-blue-400" />
                 </div>
                 <h2 className="text-base sm:text-xl font-black uppercase tracking-tighter text-white italic truncate">
-                  Control Center
+                  GED OS Control Center
                 </h2>
               </div>
               <div className="flex items-center gap-3">

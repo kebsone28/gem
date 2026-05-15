@@ -102,7 +102,7 @@ const renderRichTextPDF = (
   return curY + lineHeight;
 };
 
-export const generateMissionOrderPDF = async (data: MissionOrderData) => {
+export const generateMissionOrderPDF = async (data: MissionOrderData, saveToDisk = true) => {
   // Override branding colors
   if (data.branding?.primaryColor) INDIGO = data.branding.primaryColor;
   const orgName = data.branding?.organizationName || 'PROQUELEC';
@@ -435,7 +435,9 @@ export const generateMissionOrderPDF = async (data: MissionOrderData) => {
   }
 
   const fileName = getMissionReference(data).replace(/\//g, '-');
-  doc.save(`Ordre_Mission_${fileName}.pdf`);
+  if (saveToDisk) {
+    doc.save(`Ordre_Mission_${fileName}.pdf`);
+  }
   return doc.output('blob');
 };
 
@@ -454,7 +456,7 @@ const drawWatermark = (doc: jsPDF, text: string) => {
   doc.restoreGraphicsState();
 };
 
-export const generateMissionReportPDF = async (data: MissionOrderData) => {
+export const generateMissionReportPDF = async (data: MissionOrderData, saveToDisk = true) => {
   const doc = new jsPDF({ orientation: 'portrait', format: 'a4' });
   const w = doc.internal.pageSize.getWidth();
   const h = doc.internal.pageSize.getHeight();
@@ -808,5 +810,8 @@ export const generateMissionReportPDF = async (data: MissionOrderData) => {
     });
   }
 
-  doc.save(`Rapport_Mission_${getMissionReference(data).replace(/\//g, '-')}.pdf`);
+  if (saveToDisk) {
+    doc.save(`Rapport_Mission_${getMissionReference(data).replace(/\//g, '-')}.pdf`);
+  }
+  return doc.output('blob');
 };

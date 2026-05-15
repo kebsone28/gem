@@ -10,29 +10,27 @@ export const getActivityFeed = async (req, res) => {
         const organizationId = req.user?.organizationId;
         if (!organizationId) return res.status(401).json({ error: 'Identification organisation manquante' });
         
-        const activities = await getRecentActions(organizationId, 1500); // 1500 limit for detailed log view
+        const activities = await getRecentActions(organizationId, 1500); 
         res.json({ activities });
-} catch (error) {
+    } catch (error) {
         console.error('Error fetching activity feed:', error.message);
         res.status(500).json({ error: 'Server error', details: error.message });
     }
 };
 
-// @desc    Get performance comparison (households validated per team)
+// @desc    Get performance comparison 
 // @route   GET /api/monitoring/performance
 export const getPerformanceStats = async (req, res) => {
     try {
         const organizationId = req.user?.organizationId;
         if (!organizationId) return res.status(401).json({ error: 'Identification organisation manquante' });
 
-        // Agrégation des ménages par statut pour cette organisation
         const stats = await prisma.household.groupBy({
             by: ['status'],
             where: { organizationId },
             _count: { id: true }
         });
 
-        // Validations par jour sur les 7 derniers jours
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
@@ -61,7 +59,6 @@ export const getPerformanceStats = async (req, res) => {
                 }
             });
         } catch (auditErr) {
-            // auditLog may not be available – not critical
             console.warn('[MONITORING] Impossible de lire auditLog:', auditErr.message);
         }
 
@@ -96,7 +93,6 @@ export const getSystemHealth = async (req, res) => {
             version: '3.9.0-ENT'
         };
 
-        // Check Database
         try {
             await prisma.$queryRaw`SELECT 1`;
             health.services.database.status = 'UP';
@@ -106,15 +102,11 @@ export const getSystemHealth = async (req, res) => {
             health.status = 'DEGRADED';
         }
 
-        // Check Redis (optional – may be null in dev)
         if (redisConnection && typeof redisConnection.ping === 'function') {
             try {
-                // Timeout logic for Redis ping
                 const pingPromise = redisConnection.ping();
                 const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Redis Timeout')), 2000));
-                
                 const ping = await Promise.race([pingPromise, timeoutPromise]);
-                
                 if (ping === 'PONG') {
                     health.services.redis.status = 'UP';
                     health.services.redis.details = 'BullMQ Queue Manager Ready';
@@ -128,9 +120,103 @@ export const getSystemHealth = async (req, res) => {
         res.json(health);
     } catch (error) {
         console.error('Critical Diagnostic Error:', error);
-        res.status(500).json({
-            error: 'Failed to generate diagnostic report',
-            details: error.message
+        res.status(500).json({ error: 'Failed to generate diagnostic report', details: error.message });
+    }
+};
+
+// @desc    Get all system errors for diagnostics
+// @route   GET /api/monitoring/system-errors
+export const getSystemErrors = async (req, res) => {
+    try {
+        const organizationId = req.user?.organizationId;
+        const errors = await prisma.systemError.findMany({
+            where: {
+                OR: [
+                    { organizationId },
+                    { organizationId: null }
+                ]
+            },
+            orderBy: { createdAt: 'desc' },
+            take: 100
         });
+        res.json({ errors });
+    } catch (error) {
+        console.error('Failed to fetch system errors:', error.message);
+        res.status(500).json({ error: 'Server error' });
+    }
+};
+
+// @desc    Mark a system error as resolved
+// @route   PATCH /api/monitoring/system-errors/:id/resolve
+export const resolveSystemError = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const organizationId = req.user?.organizationId;
+
+        // 🛡️ [SECURITY sec_006] Scope resolution by organizationId
+        await prisma.systemError.updateMany({
+            where: { 
+                id,
+                OR: [
+                    { organizationId },
+                    { organizationId: null } // Allow resolving global errors if needed, but scoped is safer
+                ]
+            },
+            data: { isResolved: true }
+        });
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Failed to resolve system error:', error.message);
+        res.status(500).json({ error: 'Server error' });
+    }
+};
+
+// @desc    Log a client-side error to the diagnostic system
+// @route   POST /api/monitoring/client-errors
+export const logClientError = async (req, res) => {
+    try {
+        let { message, stack, context } = req.body;
+        const organizationId = req.user?.organizationId;
+        // 🐛 [BUG bug_010] Use req.projectId instead of req.user.projectId
+        const projectId = req.projectId || req.user?.projectId;
+        const userId = req.user?.id;
+
+        // Validation & Size limits
+        if (!message) return res.status(400).json({ error: 'Message is required' });
+        
+        // Truncate fields to prevent DB bloat
+        message = String(message).substring(0, 1000);
+        stack = stack ? String(stack).substring(0, 5000) : null;
+        
+        // Sanitize context: whitelist keys or at least ensure it's a flat object with size limits
+        const safeContext = {};
+        if (context && typeof context === 'object') {
+            Object.keys(context).forEach(key => {
+                if (['componentStack', 'info', 'route', 'action'].includes(key)) {
+                    safeContext[key] = String(context[key]).substring(0, 2000);
+                }
+            });
+        }
+
+        await prisma.systemError.create({
+            data: {
+                organizationId,
+                projectId,
+                userId,
+                code: 'CLIENT_SIDE_ERROR',
+                message,
+                stack,
+                context: {
+                    ...safeContext,
+                    url: (req.headers.referer || '').substring(0, 500),
+                    userAgent: (req.headers['user-agent'] || '').substring(0, 500)
+                }
+            }
+        });
+
+        res.status(201).json({ success: true });
+    } catch (error) {
+        console.error('Failed to log client error:', error.message);
+        res.status(500).json({ error: 'Server error' });
     }
 };

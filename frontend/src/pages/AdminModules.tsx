@@ -6,23 +6,16 @@ import { modulesManagementService, AVAILABLE_MODULES } from '../services/modules
 // auditService utilisé en interne par modulesManagementService — pas besoin ici
 import logger from '../utils/logger';
 import toast from 'react-hot-toast';
+import * as LucideIcons from 'lucide-react';
 import {
-  ShieldCheck,
-  Zap,
-  BarChart3,
-  Target,
-  Users,
-  Calendar,
-  Settings,
-  Building,
-  Shield,
-  Wrench,
+  HelpCircle,
   Eye,
   EyeOff,
   RefreshCw,
   AlertTriangle,
   CheckCircle2,
   X,
+  Settings,
 } from 'lucide-react';
 import { PageContainer, PageHeader, ContentArea } from '../components';
 
@@ -123,18 +116,7 @@ export default function AdminModules() {
 
   // Obtenir l'icône du module
   const getModuleIcon = (iconName?: string) => {
-    const iconMap: Record<string, any> = {
-      BarChart3,
-      Target,
-      Users,
-      Calendar,
-      Settings,
-      Building,
-      Shield,
-      Zap,
-      Wrench,
-    };
-    return iconMap[iconName || 'Settings'] || Settings;
+    return (LucideIcons as any)[iconName || 'Settings'] || HelpCircle;
   };
 
   // Obtenir la couleur de la catégorie
@@ -247,7 +229,7 @@ export default function AdminModules() {
         )}
       </AnimatePresence>
 
-      <PageHeader
+      <PageHeader backLink={{ to: '/admin/hub', label: 'Retour au Centre de Contrôle' }}
         title="Gestion des Modules"
         subtitle="Configuration globale des fonctionnalités du système"
         icon={<Settings size={24} />}
@@ -255,7 +237,33 @@ export default function AdminModules() {
 
       <ContentArea className="space-y-8 p-8 bg-slate-950 border-slate-800">
         <div className="max-w-7xl mx-auto space-y-8">
-          {/* Statistiques globales */}
+
+          {/* ── Définition de la page ────────────────────────────────────────── */}
+          <div className="rounded-2xl border border-slate-700/60 bg-slate-900/50 p-6 flex flex-col sm:flex-row gap-6">
+            <div className="w-12 h-12 shrink-0 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
+              <Settings size={22} className="text-blue-400" />
+            </div>
+            <div className="space-y-3 flex-1">
+              <p className="text-slate-200 text-sm font-medium leading-relaxed">
+                Cette page vous permet de contrôler les <span className="text-white font-bold">fonctionnalités actives</span> sur toute la plateforme.
+                Chaque module correspond à un ensemble de pages, d'API et de permissions.
+                Désactiver un module le rend <span className="text-rose-400 font-bold">inaccessible pour tous les utilisateurs</span>, quel que soit leur rôle — y compris au niveau API.
+              </p>
+              <div className="flex flex-wrap gap-3 text-xs font-bold">
+                <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400">
+                  <CheckCircle2 size={12} /> Core — Toujours actif, non modifiable
+                </span>
+                <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-400">
+                  <Eye size={12} /> Avancé — Activable / Désactivable globalement
+                </span>
+                <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400">
+                  <AlertTriangle size={12} /> Admin — Outils système réservés aux administrateurs
+                </span>
+              </div>
+            </div>
+          </div>
+
+
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="p-6 bg-gradient-to-br from-blue-500/10 to-blue-600/10 border border-blue-500/20 rounded-2xl">
               <div className="flex items-center gap-3 mb-2">
@@ -443,7 +451,7 @@ export default function AdminModules() {
                           <div className="mt-3">
                             <p className="text-xs text-slate-500 mb-2">Permissions requises:</p>
                             <div className="flex flex-wrap gap-1">
-                              {module.permissions.map((perm) => (
+                              {(module.permissions || []).map((perm) => (
                                 <span
                                   key={perm}
                                   className="px-2 py-1 bg-slate-800 rounded text-xs text-slate-300"

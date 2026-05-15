@@ -43,6 +43,7 @@ import {
 } from 'lucide-react';
 import * as ReportGen from '../../services/householdReportGenerator';
 import { getHouseholdDerivedStatus, getStatusTailwindClasses } from '../../utils/statusUtils';
+import { useProject } from '../../contexts/ProjectContext';
 import type { Household } from '../../utils/types';
 import { useTerrainUIStore } from '../../store/terrainUIStore';
 import { useSyncStore } from '../../store/syncStore';
@@ -50,14 +51,14 @@ import { useOfflineStore } from '../../store/offlineStore';
 import { TeamAllocationsBadge, HouseholdStatusTimeline } from './shared';
 import { InternalKoboForm } from './InternalKoboForm';
 import {
-  INTERNAL_GEM_CONTROL_FIELD_NAMES,
-  INTERNAL_GEM_FIELD_NAMES,
-  INTERNAL_GEM_FORM_SETTINGS,
-  INTERNAL_GEM_SECTIONS,
-  getInternalGemSubmissionValues,
-  isTruthyGemValue,
-  validateInternalGemFields,
-  validateInternalGemRequiredFields,
+  INTERNAL_GED_OS_CONTROL_FIELD_NAMES,
+  INTERNAL_GED_OS_FIELD_NAMES,
+  INTERNAL_GED_OS_FORM_SETTINGS,
+  INTERNAL_GED_OS_SECTIONS,
+  getInternalGedOsSubmissionValues,
+  isTruthyGedOsValue,
+  validateInternalGedOsFields,
+  validateInternalGedOsRequiredFields,
 } from './internalKoboFormDefinition';
 import {
   clearInternalKoboLocalDraft,
@@ -188,6 +189,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
   pendingSyncCount = 0,
   resolveHouseholdByNumero,
 }) => {
+  const { project } = useProject();
   const closePanel = useTerrainUIStore((s) => s.closePanel);
   const setSelectedHouseholdId = useTerrainUIStore((s) => s.setSelectedHouseholdId);
   const routingEnabled = useTerrainUIStore((s) => s.activePanel === 'routing');
@@ -311,7 +313,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
     const koboData = (household.koboData || {}) as Record<string, any>;
     const nextForm: Record<string, unknown> = {};
 
-    INTERNAL_GEM_FIELD_NAMES.forEach((fieldName) => {
+    INTERNAL_GED_OS_FIELD_NAMES.forEach((fieldName) => {
       const storedValue = audit[fieldName] ?? koboData[fieldName] ?? '';
       nextForm[fieldName] = storedValue;
     });
@@ -392,7 +394,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
         numeroOrdre,
         formKey: String(nativeKoboAuditForm._gem_runtime_form_key || 'terrain_internal'),
         role: nativeKoboAuditForm.role ? String(nativeKoboAuditForm.role) : null,
-        formVersion: String(nativeKoboAuditForm._gem_runtime_form_version || INTERNAL_GEM_FORM_SETTINGS.version),
+        formVersion: String(nativeKoboAuditForm._gem_runtime_form_version || INTERNAL_GED_OS_FORM_SETTINGS.version),
         values: nativeKoboAuditForm,
       });
       if (draft) setInternalKoboLocalDraft(draft);
@@ -851,7 +853,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
 
   const handleSaveNativeKoboAudit = async () => {
     const runtimeFormKey = String(nativeKoboAuditForm._gem_runtime_form_key || 'terrain_internal').trim() || 'terrain_internal';
-    const runtimeFormVersion = String(nativeKoboAuditForm._gem_runtime_form_version || INTERNAL_GEM_FORM_SETTINGS.version).trim();
+    const runtimeFormVersion = String(nativeKoboAuditForm._gem_runtime_form_version || INTERNAL_GED_OS_FORM_SETTINGS.version).trim();
     const runtimeFormTitle = String(nativeKoboAuditForm._gem_runtime_title || 'Formulaire terrain interne').trim();
     const isUniversalXlsForm = runtimeFormKey !== 'terrain_internal';
     const runtimeIssueRows = Array.isArray(nativeKoboAuditForm._gem_runtime_validation_issues)
@@ -873,7 +875,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
         type: issue.type === 'constraint' ? 'constraint' as const : 'required' as const,
         message: String(issue.message || 'Validation XLSForm a corriger'),
       })).filter((issue) => issue.field.name)
-      : validateInternalGemFields(nativeKoboAuditForm);
+      : validateInternalGedOsFields(nativeKoboAuditForm);
     const missingRequiredFields = isUniversalXlsForm
       ? runtimeMissingNames.map((name) => ({
         name,
@@ -881,7 +883,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
         type: 'text',
         required: true,
       }))
-      : validateInternalGemRequiredFields(nativeKoboAuditForm);
+      : validateInternalGedOsRequiredFields(nativeKoboAuditForm);
     const constraintIssues = validationIssues.filter((issue) => issue.type === 'constraint');
     const requestedNumeroOrdre = String(nativeKoboAuditForm.Numero_ordre || '').trim();
     const currentNumeroOrdre = String(household.numeroordre || household.id || '').trim();
@@ -899,7 +901,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
       const now = new Date().toISOString();
       const targetHouseholdId = String(submissionHousehold.id || household.id);
       const internalSubmissionId = `gem-vps-${targetHouseholdId}-${Date.now()}`;
-      const submissionValues = getInternalGemSubmissionValues(nativeKoboAuditForm);
+      const submissionValues = getInternalGedOsSubmissionValues(nativeKoboAuditForm);
       const today = now.slice(0, 10);
       const xlsFormMetadata = {
         start: nativeKoboAuditForm.start || (submissionHousehold.koboData as any)?.start || now,
@@ -923,11 +925,11 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
         C3: nativeKoboAuditForm.telephone_key || '',
         C4: nativeKoboAuditForm.longitude_key || '',
         C5: nativeKoboAuditForm.region_key || '',
-        _xform_style: INTERNAL_GEM_FORM_SETTINGS.style,
+        _xform_style: INTERNAL_GED_OS_FORM_SETTINGS.style,
         _xform_version: runtimeFormVersion,
         _xform_id: runtimeFormKey,
         _xform_title: runtimeFormTitle,
-        _xform_default_language: INTERNAL_GEM_FORM_SETTINGS.defaultLanguage,
+        _xform_default_language: INTERNAL_GED_OS_FORM_SETTINGS.defaultLanguage,
       };
       const cleanValues = Object.fromEntries(
         Object.entries({ ...xlsFormMetadata, ...nativeKoboAuditForm, ...submissionValues }).filter(([, value]) => {
@@ -956,12 +958,12 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
           version: runtimeFormVersion,
           title: runtimeFormTitle,
           engine: 'gem-xlsform-universal',
-          style: INTERNAL_GEM_FORM_SETTINGS.style,
-          defaultLanguage: INTERNAL_GEM_FORM_SETTINGS.defaultLanguage,
+          style: INTERNAL_GED_OS_FORM_SETTINGS.style,
+          defaultLanguage: INTERNAL_GED_OS_FORM_SETTINGS.defaultLanguage,
         }
-        : INTERNAL_GEM_FORM_SETTINGS;
+        : INTERNAL_GED_OS_FORM_SETTINGS;
 
-      const hasControlNonConformity = INTERNAL_GEM_CONTROL_FIELD_NAMES.some(
+      const hasControlNonConformity = INTERNAL_GED_OS_CONTROL_FIELD_NAMES.some(
         (fieldName) => nativeKoboAuditForm[fieldName] === 'non_conforme'
       );
       const controlCompleted = isTruthyKoboValue(nativeKoboAuditForm.validation_controleur_final);
@@ -1386,6 +1388,26 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
               icon: stageVisuals[stage]?.icon,
             }))}
           />
+
+          {/* 🧩 DONNÉES SPÉCIFIQUES MÉTIER (DYNAMIC ENGINE) */}
+          {project?.config?.customFields && project.config.customFields.length > 0 && (
+            <div className="p-6 rounded-[2rem] bg-indigo-500/5 border-2 border-indigo-500/10 shadow-inner flex flex-col gap-4">
+              <h4 className="text-[10px] font-black uppercase tracking-[0.25em] flex items-center gap-2 text-indigo-400">
+                <Database size={16} /> 
+                DONNÉES {project.config.sector?.toUpperCase().replace('_', ' ') || 'MÉTIER'}
+              </h4>
+              <div className="grid grid-cols-2 gap-4">
+                {project.config.customFields.map((field) => (
+                  <div key={field.id} className="p-3 rounded-xl bg-white/5 border border-white/5">
+                    <p className="text-[7px] font-black uppercase tracking-widest text-slate-500 mb-1">{field.label}</p>
+                    <p className="text-xs font-bold text-white truncate">
+                      {String(household.metadata?.[field.id] || household.koboData?.[field.id] || '—')}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* PROGRESS BAR TIMELINE OR INELIGIBILITY CARD */}
           {isTerminalStatus && (

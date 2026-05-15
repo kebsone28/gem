@@ -9,6 +9,7 @@ import TeamLedgerTab from '../components/logistique/TeamLedgerTab';
 import { useLogistique } from '../hooks/useLogistique';
 import { useTheme } from '../contexts/ThemeContext';
 import { usePermissions } from '../hooks/usePermissions';
+import { useLabels } from '../contexts/LabelsContext';
 import toast from 'react-hot-toast';
 
 // Import centralized design system
@@ -20,22 +21,25 @@ import {
 
 type LogistiqueTabId = 'stock' | 'deliveries' | 'agents' | 'ledger' | 'grappes';
 
-const TABS: Array<{
-  id: LogistiqueTabId;
-  label: string;
-  mobileLabel: string;
-  icon: typeof Package;
-  permission: string;
-}> = [
-  { id: 'stock', label: 'Stock & Matériel', mobileLabel: 'Stock', icon: Package, permission: 'logistique.stock' },
-  { id: 'deliveries', label: 'Livraisons', mobileLabel: 'Livraisons', icon: Truck, permission: 'logistique.deliveries' },
-  { id: 'agents', label: 'Suivi des Agents', mobileLabel: 'Agents', icon: Users, permission: 'logistique.agents' },
-  { id: 'ledger', label: 'Ordres de Mission', mobileLabel: 'Ordres', icon: Package, permission: 'logistique.om' },
-  { id: 'grappes', label: 'Déploiement Terrain', mobileLabel: 'Terrain', icon: MapIcon, permission: 'logistique.deployment' },
-];
 
 export default function Logistique() {
   const { peut } = usePermissions();
+  const { getLabel } = useLabels();
+
+  const TABS: Array<{
+    id: LogistiqueTabId;
+    label: string;
+    mobileLabel: string;
+    icon: typeof Package;
+    permission: string;
+  }> = [
+    { id: 'stock', label: 'Stock & Matériel', mobileLabel: 'Stock', icon: Package, permission: 'logistique.stock' },
+    { id: 'deliveries', label: 'Livraisons', mobileLabel: 'Livraisons', icon: Truck, permission: 'logistique.deliveries' },
+    { id: 'agents', label: 'Suivi des Agents', mobileLabel: 'Agents', icon: Users, permission: 'logistique.agents' },
+    { id: 'ledger', label: `Ordres de ${getLabel('mission', 2)}`, mobileLabel: 'Ordres', icon: Package, permission: 'logistique.om' },
+    { id: 'grappes', label: 'Déploiement Terrain', mobileLabel: 'Terrain', icon: MapIcon, permission: 'logistique.deployment' },
+  ];
+
   const allowedTabs = TABS.filter(t => peut(t.permission));
   
   const [activeTab, setActiveTab] = useState<LogistiqueTabId>(allowedTabs[0]?.id || 'stock');

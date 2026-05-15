@@ -1,8 +1,8 @@
  
 /**
- * ⚙️ AI ENGINE CONFIG SERVICE (V2.0)
- * Gestionnaire de configuration des moteurs IA de GEM-MINT
- * Réservé à l'Admin PROQUELEC — Basculement entre moteurs en temps réel
+ * ⚙️ GEM AI ENGINE (V2.0)
+ * Gestionnaire de configuration des moteurs IA de GEM SAAS
+ * Réservé aux Administrateurs Système — Basculement entre moteurs en temps réel
  */
 
 import logger from '../../utils/logger';
@@ -18,7 +18,7 @@ export interface AIEngineSettings {
   /** Clé API si nécessaire (ex: Anthropic) */
   apiKey: string;
   
-  // Nouveaux réglages unifiés (ex-GEMAICore)
+  // Nouveaux réglages unifiés (ex-GedOsAiCore)
   enableAutoTraining: boolean;
   enableResponseEnrichment: boolean;
   enableLearningMetrics: boolean;
@@ -37,7 +37,7 @@ export interface AIEngineSettings {
   lastUpdatedAt?: number;
 }
 
-const CONFIG_KEY = 'gem_mint_ai_engine_config';
+const CONFIG_KEY = 'ged_os_ai_engine_config';
 
 const DEFAULT_CONFIG: AIEngineSettings = {
   mode: 'HYBRID_RULES_FIRST',

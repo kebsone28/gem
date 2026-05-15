@@ -1,4 +1,4 @@
-﻿ 
+ 
 import { AIEngineConfig } from '../config/AIEngineConfig';
 import logger from '../utils/logger';
 
@@ -40,7 +40,7 @@ export class MissionSageService {
       }
 
       // Fallback vers une réponse par défaut si aucun provider configuré
-      return `Je suis MissionSage, votre assistant IA pour GEM-MINT. Votre question était: "${query}". Pour le moment, je suis configuré pour utiliser l'IA publique avec le contexte métier PROQUELEC.`;
+      return `Je suis GED OS AI, votre assistant IA souverain. Votre question était: "${query}". Je suis configuré pour vous assister dans le pilotage de votre écosystème digital.`;
     } catch (error) {
       logger.error('[MissionSageService] Erreur dans MissionSageService', error);
       return `Désolé, une erreur s'est produite lors du traitement de votre demande. Veuillez réessayer plus tard.`;
@@ -50,14 +50,12 @@ export class MissionSageService {
   private async callPublicFreeAI(query: string, user?: User, state?: AppState): Promise<string> {
     // Enrichir le prompt avec le contexte métier GEM-MINT
     const contextPrompt = `
-Tu es MissionSage, l'assistant IA intelligent du système GEM-MINT de PROQUELEC.
+Tu es GED OS AI, l'assistant IA intelligent du système GED OS.
 
-CONTEXTE MÉTIER GEM-MINT:
-- PROQUELEC est une entreprise sénégalaise d'électrification de masse
-- GEM-MINT gère les missions d'ordres de mission (OM) pour l'électrification
-- Les missions suivent les normes NS 01-001 pour installations BT ≤1000V
-- Les techniciens utilisent Kobo Collect pour la collecte de données terrain
-- Les données sont validées par les Chefs de Projet puis certifiées par la DG
+CONTEXTE MÉTIER GED OS:
+- GED OS est un système d'exploitation métier pour le pilotage d'écosystèmes complexes.
+- Le système gère les missions d'ordres de mission (OM) et la traçabilité terrain.
+- Les données sont validées en temps réel et certifiées par la Direction Générale.
 
 UTILISATEUR ACTUEL:
 - Rôle: ${user?.role || 'Inconnu'}

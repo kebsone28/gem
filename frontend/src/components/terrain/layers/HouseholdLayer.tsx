@@ -848,7 +848,8 @@ const HouseholdLayer: React.FC<HouseholdLayerProps> = ({
         map.off('style.load', handleStyleLoad);
       }
     };
-  }, [iconsReady, map, setupClickHandlers, styleIsReady]);
+  }, [iconsReady, map, styleIsReady]);
+  // Note: setupClickHandlers is intentionally excluded from deps as it's stable via useCallback
 
 
   // ── DATA UPDATE: re-push when GeoJSON changes ──

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import React from 'react';
 import logger from './logger';
 
@@ -104,10 +103,10 @@ class DesignSystemAnalytics {
     };
   }
 
-  private sanitizeProps(props?: Record<string, any>) {
+  private sanitizeProps(props?: Record<string, unknown>) {
     if (!props) return undefined;
 
-    const sanitized: Record<string, any> = {};
+    const sanitized: Record<string, unknown> = {};
 
     // List of keys to always exclude
     const excludeKeys = new Set([
@@ -134,12 +133,13 @@ class DesignSystemAnalytics {
         sanitized[key] = value;
       } else if (Array.isArray(value)) {
         sanitized[key] = `Array(${value.length})`;
-      } else if (typeof value === 'object') {
+      } else if (typeof value === 'object' && value !== null) {
         // For objects, we just store a summary to avoid circular refs
-        if (value.$$typeof) {
+        const objValue = value as Record<string, unknown>;
+        if (objValue.$$typeof) {
           sanitized[key] = 'ReactComponent';
-        } else if (value instanceof HTMLElement) {
-          sanitized[key] = `HTMLElement(${value.tagName})`;
+        } else if (objValue instanceof HTMLElement) {
+          sanitized[key] = `HTMLElement(${objValue.tagName})`;
         } else {
           sanitized[key] = 'Object';
         }
@@ -184,7 +184,7 @@ export function withAnalytics<P extends object>(
 ): React.FC<P> {
   const AnalyticsWrapper: React.FC<P> = (props) => {
     React.useEffect(() => {
-      analytics.trackUsage(componentName, props as Record<string, any>);
+      analytics.trackUsage(componentName, props as Record<string, unknown>);
     }, [props]);
 
     return React.createElement(Component, props);

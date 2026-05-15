@@ -236,7 +236,7 @@ const INTERNAL_KOBO_FORM_IMPORT_ENDPOINT = '/internal-kobo/form-definition/impor
 const INTERNAL_KOBO_FORM_IMPORT_URL_ENDPOINT = '/internal-kobo/form-definition/import-url';
 const INTERNAL_KOBO_DIAGNOSTICS_ENDPOINT = '/internal-kobo/diagnostics';
 const INTERNAL_KOBO_CLIENT_QUEUE_ENDPOINT = '/internal-kobo/client-queue-report';
-const INTERNAL_KOBO_DRAFT_PREFIX = 'gem-internal-kobo-draft:';
+const INTERNAL_KOBO_DRAFT_PREFIX = 'ged-os-internal-kobo-draft:';
 const MAX_INTERNAL_KOBO_RETRIES = 6;
 const INTERNAL_KOBO_BASE_RETRY_DELAY_MS = 5000;
 const INTERNAL_KOBO_MAX_RETRY_DELAY_MS = 15 * 60 * 1000;
@@ -353,7 +353,7 @@ function findInternalKoboLocalDraftFallback(params: {
       if (!draft?.values || typeof draft.values !== 'object') continue;
       const draftHouseholdId = String(draft.householdId || '').trim();
       const draftNumeroOrdre = String(draft.numeroOrdre || '').trim();
-      const draftFormKey = String(draft.formKey || draft.values?._gem_runtime_form_key || '').trim();
+      const draftFormKey = String(draft.formKey || draft.values?._ged_os_runtime_form_key || '').trim();
       const draftRole = String(draft.role || draft.values?.role || '').trim();
 
       const sameTarget = Boolean(
@@ -374,7 +374,7 @@ function findInternalKoboLocalDraftFallback(params: {
 }
 
 function compactDraftValues(value: unknown, key = ''): unknown {
-  if (key.startsWith('_gem_attachment_') && value && typeof value === 'object' && !Array.isArray(value)) {
+  if (key.startsWith('_ged_os_attachment_') && value && typeof value === 'object' && !Array.isArray(value)) {
     const attachment = value as InternalKoboAttachment;
     const compactAttachment = { ...attachment };
     delete compactAttachment.dataUrl;
@@ -534,7 +534,7 @@ export async function downloadInternalKoboMediaExport(
     params,
     responseType: 'blob',
   });
-  const fallback = `gem-media-${new Date().toISOString().slice(0, 10)}.zip`;
+  const fallback = `ged-os-media-${new Date().toISOString().slice(0, 10)}.zip`;
 
   return {
     blob: response.data,

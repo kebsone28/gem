@@ -1,6 +1,4 @@
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { basePrisma as prisma } from './core/utils/prisma.js';
 
 const defaultItems = [
     { id: 'formation', label: 'Formation 5 équipes (19 électriciens)', region: 'Global', qty: 5, unit: 1500000, rq: 5, ru: 1500000 },

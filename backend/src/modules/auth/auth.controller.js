@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import prisma from '../../core/utils/prisma.js';
 import { generateTokens, verifyRefreshToken } from '../../core/utils/jwt.js';
+import { normalizePermissionsToAtoms } from '../../core/config/permissionNormalization.js';
 import { tracerAction } from '../../services/audit.service.js';
 import logger from '../../utils/logger.js';
 
@@ -18,7 +19,11 @@ const resolveMergedPermissions = (user) => {
   }
 
   // 3. Si c'est un tableau (même vide []), c'est une surcharge explicite
+  // [REINFORCEMENT] For Admins, we don't allow an empty override to strip all permissions
   if (Array.isArray(user.permissions)) {
+    if (user.permissions.length === 0 && (user.role?.name === 'ADMIN_PROQUELEC' || user.roleLegacy === 'ADMIN_PROQUELEC')) {
+      return rolePermissions;
+    }
     return user.permissions;
   }
 
@@ -30,10 +35,11 @@ const buildSessionUser = (user) => ({
   email: user.email,
   role: user.role?.name || user.roleLegacy,
   name: user.name,
-  permissions: resolveMergedPermissions(user),
+  permissions: normalizePermissionsToAtoms(resolveMergedPermissions(user)),
   organization: user.organization ? user.organization.name : undefined,
   organizationId: user.organizationId,
   organizationConfig: user.organization?.config || {},
+  impersonatedBy: user.impersonatedBy,
 });
 
 // @desc    Register a new organization and its first admin user
@@ -96,8 +102,15 @@ export const registerOrganization = async (req, res) => {
       req,
     });
 
-    // 4. Generate tokens
-    const { accessToken, refreshToken } = generateTokens(result.user);
+    // 4. Generate tokens (payload plat : rôle string + permissions atomiques)
+    const registerMerged = resolveMergedPermissions(result.user);
+    const { accessToken, refreshToken } = generateTokens({
+      id: result.user.id,
+      email: result.user.email,
+      organizationId: result.user.organizationId,
+      role: result.user.role?.name || result.user.roleLegacy || 'user',
+      permissions: normalizePermissionsToAtoms(registerMerged),
+    });
 
     // 5. Set refresh token in cookie
     res.cookie('refreshToken', refreshToken, {
@@ -229,7 +242,7 @@ export const login = async (req, res) => {
         email: user.email,
         organizationId: user.organizationId,
         role: user.role?.name || user.roleLegacy || 'user',
-        permissions: user.mergedPermissions || [],
+        permissions: normalizePermissionsToAtoms(user.mergedPermissions || []),
       };
 
       if (process.env.NODE_ENV !== 'production') {
@@ -352,10 +365,10 @@ export const refreshToken = async (req, res) => {
       email: user.email,
       organizationId: user.organizationId,
       role: user.role?.name || user.roleLegacy || 'user',
-      permissions: mergedPermissions || [],
+      permissions: normalizePermissionsToAtoms(mergedPermissions || []),
     };
 
-    const tokens = generateTokens(tokenPayload);
+    const tokens = generateTokens(tokenPayload, decoded.isSimulation ? { id: decoded.impersonatorId } : null);
 
     // Set access token in cookie
     res.cookie('accessToken', tokens.accessToken, {
@@ -396,6 +409,7 @@ export const getMe = async (req, res) => {
 
     res.json({
       ...buildSessionUser(user),
+      impersonatedBy: req.user.impersonatorId,
       organizationName: user.organization?.name,
       iat: req.user.iat,
       exp: req.user.exp,
@@ -624,7 +638,7 @@ export const verify2FA = async (req, res) => {
       email: user.email,
       organizationId: user.organizationId,
       role: user.role?.name || user.roleLegacy || 'user',
-      permissions: mergedPermissions || [],
+      permissions: normalizePermissionsToAtoms(mergedPermissions || []),
     };
 
     if (process.env.NODE_ENV !== 'production') {
@@ -696,8 +710,12 @@ export const impersonateUser = async (req, res) => {
      const isSuperAdmin = isSuperAdminEmail(adminUser.email);
      const isAdminRole =
        adminUser.role === ROLES.ADMIN ||
+       adminUser.role === 'ADMIN' ||
        adminUser.role?.name === ROLES.ADMIN ||
-       adminUser.roleLegacy === ROLES.ADMIN;
+       adminUser.role?.name === 'ADMIN' ||
+       adminUser.roleLegacy === ROLES.ADMIN ||
+       adminUser.roleLegacy === 'ADMIN';
+
      if (!isSuperAdmin && !isAdminRole) {
        return res.status(403).json({ error: 'Accès interdit : privilèges insuffisants.' });
      }
@@ -718,10 +736,10 @@ export const impersonateUser = async (req, res) => {
     if (!targetUser) return res.status(404).json({ error: 'Utilisateur cible non trouvé' });
 
     // 🛡️ [REINFORCEMENT] Politique sur rôles sensibles : Interdiction de simuler Admin/DG
-    const targetRole = targetUser.role?.name || targetUser.roleLegacy;
+    const targetRole = targetUser.role?.name || targetUser.roleLegacy || targetUser.role;
     if (
-      (targetRole === 'ADMIN_PROQUELEC' || targetRole === 'DG_PROQUELEC') &&
-      adminUser.email !== (process.env.SUPER_ADMIN_EMAIL || 'admingem')
+      (targetRole === 'ADMIN_PROQUELEC' || targetRole === 'DG_PROQUELEC' || targetRole === 'ADMIN') &&
+      !isSuperAdmin && adminUser.email !== 'admingem'
     ) {
       return res.status(403).json({
         error: "Sécurité : Impossible de simuler un compte de Direction ou d'Administration.",
@@ -731,7 +749,7 @@ export const impersonateUser = async (req, res) => {
     // Sécurité Multi-tenant : on ne simule pas hors de son organisation
     if (
       targetUser.organizationId !== adminUser.organizationId &&
-      adminUser.email !== (process.env.SUPER_ADMIN_EMAIL || 'admingem')
+      !isSuperAdmin && adminUser.email !== 'admingem'
     ) {
       return res
         .status(403)
@@ -762,18 +780,28 @@ export const impersonateUser = async (req, res) => {
     });
 
     // 5. Générer un JWT de simulation (Expiration courte 30m intégrée dans jwt.js)
+    const normalizedSimPerms = normalizePermissionsToAtoms(finalPermissions);
+
     const tokenPayload = {
       id: targetUser.id,
       email: targetUser.email,
       organizationId: targetUser.organizationId,
       role: targetRole,
-      permissions: finalPermissions,
+      permissions: normalizedSimPerms,
     };
 
     const { accessToken } = generateTokens(tokenPayload, adminUser);
 
-    // Set access token in cookie
+    // Set tokens in cookies
     res.cookie('accessToken', accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+      maxAge: 30 * 60 * 1000, // 30m for impersonation
+    });
+
+    const { refreshToken: newRefreshToken } = generateTokens(tokenPayload, adminUser);
+    res.cookie('refreshToken', newRefreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
@@ -787,7 +815,7 @@ export const impersonateUser = async (req, res) => {
         email: targetUser.email,
         role: targetRole,
         name: targetUser.name,
-        permissions: finalPermissions,
+        permissions: normalizedSimPerms,
         organization: targetUser.organization?.name,
         impersonatedBy: adminUser.id,
       }
@@ -838,7 +866,9 @@ export const stopImpersonation = async (req, res) => {
     // 🛠️ Préparation des droits admin pour le nouveau token
     const rolePermissions = adminUser.role?.permissions.map((p) => p.permission.key) || [];
     const userOverrides = Array.isArray(adminUser.permissions) ? adminUser.permissions : [];
-    const adminPermissions = userOverrides.length > 0 ? userOverrides : rolePermissions;
+    const adminPermissions = normalizePermissionsToAtoms(
+      userOverrides.length > 0 ? userOverrides : rolePermissions
+    );
 
     const tokenPayload = {
       id: adminUser.id,
@@ -849,7 +879,7 @@ export const stopImpersonation = async (req, res) => {
     };
 
     // 🆕 Régénérer un token Admin neuf (Pas d'impersonatorId ici)
-    const { accessToken } = generateTokens(tokenPayload);
+    const { accessToken, refreshToken } = generateTokens(tokenPayload);
 
     // Set access token in cookie
     res.cookie('accessToken', accessToken, {
@@ -857,6 +887,14 @@ export const stopImpersonation = async (req, res) => {
       secure: process.env.NODE_ENV === 'production',
       sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
       maxAge: 4 * 60 * 60 * 1000,
+    });
+
+    // Set refresh token in cookie
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 
     res.json({

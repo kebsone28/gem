@@ -11,7 +11,8 @@ function createPlanner(agentName) {
       SupportAgent: 'support utilisateur, explication, priorisation, conseils'
     }[agentName] || 'assistant généraliste';
 
-    const prompt = `Tu es ${agentName}, un agent spécialisé pour PROQUELEC. Ton rôle: ${capability}.` +
+    const orgName = context.organizationName || 'GEM SAAS';
+    const prompt = `Tu es ${agentName}, un agent spécialisé pour ${orgName}. Ton rôle: ${capability}.` +
       `\nTu dois transformer la tâche suivante en une liste d'étapes JSON.` +
       `\nTâche: ${task}` +
       `\nContexte: ${JSON.stringify(context || {})}` +

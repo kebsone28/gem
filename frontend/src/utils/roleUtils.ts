@@ -10,7 +10,7 @@
 export const normalizeMissionApprovalRole = (rawRole?: string | null): 'ADMIN' | 'DIRECTEUR' | null => {
   const role = (rawRole || '').toUpperCase().trim();
 
-  if (['ADMIN', 'ADMIN_PROQUELEC'].includes(role)) {
+  if (['ADMIN', 'ADMIN_GED_OS'].includes(role)) {
     return 'ADMIN';
   }
 
@@ -18,7 +18,7 @@ export const normalizeMissionApprovalRole = (rawRole?: string | null): 'ADMIN' |
     'DIRECTEUR',
     'DIRECTEUR_GENERAL',
     'DIRECTEUR_TECHNIQUE',
-    'DG_PROQUELEC',
+    'DG_GED_OS',
     'DG',
     'DIR_GEN',
     'DIRECTION_GENERALE',
@@ -50,6 +50,7 @@ export const isDirecteurRole = (rawRole?: string | null): boolean => {
  * Utilise la variable d'environnement VITE_SUPER_ADMIN_EMAIL si disponible.
  */
 export const isMasterAdminEmail = (email?: string | null): boolean => {
-  const masterEmail = import.meta.env.VITE_SUPER_ADMIN_EMAIL || 'admingem';
-  return email === masterEmail;
+  const masterEmail = (import.meta.env.VITE_SUPER_ADMIN_EMAIL || 'admin_ged_os').toLowerCase().trim();
+  const currentEmail = (email || '').toLowerCase().trim();
+  return currentEmail === masterEmail || currentEmail === 'admin_ged_os';
 };

@@ -106,20 +106,19 @@ export const handleKoboWebhook = async (req, res) => {
   try {
     console.log('[WEBHOOK] Kobo data push received.');
 
-    // As webhooks aren't authenticated via JWT, we resolve the organization via
-    // an explicit organizationId (query param or header), with a fallback to findFirst.
+    // Webhooks must explicitly specify organizationId - no fallbacks allowed.
+    // This prevents cross-tenant data injection vulnerabilities.
     const organizationId = req.query.organizationId || req.headers['x-organization-id'];
 
     if (!organizationId) {
-      logger.warn("[KOBO-WEBHOOK] Pas d'organizationId fourni, utilisation du premier org");
+      logger.error("[KOBO-WEBHOOK] SECURITY: organizationId required but not provided");
+      return res.status(400).json({ error: 'organizationId is required (query param or x-organization-id header)' });
     }
 
-    const sysOrg = organizationId
-      ? await prisma.organization.findUnique({ where: { id: organizationId } })
-      : await prisma.organization.findFirst();
+    const sysOrg = await prisma.organization.findUnique({ where: { id: organizationId } });
 
     if (!sysOrg) {
-      return res.status(404).json({ error: 'Organisation non trouvée' });
+      return res.status(404).json({ error: 'Organisation not found' });
     }
 
     const project = await prisma.project.findFirst({ where: { organizationId: sysOrg.id } });

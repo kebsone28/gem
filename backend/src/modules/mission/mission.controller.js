@@ -14,7 +14,7 @@ import { buildPublicUrl } from '../../utils/publicUrl.js';
 import { socketService } from '../../services/socket.service.js';
 
 const isDev = process.env.NODE_ENV !== 'production';
-const SUPER_ADMIN_EMAIL = process.env.SUPER_ADMIN_EMAIL || 'admingem';
+const SUPER_ADMIN_EMAIL = process.env.SUPER_ADMIN_EMAIL || 'admin_ged_os';
 const SUBMITTED_MISSION_STATUSES = ['soumise', 'en_attente_validation'];
 const FINAL_MISSION_STATUSES = ['approuvee', 'rejetee'];
 const REJECTION_CATEGORIES = new Set([
@@ -188,7 +188,7 @@ const drawPdfFooter = (doc, orderNumber, publicUrl) => {
     .fillColor('#64748b')
     .font('Helvetica')
     .fontSize(7)
-    .text(`GEM SAAS - PROQUELEC | Ordre de Mission ${orderNumber}`, 42, footerTextY, {
+    .text(`GED OS | Ordre de Mission ${orderNumber}`, 42, footerTextY, {
       width: 250,
       lineBreak: false,
     });
@@ -323,7 +323,7 @@ const buildMissionDocumentBuffer = async (mission) => {
       margin: 42,
       info: {
         Title: `Ordre de Mission ${orderNumber}`,
-        Author: 'GEM SAAS - PROQUELEC',
+        Author: 'GED OS',
       },
     });
     const chunks = [];
@@ -954,14 +954,15 @@ export const analyzeMissionIA = async (req, res) => {
  */
 export const getMissions = async (req, res) => {
   try {
-    const { projectId, search, status, limit = 50, offset = 0 } = req.query;
+    const { search, status, limit = 50, offset = 0 } = req.query;
     const { organizationId, id: userId, role: rawUserRole } = req.user;
+    const activeProjectId = req.projectId; // 🛡️ Injecté par verifierProjet middleware
 
     const userRole = normalizeRole(rawUserRole);
 
     let whereClause = {
       organizationId,
-      projectId: projectId || undefined,
+      projectId: activeProjectId || undefined,
       deletedAt: null,
     };
 
@@ -1039,9 +1040,13 @@ export const getMissionStats = async (req, res) => {
       _count: true,
     });
 
-    // Calculer le budget total
+    // Calculer le budget total (uniquement pour les missions non exclues des finances)
     const budgetAggregation = await prisma.mission.aggregate({
-      where: { ...whereClause, budget: { not: null } },
+      where: { 
+        ...whereClause, 
+        budget: { not: null },
+        excludeFromFinance: false 
+      },
       _sum: { budget: true },
       _avg: { budget: true },
     });
@@ -1180,8 +1185,9 @@ const buildMissionSubmissionData = (data, status) => {
  */
 export const createMission = async (req, res) => {
   try {
-    let { projectId, title, description, startDate, endDate, budget, data, status } = req.body;
+    let { title, description, startDate, endDate, budget, data, status, projectId } = req.body;
     const { organizationId, id: userId, role: rawUserRole } = req.user;
+    const activeProjectId = req.projectId; // 🛡️ Context global forcé
     const userRole = normalizeRole(rawUserRole);
 
     if (!organizationId) {
@@ -1199,16 +1205,17 @@ export const createMission = async (req, res) => {
     if (budgetError) return res.status(400).json({ error: budgetError });
 
     // VALIDATION GÉOMÉTRIQUE & TENANTE DU PROJET
-    let safeProjectId = cleanNullable(projectId);
+    let safeProjectId = activeProjectId || cleanNullable(projectId);
+    if (!safeProjectId) {
+      return res.status(400).json({ error: 'Un projet actif est requis pour créer une mission.' });
+    }
+
     if (safeProjectId && typeof safeProjectId === 'string') {
       const project = await prisma.project.findFirst({
         where: { id: safeProjectId, organizationId },
       });
       if (!project) {
-        console.warn(
-          `⚠️ [MISSION] Project ID ${safeProjectId} not found or belongs to another org. Setting to NULL.`
-        );
-        safeProjectId = null;
+        return res.status(400).json({ error: 'Le projet spécifié est introuvable ou inaccessible.' });
       }
     }
 
@@ -1234,6 +1241,7 @@ export const createMission = async (req, res) => {
         data: finalData,
         createdBy: userId,
         status: finalStatus,
+        excludeFromFinance: !!req.body.excludeFromFinance,
       },
     });
 
@@ -1396,6 +1404,8 @@ export const updateMission = async (req, res) => {
           ...(startDate !== undefined && { startDate: safeDate(startDate) }),
           ...(endDate !== undefined && { endDate: safeDate(endDate) }),
           ...(budget !== undefined && { budget }),
+          ...(req.body.excludeFromFinance !== undefined && { excludeFromFinance: !!req.body.excludeFromFinance }),
+
           ...(status !== undefined && { status }),
           ...(data !== undefined && {
             data:

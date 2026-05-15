@@ -1,7 +1,7 @@
 const LOCAL_KNOWLEDGE = [
   {
     patterns: [/\bbonjour\b|\bsalut\b|\bhello\b|\bhey\b/i],
-    response: 'Bonjour ! Je suis Mission Sage, ton assistant terrain PROQUELEC. Dis-moi comment je peux t’aider aujourd’hui.'
+    response: (org) => `Bonjour ! Je suis Mission Sage, ton assistant terrain ${org}. Dis-moi comment je peux t’aider aujourd’hui.`
   },
   {
     patterns: [/\bcomment ça va\b|\bça va\b|\bcomment vas[- ]tu\b/i],
@@ -9,7 +9,7 @@ const LOCAL_KNOWLEDGE = [
   },
   {
     patterns: [/\bquel est ton nom\b|\bcomment tu t appel(le)?\b|\bton nom\b/i],
-    response: 'Je suis Mission Sage, ton assistant terrain électrique PROQUELEC.'
+    response: (org) => `Je suis Mission Sage, ton assistant terrain ${org}.`
   },
   {
     patterns: [/\bquelle heure\b|\bheure est[- ]il\b/i],
@@ -36,13 +36,13 @@ function normalizeMessage(message) {
 }
 
 export class MissionSageService {
-  answer(message) {
+  answer(message, organizationName = 'GEM SAAS') {
     const text = normalizeMessage(message);
 
     for (const item of LOCAL_KNOWLEDGE) {
       if (item.patterns.some((pattern) => pattern.test(text))) {
         if (typeof item.response === 'function') {
-          return item.response();
+          return item.response(organizationName);
         }
         return item.response;
       }

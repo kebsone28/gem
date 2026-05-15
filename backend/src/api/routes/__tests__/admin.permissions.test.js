@@ -53,12 +53,17 @@ describe('Admin Permissions API', () => {
     vi.mocked(prisma.role.findFirst).mockResolvedValue({ id: 'role-1', name: 'CHEF_EQUIPE' });
 
     // before rolePermission entries
-    vi.mocked(prisma.rolePermission.findMany).mockResolvedValue([{ id: 'rp-1', permission: { key: 'PERM_A' } }]);
+    vi.mocked(prisma.rolePermission.findMany).mockResolvedValue([
+      { id: 'rp-1', permission: { key: 'voir_missions' } },
+    ]);
 
     // permission.findMany returns only one existing, so missing will trigger createMany
     vi.mocked(prisma.permission.findMany)
-      .mockResolvedValueOnce([{ id: 'perm-1', key: 'PERM_A' }])
-      .mockResolvedValueOnce([{ id: 'perm-1', key: 'PERM_A' }, { id: 'perm-2', key: 'PERM_B' }]);
+      .mockResolvedValueOnce([{ id: 'perm-1', key: 'missions.read' }])
+      .mockResolvedValueOnce([
+        { id: 'perm-1', key: 'missions.read' },
+        { id: 'perm-2', key: 'ui.map' },
+      ]);
 
     // $transaction should resolve
     vi.mocked(prisma.$transaction).mockImplementation(async (fn) => {
@@ -73,7 +78,7 @@ describe('Admin Permissions API', () => {
       return Promise.resolve();
     });
 
-    const payload = { permissions: ['PERM_A', 'PERM_B'] };
+    const payload = { permissions: ['missions.read', 'ui.map'] };
 
     // Act
     const res = await request(app).post('/api/admin/role-permissions/CHEF_EQUIPE').send(payload);
@@ -87,8 +92,7 @@ describe('Admin Permissions API', () => {
     expect(prisma.permission.createMany).toHaveBeenCalled();
     expect(prisma.$transaction).toHaveBeenCalled();
     expect(tracerAction).toHaveBeenCalled();
-    // details.after should match payload.permissions
     const called = vi.mocked(tracerAction).mock.calls[0][0];
-    expect(called.details.after).toEqual(payload.permissions);
+    expect(called.details.after).toEqual(['missions.read', 'ui.map']);
   });
 });

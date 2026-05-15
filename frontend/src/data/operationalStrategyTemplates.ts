@@ -70,7 +70,7 @@ export const DEFAULT_OPERATIONAL_STRATEGY: OperationalStrategyTemplate = {
     '3. Protocole de Passage de Témoins (Le "Flux de Travail")',
     'Le succès de cette stratégie repose sur un passage de relais fluide et documenté numériquement via KOBO Toolbox.',
     'Étape 1 : Du Lot A vers le Lot B (Transfert de Matériel)',
-    'Le prestataire du Lot A valide le pré-câblage dans GEM-PROQUELEC.',
+    'Le prestataire du Lot A valide le pré-câblage dans GED OS PROQUELEC.',
     "Le prestataire du Lot B signe un bordereau d'enlèvement numérique attestant de la réception des kits en bon état.",
     'Étape 2 : Du Lot B vers le Lot C (Passage de Témoin Technique)',
     "C'est l'étape la plus critique. Pour déclencher l'intervention du Lot C, le Lot B doit garantir :",

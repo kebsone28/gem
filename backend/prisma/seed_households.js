@@ -6,7 +6,7 @@
  * After this, the DATABASE is the SINGLE SOURCE OF TRUTH.
  */
 
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '../src/generated/prisma/index.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { readFirstSheetJson } from '../src/utils/safeExcel.js';

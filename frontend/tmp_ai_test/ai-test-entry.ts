@@ -10,7 +10,7 @@ import { missionSageService } from '../src/services/ai/MissionSageService.ts';
 };
 
 const mockUser = {
-  email: 'test@gem-mint.local',
+  email: 'test@ged-os-mint.local',
   role: 'ADMIN_PROQUELEC',
   displayName: 'Admin proquelec',
 };

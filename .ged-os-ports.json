@@ -1,0 +1,39 @@
+{
+  "description": "⚠️ RESERVED PORTS FOR GEM SAAS - DO NOT MODIFY",
+  "reserved": true,
+  "application": "PROQUELEC GEM SAAS",
+  "ports": {
+    "backend": {
+      "port": 8888,
+      "protocol": "HTTP/TCP",
+      "service": "Backend API Server",
+      "env_variable": "PORT",
+      "location": "backend/.env"
+    },
+    "frontend": {
+      "port": 8889,
+      "protocol": "HTTP/TCP",
+      "service": "Frontend Development Server",
+      "env_variable": "npm run dev:frontend --port",
+      "location": "frontend/vite.config.ts"
+    },
+    "preview": {
+      "port": 8890,
+      "protocol": "HTTP/TCP",
+      "service": "Frontend Preview Server",
+      "env_variable": "preview.port",
+      "location": "frontend/vite.config.ts"
+    }
+  },
+  "cors_origins": [
+    "http://localhost:8889",
+    "http://127.0.0.1:8889",
+    "http://0.0.0.0:8889",
+    "http://localhost:8890",
+    "http://127.0.0.1:8890",
+    "http://localhost:8891"
+  ],
+  "access_url": "http://localhost:8889",
+  "last_updated": "2026-05-12",
+  "warning": "❌ DO NOT CHANGE THESE PORTS - They are reserved exclusively for GEM SAAS development and will be restored automatically if modified"
+}

@@ -157,6 +157,7 @@ const includesNormalizedStatus = (value: string | undefined, candidates: string[
 
 export const hasHouseholdDeliveryEvidence = (household: Household) =>
   !!household.koboSync?.livreurDate ||
+  !!household.koboSync?.livraisonDate ||
   !!household.delivery?.date ||
   includesNormalizedStatus(household.deliveryStatus, normalizedDeliveryStatuses);
 

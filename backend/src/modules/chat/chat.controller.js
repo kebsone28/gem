@@ -2,6 +2,10 @@ import prisma from '../../core/utils/prisma.js';
 import { tracerAction } from '../../services/audit.service.js';
 import { socketService } from '../../services/socket.service.js';
 import { hasPrismaDelegate, isPrismaSchemaDriftError } from '../../core/utils/prismaCompat.js';
+import { assistantService } from '../assistant/assistant.service.js';
+
+// 🛡️ [QUALITY qual_003] Concurrency guard for AI responses
+const pendingAiResponses = new Map();
 
 const CHAT_TYPES = {
   GLOBAL: 'GLOBAL',
@@ -18,6 +22,8 @@ const userSelect = {
   roleLegacy: true,
   active: true,
   lastLogin: true,
+  chatStatus: true,
+  chatStatusText: true,
 };
 
 const conversationInclude = {
@@ -84,6 +90,8 @@ const toSafeUser = (user, activeBlocksByUserId = new Map(), onlineUserIds = new 
       online: false,
       blocked: false,
       blockedReason: null,
+      chatStatus: 'OFFLINE',
+      chatStatusText: null,
     };
   }
   return {
@@ -96,6 +104,8 @@ const toSafeUser = (user, activeBlocksByUserId = new Map(), onlineUserIds = new 
     online: onlineUserIds.has(user.id),
     blocked: activeBlocksByUserId.has(user.id),
     blockedReason: activeBlocksByUserId.get(user.id)?.reason || null,
+    chatStatus: user.chatStatus || 'ONLINE',
+    chatStatusText: user.chatStatusText || null,
   };
 };
 
@@ -114,7 +124,7 @@ const toSafeMessage = (message) => {
 
 const toSafeConversation = (conversation, currentUserId, activeBlocksByUserId = new Map(), onlineUserIds = new Set()) => {
   if (!conversation) return null;
-  
+
   const lastMessage = conversation.messages?.[0] ? toSafeMessage(conversation.messages[0]) : null;
 
   return {
@@ -135,6 +145,7 @@ const toSafeConversation = (conversation, currentUserId, activeBlocksByUserId = 
       userId: participant.userId,
       role: participant.role,
       joinedAt: participant.joinedAt,
+      lastReadAt: participant.lastReadAt,
       user: toSafeUser(participant.user, activeBlocksByUserId, onlineUserIds),
       isCurrentUser: participant.userId === currentUserId,
     })),
@@ -220,7 +231,7 @@ async function getConversationMessagesForUser(organizationId, userId, conversati
 
   const participant = conversation.participants.find(p => p.userId === userId);
   const lastClearedAt = participant?.lastClearedAt;
-  
+
   const where = {
     organizationId,
     conversationId,
@@ -241,7 +252,7 @@ async function getConversationMessagesForUser(organizationId, userId, conversati
   if (conversation.retentionDays > 0) {
     const retentionDate = new Date();
     retentionDate.setDate(retentionDate.getDate() - conversation.retentionDays);
-    
+
     // On garde la date la plus récente entre le nettoyage et la rétention
     if (!where.createdAt || retentionDate > new Date(lastClearedAt)) {
       where.createdAt = { gt: retentionDate };
@@ -299,7 +310,7 @@ export const getChatBootstrap = async (req, res) => {
   try {
     const { organizationId, id: userId } = req.user;
     if (!organizationId || !userId) {
-        return res.status(400).json({ error: 'Session invalide : organizationId ou userId manquant.' });
+      return res.status(400).json({ error: 'Session invalide : organizationId ou userId manquant.' });
     }
 
     console.log(`[CHAT_BOOTSTRAP] Starting for user ${userId} in org ${organizationId}`);
@@ -310,16 +321,16 @@ export const getChatBootstrap = async (req, res) => {
 
     const [globalConversation, users, conversations, activeBlocksByUserId] = await Promise.all([
       ensureGlobalConversation(organizationId, userId).catch(e => {
-          console.error('[CHAT_BOOTSTRAP] ensureGlobalConversation failed:', e);
-          throw e;
+        console.error('[CHAT_BOOTSTRAP] ensureGlobalConversation failed:', e);
+        throw e;
       }),
       prisma.user.findMany({
         where: { organizationId },
         orderBy: [{ active: 'desc' }, { name: 'asc' }, { email: 'asc' }],
         select: userSelect,
       }).catch(e => {
-          console.error('[CHAT_BOOTSTRAP] findMany users failed:', e);
-          throw e;
+        console.error('[CHAT_BOOTSTRAP] findMany users failed:', e);
+        throw e;
       }),
       prisma.chatConversation.findMany({
         where: {
@@ -336,12 +347,12 @@ export const getChatBootstrap = async (req, res) => {
         include: conversationInclude,
         orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
       }).catch(e => {
-          console.error('[CHAT_BOOTSTRAP] findMany conversations failed:', e);
-          throw e;
+        console.error('[CHAT_BOOTSTRAP] findMany conversations failed:', e);
+        throw e;
       }),
       getActiveBlocksByUserId(organizationId).catch(e => {
-          console.error('[CHAT_BOOTSTRAP] getActiveBlocksByUserId failed:', e);
-          throw e;
+        console.error('[CHAT_BOOTSTRAP] getActiveBlocksByUserId failed:', e);
+        throw e;
       }),
     ]);
 
@@ -355,11 +366,11 @@ export const getChatBootstrap = async (req, res) => {
       if (!conversation) return;
       try {
         uniqueConversations.set(
-            conversation.id,
-            toSafeConversation(conversation, userId, activeBlocksByUserId, onlineUserIds)
-          );
+          conversation.id,
+          toSafeConversation(conversation, userId, activeBlocksByUserId, onlineUserIds)
+        );
       } catch (convError) {
-          console.error(`[CHAT_BOOTSTRAP] Error transforming conversation ${conversation.id}:`, convError);
+        console.error(`[CHAT_BOOTSTRAP] Error transforming conversation ${conversation.id}:`, convError);
       }
     });
 
@@ -562,6 +573,85 @@ export const sendMessage = async (req, res) => {
     socketService.emit('chat:message:new', payload, getConversationRoom(conversationId));
 
     res.status(201).json(payload);
+
+    // AI Integration - Le plus "Wow"
+    const isAiQuery = content.toLowerCase().startsWith('/ia ') || content.includes('@GED OS') || content.includes('@GED');
+    if (isAiQuery) {
+      // 🛡️ [QUALITY qual_003] Prevent multiple concurrent AI calls for the same conversation
+      if (pendingAiResponses.has(conversationId)) return;
+      pendingAiResponses.set(conversationId, true);
+
+      setImmediate(async () => {
+        try {
+          // 🛡️ [SECURITY sec_004] Harden AI bot user
+          let aiUser = await prisma.user.findFirst({ where: { email: 'oumarkebe@proquelec.sn', organizationId } });
+          if (!aiUser) {
+            aiUser = await prisma.user.create({
+              data: {
+                organizationId,
+                email: 'oumarkebe@proquelec.sn',
+                name: 'GED OS AI 🤖',
+                // Pattern impossible à matcher via bcrypt pour empêcher le login interactif
+                passwordHash: 'SERVICE_ACCOUNT_DISABLED_' + Math.random().toString(36).substring(7),
+                active: true,
+                roleLegacy: 'SERVICE_BOT',
+                chatStatus: 'ONLINE',
+                chatStatusText: 'À votre service'
+              }
+            });
+          }
+
+          // 2. L'ajouter à la conversation si nécessaire
+          const isParticipant = await prisma.chatParticipant.findFirst({
+            where: { conversationId, userId: aiUser.id }
+          });
+          if (!isParticipant && conversation.type !== CHAT_TYPES.GLOBAL) {
+            await prisma.chatParticipant.create({
+              data: { organizationId, conversationId, userId: aiUser.id, role: 'MEMBER' }
+            });
+          }
+
+          // 3. Simuler une frappe
+          socketService.emit('chat:typing', { conversationId, userId: aiUser.id, name: aiUser.name }, getConversationRoom(conversationId));
+
+          // 4. Générer la réponse via l'assistant
+          const aiQueryMessage = content.replace(/\/ia\s*/i, '').replace(/@GED(\s*OS)?(\s*AI)?\s*/i, '').trim();
+          const aiResult = await assistantService.processQuery({
+            user: req.user,
+            userId,
+            message: aiQueryMessage || 'Bonjour',
+            context: { conversationId },
+            offlineMode: false
+          });
+
+          // Délai artificiel pour effet "Wow" de frappe (min 1.5s, max 4s)
+          await new Promise(resolve => setTimeout(resolve, Math.max(1500, Math.min(4000, aiResult.response.length * 10))));
+
+          // 5. Sauvegarder et envoyer la réponse de l'IA
+          const aiMessage = await prisma.chatMessage.create({
+            data: {
+              organizationId,
+              conversationId,
+              senderId: aiUser.id,
+              content: aiResult.response
+            },
+            include: messageInclude
+          });
+
+          await prisma.chatConversation.update({
+            where: { id: conversationId },
+            data: { updatedAt: new Date() }
+          });
+
+          socketService.emit('chat:message:new', { message: toSafeMessage(aiMessage) }, getConversationRoom(conversationId));
+
+        } catch (e) {
+          console.error('[AI_BOT_ERROR]', e);
+        } finally {
+          pendingAiResponses.delete(conversationId);
+        }
+      });
+    }
   } catch (error) {
     if (isPrismaSchemaDriftError(error)) {
       error.statusCode = 503;
@@ -859,6 +949,64 @@ export const clearHistory = async (req, res) => {
   }
 };
 
+export const markConversationAsCleared = async (req, res) => {
+  try {
+    const { organizationId, id: userId } = req.user;
+    const { conversationId } = req.params;
+
+    assertChatPersistenceAvailable();
+
+    await prisma.chatParticipant.updateMany({
+      where: {
+        conversationId,
+        userId,
+        organizationId,
+      },
+      data: {
+        lastClearedAt: new Date(),
+      },
+    });
+
+    res.json({ success: true, message: 'Conversation cleared' });
+  } catch (error) {
+    console.error('[CHAT_CLEAR_ERROR]', error);
+    res.status(500).json({ error: 'Erreur lors de l’effacement de la conversation.' });
+  }
+};
+
+export const updateUserStatus = async (req, res) => {
+  try {
+    const { organizationId, id: userId } = req.user;
+    const { status, statusText } = req.body;
+
+    const validStatuses = ['ONLINE', 'AWAY', 'DND', 'OFFLINE'];
+    const newStatus = validStatuses.includes(status) ? status : 'ONLINE';
+    const newStatusText = typeof statusText === 'string' ? statusText.slice(0, 100) : null;
+
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        chatStatus: newStatus,
+        chatStatusText: newStatusText,
+      },
+      select: userSelect,
+    });
+
+    const payload = {
+      userId,
+      chatStatus: newStatus,
+      chatStatusText: newStatusText,
+    };
+
+    socketService.emit('chat:user:status', payload, `org_${organizationId}`);
+
+    res.json({ success: true, data: payload });
+  } catch (error) {
+    console.error('[CHAT_UPDATE_STATUS_ERROR]', error);
+    res.status(500).json({ error: 'Erreur lors de la mise à jour du statut.' });
+  }
+};
+
 export const clearMyHistory = async (req, res) => {
   try {
     const { organizationId, id: userId } = req.user;
@@ -989,9 +1137,9 @@ export const resolveEntity = async (req, res) => {
           where: { id, organizationId },
           select: { id: true, chefNom: true, chefPrenom: true, village: true, zone: true, status: true }
         });
-        if (data) data = { 
-          title: `${data.chefPrenom} ${data.chefNom}`, 
-          subtitle: `Village: ${data.village || 'N/A'}`, 
+        if (data) data = {
+          title: `${data.chefPrenom} ${data.chefNom}`,
+          subtitle: `Village: ${data.village || 'N/A'}`,
           status: data.status,
           link: `/households/${id}`
         };
@@ -1001,9 +1149,9 @@ export const resolveEntity = async (req, res) => {
           where: { id, organizationId },
           select: { id: true, title: true, status: true, startDate: true }
         });
-        if (data) data = { 
-          title: data.title, 
-          subtitle: `Début: ${new Date(data.startDate).toLocaleDateString()}`, 
+        if (data) data = {
+          title: data.title,
+          subtitle: `Début: ${new Date(data.startDate).toLocaleDateString()}`,
           status: data.status,
           link: `/missions/${id}`
         };

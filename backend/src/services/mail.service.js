@@ -23,7 +23,7 @@ export const sendMail = async ({ to, subject, title, body, actionLink, actionLab
         const html = `
         <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 15px;">
             <div style="text-align: center; margin-bottom: 30px;">
-                <h1 style="color: #4f46e5; margin: 0; font-size: 24px;">GEM SAAS - PROQUELEC</h1>
+                <h1 style="color: #4f46e5; margin: 0; font-size: 24px;">GED OS - Plateforme Métier</h1>
                 <p style="color: #64748b; font-size: 12px; font-weight: bold; text-transform: uppercase; letter-spacing: 2px;">Notification de Mission</p>
             </div>
             
@@ -43,16 +43,16 @@ export const sendMail = async ({ to, subject, title, body, actionLink, actionLab
             </div>
             
             <div style="text-align: center; font-size: 11px; color: #94a3b8;">
-                <p>Ceci est un message automatique généré par le système de gestion GEM SAAS.</p>
+                <p>Ceci est un message automatique généré par le système GED OS.</p>
                 <p>&copy; ${new Date().getFullYear()} PROQUELEC - Tous droits réservés.</p>
             </div>
         </div>
         `;
 
         await transporter.sendMail({
-            from: process.env.SMTP_FROM || '"GEM SAAS Notification" <noreply@gem-saas.com>',
+            from: process.env.SMTP_FROM || '"GED OS Notification" <noreply@ged-os.com>',
             to,
-            subject: `[PROQUELEC] ${subject}`,
+            subject: `[GED OS] ${subject}`,
             html,
             attachments: attachments || []
         });

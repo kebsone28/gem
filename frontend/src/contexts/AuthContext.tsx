@@ -1,11 +1,21 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import type { User, UserRole } from '../utils/types';
 import logger from '../utils/logger';
 import * as safeStorage from '../utils/safeStorage';
 import { useAuthStore, normalizeRole } from '../store/authStore';
 import apiClient from '../api/client';
-import { isMasterAdminEmail } from '../utils/roleUtils';
+import { isMasterAdminEmail, isAdminRole } from '../utils/roleUtils';
+
+interface RawUser {
+  id?: string;
+  email: string;
+  role: string;
+  name: string;
+  organization?: string;
+  organizationName?: string;
+  organizationConfig?: Record<string, unknown>;
+  permissions?: string[];
+}
 
 interface AuthContextType {
   user: User | null;
@@ -16,7 +26,7 @@ interface AuthContextType {
     name: string,
     organization?: string,
     id?: string,
-    organizationConfig?: any,
+    organizationConfig?: Record<string, unknown>,
     permissions?: string[]
   ) => void;
   logout: () => void;
@@ -27,7 +37,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const normalizeSessionUser = (rawUser: any): User => ({
+const normalizeSessionUser = (rawUser: RawUser): User => ({
   id: rawUser.id || `temp-id-${Date.now()}`,
   email: rawUser.email,
   role: (normalizeRole(rawUser.role) as UserRole) || (rawUser.role as UserRole),
@@ -187,8 +197,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
    * 🎭 Impersonate: Adopt another user's role via Backend Security
    */
   const impersonate = async (targetUser: User) => {
-    if (!user || (user.role !== 'ADMIN_PROQUELEC' && !isMasterAdminEmail(user.email))) {
-      logger.warn("🚫 Tentative d'impersonation non autorisée bloquée côté client");
+    if (!user || (!isAdminRole(user.role) && !isMasterAdminEmail(user.email))) {
+      logger.warn(`🚫 Tentative d'impersonation bloquée. User: ${user?.email}, Role: ${user?.role}`);
       return;
     }
 

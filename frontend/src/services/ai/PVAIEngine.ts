@@ -121,7 +121,7 @@ function generateTrueHash(householdId: string, type: string) {
     hash = (hash << 5) - hash + char;
     hash |= 0;
   }
-  return `GEM-${Math.abs(hash).toString(16).toUpperCase()}-${Date.now().toString().slice(-6)}`;
+  return `GED OS-${Math.abs(hash).toString(16).toUpperCase()}-${Date.now().toString().slice(-6)}`;
 }
 
 export const PVAIEngine = {

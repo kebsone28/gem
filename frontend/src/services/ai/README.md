@@ -10,7 +10,7 @@ Le système IA GEM est une architecture centralisée et orchestrée qui gère to
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                      GEMAICore                              │
+│                      GedOsAiCore                              │
 │              (Cerveau Centralisé de l'IA)                   │
 ├─────────────────────────────────────────────────────────────┤
 │  • MissionSageService     (Moteurs RULES + Claude)          │
@@ -26,7 +26,7 @@ Le système IA GEM est une architecture centralisée et orchestrée qui gère to
 
 | Fichier | Description |
 |---------|-------------|
-| `GEMAICore.ts` | Cerveau centralisé qui orchestre tous les services IA |
+| `GedOsAiCore.ts` | Cerveau centralisé qui orchestre tous les services IA |
 | `MissionSageService.ts` | Moteur d'IA avec fallback RULES → Claude |
 | `responseEnricher.ts` | Enrichissement automatique des réponses (références, risques, étapes) |
 | `autoTrainingSystem.ts` | Système d'auto-entraînement basé sur les interactions |
@@ -39,7 +39,7 @@ Le système IA GEM est une architecture centralisée et orchestrée qui gère to
 |---------|-------------|
 | `AutoTrainingPanel.tsx` | Panneau d'administration pour l'auto-entraînement |
 | `MessageBubble.tsx` | Bulle de message avec feedback utilisateur et métadonnées enrichies |
-| `GEMAIChat.tsx` | Composant de chat IA intégré avec GEMAICore |
+| `GedOsAiChat.tsx` | Composant de chat IA intégré avec GedOsAiCore |
 
 ### Pages
 
@@ -51,7 +51,7 @@ Le système IA GEM est une architecture centralisée et orchestrée qui gère to
 
 | Fichier | Description |
 |---------|-------------|
-| `useGEMAICore.ts` | Hooks React pour utiliser GEMAICore dans les composants |
+| `useGedOsAiCore.ts` | Hooks React pour utiliser GedOsAiCore dans les composants |
 
 ## Types Enrichis
 
@@ -135,10 +135,10 @@ La page d'administration (`/admin/ai-config`) permet de:
 ### Dans un composant React
 
 ```typescript
-import { useGEMAICore } from '../../hooks/useGEMAICore';
+import { useGedOsAiCore } from '../../hooks/useGedOsAiCore';
 
 function MonComposant() {
-  const { processRequest, isThinking, lastResponse } = useGEMAICore();
+  const { processRequest, isThinking, lastResponse } = useGedOsAiCore();
 
   const handleQuery = async (query: string) => {
     const response = await processRequest(query, {
@@ -160,10 +160,10 @@ function MonComposant() {
 ### Pour le chat IA
 
 ```typescript
-import { useGEMAIChat } from '../../hooks/useGEMAICore';
+import { useGedOsAiChat } from '../../hooks/useGedOsAiCore';
 
 function ChatComponent() {
-  const { sendMessage, isThinking, lastResponse } = useGEMAIChat(context);
+  const { sendMessage, isThinking, lastResponse } = useGedOsAiChat(context);
 
   const handleSend = async (message: string) => {
     await sendMessage(message);
@@ -181,10 +181,10 @@ function ChatComponent() {
 ### Pour le feedback utilisateur
 
 ```typescript
-import { useGEMAICore } from '../../hooks/useGEMAICore';
+import { useGedOsAiCore } from '../../hooks/useGedOsAiCore';
 
 function FeedbackComponent() {
-  const { recordFeedback } = useGEMAICore();
+  const { recordFeedback } = useGedOsAiCore();
 
   const handleFeedback = async (rating: 'positive' | 'negative') => {
     await recordFeedback(query, response, rating, user);
@@ -203,7 +203,7 @@ function FeedbackComponent() {
 
 ## Configuration
 
-### Configuration GEMAICore
+### Configuration GedOsAiCore
 
 ```typescript
 const config = {
@@ -215,7 +215,7 @@ const config = {
   confidenceThreshold: 0.7,        // Seuil de confiance
 };
 
-const core = getGEMAICore(config);
+const core = getGedOsAiCore(config);
 ```
 
 ## Base de Données
@@ -263,7 +263,7 @@ const core = getGEMAICore(config);
 
 - **Lazy loading**: Les composants lourds sont chargés à la demande
 - **Optimisation des requêtes**: Utilisation de hooks React pour éviter les re-renders inutiles
-- **Mise en cache**: GEMAICore utilise le pattern Singleton pour une instance unique
+- **Mise en cache**: GedOsAiCore utilise le pattern Singleton pour une instance unique
 - **Détection automatique**: L'enrichissement est conditionnel et optimisé
 
 ## Extensions Possibles

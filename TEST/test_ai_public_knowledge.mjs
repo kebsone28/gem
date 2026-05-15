@@ -1,7 +1,7 @@
 import { writeFileSync } from 'fs';
 
 const USER = {
-  role: 'ADMIN_PROQUELEC',
+  role: 'ADMIN_GED_OS',
   displayName: 'Test User',
   email: 'test@proquelec.sn',
 };
@@ -25,7 +25,7 @@ const BASE_QUESTIONS = [
   'Comment calculer les indemnités de mission ?',
   'Que faire en cas de dépassement budgétaire ?',
   'Comment suivre le budget des projets ?',
-  'Comment synchroniser Kobo Collect avec GEM-MINT ?',
+  'Comment synchroniser Kobo Collect avec GED OS ?',
   'Comment éviter les doublons Kobo ?',
   'Quels champs Kobo sont obligatoires ?',
   'Quelles installations couvre la norme NS 01-001 ?',
@@ -45,17 +45,17 @@ const BASE_QUESTIONS = [
   'Quels sont les types de défauts à éviter ?',
   'Comment générer un rapport stratégique DG ?',
   'Comment utiliser les données Kobo pour le pilotage ?',
-  'Quels sont les statuts d un menage dans GEM-MINT ?',
+  'Quels sont les statuts d un menage dans GED OS ?',
   'Comment fonctionne le workflow OM ?',
   'Comment trouver les missions non certifiees ?',
   'Que faire si l on n a pas de connexion terrain pour Kobo ?',
 ];
 
-const KNOWLEDGE_PROMPT = `Tu es MissionSage, l'assistant IA expert du système GEM-MINT de PROQUELEC.
+const KNOWLEDGE_PROMPT = `Tu es GED OS AI, l'assistant IA expert du système GED OS de PROQUELEC.
 
 BASE DE CONNAISSANCES:
-- PROQUELEC gère l'électrification de masse au Sénégal via l'application GEM-MINT.
-- GEM-MINT orchestre les missions OM: création, validation par Chef de Projet et certification DG.
+- PROQUELEC gère l'électrification de masse au Sénégal via l'application GED OS.
+- GED OS orchestre les missions OM: création, validation par Chef de Projet et certification DG.
 - Kobo Collect est utilisé pour la collecte terrain et la synchronisation se fait par numeroordre.
 - La norme applicâble est NS 01-001 pour les installations BT ≤1000V.
 - Le branchement Senelec doit respecter le coffret limite propriété, hublot 1.60m, câble enterré 0.5m sous grillage rouge.
@@ -63,7 +63,7 @@ BASE DE CONNAISSANCES:
 - Les anomalies majeures à éviter sont les fils visibles, courroies à l'air libre, barrettes de terre extérieures et poteaux bois pourris.
 - Le calcul des indemnités de mission inclut le matériel, la main-d’œuvre, la logistique et le barème PROQUELEC.
 - Les indemnités sont validées après certification DG.
-- Les statuts d’un ménage dans GEM-MINT sont : Non débuté, Murs, Réseau, Intérieur, Contrôle conforme, Ménage non éligible, Problème.
+- Les statuts d’un ménage dans GED OS sont : Non débuté, Murs, Réseau, Intérieur, Contrôle conforme, Ménage non éligible, Problème.
 
 INSTRUCTION:
 - Utilise uniquement les informations de cette base de connaissances.

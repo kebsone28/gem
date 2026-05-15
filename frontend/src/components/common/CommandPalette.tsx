@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -35,6 +35,9 @@ export const CommandPalette = () => {
   const { households } = useTerrainData({ enabled: Boolean(user) });
   const searchWorkerRef = useRef<Worker | null>(null);
 
+  const [workerResults, setWorkerResults] = useState<any[]>([]);
+  const [staticResults, setStaticResults] = useState<any[]>([]);
+
   // 1️⃣ Initialisation du Search Worker
   useEffect(() => {
     const worker = new Worker(new URL('../../workers/searchWorker.ts', import.meta.url), {
@@ -43,7 +46,7 @@ export const CommandPalette = () => {
     
     worker.onmessage = (e) => {
       if (e.data.type === 'SEARCH_RESULTS') {
-        setResults(Array.isArray(e.data.results) ? e.data.results : []);
+        setWorkerResults(Array.isArray(e.data.results) ? e.data.results : []);
       }
     };
     
@@ -51,55 +54,49 @@ export const CommandPalette = () => {
     return () => worker.terminate();
   }, []);
 
-  // 2️⃣ Indexation des données quand elles changent
+  // ... (Indexation & Keyboard Shortcuts inchangés)
+
+  // 4️⃣ Fusion des résultats (Source Unique de Vérité)
   useEffect(() => {
-    if (searchWorkerRef.current && Array.isArray(households) && households.length > 0) {
-      searchWorkerRef.current.postMessage({ type: 'INDEX', payload: { households } });
+    if (!query.trim()) {
+      setResults([]);
+      return;
     }
-  }, [households]);
+    // Fusionner les pages statiques et les résultats du worker (ménages)
+    // On met les pages statiques en premier pour un accès rapide
+    setResults([...staticResults, ...workerResults]);
+    setSelectedIndex(0);
+  }, [workerResults, staticResults, query]);
 
-  // 3️⃣ Keyboard Shortcuts (CTRL+K / CMD+K)
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-        e.preventDefault();
-        setIsOpen((prev) => !prev);
-      }
-      if (e.key === 'Escape') setIsOpen(false);
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
-
-  // Focus Input on Open
-  useEffect(() => {
-    let handle: number | null = null;
-    if (isOpen) {
-      handle = window.setTimeout(() => {
-        setQuery('');
-        setSelectedIndex(0);
-        setTimeout(() => inputRef.current?.focus(), 100);
-      }, 0);
-    }
-    return () => {
-      if (handle) clearTimeout(handle);
-    };
-  }, [isOpen]);
-
-  // 4️⃣ Recherche Multi-Sources
+  // 5️⃣ Recherche Multi-Sources
   const handleSearch = (q: string) => {
     setQuery(q);
 
     if (!q.trim()) {
-      setResults([]);
+      setWorkerResults([]);
+      setStaticResults([]);
       return;
     }
 
-    // Recherche dans le worker (Ménages)
+    // Recherche dans le worker (Ménages) — Asynchrone
     searchWorkerRef.current?.postMessage({ type: 'SEARCH', payload: { query: q } });
-    
-    // TODO: Ajouter recherche dans les pages statiques ici
+
+    // Recherche dans les pages statiques — Synchrone
+    const staticPages = [
+      { title: 'Dashboard', to: '/dashboard', type: 'page', id: 'page-dash' },
+      { title: 'Missions', to: '/missions', type: 'page', id: 'page-miss' },
+      { title: 'Terrain', to: '/terrain', type: 'page', id: 'page-terr' },
+      { title: 'Planning', to: '/planning', type: 'page', id: 'page-plan' },
+      { title: 'Rapports', to: '/reports', type: 'page', id: 'page-rep' },
+      { title: 'Équipes', to: '/teams', type: 'page', id: 'page-teams' },
+      { title: 'Paramètres', to: '/settings', type: 'page', id: 'page-settings' },
+    ];
+
+    setStaticResults(
+      staticPages
+        .filter((page) => page.title.toLowerCase().includes(q.toLowerCase()))
+        .map((p) => ({ ...p, label: p.title }))
+    );
   };
 
   const handleSelect = (item: any) => {

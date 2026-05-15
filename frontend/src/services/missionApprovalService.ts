@@ -99,15 +99,19 @@ export const approveMissionStep = async (
   idempotencyKey?: string
 ): Promise<MissionApprovalWorkflow | null> => {
   try {
-    const response = await api.post(`/missions/${missionId}/approve`, {
-      role: role.toUpperCase(),
-      comment,
-      signature,
-      // Optional PIN, used by DG validation flows from the mission page.
-      pin,
-    }, {
-      headers: idempotencyKey ? { 'x-idempotency-key': idempotencyKey } : undefined,
-    });
+    const response = await api.post(
+      `/missions/${missionId}/approve`,
+      {
+        role: role.toUpperCase(),
+        comment,
+        signature,
+        // Optional PIN, used by DG validation flows from the mission page.
+        pin,
+      },
+      {
+        headers: idempotencyKey ? { 'x-idempotency-key': idempotencyKey } : undefined,
+      }
+    );
 
     const wf = response.data;
     if (wf.integrityHash) {
@@ -158,14 +162,18 @@ export const rejectMissionStep = async (
   idempotencyKey?: string
 ): Promise<MissionApprovalWorkflow | null> => {
   try {
-    const response = await api.post(`/missions/${missionId}/reject`, {
-      role,
-      reason,
-      category,
-      timestamp: new Date().toISOString(),
-    }, {
-      headers: idempotencyKey ? { 'x-idempotency-key': idempotencyKey } : undefined,
-    });
+    const response = await api.post(
+      `/missions/${missionId}/reject`,
+      {
+        role,
+        reason,
+        category,
+        timestamp: new Date().toISOString(),
+      },
+      {
+        headers: idempotencyKey ? { 'x-idempotency-key': idempotencyKey } : undefined,
+      }
+    );
 
     const wf = response.data;
     await notificationService.createNotification({
@@ -237,7 +245,7 @@ export const canApproveMissionStep = (
   step: MissionApprovalStep,
   isAdmin: boolean
 ): boolean => {
-  const normalizedRole = userRole?.toUpperCase();
+  let normalizedRole = userRole?.toUpperCase();
   const normalizedStepRole = step.role?.toUpperCase();
 
   if (!normalizedStepRole) return false;
@@ -249,11 +257,12 @@ export const canApproveMissionStep = (
 
   if (!normalizedRole) return false;
 
-  if (
-    (normalizedRole === 'DIRECTEUR') &&
-    normalizedStepRole === 'DIRECTEUR'
-  )
-    return true;
+  // Treat DG_* roles as equivalent to DIRECTEUR for approval flows
+  if (normalizedRole?.startsWith('DG_') || normalizedRole === 'DG') {
+    normalizedRole = 'DIRECTEUR';
+  }
+
+  if (normalizedRole === 'DIRECTEUR' && normalizedStepRole === 'DIRECTEUR') return true;
 
   return normalizedRole === normalizedStepRole;
 };

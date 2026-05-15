@@ -180,8 +180,8 @@ export default function AdminDashboard() {
         <div className="absolute top-0 left-0 w-full h-[500px] bg-gradient-to-b from-blue-600/10 via-blue-600/5 to-transparent pointer-events-none" />
 
         <PageHeader
-          title="CONSOLE D'ADMINISTRATION"
-          subtitle="Système de pilotage stratégique Haute-Performance"
+          title="GED OS | CONSOLE DE PILOTAGE"
+          subtitle="Système d'Exploitation d'Écosystème Digital"
           icon={
             <ShieldCheck
               size={28}

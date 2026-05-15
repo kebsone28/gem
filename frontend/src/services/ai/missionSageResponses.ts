@@ -12,7 +12,7 @@ export const UNIVERSAL_QR: Record<string, Array<{ q: string[]; r: string }>> = {
   comprehension: [
     { q: ['aide moi', 'aide', 'help', 'au secours'], r: 'Bien sûr. Expliquez-moi le problème.' },
     { q: ['je ne comprends pas', 'comprends pas', 'c est pas clair'], r: 'On va simplifier ça ensemble.' },
-    { q: ['c est complique', "c'est compliqué", 'trop complique'], r: 'Précisez le module GEM-SaaS concerné et je vous aide à le simplifier.' },
+    { q: ['c est complique', "c'est compliqué", 'trop complique'], r: 'Précisez le module GED OS SaaS concerné et je vous aide à le simplifier.' },
     { q: ['explique', 'tu peux expliquer', 'comment ca marche'], r: 'Je vous fais ça clair et direct.' },
     { q: ['je suis perdu', 'je suis confus', 'je ne sais pas'], r: 'Indiquez le module concerné : missions, approbation DG, terrain Kobo, finances ou rapports.' },
     { q: ['tu peux m aider vite', 'urgent', 'rapide'], r: 'Dites-moi juste le point bloquant.' },
@@ -36,7 +36,7 @@ export const UNIVERSAL_QR: Record<string, Array<{ q: string[]; r: string }>> = {
   ],
   courtesies: [
     { q: ['merci', 'thank you', 'thanks'], r: 'Avec plaisir.' },
-    { q: ['merci beaucoup'], r: 'Avec plaisir. On continue sur GEM-SaaS.' },
+    { q: ['merci beaucoup'], r: 'Avec plaisir. On continue sur GED OS SaaS.' },
   ],
 };
 

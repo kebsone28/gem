@@ -72,7 +72,7 @@ function drawHeader(doc: jsPDF, title: string, subtitle: string) {
   doc.text('PROQUELEC', 33, 11);
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
-  doc.text('Plateforme de Suivi GEM SaaS', 33, 17);
+  doc.text('Plateforme de Supervision GED OS', 33, 17);
   // Report title (right)
   doc.setFontSize(11);
   doc.setFont('helvetica', 'bold');
@@ -86,7 +86,7 @@ function drawHeader(doc: jsPDF, title: string, subtitle: string) {
   doc.setTextColor(...GRAY);
   doc.setFontSize(8);
   doc.text(`Généré le ${today()} — Confidentiel`, 14, 34);
-  doc.text('GEM Sénégal — PROQUELEC', w - 14, 34, { align: 'right' });
+  doc.text('Souveraineté Digitale — GED OS', w - 14, 34, { align: 'right' });
 }
 
 function drawSectionTitle(
@@ -176,7 +176,7 @@ function drawFooter(doc: jsPDF) {
     doc.setTextColor(...GRAY);
     doc.setFontSize(7.5);
     doc.setFont('helvetica', 'normal');
-    doc.text('Confidentiel — PROQUELEC / GEM SaaS  2026', 14, h - 5);
+    doc.text('Confidentiel — GED OS 2026', 14, h - 5);
     doc.text(`Page ${p} / ${pageCount}`, w - 14, h - 5, { align: 'right' });
   }
 }
@@ -190,7 +190,7 @@ export function generateRapportAvancement(data: {
   projectName?: string;
   userName?: string;
 }) {
-  const { households, projectName = 'Projet GEM' } = data;
+  const { households, projectName = 'Projet GED OS' } = data;
 
   let done = 0;
   let inProgress = 0;
@@ -330,7 +330,7 @@ export function generateRapportAvancement(data: {
   });
 
   drawFooter(doc);
-  doc.save(`Rapport_Avancement_${(projectName || 'GEM').replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
+  doc.save(`Rapport_Avancement_${(projectName || 'GED_OS').replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -354,7 +354,7 @@ export function generateRapportFinancier(data: {
     marginPct,
     ceiling,
     stats,
-    projectName = 'Projet GEM',
+    projectName = 'Projet GED OS',
   } = data;
 
   const doc = new jsPDF({ orientation: 'landscape', format: 'a4' });
@@ -448,7 +448,7 @@ export function generateRapportFinancier(data: {
   );
 
   drawFooter(doc);
-  doc.save(`Analyse_Economique_${(projectName || 'GEM').replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
+  doc.save(`Analyse_Economique_${(projectName || 'GED_OS').replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -555,7 +555,7 @@ export function generateRapportKobo(data: {
   });
 
   drawFooter(doc);
-  doc.save(`Rapport_Kobo_GEM_${new Date().toISOString().split('T')[0]}.pdf`);
+  doc.save(`Rapport_Kobo_GED_OS_${new Date().toISOString().split('T')[0]}.pdf`);
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -650,5 +650,5 @@ export function generateRapportLogistique(data: { households: any[]; zones?: any
   });
 
   drawFooter(doc);
-  doc.save(`Bilan_Logistique_GEM_${new Date().toISOString().split('T')[0]}.pdf`);
+  doc.save(`Bilan_Logistique_GED_OS_${new Date().toISOString().split('T')[0]}.pdf`);
 }

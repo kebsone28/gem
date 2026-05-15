@@ -1,6 +1,7 @@
 import { config } from '../../core/config/config.js';
 import logger from '../../utils/logger.js';
 import { queryOllama } from './ollama.client.js';
+import { buildSystemPrompt, AI_REGISTRY } from '../../core/config/ai_registry.js';
 
 const DEFAULT_PROVIDER = config.ai.provider || 'PUBLIC_POLLINATIONS';
 const MAX_HISTORY_TURNS = 12;
@@ -88,30 +89,11 @@ function buildPublicPrompt(query, user, state, history = []) {
     .map(entry => `${entry.role === 'assistant' ? 'Assistant' : 'Utilisateur'}: ${entry.content}`)
     .join('\n');
 
-  return `Tu es GAM AI, l'assistant expert souverain de la plateforme GEM SAAS de PROQUELEC. Tu es doté de l'Intelligence de Pilotage Opérationnel. Ton but est de fournir une assistance technique et stratégique avec une précision de 100%.
+  const sysPrompt = buildSystemPrompt(user?.organizationName || 'GEM SAAS', user?.projectSector || 'elec_bt');
+  
+  return `${sysPrompt}
 
---- 🧠 MÉTHODE DE TRAITEMENT (LOGIQUE SANS FAUTE) ---
-1. ANALYSE DU RÔLE : Identifie qui parle. Adapte la réponse (DG = Stratégie, CP = Gestion, Agent = Technique).
-2. ANCRAGE NORMATIF : Ne réponds JAMAIS de mémoire générale. Utilise EXCLUSIVEMENT le référentiel ci-dessous.
-3. VÉRIFICATION DU CONTEXTE : Regarde les "Stats" et "Activité récente" avant de commenter l'état du projet.
-4. VÉRITÉ ABSOLUE : Si une information n'est pas dans le référentiel, réponds : "Je n'ai pas cette information spécifique dans mon référentiel métier."
-
---- 📜 RÉFÉRENTIEL TECHNIQUE PROQUELEC ---
-
-1. NORME NS 01-001 (CONCEPTION) :
-   - Équivalence : NF C 15-100. S'applique aux installations BT ≤ 1000V AC.
-   - Standard Sénégal : Régime de neutre TT. DDR 30mA obligatoire. PE Vert/Jaune continu.
-   - Branchement MFR : Coffret en limite de propriété (obligatoire), hublot à 1.60m, protection PVC.
-
-2. NORME NF C 18-510 (SÉCURITÉ DES OPÉRATIONS) :
-   - Domaine : Prévention du risque électrique (Habilitations B0, B1, B2, BR, BC).
-   - Consignation : 1. Séparation, 2. Condamnation, 3. Identification, 4. VAT, 5. MALT/CC.
-   - RÈGLE D'OR : La NF C 18-510 gère le COMPORTEMENT humain, pas la CONCEPTION de l'ouvrage.
-
-3. WORKFLOW GEM-MINT :
-   - Ordre de Mission (OM) : Agent (Création) -> Chef de Projet (Validation) -> DG (Certification).
-   - Terrain (Kobo) : Synchronisation via 'numeroordre' (clé unique). Précision GPS ±5m requise.
-   - Finance : Les indemnités sont calculées selon le barème PROQUELEC (Matériel + MO + Logistique) après certification DG.
+// Référentiel technique injecté via buildSystemPrompt
 
 4. STATUTS MÉNAGES (VALEURS LÉGALES) :
    - Non encore installée, Murs, Réseau, Intérieur, Contrôle conforme, Ménage non éligible, Problème.
@@ -142,8 +124,9 @@ ${query}`;
 }
 
 function buildVisionPrompt(query, user, state) {
-  return `Tu es GAM AI, le contrôleur électrotechnique expert de PROQUELEC. 
-Analyse l'image d'installation électrique fournie avec une précision chirurgicale.
+  const orgName = user?.organizationName || 'GEM SAAS';
+  return `Tu es ${AI_REGISTRY.IDENTITY.name}, le contrôleur expert de ${orgName}. 
+Analyse l'image fournie avec une précision chirurgicale.
 
 --- 📜 RÉFÉRENTIEL DE CONTRÔLE VISUEL ---
 1. BRANCHEMENT : Coffret en limite de propriété ? Hublot à 1.60m ? Câble à 4m/6m ? Protection PVC présente ?
@@ -203,7 +186,7 @@ async function callAnthropic(query, user, state, history = []) {
         model: config.ai.anthropicModel,
         max_tokens: config.ai.maxTokens,
         system:
-          'Tu es GEM-MINT, assistant IA expert PROQUELEC. Réponds en français. Sois précis, traçable et opérationnel. Si les données sont insuffisantes, dis-le explicitement.',
+          `Tu es ${AI_REGISTRY.IDENTITY.name}, assistant IA expert pour ${user?.organizationName || 'GEM SAAS'}. Réponds en français. Sois précis, traçable et opérationnel. Si les données sont insuffisantes, dis-le explicitement.`,
         messages: [
           ...buildConversationHistory(history),
           {

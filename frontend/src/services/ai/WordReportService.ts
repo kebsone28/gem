@@ -32,7 +32,7 @@ export const wordReportService = {
   ) {
     // Fetch dynamic QR Code for report validation
     const qrResponse = await fetch(
-      `https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodeURIComponent(`https://gem.proquelec.com/report/strategic-${Date.now()}`)}`
+      `https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodeURIComponent(`https://ged-os.proquelec.sn/report/strategic-${Date.now()}`)}`
     );
     const qrData = qrResponse.ok ? await qrResponse.arrayBuffer() : null;
 
@@ -61,7 +61,7 @@ export const wordReportService = {
             new Paragraph({
               children: [
                 new TextRun({
-                  text: `Généré par GEM-MINT IA le : ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')}`,
+                  text: `Généré par GED OS AI le : ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')}`,
                   italics: true,
                 }),
               ],

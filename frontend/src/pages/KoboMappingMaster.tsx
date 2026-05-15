@@ -224,7 +224,7 @@ export default function KoboMappingMaster() {
 
   return (
     <PageContainer className="min-h-screen bg-slate-950 py-12">
-      <PageHeader
+      <PageHeader backLink={{ to: '/admin/hub', label: 'Retour au Centre de Contrôle' }}
         title="Kobo Engine Master v2.0"
         subtitle="Moteur de mapping dynamique pour l'ingestion multi-projets."
         icon={<Settings2 size={24} className="text-blue-400" />}

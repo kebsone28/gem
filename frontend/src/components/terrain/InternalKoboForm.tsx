@@ -38,17 +38,17 @@ import type {
 import { compressImage } from '../../utils/imageUtils';
 import { stringifyHouseholdValue } from '../../utils/householdDisplay';
 import {
-  formatInternalGemValue,
-  getInternalGemFieldValue,
-  getVisibleInternalGemFields,
-  hasInternalGemRequiredValue,
-  hasInternalGemValue,
-  INTERNAL_GEM_CHOICES,
-  INTERNAL_GEM_FORM_SETTINGS,
-  INTERNAL_GEM_SECTIONS,
-  isInternalGemFieldVisible,
-  isTruthyGemValue,
-  validateInternalGemFields,
+  formatInternalGedOsValue,
+  getInternalGedOsFieldValue,
+  getVisibleInternalGedOsFields,
+  hasInternalGedOsRequiredValue,
+  hasInternalGedOsValue,
+  INTERNAL_GED_OS_CHOICES,
+  INTERNAL_GED_OS_FORM_SETTINGS,
+  INTERNAL_GED_OS_SECTIONS,
+  isInternalGedOsFieldVisible,
+  isTruthyGedOsValue,
+  validateInternalGedOsFields,
 } from './internalKoboFormDefinition';
 import type { InternalGemField } from './internalKoboFormDefinition';
 import {
@@ -131,11 +131,11 @@ const asArray = (value: unknown): string[] => {
 };
 
 const progressFor = (values: Record<string, unknown>): ProgressSummary => {
-  const visibleFields = getVisibleInternalGemFields(values).filter((field) => !field.readOnly && field.type !== 'note');
+  const visibleFields = getVisibleInternalGedOsFields(values).filter((field) => !field.readOnly && field.type !== 'note');
   const items = visibleFields.map((field) => ({
     name: field.name,
     label: field.label || field.name,
-    filled: hasInternalGemRequiredValue(field, values),
+    filled: hasInternalGedOsRequiredValue(field, values),
   }));
   const filled = items.filter((item) => item.filled).length;
   return {
@@ -187,7 +187,7 @@ const XLS_RUNTIME_FILLABLE_SKIP_TYPES = new Set([
 
 const isRuntimeDefinition = (value: unknown): value is XlsFormDefinition =>
   isXlsFormRecord(value) &&
-  value.engine === 'gem-xlsform-universal' &&
+  value.engine === 'ged-os-xlsform-universal' &&
   typeof value.formKey === 'string' &&
   typeof value.formVersion === 'string';
 
@@ -247,7 +247,7 @@ const hashFileSha256 = async (file: File): Promise<string> => {
 };
 
 const getAttachmentMeta = (values: Record<string, unknown>, fieldName: string): InternalKoboAttachment | null => {
-  const value = values[`_gem_attachment_${fieldName}`];
+  const value = values[`_ged_os_attachment_${fieldName}`];
   return isRecord(value) ? (value as InternalKoboAttachment) : null;
 };
 
@@ -274,24 +274,24 @@ const formatHistoryDate = (value?: string | null) => {
 };
 
 const CLIENT_METADATA_LABELS: Record<string, string> = {
-  _gem_collection_app: 'Application',
-  _gem_collection_engine: 'Moteur',
-  _gem_collection_mode: 'Mode',
-  _gem_client_timezone: 'Fuseau horaire',
-  _gem_client_language: 'Langue',
-  _gem_client_platform: 'Appareil',
-  _gem_client_user_agent: 'Navigateur',
-  _gem_client_network: 'Reseau',
-  _gem_client_touch: 'Ecran tactile',
-  _gem_client_viewport: 'Fenetre',
-  _gem_client_gps_accuracy_m: 'Precision GPS',
-  _gem_client_gps_captured_at: 'Capture GPS',
-  _gem_client_gps_source: 'Source GPS',
-  _gem_session_started_at: 'Debut session',
-  _gem_session_duration_s: 'Duree session',
+  _ged_os_collection_app: 'Application',
+  _ged_os_collection_engine: 'Moteur',
+  _ged_os_collection_mode: 'Mode',
+  _ged_os_client_timezone: 'Fuseau horaire',
+  _ged_os_client_language: 'Langue',
+  _ged_os_client_platform: 'Appareil',
+  _ged_os_client_user_agent: 'Navigateur',
+  _ged_os_client_network: 'Reseau',
+  _ged_os_client_touch: 'Ecran tactile',
+  _ged_os_client_viewport: 'Fenetre',
+  _ged_os_client_gps_accuracy_m: 'Precision GPS',
+  _ged_os_client_gps_captured_at: 'Capture GPS',
+  _ged_os_client_gps_source: 'Source GPS',
+  _ged_os_session_started_at: 'Debut session',
+  _ged_os_session_duration_s: 'Duree session',
 };
 
-const formatMetadataLabel = (key: string) => CLIENT_METADATA_LABELS[key] || key.replace(/^_gem_/, '').replace(/_/g, ' ');
+const formatMetadataLabel = (key: string) => CLIENT_METADATA_LABELS[key] || key.replace(/^_ged_os_/, '').replace(/_/g, ' ');
 
 const getClientCollectionMetadata = (isOnline: boolean): Record<string, string> => {
   const nav = typeof navigator !== 'undefined' ? navigator : null;
@@ -303,16 +303,16 @@ const getClientCollectionMetadata = (isOnline: boolean): Record<string, string> 
       : '';
 
   return {
-    _gem_collection_app: 'gem-terrain-internal',
-    _gem_collection_engine: 'xlsform-native',
-    _gem_collection_mode: isOnline ? 'online' : 'offline',
-    _gem_client_timezone: timezone,
-    _gem_client_language: nav?.language || '',
-    _gem_client_platform: nav?.platform || '',
-    _gem_client_user_agent: nav?.userAgent || '',
-    _gem_client_network: connection?.effectiveType || connection?.type || '',
-    _gem_client_touch: String((nav?.maxTouchPoints || 0) > 0),
-    _gem_client_viewport: viewport,
+    _ged_os_collection_app: 'ged-os-terrain-internal',
+    _ged_os_collection_engine: 'xlsform-native',
+    _ged_os_collection_mode: isOnline ? 'online' : 'offline',
+    _ged_os_client_timezone: timezone,
+    _ged_os_client_language: nav?.language || '',
+    _ged_os_client_platform: nav?.platform || '',
+    _ged_os_client_user_agent: nav?.userAgent || '',
+    _ged_os_client_network: connection?.effectiveType || connection?.type || '',
+    _ged_os_client_touch: String((nav?.maxTouchPoints || 0) > 0),
+    _ged_os_client_viewport: viewport,
   };
 };
 
@@ -368,7 +368,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
   hideFormSelector = false,
   inline = false,
 }) => {
-  const [activeSectionId, setActiveSectionId] = useState(INTERNAL_GEM_SECTIONS[0]?.id || '');
+  const [activeSectionId, setActiveSectionId] = useState(INTERNAL_GED_OS_SECTIONS[0]?.id || '');
   const [query, setQuery] = useState('');
   const [uploadingField, setUploadingField] = useState<string | null>(null);
   const [locatingField, setLocatingField] = useState<string | null>(null);
@@ -381,7 +381,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
   const [availableRuntimeForms, setAvailableRuntimeForms] = useState<InternalKoboImportedFormSummary[]>([]);
   const [selectedRuntimeFormKey, setSelectedRuntimeFormKey] = useState(() => {
     if (initialFormKey) return initialFormKey;
-    const runtimeKey = String(values._gem_runtime_form_key || '').trim();
+    const runtimeKey = String(values._ged_os_runtime_form_key || '').trim();
     return runtimeKey && runtimeKey !== 'terrain_internal' ? runtimeKey : '';
   });
   const [isRuntimeFormListLoading, setIsRuntimeFormListLoading] = useState(false);
@@ -420,11 +420,11 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
     setXlsFormDefinition(definition);
     setPendingRuntimeDefinition(null);
     setActiveRuntimePageId('');
-    onChangeRef.current('_gem_runtime_form_key', definition.formKey);
-    onChangeRef.current('_gem_runtime_form_version', definition.formVersion);
-    onChangeRef.current('_gem_runtime_engine', definition.engine || 'gem-xlsform-universal');
-    onChangeRef.current('_gem_runtime_title', definition.title || title || definition.formKey);
-    onChangeRef.current('_gem_runtime_checked_at', new Date().toISOString());
+    onChangeRef.current('_ged_os_runtime_form_key', definition.formKey);
+    onChangeRef.current('_ged_os_runtime_form_version', definition.formVersion);
+    onChangeRef.current('_ged_os_runtime_engine', definition.engine || 'ged-os-xlsform-universal');
+    onChangeRef.current('_ged_os_runtime_title', definition.title || title || definition.formKey);
+    onChangeRef.current('_ged_os_runtime_checked_at', new Date().toISOString());
     setServerFormStatus({
       status: 'ok',
       version: definition.formVersion,
@@ -433,8 +433,8 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
     });
   }, []);
   const isDifferentRuntimeVersion = useCallback((definition: XlsFormDefinition) => {
-    const currentKey = xlsFormDefinition?.formKey || String(values._gem_runtime_form_key || '');
-    const currentVersion = xlsFormDefinition?.formVersion || String(values._gem_runtime_form_version || '');
+    const currentKey = xlsFormDefinition?.formKey || String(values._ged_os_runtime_form_key || '');
+    const currentVersion = xlsFormDefinition?.formVersion || String(values._ged_os_runtime_form_version || '');
     return Boolean(currentKey && currentKey !== 'terrain_internal') &&
       (currentKey !== definition.formKey || currentVersion !== definition.formVersion);
   }, [
@@ -445,13 +445,13 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
   ]);
   const migrateToPendingRuntimeDefinition = () => {
     if (!pendingRuntimeDefinition) return;
-    const previousKey = xlsFormDefinition?.formKey || String(values._gem_runtime_form_key || '');
-    const previousVersion = xlsFormDefinition?.formVersion || String(values._gem_runtime_form_version || '');
-    onChangeRef.current('_gem_runtime_migrated_from_key', previousKey);
-    onChangeRef.current('_gem_runtime_migrated_from_version', previousVersion);
-    onChangeRef.current('_gem_runtime_migrated_to_version', pendingRuntimeDefinition.formVersion);
-    onChangeRef.current('_gem_runtime_migration_mode', 'preserve-values-by-field-name');
-    onChangeRef.current('_gem_runtime_migrated_at', new Date().toISOString());
+    const previousKey = xlsFormDefinition?.formKey || String(values._ged_os_runtime_form_key || '');
+    const previousVersion = xlsFormDefinition?.formVersion || String(values._ged_os_runtime_form_version || '');
+    onChangeRef.current('_ged_os_runtime_migrated_from_key', previousKey);
+    onChangeRef.current('_ged_os_runtime_migrated_from_version', previousVersion);
+    onChangeRef.current('_ged_os_runtime_migrated_to_version', pendingRuntimeDefinition.formVersion);
+    onChangeRef.current('_ged_os_runtime_migration_mode', 'preserve-values-by-field-name');
+    onChangeRef.current('_ged_os_runtime_migrated_at', new Date().toISOString());
     applyRuntimeDefinition(pendingRuntimeDefinition);
   };
   const runtimeCalculation = useMemo(
@@ -472,7 +472,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
     [runtimeAllPages, runtimeValues, xlsFormDefinition]
   );
   const validationIssues = useMemo<RuntimeIssueView[]>(() => {
-    if (!runtimeValidation) return validateInternalGemFields(values);
+    if (!runtimeValidation) return validateInternalGedOsFields(values);
     return runtimeValidation.issues.map((issue) => ({
       field: {
         name: issue.field.name,
@@ -585,15 +585,15 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
 
         setSelectedRuntimeFormKey('');
         setXlsFormDefinition(null);
-        onChangeRef.current('_gem_runtime_form_key', 'terrain_internal');
-        onChangeRef.current('_gem_runtime_form_version', INTERNAL_GEM_FORM_SETTINGS.version);
-        onChangeRef.current('_gem_runtime_engine', 'gem-internal-kobo');
-        onChangeRef.current('_gem_runtime_title', 'Formulaire terrain interne');
+        onChangeRef.current('_ged_os_runtime_form_key', 'terrain_internal');
+        onChangeRef.current('_ged_os_runtime_form_version', INTERNAL_GED_OS_FORM_SETTINGS.version);
+        onChangeRef.current('_ged_os_runtime_engine', 'ged-os-internal-kobo');
+        onChangeRef.current('_ged_os_runtime_title', 'Formulaire terrain interne');
         setServerFormStatus({
-          status: form.formVersion === INTERNAL_GEM_FORM_SETTINGS.version ? 'ok' : 'mismatch',
+          status: form.formVersion === INTERNAL_GED_OS_FORM_SETTINGS.version ? 'ok' : 'mismatch',
           version: form.formVersion,
           message:
-            form.formVersion === INTERNAL_GEM_FORM_SETTINGS.version
+            form.formVersion === INTERNAL_GED_OS_FORM_SETTINGS.version
               ? 'Version VPS verifiee'
               : `Version VPS ${form.formVersion}`,
           checkedAt: new Date().toISOString(),
@@ -723,12 +723,12 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
 
   useEffect(() => {
     const now = new Date();
-    const startValue = String(values.start || values._gem_session_started_at || now.toISOString());
+    const startValue = String(values.start || values._ged_os_session_started_at || now.toISOString());
     const nextMetadata: Record<string, unknown> = {
       ...collectionMetadata,
       start: startValue,
       today: values.today || now.toISOString().slice(0, 10),
-      _gem_session_started_at: startValue,
+      _ged_os_session_started_at: startValue,
     };
 
     Object.entries(nextMetadata).forEach(([key, value]) => {
@@ -762,10 +762,10 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
       repeatIndex: issue.repeatIndex ?? null,
     }));
     const nextMeta: Record<string, unknown> = {
-      _gem_runtime_required_missing: runtimeValidation.requiredMissing,
-      _gem_runtime_validation_issues: issues,
-      _gem_runtime_ready: issues.length === 0,
-      _gem_runtime_page_count: runtimeAllPages.length,
+      _ged_os_runtime_required_missing: runtimeValidation.requiredMissing,
+      _ged_os_runtime_validation_issues: issues,
+      _ged_os_runtime_ready: issues.length === 0,
+      _ged_os_runtime_page_count: runtimeAllPages.length,
     };
     Object.entries(nextMeta).forEach(([key, value]) => {
       if (JSON.stringify(values[key] ?? null) !== JSON.stringify(value ?? null)) {
@@ -781,14 +781,14 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
   }, [activeRuntimePageId, runtimeAllPages, xlsFormDefinition]);
 
   useEffect(() => {
-    const startedAt = String(values._gem_session_started_at || values.start || '');
+    const startedAt = String(values._ged_os_session_started_at || values.start || '');
     if (!startedAt) return undefined;
 
     const updateDuration = () => {
       const startedTime = new Date(startedAt).getTime();
       if (Number.isNaN(startedTime)) return;
       const durationSeconds = Math.max(0, Math.round((Date.now() - startedTime) / 1000));
-      onChangeRef.current('_gem_session_duration_s', String(durationSeconds));
+      onChangeRef.current('_ged_os_session_duration_s', String(durationSeconds));
     };
 
     updateDuration();

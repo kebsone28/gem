@@ -2,7 +2,7 @@
  * actionConfig.js
  * Configuration centralisée des types d'actions pour l'ApprovalService.
  * Définit les niveaux de risque, seuils de confiance et droits d'exécution
- * par agent IA pour le système d'approbation GEM-MINT.
+ * par agent IA pour le système d'approbation GED OS MINT.
  */
 
 // ─────────────────────────────────────────────────────────────────────────────

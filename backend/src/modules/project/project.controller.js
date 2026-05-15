@@ -9,6 +9,11 @@ import {
   DEFAULT_WANEKOO_DEPLOY_PATH,
   buildWanekooDeployCommand,
 } from '../../core/config/serverDeploy.config.js';
+import { eventBus } from '../../core/services/eventBus.service.js';
+import { workflowService } from '../../core/services/workflow.service.js';
+import { securityService } from '../../core/services/security.service.js';
+import { getModuleMetadata } from '../../core/config/modules.js';
+import { ROLES } from '../../core/config/permissions.js';
 
 const DONE_STATUSES = new Set(['completed', 'Terminé', 'Réception: Validée', 'Conforme']);
 
@@ -41,16 +46,30 @@ export const getProjects = async (req, res) => {
       },
     });
 
-const { email, id: userId, role: userRole } = req.user;
+    const { email, id: userId, role: userRole } = req.user;
      
-     // 🛡️ Déterminer si l'utilisateur est un Admin Global ou DG
-     const { ROLES } = await import('../../core/config/permissions.js');
-     const isGlobalAdmin = userRole === ROLES.ADMIN || userRole === ROLES.DIRECTEUR || userRole === ROLES.ADMIN_ALT || userRole === 'ADMIN_PROQUELEC' || userRole === 'DG_PROQUELEC';
+    // 🛡️ Déterminer si l'utilisateur est un Admin Global ou DG
+    const isGlobalAdmin = userRole === ROLES.ADMIN || 
+                         userRole === ROLES.DIRECTEUR || 
+                         userRole === ROLES.ADMIN_ALT || 
+                         userRole === 'ADMIN_PROQUELEC' || 
+                         userRole === 'DG_PROQUELEC';
 
-    let projects = rawProjects.map(p => ({
-      ...p,
-      assignedUsers: (p.config || {}).assignedUsers || []
-    }));
+
+    let projects = rawProjects.map(p => {
+      try {
+        const config = p.config || {};
+        return {
+          ...p,
+          assignedUsers: (config && typeof config === 'object' ? config.assignedUsers : []) || []
+        };
+      } catch (err) {
+        console.error('[DEBUG] Error mapping project:', p.id, err);
+        return p;
+      }
+    });
+
+    console.log('[DEBUG] Projects mapped:', projects.length);
 
     // 🔒 Filtrage de sécurité : Seuls les projets assignés pour les autres
     if (!isGlobalAdmin) {
@@ -63,7 +82,11 @@ const { email, id: userId, role: userRole } = req.user;
     res.json({ projects });
   } catch (error) {
     console.error('Get projects error:', error);
-    res.status(500).json({ error: 'Server error while fetching projects' });
+    res.status(500).json({ 
+      error: 'Server error while fetching projects',
+      message: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 };
 
@@ -89,6 +112,7 @@ export const getProjectById = async (req, res) => {
         zones: {
           where: { deletedAt: null },
         },
+        projectModules: true,
       },
     });
 
@@ -124,32 +148,76 @@ export const createProject = async (req, res) => {
       return res.status(400).json({ error: 'Un projet avec ce nom existe déjà.' });
     }
 
-    const project = await prisma.project.create({
-      data: {
-        id: id || undefined, // Use client-provided ID or let Prisma generate one
-        name,
-        status: 'active',
-        budget: budget || 0,
-        duration: duration || 12,
-        totalHouses: totalHouses || 0,
-        config: {
-          ...(config || {}),
-          assignedUsers: req.body.assignedUsers || []
+    // 🚀 CRÉATION ROBUSTE (SERVER-SIDE INITIALIZATION)
+    const { enabledModules = [], customFields = [], sector = 'elec_bt' } = config || {};
+
+    const project = await prisma.$transaction(async (tx) => {
+      console.log('[DEBUG] Creating base project...');
+      // 1. Créer le projet de base
+      const newProject = await tx.project.create({
+        data: {
+          id: id || undefined,
+          name,
+          status: 'active',
+          budget: budget || 0,
+          duration: duration || 12,
+          totalHouses: totalHouses || 0,
+          config: {
+            ...config,
+            client: req.body.client || 'N/A',
+            assignedUsers: req.body.assignedUsers || []
+          },
+          organizationId,
+          updatedById: userId,
         },
-        organizationId,
-        updatedById: userId,
-      },
+      });
+
+      console.log('[DEBUG] Base project created:', newProject.id);
+
+      // 2. Instancier RÉELLEMENT les modules en base de données (Anti-simulation)
+      if (enabledModules.length > 0) {
+        console.log('[DEBUG] Instantiating modules:', enabledModules);
+        const modulePromises = enabledModules.map(moduleKey => {
+          const meta = getModuleMetadata(moduleKey);
+          return tx.projectModule.create({
+            data: {
+              projectId: newProject.id,
+              key: moduleKey,
+              name: meta.name,
+              enabled: true,
+              config: {
+                initializedAt: new Date(),
+                sector: sector,
+                customFields: moduleKey === 'terrain' ? customFields : []
+              }
+            }
+          });
+        });
+        await Promise.all(modulePromises);
+      }
+
+      // 3. Initialiser les Workflows par défaut (Phase 3 Engine)
+      await workflowService.seedDefaultWorkflow(newProject.id, sector, organizationId, tx);
+
+      // 4. Initialiser la Gouvernance (Phase 3.5 Security Engine)
+      await securityService.seedDefaultPolicies(organizationId, tx);
+
+      return newProject;
     });
 
-    // Audit Log
-    await tracerAction({
-      userId,
+    // 📡 EVENT-DRIVEN ARCHITECTURE (PHASE 3)
+    await eventBus.publish('PROJECT_CREATED', {
+      projectId: project.id,
       organizationId,
-      action: 'CREATION_PROJET',
+      userId,
       resource: 'Projet',
       resourceId: project.id,
-      details: { name: project.name },
-      req,
+      data: { 
+        name: project.name, 
+        modulesInitialises: enabledModules.length,
+        secteur: sector 
+      },
+      metadata: { ip: req.ip, userAgent: req.headers['user-agent'] }
     });
 
     res.status(201).json(project);
@@ -347,6 +415,11 @@ export const deleteProject = async (req, res) => {
 
     if (!project) {
       return res.status(404).json({ error: 'Project not found' });
+    }
+
+    // 4b. PROTECT BASE PROJECT
+    if (project.name === 'GED OS' || project.name === 'GEM SAAS') {
+      return res.status(403).json({ error: 'Le projet système est protégé et ne peut pas être supprimé.' });
     }
 
     // 5. Soft delete

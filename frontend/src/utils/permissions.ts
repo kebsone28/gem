@@ -1,9 +1,10 @@
 /**
- * 🔐 Moteur de Sécurité & IAM Enterprise - GEM SAAS
+ * 🔐 Moteur de Sécurité & IAM Enterprise - GED OS
  * Phase 5 : Security Alerting & Proactive Monitoring
  */
 
 import { securityAlertService } from '../services/securityAlertService';
+import logger from './logger';
 
 // 🛡️ Import des types (Découplage pour éviter les dépendances circulaires)
 import type {
@@ -138,7 +139,8 @@ export const sameTenant = (user: AuthUser, resource: SecurityResource): boolean 
   user.tenantId === resource.tenantId;
 export const isPlatformAdmin = (user: AuthUser): boolean =>
    user?.isPlatformAdmin === true ||
-   normalizeRole(user?.role) === AppRole.PLATFORM_ADMIN;
+   normalizeRole(user?.role) === AppRole.PLATFORM_ADMIN ||
+   normalizeRole(user?.role) === AppRole.ADMIN;
 
 export const invalidatePermissionsCache = (userId?: string) => {
   if (userId) {
@@ -206,7 +208,7 @@ export interface AuditEvent {
 }
 
 export const auditLog = (event: AuditEvent, user?: AuthUser) => {
-  console.log(
+  logger.info(
     `[AUDIT] ${event.allowed ? '✅' : '❌'} User:${event.actorId} | Action:${event.action} | Res:${event.resourceType}:${event.resourceId} | Reason:${event.reason || 'OK'}`
   );
 
@@ -302,10 +304,6 @@ export const PERMISSION_LABELS: Record<string, string> = {
   [PERMISSIONS.FINANCE_EXPORT]: 'Exports de Données',
   [PERMISSIONS.FINANCE_REPORTS]: 'Rapports Financiers',
   [PERMISSIONS.UI_MAP]: 'Carte Interactive',
-  [PERMISSIONS.TERRAIN_ZONES]: 'Gestion Zones/Grappes',
-  [PERMISSIONS.TERRAIN_MENAGES]: 'Gestion des Ménages',
-  [PERMISSIONS.TERRAIN_TERMINAL]: 'Terminal Collecte Kobo',
-  [PERMISSIONS.TERRAIN_REJECT]: 'Rejeter Dossier Kobo',
   [PERMISSIONS.UI_PROJECTS]: 'Registre des Projets',
   [PERMISSIONS.UI_DASHBOARD]: 'Personnaliser Dashboard',
 
@@ -353,7 +351,7 @@ export const PERMISSION_LABELS: Record<string, string> = {
   [PERMISSIONS.UI_CHAT]: 'Utiliser la Messagerie',
   [PERMISSIONS.UI_ALERTS]: 'Consulter les Alertes',
   [PERMISSIONS.SYSTEM_SYNC]: 'Logs de Synchronisation',
-  [PERMISSIONS.IA_USE]: 'Assistant Wanekoo',
+  [PERMISSIONS.IA_USE]: 'Assistant GED OS',
   [PERMISSIONS.IA_METRICS]: 'Consommation & Coûts IA',
   [PERMISSIONS.IA_SIMULATION]: 'Scénarios de Simulation',
   [PERMISSIONS.IA_CONFIG]: 'Configuration Cerveau IA',

@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React from 'react';
-import { ClipboardList } from 'lucide-react';
+import { ClipboardList, Calculator } from 'lucide-react';
 import type { MissionOrderData } from '../core/missionTypes';
 
 interface MissionInfoSectionProps {
@@ -47,6 +47,32 @@ export const MissionInfoSection: React.FC<MissionInfoSectionProps> = ({
               Détails administratifs et logistiques
             </p>
           </div>
+        </div>
+
+        {/* FINANCIAL EXCLUSION TOGGLE */}
+        <div className="flex items-center gap-3 px-4 py-2 bg-white/5 rounded-2xl border border-white/5 hover:bg-white/10 transition-all">
+          <Calculator size={16} className={formData.excludeFromFinance ? 'text-amber-400' : 'text-slate-500'} />
+          <div className="flex flex-col">
+            <span className="text-[9px] font-black text-white uppercase tracking-wider">
+              Exclusion Financière
+            </span>
+            <span className="text-[8px] font-bold text-slate-500 uppercase">
+              Hors budget projet
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => !isLocked && onUpdateField('excludeFromFinance', !formData.excludeFromFinance)}
+            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+              formData.excludeFromFinance ? 'bg-amber-500' : 'bg-slate-700'
+            } ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
+          >
+            <span
+              className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                formData.excludeFromFinance ? 'translate-x-4' : 'translate-x-0'
+              }`}
+            />
+          </button>
         </div>
       </div>
 

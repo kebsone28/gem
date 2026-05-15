@@ -175,7 +175,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
               <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10">
                 <div className={`h-1.5 w-1.5 rounded-full ${isSyncing ? 'bg-blue-400 animate-pulse' : 'bg-slate-500'}`} />
                 <span className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">
-                  {projectName || 'Projet non défini'}
+                  GED OS — {projectName || 'Projet non défini'}
                 </span>
               </div>
             </motion.div>

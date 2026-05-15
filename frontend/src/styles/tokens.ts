@@ -1,6 +1,6 @@
-﻿ 
+ 
 /* ═══════════════════════════════════════════════════════════════════════════
-   DESIGN TOKENS – GEM SAAS | ELECTRIC BLUE PREMIUM
+   DESIGN TOKENS – GED OS | ELECTRIC BLUE PREMIUM
    Source unique de vérité pour toutes les valeurs de design.
    Centralise couleurs, typographie, espacement, radius, ombres et animations.
    ═══════════════════════════════════════════════════════════════════════════ */

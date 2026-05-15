@@ -1,8 +1,6 @@
-import { PrismaClient } from '@prisma/client';
+import { basePrisma as prisma } from '../core/utils/prisma.js';
 import { sendMail } from './mail.service.js';
 import { buildPublicUrl } from '../utils/publicUrl.js';
-
-const prisma = new PrismaClient();
 
 /**
  * SERVICE DE NOTIFICATION DES MISSIONS

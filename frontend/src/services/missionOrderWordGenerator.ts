@@ -160,7 +160,7 @@ const createFrontPage = (orderNumber: string, purpose: string) => {
       alignment: AlignmentType.CENTER,
       children: [
         new TextRun({
-          text: 'Généré numériquement par GEM-SAAS PROQUELEC',
+          text: 'Généré numériquement par GED OS SAAS PROQUELEC',
           size: 16,
           italics: true,
           color: COLORS.SLATE,
@@ -567,7 +567,7 @@ export const generateMissionOrderWord = async (data: MissionOrderData) => {
   sections[sections.length - 1].children.push(...financeChildren);
 
   const doc = new Document({
-    creator: 'GEM-SAAS PROQUELEC',
+    creator: 'GED OS SAAS PROQUELEC',
     title: `Ordre de Mission ${getMissionReference(data)}`,
     sections: sections,
   });
@@ -1168,7 +1168,7 @@ export const generateMissionReportWord = async (data: any): Promise<Blob | null>
     });
 
     const doc = new Document({
-      creator: 'GEM-SAAS PROQUELEC',
+      creator: 'GED OS SAAS PROQUELEC',
       title: `Rapport Post-Mission ${getMissionReference(data)}`,
       sections: sections,
     });

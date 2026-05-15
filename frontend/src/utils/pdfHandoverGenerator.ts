@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -9,6 +8,12 @@ interface HandoverData {
   grappes: { nom: string; householdsCount: number }[];
   totalHouseholds: number;
   projectDeadline?: string;
+}
+
+interface AutoTableDoc extends jsPDF {
+  lastAutoTable: {
+    finalY: number;
+  };
 }
 
 export const generateTeamHandoverPDF = (data: HandoverData) => {
@@ -63,7 +68,7 @@ export const generateTeamHandoverPDF = (data: HandoverData) => {
   });
 
   // Signatures Area
-  const finalY = (doc as any).lastAutoTable.finalY || 150;
+  const finalY = (doc as AutoTableDoc).lastAutoTable?.finalY || 150;
 
   if (finalY + 50 > 280) {
     doc.addPage();

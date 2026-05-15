@@ -1,4 +1,4 @@
-﻿ 
+ 
 // src/utils/exportWord/sections/frontPage.ts
 import { Paragraph, AlignmentType, BorderStyle, Table, TableRow, TableCell, WidthType } from 'docx';
 import { COLORS, createText } from '../utils/styles';
@@ -77,7 +77,7 @@ export const createFrontPage = (title: string) => {
                 new Paragraph({
                   children: [
                     createText('Généré par : ', { bold: true }),
-                    createText('Système GEM-PROQUELEC'),
+                    createText('Système GED OS'),
                   ],
                 }),
                 new Paragraph({

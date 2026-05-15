@@ -1,6 +1,19 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { Household } from './types';
 import { getStatusMeta, normalizeStatus } from '../domain/status/statusUtils';
+
+interface ConstructionData {
+  audit?: {
+    installation_conforme?: string;
+    branchement_conforme?: string;
+    resistance_terre?: number;
+  };
+  interiorStatus?: string;
+  networkStatus?: string;
+  wallType?: string;
+  kit?: {
+    status?: string;
+  };
+}
 
 /**
  * Obtenir la couleur hex d'un statut
@@ -46,7 +59,7 @@ export const getHouseholdDerivedStatus = (h: Household) => {
     return 'Non conforme';
 
   // 3. Nouvelle architecture (constructionData)
-  const cData: any = h.constructionData || null;
+  const cData: ConstructionData | null = h.constructionData || null;
   if (cData) {
     if (
       cData.audit?.installation_conforme === 'conforme' ||

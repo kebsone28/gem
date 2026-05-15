@@ -27,9 +27,9 @@ export const agentTools = {
     return anomalies.length > 0 ? `Anomalies détectées: ${anomalies.join('; ')}` : 'Aucune anomalie détectée dans les données de consommation.';
   },
 
-  createReport: async (input) => {
+  createReport: async (input, context = {}) => {
     const report = {
-      title: input.title || 'Rapport PROQUELEC',
+      title: input.title || `Rapport ${context.organizationName || 'GEM SAAS'}`,
       generatedAt: new Date().toISOString(),
       summary: input.summary || 'Rapport généré par l’agent',
       items: input.items || []

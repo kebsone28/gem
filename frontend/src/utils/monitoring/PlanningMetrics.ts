@@ -210,7 +210,7 @@ class PlanningMetricsCollector {
     // Ex: API endpoint, WebSocket, etc.
     
     if (process.env.NODE_ENV === 'development') {
-      console.log(`[PlanningMetrics] ${type}:`, metric);
+      logger.info(`[PlanningMetrics] ${type}:`, metric);
     }
     
     // Exemple d'envoi vers une API

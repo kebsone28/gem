@@ -1,4 +1,4 @@
-﻿ 
+ 
 /**
  * Sync Store (Zustand + persist + subscribeWithSelector)
  * Central state for all sync operations.
@@ -72,7 +72,7 @@ export const useSyncStore = create<SyncState>()(
         clearConflicts: () => set({ conflicts: [], lastResolvedAt: null }),
       }),
       {
-        name: 'gem-sync-store',
+        name: 'ged-os-sync-store',
         partialize: (state) => ({
           lastSyncAt: state.lastSyncAt,
           conflicts: state.conflicts,

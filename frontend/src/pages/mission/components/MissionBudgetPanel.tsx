@@ -7,12 +7,14 @@ interface MissionBudgetPanelProps {
   totalFrais: number;
   projectBudget: number;
   members: any[];
+  excludeFromFinance?: boolean;
 }
 
 export const MissionBudgetPanel: React.FC<MissionBudgetPanelProps> = ({
   totalFrais,
   projectBudget,
   members,
+  excludeFromFinance = false,
 }) => {
   const consumption = calculateBudgetConsumption(totalFrais, projectBudget);
   const over = consumption > 100;
@@ -27,10 +29,14 @@ export const MissionBudgetPanel: React.FC<MissionBudgetPanelProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between">
           <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
-            <Wallet size={11} className={over ? 'text-rose-400' : 'text-emerald-400'} />
-            Budget Mission
+            <Wallet size={11} className={excludeFromFinance ? 'text-amber-400' : over ? 'text-rose-400' : 'text-emerald-400'} />
+            {excludeFromFinance ? 'Mission Hors-Budget' : 'Budget Mission'}
           </span>
-          {projectBudget > 0 && (
+          {excludeFromFinance ? (
+            <span className="text-[8px] font-black px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 animate-pulse">
+              OFF-BUDGET
+            </span>
+          ) : projectBudget > 0 && (
             <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full ${
               over ? 'bg-rose-500/20 text-rose-400' : warn ? 'bg-amber-500/20 text-amber-400' : 'bg-emerald-500/20 text-emerald-400'
             }`}>

@@ -57,7 +57,7 @@ interface OrgConfig {
   terrainFeatures?: TerrainFeatureConfig;
 }
 
-type TabId = 'branding' | 'notifications' | 'workflow' | 'labels' | 'features';
+type TabId = 'branding' | 'notifications' | 'workflow' | 'labels' | 'features' | 'system';
 
 const TABS: { id: TabId; label: string; icon: React.ElementType; color: string }[] = [
   { id: 'branding', label: 'Identité', icon: Palette, color: 'blue' },
@@ -65,6 +65,7 @@ const TABS: { id: TabId; label: string; icon: React.ElementType; color: string }
   { id: 'workflow', label: 'Workflow', icon: GitBranch, color: 'amber' },
   { id: 'labels', label: 'Glossaire', icon: Box, color: 'indigo' },
   { id: 'features', label: 'Modules', icon: Zap, color: 'violet' },
+  { id: 'system', label: 'Système', icon: Globe, color: 'blue' },
 ];
 
 // COLOR_MAP removed (unused)
@@ -293,6 +294,7 @@ export default function OrganizationSettings() {
   return (
     <PageContainer className="min-h-screen bg-slate-950 py-4 sm:py-8">
       <PageHeader
+        backLink={{ to: '/admin/hub', label: 'Retour au Centre de Contrôle' }}
         title={orgName}
         subtitle="Personnalisez l'identité et les processus de votre espace de travail"
         icon={<Building2 size={24} className="text-blue-500" />}
@@ -377,7 +379,7 @@ export default function OrganizationSettings() {
                   <Briefcase size={12} /> <span>Plan Enterprise</span>
                 </span>
                 <span className="flex items-center gap-1.5 px-2.5 py-1 bg-blue-500/10 rounded-full text-[10px] sm:text-xs font-black text-blue-400 border border-blue-500/20 uppercase tracking-[0.06em]">
-                  <Award size={10} /> GEM Premium
+                  <Award size={10} /> GED OS Premium
                 </span>
               </div>
             </div>
@@ -565,7 +567,7 @@ export default function OrganizationSettings() {
                     </div>
 
                     <InfoBox color="blue" icon={<ShieldCheck size={18} />}>
-                      Ces réglages remplacent le branding GEM SAAS par défaut pour tous vos
+                      Ces réglages remplacent le branding GED OS par défaut pour tous vos
                       collaborateurs.
                     </InfoBox>
                   </div>
@@ -766,7 +768,7 @@ export default function OrganizationSettings() {
                     />
 
                     <InfoBox color="indigo" icon={<ShieldCheck size={16} />}>
-                      Adaptez GEM à votre secteur. Remplacez "Ménage" par "Pylône", "Site", "École"
+                      Adaptez GED OS à votre secteur. Remplacez "Ménage" par "Pylône", "Site", "École"
                       ou "Client".
                     </InfoBox>
 
@@ -829,8 +831,8 @@ export default function OrganizationSettings() {
                         },
                         {
                           key: 'useGemCollect' as const,
-                          title: 'Saisie Terrain VPS (GEM Toolbox)',
-                          desc: "Activer le module d'application terrain natif et indépendant avec soumission directe sur notre serveur.",
+                          title: 'Saisie Terrain VPS (GED OS Collect)',
+                          desc: "Activer le module d'application terrain natif et indépendant (GED OS Toolbox) avec soumission directe sur notre serveur.",
                           color: 'emerald',
                           icon: <Zap size={18} className="text-emerald-400" />,
                         },
@@ -918,7 +920,7 @@ export default function OrganizationSettings() {
                               active: !!config.features?.koboTerminal,
                             },
                             {
-                              name: 'App GEM Collect',
+                              name: 'App GED OS Collect',
                               active: !!config.features?.useGemCollect,
                             },
                             { name: 'Bordereau de Paiement', active: true },
@@ -947,6 +949,86 @@ export default function OrganizationSettings() {
                           ))}
                         </div>
                       </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* ── SYSTEM / GED OS ── */}
+                {activeTab === 'system' && (
+                  <div className="space-y-10">
+                    <div className="relative overflow-hidden rounded-[2.5rem] bg-slate-950 border border-white/5 p-8 sm:p-12 group">
+                      {/* Decorative background */}
+                      <div className="absolute top-0 right-0 w-full h-full bg-gradient-to-br from-blue-600/10 via-transparent to-indigo-600/5 pointer-events-none" />
+                      <div className="absolute -top-24 -right-24 w-96 h-96 bg-blue-500/10 blur-[120px] rounded-full group-hover:bg-blue-500/15 transition-all duration-1000" />
+                      
+                      <div className="relative z-10 space-y-8">
+                        <div className="flex items-center gap-6">
+                          <div className="w-20 h-20 bg-blue-600/20 rounded-3xl flex items-center justify-center border border-blue-500/30 shadow-2xl shadow-blue-500/20">
+                            <Globe size={40} className="text-blue-400 animate-pulse" />
+                          </div>
+                          <div>
+                            <h2 className="text-3xl sm:text-4xl font-black text-white uppercase tracking-tight italic">
+                              GED OS
+                            </h2>
+                            <p className="text-blue-400 font-black text-xs sm:text-sm uppercase tracking-[0.3em] mt-1">
+                              Gestionnaire Écosystème Digital
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="space-y-6 max-w-3xl">
+                          <p className="text-lg sm:text-xl font-bold text-slate-300 leading-relaxed italic border-l-4 border-blue-500 pl-6">
+                            GED OS est une plateforme intelligente multidomaine conçue pour créer, piloter et automatiser des écosystèmes métiers numériques.
+                          </p>
+                          
+                          <p className="text-sm sm:text-base text-slate-400 font-medium leading-relaxed">
+                            Elle fonctionne comme un véritable <span className="text-white font-black">système d’exploitation métier</span> capable d’orchestrer les workflows, centraliser les données et superviser les activités en temps réel dans les secteurs des infrastructures, de l’énergie, de l’agriculture et plus encore.
+                          </p>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {[
+                            'Générer des plateformes sectorielles',
+                            'Gérer les opérations terrain',
+                            'Orchestrer les workflows',
+                            'Centraliser les données',
+                            'Superviser les activités en temps réel',
+                            'Assurer la traçabilité et la gouvernance',
+                            'Intégrer l’IA et l’automatisation'
+                          ].map((item, idx) => (
+                            <div key={idx} className="flex items-center gap-3 p-4 bg-white/5 rounded-2xl border border-white/5 hover:border-blue-500/20 transition-all">
+                              <div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)]" />
+                              <span className="text-xs sm:text-sm font-bold text-slate-200">{item}</span>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className="pt-8 border-t border-white/5">
+                          <div className="bg-blue-500/10 border border-blue-500/20 rounded-3xl p-6 flex items-start gap-5">
+                            <ShieldCheck className="text-blue-400 shrink-0 mt-1" size={24} />
+                            <div>
+                              <h4 className="text-xs font-black text-white uppercase tracking-widest mb-2">Architecture Souveraine</h4>
+                              <p className="text-xs text-slate-400 font-medium leading-relaxed">
+                                Reposant sur une architecture modulaire et orientée événements, GED OS permet aux États, entreprises et institutions de déployer rapidement des solutions adaptées à leurs réalités locales.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      {[
+                        { label: 'Secteurs', value: '7+', icon: Briefcase },
+                        { label: 'Architecture', value: 'Souveraine', icon: ShieldCheck },
+                        { label: 'Intelligence', value: 'IA Intégrée', icon: Zap }
+                      ].map((stat, i) => (
+                        <div key={i} className="p-6 bg-slate-900 border border-white/5 rounded-[2rem] flex flex-col items-center text-center space-y-2">
+                          <stat.icon className="text-blue-500 mb-2" size={24} />
+                          <div className="text-2xl font-black text-white tracking-tighter">{stat.value}</div>
+                          <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{stat.label}</div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )}

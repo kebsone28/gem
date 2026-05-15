@@ -1,7 +1,7 @@
-/* GEM Communication Module - v2.1.1 */
+/* GED OS Communication Module - v2.1.1 */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /**
- * GEM Chat — Messagerie d'équipe opérationnelle
+ * GED OS Chat — Messagerie d'équipe opérationnelle
  * Fonctionnalités : réactions, réponses citées, @mentions, indicateurs de frappe,
  * commandes rapides, recherche, markdown, panneau de conversation, avatars colorés.
  */
@@ -121,6 +121,7 @@ interface PinnedMessageEntry {
 const EMOJI_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🔥', '✅', '👀'];
 
 const QUICK_COMMANDS = [
+  { cmd: '/ia', desc: 'Demander à GED OS AI 🤖 (ex: /ia quelle est la norme ?)', icon: <Zap size={14} className="text-violet-400" /> },
   { cmd: '/ménage', desc: 'Chercher un ménage (Nom ou N°)', icon: <Users2 size={14} /> },
   { cmd: '/mission', desc: 'Lier une mission', icon: <Flag size={14} /> },
   { cmd: '/status', desc: 'Diffuser un statut terrain', icon: <Zap size={14} /> },
@@ -319,11 +320,29 @@ function buildReplyContent(reply: ReplyContext, newContent: string): string {
 // ══════════════════════════════════════════════════════
 
 /** Colored avatar with initials */
-const GemAvatar = memo(
-  ({ name, size = 10, online }: { name: string; size?: number; online?: boolean }) => {
+const GedOsAvatar = memo(
+  ({
+    name,
+    size = 10,
+    online,
+    status,
+  }: {
+    name: string;
+    size?: number;
+    online?: boolean;
+    status?: 'ONLINE' | 'AWAY' | 'DND' | 'OFFLINE';
+  }) => {
     const colorClass = getAvatarColor(name);
     const initial = name ? name.charAt(0).toUpperCase() : '?';
     const px = `h-${size} w-${size}`;
+
+    let statusColor = 'bg-slate-600';
+    if (online) {
+      if (status === 'AWAY') statusColor = 'bg-amber-400';
+      else if (status === 'DND') statusColor = 'bg-rose-500';
+      else statusColor = 'bg-emerald-400'; // ONLINE ou non défini
+    }
+
     return (
       <div
         className={`relative shrink-0 ${px} rounded-full ${colorClass} flex items-center justify-center text-white font-bold shadow-lg select-none`}
@@ -333,23 +352,30 @@ const GemAvatar = memo(
         {initial}
         {online !== undefined && (
           <span
-            className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-slate-900 ${online ? 'bg-emerald-400' : 'bg-slate-600'}`}
+            className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-slate-900 ${statusColor}`}
           />
         )}
       </div>
     );
   }
 );
-GemAvatar.displayName = 'GemAvatar';
+GedOsAvatar.displayName = 'GedOsAvatar';
 
 /** Animated typing dots */
 const TypingIndicator = memo(({ users }: { users: TypingUser[] }) => {
+  const aiUser = users.find(u => u.name?.includes('GED OS AI'));
+  const humanUsers = users.filter(u => !u.name?.includes('GED OS AI'));
+
   const label =
-    users.length === 1
-      ? `${users[0].name} écrit…`
-      : users.length === 2
-        ? `${users[0].name} et ${users[1].name} écrivent…`
-        : `${users.length} personnes écrivent…`;
+    aiUser && humanUsers.length === 0
+      ? `GED OS AI 🤖 est en train d'analyser…`
+      : humanUsers.length === 1
+        ? `${humanUsers[0].name} écrit…`
+        : humanUsers.length === 2
+          ? `${humanUsers[0].name} et ${humanUsers[1].name} écrivent…`
+          : `${users.length} personnes écrivent…`;
+
+  const isAiTyping = !!aiUser && humanUsers.length === 0;
 
   return (
     <div className="h-9 px-4 flex items-center shrink-0">
@@ -359,19 +385,27 @@ const TypingIndicator = memo(({ users }: { users: TypingUser[] }) => {
             initial={{ opacity: 0, y: 5 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 5 }}
-            className="flex items-center gap-1 bg-slate-800/40 rounded-full px-3 py-1 backdrop-blur-sm border border-white/5"
+            className={`flex items-center gap-1 rounded-full px-3 py-1 backdrop-blur-sm border ${
+              isAiTyping
+                ? 'bg-violet-500/10 border-violet-500/30'
+                : 'bg-slate-800/40 border-white/5'
+            }`}
           >
             <div className="flex gap-1 mr-2">
               {[0, 1, 2].map((i) => (
                 <motion.span
                   key={i}
-                  className="h-1 w-1 rounded-full bg-indigo-400"
-                  animate={{ opacity: [0.4, 1, 0.4] }}
-                  transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.2 }}
+                  className={`h-1 w-1 rounded-full ${
+                    isAiTyping ? 'bg-violet-400' : 'bg-indigo-400'
+                  }`}
+                  animate={{ opacity: [0.4, 1, 0.4], scale: isAiTyping ? [1, 1.5, 1] : [1, 1, 1] }}
+                  transition={{ duration: isAiTyping ? 0.8 : 1.2, repeat: Infinity, delay: i * 0.2 }}
                 />
               ))}
             </div>
-            <span className="text-[11px] text-slate-400 italic">{label}</span>
+            <span className={`text-[11px] italic ${
+              isAiTyping ? 'text-violet-300 font-medium' : 'text-slate-400'
+            }`}>{label}</span>
           </motion.div>
         )}
       </AnimatePresence>
@@ -647,8 +681,8 @@ const MessageContextMenu = memo(
 );
 MessageContextMenu.displayName = 'MessageContextMenu';
 
-/** Smart Context Card for internal GEM links (Households, Missions, etc.) */
-const GemContextCard = memo(({ type, id }: { type: string; id: string }) => {
+/** Smart Context Card for internal GED OS links (Households, Missions, etc.) */
+const GedOsContextCard = memo(({ type, id }: { type: string; id: string }) => {
   const [data, setData] = useState<{
     title: string;
     subtitle: string;
@@ -727,7 +761,7 @@ const GemContextCard = memo(({ type, id }: { type: string; id: string }) => {
     </motion.div>
   );
 });
-GemContextCard.displayName = 'GemContextCard';
+GedOsContextCard.displayName = 'GedOsContextCard';
 
 /** Specialized audio player for voice messages */
 const ChatAudioPlayer = memo(({ url, duration }: { url: string; duration?: number }) => {
@@ -867,7 +901,10 @@ const MessageBubble = memo(
     const fileData = hasFile ? JSON.parse(msg.content) : null;
     const actualContent = hasFile ? '' : msg.content;
 
-    // Detection of GEM-Links
+    // Detect AI bot messages
+    const isAiMessage = msg.sender?.email === 'ged-os-ai@ged-os.com' || msg.sender?.name?.includes('GED OS AI');
+
+    // Detection of GED OS-Links
     const householdMatch = msg.content.match(/households\/([a-f0-9-]{36})/i);
     const missionMatch = msg.content.match(/missions\/([a-f0-9-]{36})/i);
 
@@ -896,17 +933,34 @@ const MessageBubble = memo(
         {/* Avatar (other user) */}
         {!isOwn && (
           <div className="shrink-0 mr-2 self-end mb-1">
-            {groupEnd ? <GemAvatar name={msg.sender.name} size={8} /> : <div className="w-8" />}
+            {groupEnd ? (
+              isAiMessage ? (
+                <div className="h-8 w-8 rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-violet-500/30">
+                  <span className="text-[15px] select-none">🤖</span>
+                </div>
+              ) : (
+                <GedOsAvatar name={msg.sender.name} size={8} online={msg.sender.online} status={msg.sender.chatStatus} />
+              )
+            ) : <div className="w-8" />}
           </div>
         )}
 
         <div className="max-w-[80%] sm:max-w-[70%] relative">
-          {/* Sender name */}
+          {/* Sender name — with AI badge if needed */}
           {showName && !isOwn && (
             <div
-              className={`text-[12px] font-semibold mb-1 ${getAvatarColor(msg.sender.name).replace('bg-', 'text-').replace('-500', '-400')}`}
+              className={`text-[12px] font-semibold mb-1 flex items-center gap-1.5 ${
+                isAiMessage
+                  ? 'text-violet-400'
+                  : getAvatarColor(msg.sender.name).replace('bg-', 'text-').replace('-500', '-400')
+              }`}
             >
               {msg.sender.name}
+              {isAiMessage && (
+                <span className="inline-flex items-center gap-0.5 text-[9px] font-bold uppercase tracking-widest bg-violet-500/15 text-violet-400 border border-violet-500/30 px-1.5 py-0.5 rounded-full">
+                  <Zap size={8} />AI
+                </span>
+              )}
             </div>
           )}
 
@@ -997,7 +1051,9 @@ const MessageBubble = memo(
             className={`relative rounded-[20px] px-4 py-2.5 shadow-sm cursor-default select-text transition-all ${
               isOwn
                 ? 'bg-indigo-600 text-white rounded-tr-none shadow-indigo-500/10'
-                : 'bg-slate-800 text-slate-100 rounded-tl-none border border-white/5'
+                : isAiMessage
+                  ? 'bg-gradient-to-br from-violet-900/80 to-indigo-900/60 text-slate-100 rounded-tl-none border border-violet-500/20 shadow-lg shadow-violet-900/20'
+                  : 'bg-slate-800 text-slate-100 rounded-tl-none border border-white/5'
             } ${hovered ? 'shadow-md brightness-110' : ''}`}
           >
             {/* Starred indicator */}
@@ -1068,9 +1124,9 @@ const MessageBubble = memo(
                     </div>
                   )}
 
-                  {/* GEM Context Cards */}
-                  {householdMatch && <GemContextCard type="household" id={householdMatch[1]} />}
-                  {missionMatch && <GemContextCard type="mission" id={missionMatch[1]} />}
+                  {/* GED OS Context Cards */}
+                  {householdMatch && <GedOsContextCard type="household" id={householdMatch[1]} />}
+                  {missionMatch && <GedOsContextCard type="mission" id={missionMatch[1]} />}
                 </>
               )}
             </div>
@@ -1080,26 +1136,33 @@ const MessageBubble = memo(
               <span className={`text-[10px] ${isOwn ? 'text-indigo-300/80' : 'text-slate-500'}`}>
                 {formatTime(msg.createdAt)}
               </span>
-              {isOwn && (
-                <div title="Statut de lecture">
-                  {(() => {
-                    const readers =
-                      conversation?.participants?.filter(
-                        (p: any) =>
-                          p.userId !== msg.senderId &&
-                          p.lastReadAt &&
-                          new Date(p.lastReadAt).getTime() >= new Date(msg.createdAt).getTime()
-                      ) || [];
-                    const isReadByAll =
-                      readers.length >= (conversation?.participants?.length || 1) - 1;
-                    const isReadBySome = readers.length > 0;
+              {isOwn && (() => {
+                const readers =
+                  conversation?.participants?.filter(
+                    (p: any) =>
+                      p.userId !== msg.senderId &&
+                      p.lastReadAt &&
+                      new Date(p.lastReadAt).getTime() >= new Date(msg.createdAt).getTime()
+                  ) || [];
+                const isReadByAll =
+                  readers.length > 0 && readers.length >= (conversation?.participants?.length || 1) - 1;
+                const isReadBySome = readers.length > 0;
+                
+                const readerNames = readers.map((r: any) => r.user.name).join(', ');
+                const tooltipText = isReadBySome ? `Lu par : ${readerNames}` : 'Envoyé';
 
-                    if (isReadByAll) return <CheckCheck size={12} className="text-emerald-400" />;
-                    if (isReadBySome) return <CheckCheck size={12} className="text-indigo-300" />;
-                    return <Check size={12} className="text-indigo-300/50" />;
-                  })()}
-                </div>
-              )}
+                return (
+                  <div title={tooltipText} className="cursor-help">
+                    {isReadByAll ? (
+                      <CheckCheck size={12} className="text-emerald-400" />
+                    ) : isReadBySome ? (
+                      <CheckCheck size={12} className="text-indigo-300" />
+                    ) : (
+                      <Check size={12} className="text-indigo-300/50" />
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           </div>
 
@@ -1197,7 +1260,7 @@ const ConversationInfoPanel = memo(
                   key={m.id}
                   className="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-800/50 transition-colors group"
                 >
-                  <GemAvatar name={m.user.name} size={8} online={m.user.online} />
+                  <GedOsAvatar name={m.user.name} size={8} online={m.user.online} status={m.user.chatStatus} />
                   <div className="flex-1 min-w-0">
                     <p className="text-[14px] font-medium text-white truncate">{m.user.name}</p>
                     <p className="text-[12px] text-slate-400 truncate">{m.user.role}</p>
@@ -1818,7 +1881,7 @@ const GemChatComposer = memo(
                   className="flex items-center gap-3 w-full px-4 py-2.5 hover:bg-slate-700 transition-colors text-left"
                   title={u.name}
                 >
-                  <GemAvatar name={u.name} size={7} online={u.online} />
+                  <GedOsAvatar name={u.name} size={7} online={u.online} />
                   <div>
                     <p className="text-[13px] font-medium text-white">{u.name}</p>
                     <p className="text-[11px] text-slate-400">{u.role}</p>
@@ -2025,6 +2088,194 @@ const GemChatComposer = memo(
 GemChatComposer.displayName = 'GemChatComposer';
 
 // ══════════════════════════════════════════════════════
+// CHAT HELP MODAL
+// ══════════════════════════════════════════════════════
+function ChatHelpModal({ onClose }: { onClose: () => void }) {
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="bg-slate-900 border border-white/10 rounded-2xl shadow-2xl w-full max-w-2xl mx-4 max-h-[85vh] flex flex-col overflow-hidden">
+        <div className="flex items-center justify-between p-5 border-b border-white/10 bg-slate-800/50">
+          <div className="flex items-center gap-3">
+            <div className="flex-shrink-0 h-10 w-10 rounded-full bg-indigo-500/20 flex items-center justify-center">
+              <HelpCircle size={20} className="text-indigo-400" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-white">Guide d'utilisation GED OS Chat</h2>
+              <p className="text-xs text-slate-400">Fonctionnalités avancées et raccourcis</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-full transition-colors">
+            <X size={20} />
+          </button>
+        </div>
+        
+        <div className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar">
+          
+          <section>
+            <h3 className="text-sm font-bold text-indigo-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+              <CheckCheck size={16} /> Statuts & Présence
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="bg-slate-800/50 p-3 rounded-xl border border-white/5 flex items-center gap-3">
+                <span className="h-3 w-3 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.5)]"></span>
+                <div>
+                  <p className="text-sm text-white font-medium">En ligne</p>
+                  <p className="text-xs text-slate-400">Actif et disponible</p>
+                </div>
+              </div>
+              <div className="bg-slate-800/50 p-3 rounded-xl border border-white/5 flex items-center gap-3">
+                <span className="h-3 w-3 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.5)]"></span>
+                <div>
+                  <p className="text-sm text-white font-medium">Absent</p>
+                  <p className="text-xs text-slate-400">Temporairement éloigné</p>
+                </div>
+              </div>
+              <div className="bg-slate-800/50 p-3 rounded-xl border border-white/5 flex items-center gap-3">
+                <span className="h-3 w-3 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]"></span>
+                <div>
+                  <p className="text-sm text-white font-medium">Ne pas déranger</p>
+                  <p className="text-xs text-slate-400">Occupé, notifications réduites</p>
+                </div>
+              </div>
+              <div className="bg-slate-800/50 p-3 rounded-xl border border-white/5 flex items-center gap-3">
+                <span className="h-3 w-3 rounded-full bg-slate-600 shadow-[0_0_8px_rgba(71,85,105,0.5)]"></span>
+                <div>
+                  <p className="text-sm text-white font-medium">Hors ligne</p>
+                  <p className="text-xs text-slate-400">Non connecté</p>
+                </div>
+              </div>
+            </div>
+            <p className="text-xs text-slate-500 mt-2 italic">Cliquez sur votre avatar en haut à gauche pour modifier votre statut.</p>
+          </section>
+
+          <section>
+            <h3 className="text-sm font-bold text-indigo-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+              <CheckCheck size={16} /> Accusés de lecture
+            </h3>
+            <div className="space-y-3">
+              <div className="bg-slate-800/50 p-3 rounded-xl border border-white/5 flex items-center gap-3">
+                <Check size={16} className="text-indigo-300/50 flex-shrink-0" />
+                <p className="text-sm text-slate-300"><strong>Envoyé</strong> : Le message a bien été transmis au serveur.</p>
+              </div>
+              <div className="bg-slate-800/50 p-3 rounded-xl border border-white/5 flex items-center gap-3">
+                <CheckCheck size={16} className="text-indigo-300 flex-shrink-0" />
+                <p className="text-sm text-slate-300"><strong>Lu par certains</strong> : Une partie des membres a lu le message.</p>
+              </div>
+              <div className="bg-slate-800/50 p-3 rounded-xl border border-white/5 flex items-center gap-3">
+                <CheckCheck size={16} className="text-emerald-400 flex-shrink-0" />
+                <p className="text-sm text-slate-300"><strong>Lu par tous</strong> : L'intégralité du groupe a lu le message.</p>
+              </div>
+            </div>
+            <p className="text-xs text-slate-500 mt-2 italic">Survolez les coches d'un de vos messages pour voir exactement qui l'a lu.</p>
+          </section>
+
+          <section>
+            <h3 className="text-sm font-bold text-violet-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+              <Zap size={16} /> GED OS AI — Assistant Intelligent 🤖
+            </h3>
+            <div className="bg-gradient-to-br from-violet-900/30 to-indigo-900/20 border border-violet-500/20 rounded-xl p-4 mb-3">
+              <p className="text-xs text-slate-300 leading-relaxed">
+                GED OS AI est votre assistant terrain intelligent, directement intégré dans le chat. Il répond à vos questions techniques, normes électriques, et questions opérationnelles — en temps réel.
+              </p>
+            </div>
+            <div className="space-y-3">
+              <div className="bg-slate-800/50 p-3 rounded-xl border border-violet-500/10">
+                <p className="text-xs font-bold text-violet-300 mb-2 uppercase tracking-wide">Comment l'invoquer</p>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <kbd className="bg-violet-900/50 border border-violet-500/30 text-violet-300 px-2 py-0.5 rounded-lg text-xs font-mono font-bold">/ia</kbd>
+                    <span className="text-xs text-slate-400">suivi de votre question</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <kbd className="bg-violet-900/50 border border-violet-500/30 text-violet-300 px-2 py-0.5 rounded-lg text-xs font-mono font-bold">@GED OS</kbd>
+                    <span className="text-xs text-slate-400">mention dans n'importe quel message</span>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-slate-800/50 p-3 rounded-xl border border-violet-500/10">
+                <p className="text-xs font-bold text-violet-300 mb-2 uppercase tracking-wide">Exemples concrets</p>
+                <div className="space-y-1.5">
+                  {[
+                    '/ia Quelle est la norme pour le câblage BT au Sénégal ?',
+                    '/ia Comment calculer la capacité d\'un disjoncteur 63A ?',
+                    '/ia Quels documents sont nécessaires pour une mission de terrain ?',
+                    '@GED OS Donne-moi une checklist de sécurité électrique',
+                  ].map((ex) => (
+                    <div key={ex} className="flex items-start gap-2">
+                      <span className="text-violet-500 mt-0.5 shrink-0">›</span>
+                      <code className="text-[11px] text-slate-400 font-mono">{ex}</code>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <p className="text-xs text-slate-500 mt-2 italic">Les réponses IA apparaissent avec un fond violet distinctif et le badge <span className="text-violet-400 font-bold">⚡ AI</span>.</p>
+          </section>
+
+          <section>
+            <h3 className="text-sm font-bold text-indigo-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+              <MessageSquare size={16} /> Outils de communication
+            </h3>
+            <div className="grid grid-cols-1 gap-2">
+              <div className="flex items-start gap-3 p-2">
+                <AtSign size={16} className="text-slate-400 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-sm text-white font-medium">Mentions (@)</p>
+                  <p className="text-xs text-slate-400">Tapez <kbd className="bg-slate-800 px-1 rounded text-indigo-300">@</kbd> suivi du nom pour interpeller un collaborateur.</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 p-2">
+                <Reply size={16} className="text-slate-400 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-sm text-white font-medium">Réponses</p>
+                  <p className="text-xs text-slate-400">Cliquez sur <Reply size={12} className="inline mx-1"/> pour répondre spécifiquement à un message et garder le contexte.</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 p-2">
+                <Smile size={16} className="text-slate-400 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-sm text-white font-medium">Réactions Emoji</p>
+                  <p className="text-xs text-slate-400">Survolez un message et cliquez sur <Smile size={12} className="inline mx-1"/> pour ajouter une réaction rapide (👍, ❤️, etc.).</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 p-2">
+                <Pin size={16} className="text-slate-400 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-sm text-white font-medium">Épingler & Favoris</p>
+                  <p className="text-xs text-slate-400">Épinglez <Pin size={12} className="inline mx-1"/> des messages vitaux pour tout le groupe, ou mettez en favori <Star size={12} className="inline mx-1"/> pour votre propre usage.</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 p-2">
+                <Command size={16} className="text-slate-400 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-sm text-white font-medium">Commandes Spéciales</p>
+                  <p className="text-xs text-slate-400">Tapez <kbd className="bg-slate-800 px-1 rounded text-indigo-300">/ménage</kbd> dans le champ de texte pour chercher un ménage par nom ou numéro.</p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+        </div>
+        
+        <div className="p-4 border-t border-white/10 bg-slate-800/30 flex justify-end">
+          <button
+            onClick={onClose}
+            className="px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-xl transition-colors shadow-lg shadow-indigo-600/20"
+          >
+            J'ai compris
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════
 // MAIN COMMUNICATION COMPONENT
 // ══════════════════════════════════════════════════════
 
@@ -2072,6 +2323,7 @@ export default function Communication() {
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [groupName, setGroupName] = useState('');
   const [isGroupPublic, setIsGroupPublic] = useState(false);
+  const [showHelpModal, setShowHelpModal] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null); // Sentinel div at the bottom of the message list
   const chatContainerRef = useRef<HTMLDivElement>(null); // Ref for the chat container
@@ -2109,14 +2361,14 @@ export default function Communication() {
   // ── Persist prefs ──────────────────────────────────────
   useEffect(() => {
     try {
-      const s = localStorage.getItem('gem_chat_sound');
+      const s = localStorage.getItem('ged_os_chat_sound');
       if (s !== null) setSoundEnabled(s === 'true');
-      const u = localStorage.getItem('gem_chat_unread');
+      const u = localStorage.getItem('ged_os_chat_unread');
       if (u) {
         const parsed = JSON.parse(u) as Record<string, number>;
         setUnreadCounts(parsed);
       }
-      const star = localStorage.getItem('gem_chat_starred');
+      const star = localStorage.getItem('ged_os_chat_starred');
       if (star) setStarred(new Set(JSON.parse(star)));
     } catch {
       /* noop — localStorage peut être indisponible */
@@ -2124,13 +2376,13 @@ export default function Communication() {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('gem_chat_sound', String(soundEnabled));
+    localStorage.setItem('ged_os_chat_sound', String(soundEnabled));
   }, [soundEnabled]);
   useEffect(() => {
-    localStorage.setItem('gem_chat_unread', JSON.stringify(unreadCounts));
+    localStorage.setItem('ged_os_chat_unread', JSON.stringify(unreadCounts));
   }, [unreadCounts]);
   useEffect(() => {
-    localStorage.setItem('gem_chat_starred', JSON.stringify([...starred]));
+    localStorage.setItem('ged_os_chat_starred', JSON.stringify([...starred]));
   }, [starred]);
 
   // ── Auto-scroll ────────────────────────────────────────
@@ -2462,6 +2714,14 @@ export default function Communication() {
       );
     };
 
+    const onUserStatus = (p: { userId: string; chatStatus: string; chatStatusText: string | null }) => {
+      setUsers((c) =>
+        c.map((m) =>
+          m.id === p.userId ? { ...m, chatStatus: p.chatStatus as any, chatStatusText: p.chatStatusText } : m
+        )
+      );
+    };
+
     socket.on('chat:presence', onPresence);
     socket.on('chat:conversation:new', onConversation);
     socket.on('chat:message:new', onMessage);
@@ -2471,6 +2731,7 @@ export default function Communication() {
     socket.on('chat:conversation:deleted', onConvDeleted);
     socket.on('chat:conversation:read', onRead);
     socket.on('chat:history:cleared', onHistoryCleared);
+    socket.on('chat:user:status', onUserStatus);
 
     return () => {
       socket.off('chat:presence', onPresence);
@@ -2482,6 +2743,7 @@ export default function Communication() {
       socket.off('chat:conversation:deleted', onConvDeleted);
       socket.off('chat:conversation:read', onRead);
       socket.off('chat:history:cleared', onHistoryCleared);
+      socket.off('chat:user:status', onUserStatus);
     };
   }, [activeConversationId, socketVersion, user?.id, soundEnabled]);
 
@@ -2783,12 +3045,13 @@ export default function Communication() {
   if (bootstrapping) {
     return (
       <PageContainer maxWidth="full">
-        <LoadingState text="Connexion à GEM Chat…" minHeight="min-h-[60vh]" />
+        <LoadingState text="Connexion à GED OS Chat…" minHeight="min-h-[60vh]" />
       </PageContainer>
     );
   }
 
   const hasActiveConv = !!activeConversation;
+  const currentUserProfile = users.find((u) => u.id === user?.id);
 
   return (
     <>
@@ -2802,14 +3065,63 @@ export default function Communication() {
         >
           {/* Sidebar header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-white/8">
-            <div className="flex items-center gap-3">
-              <GemAvatar name={user?.name || 'U'} size={9} online />
-              <div>
+            <div className="flex items-center gap-3 relative">
+              <div 
+                className="cursor-pointer"
+                onClick={() => {
+                  const menu = document.getElementById('status-menu');
+                  if (menu) menu.classList.toggle('hidden');
+                }}
+              >
+                <GedOsAvatar name={user?.name || 'U'} size={9} online={currentUserProfile?.online ?? true} status={currentUserProfile?.chatStatus} />
+              </div>
+              <div className="cursor-pointer" onClick={() => {
+                const menu = document.getElementById('status-menu');
+                if (menu) menu.classList.toggle('hidden');
+              }}>
                 <h1 className="text-[14px] font-bold text-white leading-tight">{user?.name}</h1>
-                <p className="text-[11px] text-emerald-400 flex items-center gap-1">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse inline-block" />
-                  En ligne
+                <p className="text-[11px] flex items-center gap-1 mt-0.5" style={{
+                  color: currentUserProfile?.chatStatus === 'AWAY' ? '#fbbf24' : 
+                         currentUserProfile?.chatStatus === 'DND' ? '#f43f5e' : 
+                         currentUserProfile?.chatStatus === 'OFFLINE' ? '#475569' : '#34d399'
+                }}>
+                  <span className={`h-1.5 w-1.5 rounded-full inline-block ${
+                    currentUserProfile?.chatStatus === 'AWAY' ? 'bg-amber-400' :
+                    currentUserProfile?.chatStatus === 'DND' ? 'bg-rose-500' :
+                    currentUserProfile?.chatStatus === 'OFFLINE' ? 'bg-slate-600' : 'bg-emerald-400 animate-pulse'
+                  }`} />
+                  {currentUserProfile?.chatStatus === 'AWAY' ? 'Absent' : 
+                   currentUserProfile?.chatStatus === 'DND' ? 'Ne pas déranger' : 
+                   currentUserProfile?.chatStatus === 'OFFLINE' ? 'Hors ligne' : 'En ligne'}
+                  <ChevronDown size={10} className="ml-1 opacity-50" />
                 </p>
+              </div>
+
+              {/* Status Dropdown Menu */}
+              <div id="status-menu" className="hidden absolute top-full left-0 mt-2 w-48 bg-slate-800 border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden">
+                <div className="p-2 border-b border-white/5 bg-white/5">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Modifier le statut</p>
+                </div>
+                {[
+                  { value: 'ONLINE', label: 'En ligne', color: 'bg-emerald-400' },
+                  { value: 'AWAY', label: 'Absent', color: 'bg-amber-400' },
+                  { value: 'DND', label: 'Ne pas déranger', color: 'bg-rose-500' },
+                  { value: 'OFFLINE', label: 'Hors ligne', color: 'bg-slate-600' }
+                ].map(s => (
+                  <button
+                    key={s.value}
+                    onClick={() => {
+                      chatService.updateUserStatus(s.value).then(() => {
+                        document.getElementById('status-menu')?.classList.add('hidden');
+                        toast.success('Statut mis à jour');
+                      }).catch(() => toast.error('Erreur lors de la mise à jour'));
+                    }}
+                    className={`flex items-center gap-3 w-full px-4 py-2 text-left text-[12px] hover:bg-slate-700 transition-colors ${currentUserProfile?.chatStatus === s.value ? 'bg-slate-700/50 font-bold text-white' : 'text-slate-300'}`}
+                  >
+                    <span className={`h-2 w-2 rounded-full ${s.color}`} />
+                    {s.label}
+                  </button>
+                ))}
               </div>
             </div>
             <div className="flex items-center gap-1">
@@ -2834,6 +3146,13 @@ export default function Communication() {
                 title="Contacts"
               >
                 <AtSign size={16} />
+              </button>
+              <button
+                onClick={() => setShowHelpModal(true)}
+                className="p-1.5 text-slate-500 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+                title="Aide & Guide d'utilisation"
+              >
+                <HelpCircle size={16} />
               </button>
             </div>
           </div>
@@ -2919,7 +3238,7 @@ export default function Communication() {
                               <Users2 size={20} className="text-white" />
                             </div>
                           ) : otherUser ? (
-                            <GemAvatar name={otherUser.name} size={12} online={otherUser.online} />
+                            <GedOsAvatar name={otherUser.name} size={12} online={otherUser.online} />
                           ) : (
                             <div className="h-12 w-12 rounded-2xl bg-slate-700 flex items-center justify-center">
                               <MessageSquare size={18} className="text-slate-400" />
@@ -2981,7 +3300,7 @@ export default function Communication() {
                       className="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-800/50 transition-colors cursor-pointer group"
                       onClick={() => void handleOpenDirect(member.id)}
                     >
-                      <GemAvatar name={member.name} size={9} online={member.online} />
+                      <GedOsAvatar name={member.name} size={9} online={member.online} />
                       <div className="flex-1 min-w-0">
                         <p className="text-[14px] font-medium text-slate-200 truncate">
                           {member.name}
@@ -3351,7 +3670,7 @@ export default function Communication() {
                             className="flex items-start gap-3 w-full px-4 py-2 hover:bg-slate-800/50 text-left transition-colors"
                             title={`Aller au message de ${m.sender.name}`}
                           >
-                            <GemAvatar name={m.sender.name} size={7} />
+                            <GedOsAvatar name={m.sender.name} size={7} />
                             <div className="min-w-0">
                               <p className="text-[12px] font-medium text-slate-300">
                                 {m.sender.name} · {formatTime(m.createdAt)}
@@ -3536,7 +3855,7 @@ export default function Communication() {
                 <MessagesSquare size={44} className="text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-white mb-2">GEM Chat</h1>
+                <h1 className="text-2xl font-bold text-white mb-2">GED OS Chat</h1>
                 <p className="text-[14px] text-slate-500 leading-relaxed">
                   Messagerie d'équipe opérationnelle pour la gestion terrain. Sélectionnez une
                   conversation ou créez un groupe.
@@ -3653,6 +3972,11 @@ export default function Communication() {
           </div>
         </div>
       </div>
+    )}
+
+    {/* ── Modale d'aide ── */}
+    {showHelpModal && (
+      <ChatHelpModal onClose={() => setShowHelpModal(false)} />
     )}
     </>
   );

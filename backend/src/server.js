@@ -30,8 +30,19 @@ async function ensureAdminUser() {
     const { default: prisma } = await import('./core/utils/prisma.js');
     const bcrypt = (await import('bcryptjs')).default;
 
-    // Check if admin exists
-    const existingAdmin = await prisma.user.findUnique({ where: { email: bootstrapEmail } });
+    // Create organization first if not exists
+    let org = await prisma.organization.findFirst({ where: { name: bootstrapOrganization } });
+    if (!org) {
+      org = await prisma.organization.create({ data: { name: bootstrapOrganization } });
+    }
+
+    // Check if admin exists with email + organizationId (composite unique constraint)
+    const existingAdmin = await prisma.user.findFirst({
+      where: {
+        email: bootstrapEmail,
+        organizationId: org.id,
+      },
+    });
 
     if (!existingAdmin) {
       console.log('🌱 Creating bootstrap admin user...');
@@ -39,12 +50,6 @@ async function ensureAdminUser() {
       const salt = await bcrypt.genSalt(10);
       const passwordHash = await bcrypt.hash(bootstrapPassword, salt);
       const answerHash = await bcrypt.hash(bootstrapSecurityAnswer.toLowerCase(), salt);
-
-      // Create organization if not exists
-      let org = await prisma.organization.findFirst({ where: { name: bootstrapOrganization } });
-      if (!org) {
-        org = await prisma.organization.create({ data: { name: bootstrapOrganization } });
-      }
 
       // Create admin user
       await prisma.user.create({
@@ -62,7 +67,20 @@ async function ensureAdminUser() {
 
       console.log('✅ Bootstrap admin user created.');
     } else {
-      console.log('✅ Bootstrap admin user already exists');
+      console.log('🔄 Updating bootstrap admin credentials...');
+      const salt = await bcrypt.genSalt(10);
+      const passwordHash = await bcrypt.hash(bootstrapPassword, salt);
+      const answerHash = await bcrypt.hash(bootstrapSecurityAnswer.toLowerCase(), salt);
+      
+      await prisma.user.update({
+        where: { id: existingAdmin.id },
+        data: {
+          passwordHash,
+          securityAnswerHash: answerHash,
+          requires2FA: true
+        }
+      });
+      console.log('✅ Bootstrap admin user updated with current .env credentials');
     }
   } catch (error) {
     console.error('❌ Error ensuring admin user:', error.message);
@@ -76,17 +94,33 @@ async function ensureAdminUser() {
  * 3. Provides error feedback if the boot fails.
  */
 async function bootstrap() {
-  console.log(`🚀 Bootstrapping PROQUELEC Server on port ${PORT}...`);
+  console.log(`🚀 Bootstrapping GED OS Server on port ${PORT}...`);
 
   const server = http.createServer((req, res) => {
     // Add basic CORS for bootstrap phase debugging
-    const origin = req.headers.origin || process.env.FRONTEND_URL || 'http://localhost:5173';
-    res.setHeader('Access-Control-Allow-Origin', origin);
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    // 🛡️ [SECURITY sec_001] Restricted CORS during bootstrap
+    const origin = req.headers.origin;
+    const allowedOrigins = [
+      'http://localhost:8889', 'http://127.0.0.1:8889', 'http://0.0.0.0:8889',
+      'http://localhost:8890', 'http://localhost:8891',
+      'https://ged-os.proquelec.sn', 'https://www.ged-os.proquelec.sn'
+    ];
+    
+    // Add custom env origins if present
+    const envOrigins = (process.env.CORS_ORIGINS || '').split(',').map(o => o.trim()).filter(Boolean);
+    const finalAllowed = [...new Set([...allowedOrigins, ...envOrigins])];
+
+    if (origin && (finalAllowed.includes(origin) || process.env.NODE_ENV !== 'production')) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+    } else if (!origin) {
+      // For non-browser requests or same-origin
+      res.setHeader('Access-Control-Allow-Origin', process.env.FRONTEND_URL || 'http://localhost:8889');
+    }
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
     res.setHeader(
       'Access-Control-Allow-Headers',
-      'Content-Type, Authorization, X-Requested-With, Accept, Origin'
+      'Content-Type, Authorization, X-Requested-With, Accept, Origin, x-project-id, x-organization-id, x-impersonate-user-id'
     );
 
     if (req.method === 'OPTIONS') {
@@ -98,6 +132,10 @@ async function bootstrap() {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       return res.end(JSON.stringify({ status: 'BOOTING', port: PORT }));
     }
+
+    // Default response during initialization for any other route
+    res.writeHead(503, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Serveur en cours d\'initialisation. Veuillez patienter.' }));
   });
 
   server.listen(PORT, '0.0.0.0', async () => {
@@ -150,7 +188,11 @@ async function bootstrap() {
         cleanupFunctions.push(() => clearInterval(alertEscalationCleanup));
       if (igppAlertCleanup) cleanupFunctions.push(() => clearInterval(igppAlertCleanup));
 
-      console.log('💎 PROQUELEC Server is now fully operational.');
+      // 🤖 ACTIVATION DU MOTEUR D'AUTOMATISATION (PHASE 5)
+      const { automationService } = await import('./core/services/automation.service.js');
+      console.log('🤖 Automation Engine initialized (Human-in-the-loop active).');
+
+      console.log('💎 GED OS Server is now fully operational.');
 
       // ✅ IMPROVED: Complete graceful shutdown
       const gracefulShutdown = async () => {
@@ -187,11 +229,23 @@ async function bootstrap() {
       // Fallback handler to show the error in the browser/curl
       server.removeAllListeners('request');
       server.on('request', (req, res) => {
-        const origin = req.headers.origin || process.env.FRONTEND_URL || 'http://localhost:5173';
+        const origin = req.headers.origin || process.env.FRONTEND_URL || 'http://localhost:8889';
         res.setHeader('Access-Control-Allow-Origin', origin);
         res.setHeader('Access-Control-Allow-Credentials', 'true');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, x-project-id, x-organization-id, x-impersonate-user-id');
+
+        if (req.method === 'OPTIONS') {
+          res.writeHead(204);
+          return res.end();
+        }
+
         res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'Service temporairement indisponible' }));
+        res.end(JSON.stringify({ 
+          error: 'Service temporairement indisponible (BOOT_ERROR)',
+          details: error.message,
+          stack: error.stack
+        }));
       });
     }
   });

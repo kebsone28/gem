@@ -71,6 +71,12 @@ export const getHouseholds = async (req, res) => {
             deletedAt: null
         };
 
+        // 🛡️ Isolation Multi-Tenant par Projet
+        const activeProjectId = req.projectId || projectId;
+        if (activeProjectId) {
+            where.projectId = activeProjectId;
+        }
+
         if (search) {
             const searchTerm = String(search).trim();
             where.OR = [
@@ -83,8 +89,6 @@ export const getHouseholds = async (req, res) => {
 
         if (zoneId) {
             where.zoneId = zoneId;
-        } else if (projectId) {
-            where.zone = { projectId };
         }
 
         if (grappeId) {
@@ -141,7 +145,12 @@ export const getHouseholdById = async (req, res) => {
         const { organizationId } = req.user;
 
         const household = await prisma.household.findFirst({
-            where: { id, organizationId, deletedAt: null },
+            where: { 
+                id, 
+                organizationId, 
+                deletedAt: null,
+                ...(req.projectId ? { projectId: req.projectId } : {})
+            },
             select: LEGACY_SAFE_HOUSEHOLD_READ_SELECT
         });
 
@@ -188,6 +197,7 @@ export const createHousehold = async (req, res) => {
         const household = await prisma.household.create({
             data: {
                 zoneId: resolvedZoneId,
+                projectId: req.projectId || null, // Associer au projet actif
                 organizationId,
                 status: status || 'planned',
                 location: location || {},
@@ -246,7 +256,12 @@ export const updateHousehold = async (req, res) => {
         const updates = req.body || {};
 
         const household = await prisma.household.findFirst({
-            where: { id, organizationId, deletedAt: null },
+            where: { 
+                id, 
+                organizationId, 
+                deletedAt: null,
+                ...(req.projectId ? { projectId: req.projectId } : {})
+            },
             include: { zone: { select: { projectId: true } } }
         });
 

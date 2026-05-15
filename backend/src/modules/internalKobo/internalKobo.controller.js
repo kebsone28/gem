@@ -116,7 +116,7 @@ function uniqueStrings(values) {
   return Array.from(new Set(values.map((value) => String(value || '').trim()).filter(Boolean)));
 }
 
-function normalizeBuilderKey(value, fallback = 'gem_form') {
+function normalizeBuilderKey(value, fallback = 'ged_os_form') {
   const normalized = String(value || '')
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
@@ -209,7 +209,7 @@ function summarizeUniversalXlsFormMapping(mapping) {
     formKey: mapping.koboAssetId,
     formVersion: mapping.version,
     title: definition.title || mapping.koboAssetId,
-    engine: definition.engine || 'gem-xlsform-universal',
+    engine: definition.engine || 'ged-os-xlsform-universal',
     engineVersion: definition.engineVersion || XLSFORM_ENGINE_VERSION,
     active,
     status: definition.lifecycle?.status || (active ? 'active' : 'inactive'),
@@ -228,7 +228,7 @@ function summarizeUniversalXlsFormMapping(mapping) {
 }
 
 function sanitizeObjectWithValuePatch(value, valuePatch = {}, key = '') {
-  if (key && key.startsWith('_gem_attachment_')) return OMIT_FIELD;
+  if (key && key.startsWith('_ged_os_attachment_')) return OMIT_FIELD;
   if (key && Object.prototype.hasOwnProperty.call(valuePatch, key)) return valuePatch[key];
   if (typeof value === 'string' && value.startsWith('data:')) return '[media stored as attachment]';
   if (Array.isArray(value)) {
@@ -303,7 +303,7 @@ async function normalizeSubmissionAttachments({
       originalBytes: Number(rawAttachment.originalBytes || rawAttachment.size || 0) || null,
       storedBytes: Number(rawAttachment.storedBytes || rawAttachment.size || 0) || null,
       capturedAt,
-      source: rawAttachment.source || 'gem-internal-kobo',
+      source: rawAttachment.source || 'ged-os-internal-kobo',
       status: 'stored',
     };
 
@@ -594,7 +594,7 @@ async function normalizeSubmissionPayload(body, req) {
       metadata: {
         ...(isPlainObject(body.metadata) ? body.metadata : {}),
         serverFormKey: formKey,
-        serverEngine: universalMapping ? 'gem-xlsform-universal' : 'gem-internal-kobo',
+        serverEngine: universalMapping ? 'ged-os-xlsform-universal' : 'ged-os-internal-kobo',
         serverEngineVersion: universalMapping?.definition?.engineVersion || XLSFORM_ENGINE_VERSION,
         serverFormKeyResolved: universalMapping?.definition?.formKey || INTERNAL_KOBO_FORM_KEY,
         serverFormVersion,
@@ -752,7 +752,7 @@ export const submitInternalKoboSubmission = async (req, res) => {
         data: {
           userId,
           organizationId,
-          deviceId: String(payload.metadata?.deviceId || 'gem-internal-kobo'),
+          deviceId: String(payload.metadata?.deviceId || 'ged-os-internal-kobo'),
           action: 'INTERNAL_KOBO_SUBMISSION',
           details: {
             submissionId: submissionRecord.id,
@@ -836,13 +836,13 @@ export const getInternalKoboFormDefinition = async (req, res) => {
       form: {
         formKey: INTERNAL_KOBO_FORM_KEY,
         formVersion: INTERNAL_KOBO_FORM_VERSION,
-        engine: 'gem-internal-kobo',
+        engine: 'ged-os-internal-kobo',
         allowedRoles: Array.from(INTERNAL_KOBO_ALLOWED_ROLES),
         serverValidation: true,
         xlsFormImport: true,
         universalEngine: {
           enabled: true,
-          engine: 'gem-xlsform-universal',
+          engine: 'ged-os-xlsform-universal',
           engineVersion: XLSFORM_ENGINE_VERSION,
           importedForms,
           capabilities: [
@@ -915,7 +915,7 @@ export const reportInternalKoboClientQueue = async (req, res) => {
       data: {
         userId,
         organizationId,
-        deviceId: String(device.userAgent || device.platform || 'gem-internal-kobo-client').slice(
+        deviceId: String(device.userAgent || device.platform || 'ged-os-internal-kobo-client').slice(
           0,
           160
         ),
@@ -1023,7 +1023,7 @@ export const updateInternalKoboFormDefinitionStatus = async (req, res) => {
       data: {
         userId,
         organizationId,
-        deviceId: 'gem-internal-kobo-admin',
+        deviceId: 'ged-os-internal-kobo-admin',
         action: 'INTERNAL_KOBO_XLSFORM_STATUS',
         details: {
           formKey,
@@ -1263,7 +1263,7 @@ export const createInternalKoboFormDefinition = async (req, res) => {
     }
 
     const importId = crypto.randomUUID();
-    const formKey = normalizeBuilderKey(req.body?.formKey || title, 'gem_form');
+    const formKey = normalizeBuilderKey(req.body?.formKey || title, 'ged_os_form');
     const formVersion = String(
       req.body?.formVersion || `draft-${new Date().toISOString().replace(/[:.]/g, '-')}`
     ).trim();
@@ -1352,7 +1352,7 @@ export const createInternalKoboFormDefinition = async (req, res) => {
       data: {
         userId,
         organizationId,
-        deviceId: 'gem-internal-kobo-admin',
+        deviceId: 'ged-os-internal-kobo-admin',
         action: 'INTERNAL_KOBO_FORM_BUILDER_SAVE',
         details: {
           importId,
@@ -1534,7 +1534,7 @@ export const importInternalKoboXlsForm = async (req, res) => {
       data: {
         userId,
         organizationId,
-        deviceId: 'gem-internal-kobo-admin',
+        deviceId: 'ged-os-internal-kobo-admin',
         action: 'INTERNAL_KOBO_XLSFORM_IMPORT',
         details: {
           importId,
@@ -1704,7 +1704,7 @@ export const exportInternalKoboSubmissions = async (req, res) => {
       new Set(
         submissions.flatMap((submission) =>
           Object.keys(isPlainObject(submission.values) ? submission.values : {}).filter(
-            (key) => !key.startsWith('_gem_attachment_')
+            (key) => !key.startsWith('_ged_os_attachment_')
           )
         )
       )
@@ -1885,7 +1885,7 @@ export const reviewInternalKoboSubmission = async (req, res) => {
       data: {
         userId,
         organizationId,
-        deviceId: 'gem-internal-kobo-admin',
+        deviceId: 'ged-os-internal-kobo-admin',
         action: 'INTERNAL_KOBO_REVIEW',
         details: {
           submissionId: current.id,
@@ -2328,7 +2328,7 @@ export const exportInternalKoboMedia = async (req, res) => {
     });
 
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const filename = `gem-media-${formKey || 'all'}-${timestamp}.zip`;
+    const filename = `ged-os-media-${formKey || 'all'}-${timestamp}.zip`;
 
     res.attachment(filename);
     archive.pipe(res);

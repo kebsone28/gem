@@ -1,9 +1,10 @@
-﻿/* eslint-disable @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const */
+/* eslint-disable @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const */
 import { useMemo } from 'react';
 import { fmtNum } from '../../utils/format';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../store/db';
+import { useLabels } from '../../contexts/LabelsContext';
 import { motion } from 'framer-motion';
 import {
   MapPin,
@@ -73,6 +74,7 @@ const TEXT_MAP: Record<string, string> = {
 
 export default function TeamDashboard() {
   const { user } = useAuth();
+  const { getLabel } = useLabels();
   const households = useLiveQuery(() => db.households.toArray()) || [];
   const zones = useLiveQuery(() => db.zones.toArray()) || [];
   const navigate = useNavigate();
@@ -174,8 +176,8 @@ export default function TeamDashboard() {
       <div className="absolute top-0 left-0 w-full h-[500px] bg-gradient-to-b from-blue-600/10 via-blue-600/5 to-transparent pointer-events-none" />
 
       <PageHeader
-        title="DASHBOARD ÉQUIPE"
-        subtitle="Pilotage opérationnel et performance des brigades terrain"
+        title={getLabel('teams.dashboard_title', 'DASHBOARD ÉQUIPE')}
+        subtitle={getLabel('teams.dashboard_subtitle', 'Pilotage opérationnel et performance des brigades terrain')}
         icon={
           <ShieldCheck
             size={28}

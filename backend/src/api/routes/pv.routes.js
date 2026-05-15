@@ -7,12 +7,13 @@ import {
     upsertPV
 } from '../../modules/pv/pv.controller.js';
 import { authProtect } from '../middlewares/auth.js';
-import { verifierPermission } from '../../middleware/verifierPermission.js';
+import { verifierPermission, verifierModule } from '../../middleware/verifierPermission.js';
 import { PERMISSIONS } from '../../core/config/permissions.js';
 
 const router = express.Router();
 
 router.use(authProtect);
+router.use(verifierModule('documents'));
 
 router.get('/', verifierPermission(PERMISSIONS.VOIR_RAPPORTS), listPVs);
 router.post('/', verifierPermission(PERMISSIONS.GERER_PV), upsertPV);

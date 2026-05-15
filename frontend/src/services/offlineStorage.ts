@@ -15,11 +15,11 @@ export interface LocalHousehold {
   synced: boolean;
 }
 
-export class GemOfflineDB extends Dexie {
+export class GedOsOfflineDB extends Dexie {
   households!: Table<LocalHousehold, string>;
 
   constructor() {
-    super('GemOfflineStorage');
+    super('GED_OS_OfflineStorage');
     // Define indices for quick querying during offline routing/clustering
     this.version(1).stores({
       households: 'id, grappeId, zoneId, region, status, synced',
@@ -27,7 +27,7 @@ export class GemOfflineDB extends Dexie {
   }
 }
 
-export const offlineDB = new GemOfflineDB();
+export const offlineDB = new GedOsOfflineDB();
 
 /**
  * Sync server-side households into the resilient offline IndexedDB.

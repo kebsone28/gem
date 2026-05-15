@@ -1,4 +1,4 @@
-﻿ 
+ 
 import { calculateMissionTotals } from '../../../utils/missionBudget';
 import { missionMemberSchema } from './missionValidation';
 import type { MissionState } from './missionTypes';
@@ -7,6 +7,7 @@ import type { MissionState } from './missionTypes';
  * Sélecteur pour calculer le montant total des indemnités à partir de l'état.
  */
 export const selectTotalFrais = (state: MissionState): number => {
+  if (state.formData.excludeFromFinance) return 0;
   return calculateMissionTotals(state.members).totalFrais;
 };
 

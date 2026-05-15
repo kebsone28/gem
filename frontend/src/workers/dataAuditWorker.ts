@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * dataAuditWorker.ts
  *
@@ -76,8 +75,8 @@ const workerSelf: {
   postMessage: (msg: unknown) => void;
 } =
   typeof self !== 'undefined'
-    ? (self as any)
-    : (globalThis as any);
+    ? (self as Worker)
+    : (globalThis as Worker);
 
 workerSelf.onmessage = (event: {
   data: {

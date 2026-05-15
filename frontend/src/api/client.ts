@@ -3,9 +3,12 @@ import axios from 'axios';
 import logger from '../utils/logger';
 import * as safeStorage from '../utils/safeStorage';
 
+// In development prefer direct backend URL to ensure cookies (HttpOnly) are set on the same origin.
+const defaultBase = import.meta.env.VITE_API_URL || '/api';
+
 const apiClient = axios.create({
-  // Use relative URL. Vite dev proxies /api/* to GEM_API_PORT, defaulting to Docker on 5009.
-  baseURL: import.meta.env.VITE_API_URL || '/api',
+  // baseURL: configured via Vite env or fallback to backend in dev
+  baseURL: defaultBase,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -44,7 +47,6 @@ function triggerSingleLogout(isAlreadyAtLogin: boolean) {
   }, 100);
 }
 
-
 async function performTokenRefresh(): Promise<string> {
   if (refreshPromise) {
     logger.debug('🔐 [AUTH] Refresh already in progress. Waiting for shared refresh promise...');
@@ -55,7 +57,7 @@ async function performTokenRefresh(): Promise<string> {
     try {
       const { data } = await apiClient.post('auth/refresh');
       // No need to check for accessToken in body, it's in the HttpOnly cookie now.
-      
+
       logger.log('✅ [AUTH] Token refreshed successfully via cookie');
       window.dispatchEvent(
         new CustomEvent('auth:token-refreshed', {
@@ -68,7 +70,6 @@ async function performTokenRefresh(): Promise<string> {
       resetRefreshState();
     }
   })();
-
 
   return refreshPromise;
 }
@@ -102,7 +103,12 @@ apiClient.interceptors.response.use(
     const refreshRoute = isRefreshRoute(url);
     const isAlreadyAtLogin = window.location.pathname === '/login';
 
-    if (error.response?.status === 401 && !originalRequest._retry && !publicAuthRoute && !refreshRoute) {
+    if (
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      !publicAuthRoute &&
+      !refreshRoute
+    ) {
       originalRequest._retry = true;
       logger.debug(`🔐 [AUTH] 401 detected on ${url}. Attempting token refresh...`);
 
@@ -112,7 +118,9 @@ apiClient.interceptors.response.use(
         return apiClient(originalRequest);
       } catch (refreshError: unknown) {
         const refreshMessage = (refreshError as { message?: string })?.message;
-        logger.error(`❌ [AUTH] Token refresh failed while replaying ${url}: ${refreshMessage || 'unknown error'}`);
+        logger.error(
+          `❌ [AUTH] Token refresh failed while replaying ${url}: ${refreshMessage || 'unknown error'}`
+        );
         triggerSingleLogout(isAlreadyAtLogin);
         return Promise.reject(refreshError);
       }

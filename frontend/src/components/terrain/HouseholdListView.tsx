@@ -208,137 +208,140 @@ const HouseholdRow = ({
     );
 };
 
-export const HouseholdListView: React.FC<HouseholdListViewProps> = ({
-  households,
-  isDarkMode,
-  onSelectHousehold,
-  totalCount,
-  hasActiveFilters = false,
-  searchQuery = '',
-}) => {
-  const [sortField, setSortField] = React.useState<'id' | 'name' | 'status' | 'region'>('id');
-  const [sortOrder, setSortOrder] = React.useState<'asc' | 'desc'>('asc');
-  const [showInlineReports, setShowInlineReports] = React.useState(false);
-  const setHighlightedLocation = useTerrainUIStore((s: any) => s.setHighlightedLocation);
-  const emptyState = useMemo(() => {
-    const total = totalCount ?? households.length;
-    if (total === 0) {
-      return {
-        title: 'Aucun ménage chargé',
-        message:
-          'Sélectionnez un projet actif, lancez la synchronisation Kobo ou importez les ménages depuis le Data Hub.',
-      };
-    }
-
-    if (searchQuery.trim()) {
-      return {
-        title: 'Aucun résultat',
-        message: `Aucun ménage ne correspond à "${searchQuery.trim()}". Effacez la recherche ou élargissez les filtres.`,
-      };
-    }
-
-    if (hasActiveFilters) {
-      return {
-        title: 'Aucun ménage dans ce filtre',
-        message:
-          'Les ménages existent, mais le filtre équipe/statut ou la zone visible de la carte les masque.',
-      };
-    }
-
-    return {
-      title: 'Aucun ménage trouvé',
-      message: 'Aucune donnée exploitable avec les paramètres actuels.',
-    };
-  }, [hasActiveFilters, households.length, searchQuery, totalCount]);
-
-  React.useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const media = window.matchMedia('(max-width: 1279px)');
-    const sync = () => setShowInlineReports(media.matches);
-    sync();
-    media.addEventListener('change', sync);
-    return () => media.removeEventListener('change', sync);
-  }, []);
-
-  const handleExportCSV = useCallback(() => {
-    const headers = ['N° Ordre', 'Propriétaire', 'Région', 'Statut', 'Lat', 'Lng'];
-    const rows = households.map((h) => [
-      (h as any).numeroordre || h.id,
-      getHouseholdDisplayName(h),
-      (h as any).region || (h as any).departement || '',
-      getHouseholdDerivedStatus(h),
-      h.location?.coordinates?.[1] ?? '',
-      h.location?.coordinates?.[0] ?? '',
-    ]);
-    const csv = [headers, ...rows].map((r: any) => r.join(';')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `menages_${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }, [households]);
-
-  const toggleSort = (field: typeof sortField) => {
-    if (sortField === field) {
-        setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-    } else {
-        setSortField(field);
-        setSortOrder('asc');
-    }
-  };
-
-  const sortedHouseholds = useMemo(() => {
-    return [...households].sort((a, b) => {
-        let valA: any = '';
-        let valB: any = '';
-
-        switch (sortField) {
-            case 'id':
-                valA = parseInt((a as any).numeroordre) || 0;
-                valB = parseInt((b as any).numeroordre) || 0;
-                break;
-            case 'name': {
-                valA = getHouseholdDisplayName(a).toLowerCase();
-                valB = getHouseholdDisplayName(b).toLowerCase();
-                break;
-            }
-            case 'status':
-                valA = getHouseholdDerivedStatus(a).toLowerCase();
-                valB = getHouseholdDerivedStatus(b).toLowerCase();
-                break;
-            case 'region':
-                valA = (a.region || '').toLowerCase();
-                valB = (b.region || '').toLowerCase();
-                break;
-        }
-
-        if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
-        if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
-        return 0;
-    });
-  }, [households, sortField, sortOrder]);
-
-  return (
-    <motion.div
-      key="list"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className={`h-full w-full overflow-hidden flex flex-col rounded-3xl border shadow-lg ${
-        isDarkMode ? 'bg-transparent border-none' : 'bg-white border-slate-200'
-      }`}
-    >
-      {/* Header */}
-      <div
-        className={`px-4 py-4 sm:px-6 sm:py-5 flex-shrink-0 border-b flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 ${
-          isDarkMode ? 'border-slate-800 bg-slate-900/40' : 'border-slate-100 bg-white'
-        }`}
-      >
-        <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-4">
-          <h3 className="min-w-0 text-[1.35rem] sm:text-xl font-black uppercase tracking-tight sm:tracking-tighter leading-none text-white">
-            Ménages
-          </h3>
+import { useLabels } from '../../contexts/LabelsContext';
+ 
+ export const HouseholdListView: React.FC<HouseholdListViewProps> = ({
+   households,
+   isDarkMode,
+   onSelectHousehold,
+   totalCount,
+   hasActiveFilters = false,
+   searchQuery = '',
+ }) => {
+   const { getLabel } = useLabels();
+   const [sortField, setSortField] = React.useState<'id' | 'name' | 'status' | 'region'>('id');
+   const [sortOrder, setSortOrder] = React.useState<'asc' | 'desc'>('asc');
+   const [showInlineReports, setShowInlineReports] = React.useState(false);
+   const setHighlightedLocation = useTerrainUIStore((s: any) => s.setHighlightedLocation);
+   const emptyState = useMemo(() => {
+     const total = totalCount ?? households.length;
+     if (total === 0) {
+       return {
+         title: `Aucun ${getLabel('household.singular').toLowerCase()} chargé`,
+         message:
+           'Sélectionnez un projet actif, lancez la synchronisation Kobo ou importez les données depuis le Data Hub.',
+       };
+     }
+ 
+     if (searchQuery.trim()) {
+       return {
+         title: 'Aucun résultat',
+         message: `Aucun ${getLabel('household.singular').toLowerCase()} ne correspond à "${searchQuery.trim()}". Effacez la recherche ou élargissez les filtres.`,
+       };
+     }
+ 
+     if (hasActiveFilters) {
+       return {
+         title: `Aucun ${getLabel('household.singular').toLowerCase()} dans ce filtre`,
+         message:
+           'Les données existent, mais le filtre équipe/statut ou la zone visible de la carte les masque.',
+       };
+     }
+ 
+     return {
+       title: `Aucun ${getLabel('household.singular').toLowerCase()} trouvé`,
+       message: 'Aucune donnée exploitable avec les paramètres actuels.',
+     };
+   }, [hasActiveFilters, households.length, searchQuery, totalCount, getLabel]);
+ 
+   React.useEffect(() => {
+     if (typeof window === 'undefined') return;
+     const media = window.matchMedia('(max-width: 1279px)');
+     const sync = () => setShowInlineReports(media.matches);
+     sync();
+     media.addEventListener('change', sync);
+     return () => media.removeEventListener('change', sync);
+   }, []);
+ 
+   const handleExportCSV = useCallback(() => {
+     const headers = ['N° Ordre', 'Propriétaire', 'Région', 'Statut', 'Lat', 'Lng'];
+     const rows = households.map((h) => [
+       (h as any).numeroordre || h.id,
+       getHouseholdDisplayName(h),
+       (h as any).region || (h as any).departement || '',
+       getHouseholdDerivedStatus(h),
+       h.location?.coordinates?.[1] ?? '',
+       h.location?.coordinates?.[0] ?? '',
+     ]);
+     const csv = [headers, ...rows].map((r: any) => r.join(';')).join('\n');
+     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+     const url = URL.createObjectURL(blob);
+     const a = document.createElement('a');
+     a.href = url;
+     a.download = `${getLabel('household.plural').toLowerCase()}_${new Date().toISOString().slice(0, 10)}.csv`;
+     a.click();
+     URL.revokeObjectURL(url);
+   }, [households, getLabel]);
+ 
+   const toggleSort = (field: typeof sortField) => {
+     if (sortField === field) {
+         setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+     } else {
+         setSortField(field);
+         setSortOrder('asc');
+     }
+   };
+ 
+   const sortedHouseholds = useMemo(() => {
+     return [...households].sort((a, b) => {
+         let valA: any = '';
+         let valB: any = '';
+ 
+         switch (sortField) {
+             case 'id':
+                 valA = parseInt((a as any).numeroordre) || 0;
+                 valB = parseInt((b as any).numeroordre) || 0;
+                 break;
+             case 'name': {
+                 valA = getHouseholdDisplayName(a).toLowerCase();
+                 valB = getHouseholdDisplayName(b).toLowerCase();
+                 break;
+             }
+             case 'status':
+                 valA = getHouseholdDerivedStatus(a).toLowerCase();
+                 valB = getHouseholdDerivedStatus(b).toLowerCase();
+                 break;
+             case 'region':
+                 valA = (a.region || '').toLowerCase();
+                 valB = (b.region || '').toLowerCase();
+                 break;
+         }
+ 
+         if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
+         if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
+         return 0;
+     });
+   }, [households, sortField, sortOrder]);
+ 
+   return (
+     <motion.div
+       key="list"
+       initial={{ opacity: 0 }}
+       animate={{ opacity: 1 }}
+       className={`h-full w-full overflow-hidden flex flex-col rounded-3xl border shadow-lg ${
+         isDarkMode ? 'bg-transparent border-none' : 'bg-white border-slate-200'
+       }`}
+     >
+       {/* Header */}
+       <div
+         className={`px-4 py-4 sm:px-6 sm:py-5 flex-shrink-0 border-b flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 ${
+           isDarkMode ? 'border-slate-800 bg-slate-900/40' : 'border-slate-100 bg-white'
+         }`}
+       >
+         <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-4">
+           <h3 className="min-w-0 text-[1.35rem] sm:text-xl font-black uppercase tracking-tight sm:tracking-tighter leading-none text-white">
+             {getLabel('household.plural')}
+           </h3>
           <span className={`text-[10px] font-black px-2.5 py-1 rounded-lg border ${
             isDarkMode 
               ? 'bg-blue-500/10 border-blue-500/20 text-blue-400' 
