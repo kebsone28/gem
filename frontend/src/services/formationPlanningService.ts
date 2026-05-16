@@ -1,4 +1,4 @@
-const API_BASE = '/api/formations';
+const API_BASE = 'formations';
 
 export const AI_STRUCTURED_QUESTION_IDS = [
   'regional_volumes',

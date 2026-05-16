@@ -20,7 +20,7 @@ export function lazyWithRetry<T extends React.ComponentType<any>>(
       if (typeof window !== 'undefined') {
         const hasRetried = window.sessionStorage.getItem(cacheKey) === '1';
         if (!hasRetried) {
-          window.sessionStorage.setItem(cacheKey) === '1';
+          window.sessionStorage.setItem(cacheKey, '1');
           window.location.reload();
           return new Promise(() => {});
         }

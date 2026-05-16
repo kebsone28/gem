@@ -58,7 +58,7 @@ export function useHouseholdSync(opts?: {
     try{
       let page = 0; let fetched = 0
       do{
-        const url = `${apiBase}/api/households?limit=${pageSize}&page=${page}`
+        const url = `${apiBase}/households?limit=${pageSize}&page=${page}`
         const res = await fetch(url, { credentials: 'include' })
         if (!res.ok) throw new Error(`bootstrap failed ${res.status}`)
         const json = await res.json()
@@ -96,7 +96,7 @@ export function useHouseholdSync(opts?: {
           ws.onclose = ()=>{ attemptReconnect() }
           ws.onerror = (e)=>{ console.warn('ws err', e); ws.close() }
         }else{
-          const s = new EventSource(`${apiBase}/api/households/stream`)
+          const s = new EventSource(`${apiBase}/households/stream`)
           socketRef.current = s
           s.onopen = ()=>{ retryRef.current.attempts = 0; setStatus('connected') }
           s.onmessage = async (ev:any)=>{ try{ const msg = JSON.parse(ev.data); handleRealtime(msg) }catch(e){ console.warn('sse parse', e) } }
