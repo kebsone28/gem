@@ -63,6 +63,9 @@ backend/test-*.mjs
 backend/update_project_id.js
 backend/verification_sync_automation.js
 backend/scripts/*.js
+!backend/scripts/ensure-backend-port-free.js
+!backend/scripts/prisma-generate-safe.js
+!backend/scripts/sync-prisma.js
 backend/scripts/dev/*.js
 backend/scratch/
 frontend/build_output.txt
