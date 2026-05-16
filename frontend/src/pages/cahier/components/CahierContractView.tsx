@@ -90,7 +90,7 @@ export const CahierContractView: React.FC<CahierContractViewProps> = ({
           <div className="mt-12 pt-8 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-3 text-slate-500">
               <ShieldCheck size={16} />
-              <span className="text-[10px] font-bold uppercase tracking-widest">Document Certifié GEM SAAS</span>
+              <span className="text-[10px] font-bold uppercase tracking-widest">Document Certifié GED OS SAAS</span>
             </div>
             <div className="flex gap-4">
               <div className="w-32 h-px bg-white/10 self-center" />

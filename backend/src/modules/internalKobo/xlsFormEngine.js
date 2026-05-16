@@ -274,10 +274,10 @@ function normalizePulldataKey(value) {
 function getPulldataRecord(values, sourceName) {
     const source = normalizePulldataKey(sourceName);
     const candidates = [
-        values[`_ged_os_pulldata_${sourceName}`],
-        values[`_ged_os_pulldata_${source}`],
+        values[`_gem_pulldata_${sourceName}`],
+        values[`_gem_pulldata_${source}`],
         values._gemPulldata,
-        values._ged_os_pulldata
+        values._gem_pulldata
     ];
 
     for (const candidate of candidates) {

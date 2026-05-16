@@ -89,7 +89,7 @@ function buildPublicPrompt(query, user, state, history = []) {
     .map(entry => `${entry.role === 'assistant' ? 'Assistant' : 'Utilisateur'}: ${entry.content}`)
     .join('\n');
 
-  const sysPrompt = buildSystemPrompt(user?.organizationName || 'GEM SAAS', user?.projectSector || 'elec_bt');
+  const sysPrompt = buildSystemPrompt(user?.organizationName || 'GED OS', user?.projectSector || 'elec_bt');
   
   return `${sysPrompt}
 
@@ -124,7 +124,7 @@ ${query}`;
 }
 
 function buildVisionPrompt(query, user, state) {
-  const orgName = user?.organizationName || 'GEM SAAS';
+  const orgName = user?.organizationName || 'GED OS';
   return `Tu es ${AI_REGISTRY.IDENTITY.name}, le contrôleur expert de ${orgName}. 
 Analyse l'image fournie avec une précision chirurgicale.
 
@@ -186,7 +186,7 @@ async function callAnthropic(query, user, state, history = []) {
         model: config.ai.anthropicModel,
         max_tokens: config.ai.maxTokens,
         system:
-          `Tu es ${AI_REGISTRY.IDENTITY.name}, assistant IA expert pour ${user?.organizationName || 'GEM SAAS'}. Réponds en français. Sois précis, traçable et opérationnel. Si les données sont insuffisantes, dis-le explicitement.`,
+          `Tu es ${AI_REGISTRY.IDENTITY.name}, assistant IA expert pour ${user?.organizationName || 'GED OS'}. Réponds en français. Sois précis, traçable et opérationnel. Si les données sont insuffisantes, dis-le explicitement.`,
         messages: [
           ...buildConversationHistory(history),
           {

@@ -6,7 +6,7 @@ async function updateEnv() {
     await ssh.connect({
       host: 'gem.proquelec.sn',
       username: 'root',
-      password: 'Ur94w4NVdhcpJJUPCnFj'
+      password: process.env.VPS_SSH_PASSWORD
     });
 
     const envContent = `PORT=5005

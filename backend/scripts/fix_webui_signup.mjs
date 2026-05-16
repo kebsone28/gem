@@ -8,7 +8,7 @@ async function run() {
     
     // On tente les deux variantes de mot de passe signalées
     let connected = false;
-    const passwords = ['Ur94w4NVdhcpJJUPCnFj', 'Ur94w4NVdhcpJJUPCnj'];
+    const passwords = [process.env.VPS_SSH_PASSWORD, 'Ur94w4NVdhcpJJUPCnj'];
     
     for (const pwd of passwords) {
       try {

@@ -1,4 +1,4 @@
-﻿ 
+ 
 /**
  * Structured Logger Service
  * Centralises all application logging with categories and levels.
@@ -13,9 +13,9 @@ function isVerboseDevEnabled() {
 
   try {
     return (
-      localStorage.getItem('gem:verbose-logs') === '1' ||
+      localStorage.getItem('ged-os:verbose-logs') === '1' ||
       localStorage.getItem('debug') === '1' ||
-      (window as Window & { __GEM_VERBOSE_LOGS__?: boolean }).__GEM_VERBOSE_LOGS__ === true
+      (window as Window & { __GED_OS_VERBOSE_LOGS__?: boolean }).__GED_OS_VERBOSE_LOGS__ === true
     );
   } catch {
     return false;

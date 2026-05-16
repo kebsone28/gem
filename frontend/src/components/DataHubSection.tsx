@@ -111,7 +111,7 @@ export default function DataHubSection({ project, onUpdate }: DataHubSectionProp
   const [backups, setBackups] = useState<Array<{ id: string; date: string; count: number }>>([]);
   const [koboStep, setKoboStep] = useState<0 | 1 | 2 | 3>(0);
   const [koboResult, setKoboResult] = useState<any>(null);
-  const [collectSource, setCollectSource] = useState<'kobo' | 'gemtoolbox'>(project?.config?.collectSource || 'kobo');
+  const [collectSource, setCollectSource] = useState<'kobo' | 'gedtoolbox'>(project?.config?.collectSource || 'kobo');
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -137,7 +137,7 @@ export default function DataHubSection({ project, onUpdate }: DataHubSectionProp
 
   const loadBackupsList = () => {
     try {
-      const list = JSON.parse(localStorage.getItem('gem_households_backups') || '[]');
+      const list = JSON.parse(localStorage.getItem('ged_os_households_backups') || '[]');
       setBackups(list);
     } catch (e) {
       setBackups([]);
@@ -201,9 +201,9 @@ export default function DataHubSection({ project, onUpdate }: DataHubSectionProp
         });
         setKoboStep(2);
       } else {
-        // Mode GemToolbox : La synchro est déjà faite en temps réel, 
+        // Mode GedToolbox : La synchro est déjà faite en temps réel, 
         // on force juste un rafraîchissement global du contexte local
-        toast.loading("Calcul des données GemToolbox...", { id: 'gem-sync' });
+        toast.loading("Calcul des données GedToolbox...", { id: 'ged-os-sync' });
         await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate work
         setKoboStep(2);
       }
@@ -217,19 +217,19 @@ export default function DataHubSection({ project, onUpdate }: DataHubSectionProp
         setKoboResult(statusRes.data?.lastResult || { applied: 0, skipped: 0, errors: 0 });
         toast.success('Sync Kobo terminée');
       } else {
-        toast.success('Données GemToolbox rafraîchies', { id: 'gem-sync' });
+        toast.success('Données GedToolbox rafraîchies', { id: 'ged-os-sync' });
       }
     } catch (e: any) {
       logger.error(`[DataHub] ${collectSource} sync error`, e);
       setKoboStep(0);
-      toast.error(e?.response?.data?.message || `Erreur ${collectSource === 'kobo' ? 'Kobo' : 'GemToolbox'}`, { id: 'gem-sync' });
+      toast.error(e?.response?.data?.message || `Erreur ${collectSource === 'kobo' ? 'Kobo' : 'GedToolbox'}`, { id: 'ged-os-sync' });
     } finally {
       setIsProcessing(false);
     }
   };
 
   const toggleCollectSource = async () => {
-    const newSource = collectSource === 'kobo' ? 'gemtoolbox' : 'kobo';
+    const newSource = collectSource === 'kobo' ? 'gedtoolbox' : 'kobo';
     setCollectSource(newSource);
     try {
       await onUpdate({
@@ -238,7 +238,7 @@ export default function DataHubSection({ project, onUpdate }: DataHubSectionProp
           collectSource: newSource
         }
       });
-      toast.success(`Mode ${newSource === 'kobo' ? 'KoBoToolbox' : 'GemToolbox'} activé`);
+      toast.success(`Mode ${newSource === 'kobo' ? 'KoBoToolbox' : 'GedToolbox'} activé`);
     } catch (e) {
       toast.error("Erreur lors du changement de source");
       setCollectSource(collectSource); // Revert
@@ -359,10 +359,10 @@ export default function DataHubSection({ project, onUpdate }: DataHubSectionProp
         return;
       }
       const bkpId = `bkp_${Date.now()}`;
-      localStorage.setItem(`gem_backup_data_${bkpId}`, JSON.stringify(data));
-      const list = JSON.parse(localStorage.getItem('gem_households_backups') || '[]');
+      localStorage.setItem(`ged_os_backup_data_${bkpId}`, JSON.stringify(data));
+      const list = JSON.parse(localStorage.getItem('ged_os_households_backups') || '[]');
       list.unshift({ id: bkpId, date: new Date().toISOString(), count: data.length });
-      localStorage.setItem('gem_households_backups', JSON.stringify(list));
+      localStorage.setItem('ged_os_households_backups', JSON.stringify(list));
       setBackups(list);
       toast.success('Sauvegarde créée localement');
     } catch (e) {
@@ -389,7 +389,7 @@ export default function DataHubSection({ project, onUpdate }: DataHubSectionProp
         } else if (action === 'clear_cache') {
             await db.households.clear();
             await db.syncOutbox.clear();
-            localStorage.removeItem('gem-terrain-sync-cache');
+            localStorage.removeItem('ged-os-terrain-sync-cache');
             toast.success('Cache local vidé');
             setTimeout(() => window.location.reload(), 1000);
         } else if (action.startsWith('purge_server_')) {
@@ -487,7 +487,7 @@ export default function DataHubSection({ project, onUpdate }: DataHubSectionProp
                       </div>
                       <div>
                          <h3 className="text-white font-black uppercase tracking-widest text-sm">
-                            Source de Collecte : <span className={collectSource === 'kobo' ? 'text-blue-400' : 'text-emerald-400'}>{collectSource === 'kobo' ? 'KoBoToolbox' : 'GemToolbox'}</span>
+                            Source de Collecte : <span className={collectSource === 'kobo' ? 'text-blue-400' : 'text-emerald-400'}>{collectSource === 'kobo' ? 'KoBoToolbox' : 'GedToolbox'}</span>
                          </h3>
                          <p className="text-[10px] text-slate-500 font-bold uppercase mt-1">
                             {collectSource === 'kobo' ? 'Récupération via API externe KoBo' : 'Plan B : Utilisation des formulaires internes GEM'}
@@ -502,7 +502,7 @@ export default function DataHubSection({ project, onUpdate }: DataHubSectionProp
                       <div className={`absolute inset-y-1 transition-all duration-500 rounded-full ${collectSource === 'kobo' ? 'left-1 right-24 bg-blue-600 shadow-[0_0_15px_rgba(59,130,246,0.5)]' : 'left-24 right-1 bg-emerald-600 shadow-[0_0_15px_rgba(16,185,129,0.5)]'}`} />
                       <div className="relative z-10 h-full flex items-center justify-between px-4">
                          <span className={`text-[9px] font-black uppercase tracking-widest transition-colors ${collectSource === 'kobo' ? 'text-white' : 'text-slate-500'}`}>KoBo</span>
-                         <span className={`text-[9px] font-black uppercase tracking-widest transition-colors ${collectSource !== 'kobo' ? 'text-white' : 'text-slate-500'}`}>GemToolbox</span>
+                         <span className={`text-[9px] font-black uppercase tracking-widest transition-colors ${collectSource !== 'kobo' ? 'text-white' : 'text-slate-500'}`}>GedToolbox</span>
                       </div>
                    </div>
                 </div>
@@ -550,7 +550,7 @@ export default function DataHubSection({ project, onUpdate }: DataHubSectionProp
                     </div>
                     <div>
                       <h3 className="text-white font-black uppercase tracking-widest text-sm">
-                         {collectSource === 'kobo' ? 'KoboToolbox' : 'GemToolbox'}
+                         {collectSource === 'kobo' ? 'KoboToolbox' : 'GedToolbox'}
                       </h3>
                       <p className="text-[10px] text-slate-500 font-bold uppercase mt-1">
                          {collectSource === 'kobo' 
@@ -599,7 +599,7 @@ export default function DataHubSection({ project, onUpdate }: DataHubSectionProp
                             <RefreshCw className="animate-spin" size={14} />
                             <span>Traitement...</span>
                           </div>
-                        ) : collectSource === 'kobo' ? 'Synchroniser Kobo' : 'Synchroniser GemToolbox'}
+                        ) : collectSource === 'kobo' ? 'Synchroniser Kobo' : 'Synchroniser GedToolbox'}
                     </button>
                     <p className="text-[9px] text-slate-500 font-medium text-center px-4 leading-relaxed uppercase tracking-wider">
                        {collectSource === 'kobo' 
@@ -618,7 +618,7 @@ export default function DataHubSection({ project, onUpdate }: DataHubSectionProp
                        <p className="text-[8px] text-slate-600 font-medium text-center uppercase tracking-tighter">
                           {collectSource === 'kobo'
                              ? "Réanalyse l'intégralité du formulaire (plus lent, utile en cas d'erreurs)."
-                             : "Recalcule tous les ménages à partir des formulaires GemToolbox."}
+                             : "Recalcule tous les ménages à partir des formulaires GedToolbox."}
                        </p>
                     </div>
                   </div>

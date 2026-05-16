@@ -42,7 +42,7 @@ Script de test local
 - Usage (PowerShell) :
 
 ```powershell
-$env:ADMIN_EMAIL='admingem';
+$env:ADMIN_EMAIL='admingedos';
 $env:ADMIN_PASSWORD='suprime';
 $env:ADMIN_2FA='CORAN';
 $env:BACKEND_BASE='http://localhost:5008';

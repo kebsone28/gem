@@ -1352,7 +1352,7 @@ export const createInternalKoboFormDefinition = async (req, res) => {
       data: {
         userId,
         organizationId,
-        deviceId: 'ged-os-internal-kobo-admin',
+        deviceId: 'gem-internal-kobo-admin',
         action: 'INTERNAL_KOBO_FORM_BUILDER_SAVE',
         details: {
           importId,
@@ -1534,7 +1534,7 @@ export const importInternalKoboXlsForm = async (req, res) => {
       data: {
         userId,
         organizationId,
-        deviceId: 'ged-os-internal-kobo-admin',
+        deviceId: 'gem-internal-kobo-admin',
         action: 'INTERNAL_KOBO_XLSFORM_IMPORT',
         details: {
           importId,
@@ -1885,7 +1885,7 @@ export const reviewInternalKoboSubmission = async (req, res) => {
       data: {
         userId,
         organizationId,
-        deviceId: 'ged-os-internal-kobo-admin',
+        deviceId: 'gem-internal-kobo-admin',
         action: 'INTERNAL_KOBO_REVIEW',
         details: {
           submissionId: current.id,

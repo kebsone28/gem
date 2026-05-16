@@ -5,7 +5,7 @@ async function configureWithStaticIP() {
   await ssh.connect({
     host: 'gem.proquelec.sn',
     username: 'root',
-    password: 'Ur94w4NVdhcpJJUPCnFj',
+    password: process.env.VPS_SSH_PASSWORD,
   });
   
   console.log('🔌 Configuration de la connexion Ollama avec IP statique 172.17.0.1...');

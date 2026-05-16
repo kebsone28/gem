@@ -111,9 +111,9 @@ function Confirm-Action {
   return $answer -match '^(y|yes|o|oui)$'
 }
 
-$resolvedHost = Get-FirstNonEmpty @($ServerHost, $env:WANEKOO_HOST, $env:DEPLOY_HOST, 'gem.proquelec.sn')
+$resolvedHost = Get-FirstNonEmpty @($ServerHost, $env:WANEKOO_HOST, $env:DEPLOY_HOST, 'ged.proquelec.sn')
 $resolvedUser = Get-FirstNonEmpty @($ServerUser, $env:WANEKOO_USER, $env:DEPLOY_USER, 'root')
-$resolvedPath = Get-FirstNonEmpty @($DeployPath, $env:WANEKOO_DEPLOY_PATH, $env:DEPLOY_PATH, '/var/www/proquelec/gem-saas')
+$resolvedPath = Get-FirstNonEmpty @($DeployPath, $env:WANEKOO_DEPLOY_PATH, $env:DEPLOY_PATH, '/var/www/proquelec/ged.proquelec.sn')
 $resolvedSshConfigHost = Get-FirstNonEmpty @($SshConfigHost, $env:WANEKOO_SSH_HOST_ALIAS, $env:DEPLOY_SSH_HOST_ALIAS)
 $resolvedSshKeyPath = Get-FirstNonEmpty @($SshKeyPath, $env:WANEKOO_SSH_KEY_PATH, $env:DEPLOY_SSH_KEY_PATH)
 $sshTarget = if ($resolvedSshConfigHost) { $resolvedSshConfigHost } else { "$resolvedUser@$resolvedHost" }

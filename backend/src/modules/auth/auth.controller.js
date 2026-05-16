@@ -145,12 +145,6 @@ export const login = async (req, res) => {
       console.log('🔍 Login attempt received');
     }
 
-    if (!email) {
-      if (process.env.NODE_ENV !== 'production') {
-        console.log('❌ Email is missing in request body');
-      }
-      return res.status(400).json({ error: 'Email is required' });
-    }
 
     const user = await prisma.user.findFirst({
       where: { email: email.trim().toLowerCase() },
@@ -566,9 +560,6 @@ export const verify2FA = async (req, res) => {
       console.log(`🔍 [2FA] Tentative de vérification pour ID/Email: ${id || email}`);
     }
 
-    if (!(id || email) || !answer) {
-      return res.status(400).json({ error: 'Identifiant et réponse requis' });
-    }
 
     const user = await prisma.user.findFirst({
       where: id ? { id } : { email: email.toLowerCase() },
@@ -921,9 +912,6 @@ export const verifyPassword = async (req, res) => {
     const { password } = req.body;
     const userId = req.user.id;
 
-    if (!password) {
-      return res.status(400).json({ error: 'Mot de passe requis' });
-    }
 
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) return res.status(404).json({ error: 'Utilisateur non trouvé' });

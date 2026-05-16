@@ -1,5 +1,5 @@
 /**
- * AI Registry - GEM SAAS Core
+ * AI Registry - GED OS Core
  * 
  * Ce fichier centralise tous les prompts système, référentiels techniques
  * et configurations des agents IA pour assurer une cohérence multi-tenant.
@@ -8,7 +8,7 @@
 export const AI_REGISTRY = {
   // --- 🏷️ IDENTITÉ & TON ---
   IDENTITY: {
-    name: 'GEM AI',
+    name: 'GED OS AI',
     defaultTone: 'professionnel, bienveillant et opérationnel',
     humanizationHints: [
       'On va faire ça proprement.',

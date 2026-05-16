@@ -8,7 +8,7 @@ Prérequis
 Installer et lancer en environnement de développement (PowerShell sous Windows):
 
 ```powershell
-cd "c:\Users\User\Documents\PROQUELEC\2. PROJET\Gestion électrification massive"
+cd "c:\Users\User\Documents\PROQUELEC\2. PROJET\GED OS"
 npm install
 npm start
 ```

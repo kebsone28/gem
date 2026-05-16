@@ -10,6 +10,7 @@ import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import { config } from './core/config/config.js';
 import sharedocRoutes from './modules/sharedoc/sharedoc.routes.js';
+import { setupSwagger } from './core/config/swagger.js';
 
 const app = express();
 
@@ -94,6 +95,8 @@ import debugRoutes from './api/routes/debug.routes.js';
 import adminPermissionRoutes from './api/routes/admin.permissions.routes.js';
 import { notFoundHandler } from './middleware/errorHandler.js';
 import { tenantResolver } from './middleware/tenantResolver.js';
+
+setupSwagger(app);
 
 app.use('/api/auth', authRoutes);
 // Tenant resolver: always populate AsyncLocalStorage with org/project when available

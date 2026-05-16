@@ -151,8 +151,8 @@ export default function AITrainingStudio({
 
       setIsDesktopViewport(window.innerWidth >= 1024);
 
-      const datasetMode = document.documentElement.dataset.gemSidebarMode;
-      const storedMode = window.localStorage.getItem('gem-sidebar-mode');
+      const datasetMode = document.documentElement.dataset.gedOsSidebarMode;
+      const storedMode = window.localStorage.getItem('ged-os-sidebar-mode');
       const resolvedMode =
         datasetMode === 'wide' || datasetMode === 'compact' || datasetMode === 'rail'
           ? datasetMode
@@ -176,14 +176,14 @@ export default function AITrainingStudio({
     syncViewportAndSidebar();
     window.addEventListener('resize', syncViewportAndSidebar);
     window.addEventListener(
-      'gem:sidebar-mode-change',
+      'ged-os:sidebar-mode-change',
       handleSidebarModeChange as EventListener
     );
 
     return () => {
       window.removeEventListener('resize', syncViewportAndSidebar);
       window.removeEventListener(
-        'gem:sidebar-mode-change',
+        'ged-os:sidebar-mode-change',
         handleSidebarModeChange as EventListener
       );
     };

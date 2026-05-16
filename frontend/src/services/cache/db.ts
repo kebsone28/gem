@@ -10,7 +10,7 @@ export class MapDB extends Dexie {
   map_tiles!: Dexie.Table<TileEntry, string>;
 
   constructor() {
-    super('gem_map_db');
+    super('ged_os_map_db');
     this.version(1).stores({ map_tiles: '&url,ts' });
   }
 }

@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import React, { useState } from 'react';
 import { MissionSageService } from '../services/MissionSageService';
 import type { User, AppState } from '../services/MissionSageService';
@@ -31,7 +31,7 @@ export const MissionSageChat: React.FC<MissionSageChatProps> = ({ user, state })
 
   return (
     <div className="mission-sage-chat p-4 max-w-2xl mx-auto">
-      <h2 className="text-2xl font-bold mb-4">MissionSage - Assistant IA GEM-MINT</h2>
+      <h2 className="text-2xl font-bold mb-4">MissionSage - Assistant IA GED OS</h2>
 
       <form onSubmit={handleSubmit} className="mb-4">
         <div className="flex gap-2">
@@ -39,7 +39,7 @@ export const MissionSageChat: React.FC<MissionSageChatProps> = ({ user, state })
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Posez votre question sur GEM-MINT..."
+            placeholder="Posez votre question sur GED OS..."
             className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             disabled={loading}
           />

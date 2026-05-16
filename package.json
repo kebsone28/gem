@@ -16,9 +16,9 @@
     "dev": "cd frontend && npm run dev",
     "dev:backend": "cd backend && npm run dev",
     "dev:frontend": "cd frontend && npm run dev -- --host 0.0.0.0 --port 8889",
-    "dev:saas": "node scripts/validate-gem-ports.mjs && concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
-    "validate-ports": "node scripts/validate-gem-ports.mjs",
-    "validate-ports:fix": "node scripts/fix-gem-ports.mjs",
+    "dev:saas": "node scripts/validate-ged-os-ports.mjs && concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "validate-ports": "node scripts/validate-ged-os-ports.mjs",
+    "validate-ports:fix": "node scripts/fix-ged-os-ports.mjs",
     "pmtiles:install": "cd backend\\pmtiles-server && npm install",
     "pmtiles:dev": "cd backend\\pmtiles-server && npm run dev",
     "pmtiles:start": "cd backend\\pmtiles-server && npm run start",
@@ -27,7 +27,7 @@
     "import:kobo-legacy": "node scripts/import-kobo-legacy-submissions.mjs",
     "build": "cd frontend && npm run build",
     "preview": "cd frontend && npm run preview",
-    "mentor:audit": "node --experimental-strip-types ./scripts/mission_sage_auto_audit.ts",
+    "mentor:audit": "node --experimental-strip-types ./scripts/ged_os_ai_auto_audit.ts",
     "prepare": "husky || exit 0"
   },
   "devDependencies": {

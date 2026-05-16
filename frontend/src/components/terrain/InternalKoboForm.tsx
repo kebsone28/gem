@@ -24,6 +24,11 @@ import {
 } from 'lucide-react';
 import apiClient from '../../api/client';
 import SignatureModal from '../common/SignatureModal';
+import { HistoryPanel } from './internal-kobo-form/HistoryPanel';
+import { LocalQueuePanel } from './internal-kobo-form/LocalQueuePanel';
+import { ValidationAssistantPanel, type RuntimeIssueView } from './internal-kobo-form/ValidationAssistantPanel';
+import { ReceiptModal } from './internal-kobo-form/ReceiptModal';
+import { useKoboFormLogic } from './hooks/useKoboFormLogic';
 import {
   fetchInternalKoboFormDefinition,
   fetchInternalKoboImportedFormDefinition,
@@ -35,20 +40,18 @@ import type {
   InternalKoboQueuedSubmission,
   InternalKoboSubmissionRecord,
 } from '../../services/internalKoboSubmissionService';
-import { compressImage } from '../../utils/imageUtils';
-import { stringifyHouseholdValue } from '../../utils/householdDisplay';
 import {
-  formatInternalGedOsValue,
-  getInternalGedOsFieldValue,
-  getVisibleInternalGedOsFields,
-  hasInternalGedOsRequiredValue,
-  hasInternalGedOsValue,
+  formatInternalGemValue,
+  getInternalGemFieldValue,
+  getVisibleInternalGemFields,
+  hasInternalGemRequiredValue,
+  hasInternalGemValue,
   INTERNAL_GED_OS_CHOICES,
   INTERNAL_GED_OS_FORM_SETTINGS,
   INTERNAL_GED_OS_SECTIONS,
-  isInternalGedOsFieldVisible,
-  isTruthyGedOsValue,
-  validateInternalGedOsFields,
+  isInternalGemFieldVisible,
+  isTruthyGemValue,
+  validateInternalGemFields,
 } from './internalKoboFormDefinition';
 import type { InternalGemField } from './internalKoboFormDefinition';
 import {
@@ -65,6 +68,27 @@ import {
   type XlsFormPage,
   type XlsFormRuntimeIssue,
 } from './xlsFormMobileRuntime';
+import {
+  asArray,
+  getClientCollectionMetadata,
+  getImagePreviewSource,
+  getRuntimeFieldAccept,
+  getRuntimeFieldCapture,
+  getRuntimeFieldInputType,
+  hashFileSha256,
+  maxPixelsFromParameters,
+  fileToDataUrl,
+  submissionStatusClass,
+  submissionStatusLabel,
+  queueStatusClass,
+  queueStatusLabel,
+  formatMetadataLabel,
+} from './internal-kobo-form/utils';
+import {
+  ROLE_SECTION_BY_VALUE,
+  GEM_RUNTIME_MEDIA_TYPES,
+  GEM_RUNTIME_FILLABLE_SKIP_TYPES,
+} from './internal-kobo-form/constants';
 
 type InternalKoboFormProps = {
   values: Record<string, unknown>;
@@ -91,12 +115,7 @@ type InternalKoboFormProps = {
   inline?: boolean;
 };
 
-type RuntimeIssueView = {
-  field: InternalGemField;
-  type: 'required' | 'constraint';
-  message: string;
-  runtimeIssue?: XlsFormRuntimeIssue;
-};
+
 
 type RepeatContext = {
   repeatName: string;
@@ -124,18 +143,12 @@ type ProgressSummary = {
   missingItems: ProgressItem[];
 };
 
-const asArray = (value: unknown): string[] => {
-  if (Array.isArray(value)) return value.map(String);
-  if (typeof value === 'string' && value.trim()) return value.split(/\s+/);
-  return [];
-};
-
 const progressFor = (values: Record<string, unknown>): ProgressSummary => {
-  const visibleFields = getVisibleInternalGedOsFields(values).filter((field) => !field.readOnly && field.type !== 'note');
+  const visibleFields = getVisibleInternalGemFields(values).filter((field) => !field.readOnly && field.type !== 'note');
   const items = visibleFields.map((field) => ({
     name: field.name,
     label: field.label || field.name,
-    filled: hasInternalGedOsRequiredValue(field, values),
+    filled: hasInternalGemRequiredValue(field, values),
   }));
   const filled = items.filter((item) => item.filled).length;
   return {
@@ -158,36 +171,9 @@ const getToneForValue = (value: unknown) => {
   return 'border-blue-300/70 bg-blue-400/20 text-white shadow-lg shadow-blue-500/15 ring-1 ring-blue-200/20';
 };
 
-const ROLE_SECTION_BY_VALUE: Record<string, string> = {
-  livreur: 'preparation_livraison',
-  __pr_parateur: 'preparation_livraison',
-  macon: 'macon',
-  reseau: 'reseau',
-  interieur: 'interieur',
-  controleur: 'controle_branchement',
-};
-
-const XLS_RUNTIME_MEDIA_TYPES = new Set(['image', 'signature', 'file', 'audio', 'video']);
-const XLS_RUNTIME_FILLABLE_SKIP_TYPES = new Set([
-  'note',
-  'calculate',
-  'hidden',
-  'xml-external',
-  'xml_external',
-  'start',
-  'end',
-  'today',
-  'username',
-  'phonenumber',
-  'deviceid',
-  'subscriberid',
-  'simserial',
-  'audit',
-]);
-
 const isRuntimeDefinition = (value: unknown): value is XlsFormDefinition =>
   isXlsFormRecord(value) &&
-  value.engine === 'ged-os-xlsform-universal' &&
+  (value.engine === 'gem-xlsform-universal' || value.engine === 'ged-os-xlsform-universal') &&
   typeof value.formKey === 'string' &&
   typeof value.formVersion === 'string';
 
@@ -197,151 +183,15 @@ const isDeployedImportedForm = (form: InternalKoboImportedFormSummary) =>
 const pickActiveImportedForm = (forms: InternalKoboImportedFormSummary[] = []) =>
   forms.find(isDeployedImportedForm) || null;
 
-const getRuntimeFieldInputType = (field: XlsFormField) => {
-  if (field.type === 'integer' || field.type === 'decimal' || field.type === 'range') return 'number';
-  if (field.type === 'date') return 'date';
-  if (field.type === 'time') return 'time';
-  if (field.type === 'datetime') return 'datetime-local';
-  return 'text';
-};
-
-const getRuntimeFieldAccept = (field: XlsFormField) => {
-  if (field.type === 'image' || field.type === 'signature') return 'image/*';
-  if (field.type === 'audio') return 'audio/*';
-  if (field.type === 'video') return 'video/*';
-  return undefined;
-};
-
-const getRuntimeFieldCapture = (field: XlsFormField) => {
-  if (field.type === 'image') return 'environment';
-  if (field.type === 'video') return 'environment';
-  return undefined;
-};
-
-const maxPixelsFromParameters = (parameters?: string) => {
-  const match = parameters?.match(/max-pixels\s*=\s*(\d+)/i);
-  return match ? Number(match[1]) : undefined;
-};
-
 const isRecord = (value: unknown): value is Record<string, any> =>
   Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 
 const makeAttachmentId = () =>
   globalThis.crypto?.randomUUID?.() || `attachment-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
-const fileToDataUrl = (file: File): Promise<string> =>
-  new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result || ''));
-    reader.onerror = () => reject(reader.error || new Error('Lecture de fichier impossible'));
-    reader.readAsDataURL(file);
-  });
-
-const hashFileSha256 = async (file: File): Promise<string> => {
-  if (!globalThis.crypto?.subtle) return '';
-  const buffer = await file.arrayBuffer();
-  const hashBuffer = await globalThis.crypto.subtle.digest('SHA-256', buffer);
-  return Array.from(new Uint8Array(hashBuffer))
-    .map((byte) => byte.toString(16).padStart(2, '0'))
-    .join('');
-};
-
 const getAttachmentMeta = (values: Record<string, unknown>, fieldName: string): InternalKoboAttachment | null => {
-  const value = values[`_ged_os_attachment_${fieldName}`];
+  const value = values[`_ged_os_attachment_${fieldName}`] || values[`_ged_os_attachment_${fieldName}`];
   return isRecord(value) ? (value as InternalKoboAttachment) : null;
-};
-
-const getImagePreviewSource = (fieldValue: unknown, attachment: InternalKoboAttachment | null) => {
-  const value = String(fieldValue || '');
-  if (value.startsWith('data:image/')) return value;
-  if (/^(https?:)?\/\//i.test(value) || value.startsWith('/api/')) return value;
-  if (attachment?.dataUrl?.startsWith('data:image/')) return attachment.dataUrl;
-  if (attachment?.url) return attachment.url;
-  return '';
-};
-
-const formatHistoryDate = (value?: string | null) => {
-  if (!value) return 'En attente';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return 'Date inconnue';
-
-  return date.toLocaleString('fr-FR', {
-    day: '2-digit',
-    month: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-};
-
-const CLIENT_METADATA_LABELS: Record<string, string> = {
-  _ged_os_collection_app: 'Application',
-  _ged_os_collection_engine: 'Moteur',
-  _ged_os_collection_mode: 'Mode',
-  _ged_os_client_timezone: 'Fuseau horaire',
-  _ged_os_client_language: 'Langue',
-  _ged_os_client_platform: 'Appareil',
-  _ged_os_client_user_agent: 'Navigateur',
-  _ged_os_client_network: 'Reseau',
-  _ged_os_client_touch: 'Ecran tactile',
-  _ged_os_client_viewport: 'Fenetre',
-  _ged_os_client_gps_accuracy_m: 'Precision GPS',
-  _ged_os_client_gps_captured_at: 'Capture GPS',
-  _ged_os_client_gps_source: 'Source GPS',
-  _ged_os_session_started_at: 'Debut session',
-  _ged_os_session_duration_s: 'Duree session',
-};
-
-const formatMetadataLabel = (key: string) => CLIENT_METADATA_LABELS[key] || key.replace(/^_ged_os_/, '').replace(/_/g, ' ');
-
-const getClientCollectionMetadata = (isOnline: boolean): Record<string, string> => {
-  const nav = typeof navigator !== 'undefined' ? navigator : null;
-  const connection = nav ? (nav as Navigator & { connection?: { effectiveType?: string; type?: string } }).connection : null;
-  const viewport = typeof window !== 'undefined' ? `${window.innerWidth}x${window.innerHeight}` : '';
-  const timezone =
-    typeof Intl !== 'undefined'
-      ? Intl.DateTimeFormat().resolvedOptions().timeZone || ''
-      : '';
-
-  return {
-    _ged_os_collection_app: 'ged-os-terrain-internal',
-    _ged_os_collection_engine: 'xlsform-native',
-    _ged_os_collection_mode: isOnline ? 'online' : 'offline',
-    _ged_os_client_timezone: timezone,
-    _ged_os_client_language: nav?.language || '',
-    _ged_os_client_platform: nav?.platform || '',
-    _ged_os_client_user_agent: nav?.userAgent || '',
-    _ged_os_client_network: connection?.effectiveType || connection?.type || '',
-    _ged_os_client_touch: String((nav?.maxTouchPoints || 0) > 0),
-    _ged_os_client_viewport: viewport,
-  };
-};
-
-const submissionStatusClass = (status: string) => {
-  if (status === 'submitted' || status === 'validated') {
-    return 'border-emerald-300/25 bg-emerald-400/10 text-emerald-100';
-  }
-  if (status === 'rejected') {
-    return 'border-rose-300/25 bg-rose-400/10 text-rose-100';
-  }
-  return 'border-amber-300/25 bg-amber-400/10 text-amber-100';
-};
-
-const submissionStatusLabel = (status: string) => {
-  if (status === 'submitted') return 'Soumis';
-  if (status === 'validated') return 'Valide';
-  if (status === 'rejected') return 'Rejete';
-  return 'Brouillon';
-};
-
-const queueStatusClass = (status: string) => {
-  if (status === 'failed') return 'border-rose-300/25 bg-rose-400/10 text-rose-100';
-  return 'border-sky-300/25 bg-sky-400/10 text-sky-100';
-};
-
-const queueStatusLabel = (status: string, retryCount = 0) => {
-  if (status === 'failed' && retryCount >= 6) return 'Bloque';
-  if (status === 'failed') return 'A relancer';
-  return 'En attente';
 };
 
 export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
@@ -381,7 +231,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
   const [availableRuntimeForms, setAvailableRuntimeForms] = useState<InternalKoboImportedFormSummary[]>([]);
   const [selectedRuntimeFormKey, setSelectedRuntimeFormKey] = useState(() => {
     if (initialFormKey) return initialFormKey;
-    const runtimeKey = String(values._ged_os_runtime_form_key || '').trim();
+    const runtimeKey = String(values._ged_os_runtime_form_key || values._ged_os_runtime_form_key || '').trim();
     return runtimeKey && runtimeKey !== 'terrain_internal' ? runtimeKey : '';
   });
   const [isRuntimeFormListLoading, setIsRuntimeFormListLoading] = useState(false);
@@ -406,7 +256,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
   const collectionMetadata = useMemo(() => getClientCollectionMetadata(isOnline), [isOnline]);
   const normalizedQuery = query.trim().toLowerCase();
   const fieldLabelByName = useMemo(() => {
-    const entries = INTERNAL_GEM_SECTIONS.flatMap((section) =>
+    const entries = INTERNAL_GED_OS_SECTIONS.flatMap((section) =>
       section.fields.map((field) => [field.name, field.label] as const)
     );
     return new Map(entries);
@@ -418,11 +268,12 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
   const progressFilledRef = useRef(0);
   const applyRuntimeDefinition = useCallback((definition: XlsFormDefinition, title?: string) => {
     setXlsFormDefinition(definition);
+  applyRuntimeDefinition(definition);
     setPendingRuntimeDefinition(null);
     setActiveRuntimePageId('');
     onChangeRef.current('_ged_os_runtime_form_key', definition.formKey);
     onChangeRef.current('_ged_os_runtime_form_version', definition.formVersion);
-    onChangeRef.current('_ged_os_runtime_engine', definition.engine || 'ged-os-xlsform-universal');
+    onChangeRef.current('_ged_os_runtime_engine', definition.engine || 'gem-xlsform-universal');
     onChangeRef.current('_ged_os_runtime_title', definition.title || title || definition.formKey);
     onChangeRef.current('_ged_os_runtime_checked_at', new Date().toISOString());
     setServerFormStatus({
@@ -438,15 +289,15 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
     return Boolean(currentKey && currentKey !== 'terrain_internal') &&
       (currentKey !== definition.formKey || currentVersion !== definition.formVersion);
   }, [
-    values._gem_runtime_form_key,
-    values._gem_runtime_form_version,
+    values._ged_os_runtime_form_key,
+    values._ged_os_runtime_form_version,
     xlsFormDefinition?.formKey,
     xlsFormDefinition?.formVersion,
   ]);
   const migrateToPendingRuntimeDefinition = () => {
     if (!pendingRuntimeDefinition) return;
-    const previousKey = xlsFormDefinition?.formKey || String(values._ged_os_runtime_form_key || '');
-    const previousVersion = xlsFormDefinition?.formVersion || String(values._ged_os_runtime_form_version || '');
+    const previousKey = xlsFormDefinition?.formKey || String(values._ged_os_runtime_form_key || values._ged_os_runtime_form_key || '');
+    const previousVersion = xlsFormDefinition?.formVersion || String(values._ged_os_runtime_form_version || values._ged_os_runtime_form_version || '');
     onChangeRef.current('_ged_os_runtime_migrated_from_key', previousKey);
     onChangeRef.current('_ged_os_runtime_migrated_from_version', previousVersion);
     onChangeRef.current('_ged_os_runtime_migrated_to_version', pendingRuntimeDefinition.formVersion);
@@ -454,45 +305,15 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
     onChangeRef.current('_ged_os_runtime_migrated_at', new Date().toISOString());
     applyRuntimeDefinition(pendingRuntimeDefinition);
   };
-  const runtimeCalculation = useMemo(
-    () => xlsFormDefinition ? applyXlsFormRuntimeCalculations(xlsFormDefinition, values) : { values, calculated: {} },
-    [xlsFormDefinition, values]
-  );
-  const runtimeValues = runtimeCalculation.values;
-  const runtimeAllPages = useMemo(
-    () => xlsFormDefinition ? buildXlsFormRuntimePages(xlsFormDefinition, runtimeValues) : [],
-    [xlsFormDefinition, runtimeValues]
-  );
-  const runtimePages = useMemo(
-    () => xlsFormDefinition ? buildXlsFormRuntimePages(xlsFormDefinition, runtimeValues, query) : [],
-    [xlsFormDefinition, runtimeValues, query]
-  );
-  const runtimeValidation = useMemo(
-    () => xlsFormDefinition ? validateXlsFormRuntime(xlsFormDefinition, runtimeValues, runtimeAllPages) : null,
-    [runtimeAllPages, runtimeValues, xlsFormDefinition]
-  );
-  const validationIssues = useMemo<RuntimeIssueView[]>(() => {
-    if (!runtimeValidation) return validateInternalGedOsFields(values);
-    return runtimeValidation.issues.map((issue) => ({
-      field: {
-        name: issue.field.name,
-        type: issue.field.type === 'note' ? 'note' : 'text',
-        label: issue.field.label || issue.field.name,
-        required: issue.type === 'required',
-      } as InternalGemField,
-      type: issue.type,
-      message: issue.message,
-      runtimeIssue: issue,
-    }));
-  }, [runtimeValidation, values]);
-  const constraintIssues = useMemo(
-    () => validationIssues.filter((issue) => issue.type === 'constraint'),
-    [validationIssues]
-  );
-  const missingRequired = useMemo(
-    () => validationIssues.filter((issue) => issue.type === 'required'),
-    [validationIssues]
-  );
+  const {
+    runtimeValues,
+    runtimeAllPages,
+    runtimePages,
+    runtimeValidation,
+    validationIssues,
+    constraintIssues,
+    missingRequired,
+  } = useKoboFormLogic(xlsFormDefinition, values, query);
   const progress = useMemo(() => {
     if (!xlsFormDefinition) return progressFor(values);
     const items: ProgressItem[] = [];
@@ -502,7 +323,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
         const instances = Array.isArray(repeatValue) ? repeatValue.filter(isRecord) : [];
         instances.forEach((instance, repeatIndex) => {
           page.allFields.forEach((field) => {
-            if (XLS_RUNTIME_FILLABLE_SKIP_TYPES.has(field.type) || !isXlsFormRuntimeFieldVisible(field, runtimeValues, instance)) return;
+            if (GEM_RUNTIME_FILLABLE_SKIP_TYPES.has(field.type) || !isXlsFormRuntimeFieldVisible(field, runtimeValues, instance)) return;
             const value = getXlsFormRuntimeFieldValue(field, runtimeValues, instance);
             items.push({
               name: `${page.repeatName}.${repeatIndex}.${field.name}`,
@@ -515,7 +336,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
         return;
       }
       page.allFields.forEach((field) => {
-        if (XLS_RUNTIME_FILLABLE_SKIP_TYPES.has(field.type) || !isXlsFormRuntimeFieldVisible(field, runtimeValues)) return;
+        if (GEM_RUNTIME_FILLABLE_SKIP_TYPES.has(field.type) || !isXlsFormRuntimeFieldVisible(field, runtimeValues)) return;
         const value = getXlsFormRuntimeFieldValue(field, runtimeValues);
         items.push({
           name: field.name,
@@ -587,7 +408,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
         setXlsFormDefinition(null);
         onChangeRef.current('_ged_os_runtime_form_key', 'terrain_internal');
         onChangeRef.current('_ged_os_runtime_form_version', INTERNAL_GED_OS_FORM_SETTINGS.version);
-        onChangeRef.current('_ged_os_runtime_engine', 'ged-os-internal-kobo');
+        onChangeRef.current('_ged_os_runtime_engine', 'gem-internal-kobo');
         onChangeRef.current('_ged_os_runtime_title', 'Formulaire terrain interne');
         setServerFormStatus({
           status: form.formVersion === INTERNAL_GED_OS_FORM_SETTINGS.version ? 'ok' : 'mismatch',
@@ -794,7 +615,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
     updateDuration();
     const intervalId = window.setInterval(updateDuration, 15000);
     return () => window.clearInterval(intervalId);
-  }, [values._gem_session_started_at, values.start]);
+  }, [values._ged_os_session_started_at, values.start]);
 
   useEffect(() => {
     if (!numeroOrdre) {
@@ -864,7 +685,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
         onChangeRef.current('LOCALISATION_CLIENT', latitude && longitude ? `${latitude} ${longitude}` : '');
         
         // Mock de l'objet pulldata pour les XLSForm importés
-        onChangeRef.current('_gem_pulldata_Thies', {
+        onChangeRef.current('_ged_os_pulldata_Thies', {
           code_key: numeroOrdre,
           nom: String(displayName),
           telephone: String(phone),
@@ -933,7 +754,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
 
   const navigableSections = useMemo(
     () =>
-      INTERNAL_GEM_SECTIONS.map((section) => {
+      INTERNAL_GED_OS_SECTIONS.map((section) => {
         const activeFields = section.fields.filter((field) => isInternalGemFieldVisible(field, values));
         const missingFields = activeFields.filter(
           (field) => field.required && !hasInternalGemRequiredValue(field, values)
@@ -1255,14 +1076,14 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
       }
 
       onChange(field.name, fieldValue);
-      onChange(`_gem_attachment_${field.name}`, attachment);
-      onChange(`_gem_photo_${field.name}_original_name`, file.name);
-      onChange(`_gem_photo_${field.name}_mime`, attachment.mimeType || '');
-      onChange(`_gem_photo_${field.name}_original_bytes`, String(file.size));
-      onChange(`_gem_photo_${field.name}_stored_bytes`, String(uploadFile.size));
-      onChange(`_gem_photo_${field.name}_compressed`, String(uploadFile.size < file.size));
-      onChange(`_gem_photo_${field.name}_storage`, attachment.storage || '');
-      onChange(`_gem_photo_${field.name}_captured_at`, capturedAt);
+      onChange(`_ged_os_attachment_${field.name}`, attachment);
+      onChange(`_ged_os_photo_${field.name}_original_name`, file.name);
+      onChange(`_ged_os_photo_${field.name}_mime`, attachment.mimeType || '');
+      onChange(`_ged_os_photo_${field.name}_original_bytes`, String(file.size));
+      onChange(`_ged_os_photo_${field.name}_stored_bytes`, String(uploadFile.size));
+      onChange(`_ged_os_photo_${field.name}_compressed`, String(uploadFile.size < file.size));
+      onChange(`_ged_os_photo_${field.name}_storage`, attachment.storage || '');
+      onChange(`_ged_os_photo_${field.name}_captured_at`, capturedAt);
     } finally {
       setUploadingField(null);
     }
@@ -1270,14 +1091,14 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
 
   const clearFile = (field: InternalGemField) => {
     onChange(field.name, '');
-    onChange(`_gem_attachment_${field.name}`, '');
-    onChange(`_gem_photo_${field.name}_original_name`, '');
-    onChange(`_gem_photo_${field.name}_mime`, '');
-    onChange(`_gem_photo_${field.name}_original_bytes`, '');
-    onChange(`_gem_photo_${field.name}_stored_bytes`, '');
-    onChange(`_gem_photo_${field.name}_compressed`, '');
-    onChange(`_gem_photo_${field.name}_storage`, '');
-    onChange(`_gem_photo_${field.name}_captured_at`, '');
+    onChange(`_ged_os_attachment_${field.name}`, '');
+    onChange(`_ged_os_photo_${field.name}_original_name`, '');
+    onChange(`_ged_os_photo_${field.name}_mime`, '');
+    onChange(`_ged_os_photo_${field.name}_original_bytes`, '');
+    onChange(`_ged_os_photo_${field.name}_stored_bytes`, '');
+    onChange(`_ged_os_photo_${field.name}_compressed`, '');
+    onChange(`_ged_os_photo_${field.name}_storage`, '');
+    onChange(`_ged_os_photo_${field.name}_captured_at`, '');
   };
 
   const getRepeatInstances = (repeatName: string): Record<string, unknown>[] => {
@@ -1373,14 +1194,14 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
       }
 
       updateRuntimeField(field, fieldValue, repeatContext);
-      onChange(`_gem_attachment_${attachmentKey}`, attachment);
-      onChange(`_gem_photo_${attachmentKey}_original_name`, file.name);
-      onChange(`_gem_photo_${attachmentKey}_mime`, attachment.mimeType || '');
-      onChange(`_gem_photo_${attachmentKey}_original_bytes`, String(file.size));
-      onChange(`_gem_photo_${attachmentKey}_stored_bytes`, String(uploadFile.size));
-      onChange(`_gem_photo_${attachmentKey}_compressed`, String(uploadFile.size < file.size));
-      onChange(`_gem_photo_${attachmentKey}_storage`, attachment.storage || '');
-      onChange(`_gem_photo_${attachmentKey}_captured_at`, capturedAt);
+      onChange(`_ged_os_attachment_${attachmentKey}`, attachment);
+      onChange(`_ged_os_photo_${attachmentKey}_original_name`, file.name);
+      onChange(`_ged_os_photo_${attachmentKey}_mime`, attachment.mimeType || '');
+      onChange(`_ged_os_photo_${attachmentKey}_original_bytes`, String(file.size));
+      onChange(`_ged_os_photo_${attachmentKey}_stored_bytes`, String(uploadFile.size));
+      onChange(`_ged_os_photo_${attachmentKey}_compressed`, String(uploadFile.size < file.size));
+      onChange(`_ged_os_photo_${attachmentKey}_storage`, attachment.storage || '');
+      onChange(`_ged_os_photo_${attachmentKey}_captured_at`, capturedAt);
     } finally {
       setUploadingField(null);
     }
@@ -1389,14 +1210,14 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
   const clearRuntimeFile = (field: XlsFormField, repeatContext?: RepeatContext) => {
     const attachmentKey = getRuntimeAttachmentKey(field, repeatContext);
     updateRuntimeField(field, '', repeatContext);
-    onChange(`_gem_attachment_${attachmentKey}`, '');
-    onChange(`_gem_photo_${attachmentKey}_original_name`, '');
-    onChange(`_gem_photo_${attachmentKey}_mime`, '');
-    onChange(`_gem_photo_${attachmentKey}_original_bytes`, '');
-    onChange(`_gem_photo_${attachmentKey}_stored_bytes`, '');
-    onChange(`_gem_photo_${attachmentKey}_compressed`, '');
-    onChange(`_gem_photo_${attachmentKey}_storage`, '');
-    onChange(`_gem_photo_${attachmentKey}_captured_at`, '');
+    onChange(`_ged_os_attachment_${attachmentKey}`, '');
+    onChange(`_ged_os_photo_${attachmentKey}_original_name`, '');
+    onChange(`_ged_os_photo_${attachmentKey}_mime`, '');
+    onChange(`_ged_os_photo_${attachmentKey}_original_bytes`, '');
+    onChange(`_ged_os_photo_${attachmentKey}_stored_bytes`, '');
+    onChange(`_ged_os_photo_${attachmentKey}_compressed`, '');
+    onChange(`_ged_os_photo_${attachmentKey}_storage`, '');
+    onChange(`_ged_os_photo_${attachmentKey}_captured_at`, '');
   };
 
   const addRepeatInstance = (page: XlsFormPage) => {
@@ -1445,9 +1266,9 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
           onChange('latitude_key', latitude);
           onChange('longitude_key', longitude);
         }
-        onChange('_gem_client_gps_accuracy_m', String(Math.round(position.coords.accuracy || 0)));
-        onChange('_gem_client_gps_captured_at', capturedAt);
-        onChange('_gem_client_gps_source', 'browser-geolocation-high-accuracy');
+        onChange('_ged_os_client_gps_accuracy_m', String(Math.round(position.coords.accuracy || 0)));
+        onChange('_ged_os_client_gps_captured_at', capturedAt);
+        onChange('_ged_os_client_gps_source', 'browser-geolocation-high-accuracy');
         setLocatingField(null);
       },
       (error) => {
@@ -1940,7 +1761,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
     const attachmentKey = getRuntimeAttachmentKey(signatureTarget.field, signatureTarget.repeatContext);
     const capturedAt = new Date().toISOString();
     updateRuntimeField(signatureTarget.field, signatureBase64, signatureTarget.repeatContext);
-    onChange(`_gem_attachment_${attachmentKey}`, {
+    onChange(`_ged_os_attachment_${attachmentKey}`, {
       id: makeAttachmentId(),
       fieldName: attachmentKey,
       fieldCode: signatureTarget.field.name,
@@ -1955,9 +1776,9 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
       storage: 'embedded-offline',
       dataUrl: signatureBase64,
     } satisfies InternalKoboAttachment);
-    onChange(`_gem_photo_${attachmentKey}_original_name`, `${attachmentKey}.png`);
-    onChange(`_gem_photo_${attachmentKey}_mime`, 'image/png');
-    onChange(`_gem_photo_${attachmentKey}_captured_at`, capturedAt);
+    onChange(`_ged_os_photo_${attachmentKey}_original_name`, `${attachmentKey}.png`);
+    onChange(`_ged_os_photo_${attachmentKey}_mime`, 'image/png');
+    onChange(`_ged_os_photo_${attachmentKey}_captured_at`, capturedAt);
     setSignatureTarget(null);
   };
 
@@ -2087,7 +1908,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
 
         {(field.type === 'select_one' || field.type === 'select_multiple') && field.listName ? (
           <div className={`grid grid-cols-1 gap-2 ${field.appearance === 'minimal' ? '' : 'sm:grid-cols-2'}`}>
-            {(INTERNAL_GEM_CHOICES[field.listName] || []).map((option) => {
+            {(INTERNAL_GED_OS_CHOICES[field.listName] || []).map((option) => {
               const active = field.type === 'select_multiple'
                 ? asArray(value).includes(option.name)
                 : value === option.name;
@@ -2188,467 +2009,6 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
     );
   };
 
-  const renderSubmissionHistory = (compact = false) => {
-    const visibleHistory = submissions.slice(0, isHistoryExpanded ? (compact ? 2 : 3) : 1);
-    const hiddenHistoryCount = Math.max(0, submissions.length - visibleHistory.length);
-    const latestSubmission = submissions[0];
-
-    return (
-    <div className={`rounded-2xl border border-white/10 bg-white/[0.045] ${compact ? 'p-3' : 'p-4'}`}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-blue-100">Historique VPS</p>
-          <p className="mt-1 text-[10px] font-semibold text-slate-500">
-            {submissions.length
-              ? `${submissions.length} derniere(s) chargee(s) - apercu compact`
-              : 'Aucune soumission serveur'}
-          </p>
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          {submissions.length > 0 ? (
-            <button
-              type="button"
-              onClick={downloadSubmissionHistoryJson}
-              className="grid h-8 w-8 place-items-center rounded-xl border border-white/10 bg-slate-950/35 text-slate-300 transition-colors hover:text-white"
-              aria-label="Exporter l'historique GEM Collect"
-              title="Exporter l'historique JSON"
-            >
-              <Download size={14} />
-            </button>
-          ) : null}
-          {submissions.length > 1 ? (
-            <button
-              type="button"
-              onClick={() => setIsHistoryExpanded((current) => !current)}
-              className="grid h-8 w-8 place-items-center rounded-xl border border-white/10 bg-slate-950/35 text-slate-300 transition-colors hover:text-white"
-              aria-label={isHistoryExpanded ? 'Replier l historique VPS' : 'Afficher plus d historique VPS'}
-              title={isHistoryExpanded ? 'Replier' : 'Afficher plus'}
-            >
-              <ChevronRight size={14} className={`transition-transform ${isHistoryExpanded ? 'rotate-90' : ''}`} />
-            </button>
-          ) : null}
-          {onRefreshHistory ? (
-            <button
-              type="button"
-              onClick={onRefreshHistory}
-              disabled={isHistoryLoading}
-              className="grid h-8 w-8 place-items-center rounded-xl border border-white/10 bg-slate-950/35 text-slate-300 transition-colors hover:text-white disabled:opacity-40"
-              aria-label="Actualiser l'historique VPS"
-            >
-              <RefreshCcw size={14} className={isHistoryLoading ? 'animate-spin' : ''} />
-            </button>
-          ) : null}
-        </div>
-      </div>
-
-      {historyError ? (
-        <div className="mt-3 rounded-xl border border-amber-300/20 bg-amber-400/10 px-3 py-2 text-[10px] font-bold text-amber-100">
-          {historyError}
-        </div>
-      ) : null}
-
-      <div className={`${latestSubmission || isHistoryLoading || historyError ? 'mt-3' : ''} space-y-2`}>
-        {isHistoryLoading && submissions.length === 0 ? (
-          <div className="rounded-xl border border-white/8 bg-slate-950/30 px-3 py-3 text-[10px] font-bold text-slate-400">
-            Chargement de l'historique...
-          </div>
-        ) : null}
-
-        {visibleHistory.map((submission) => {
-          const missingCount = Array.isArray(submission.requiredMissing) ? submission.requiredMissing.length : 0;
-          return (
-            <div key={submission.id} className="rounded-xl border border-white/[0.07] bg-slate-950/35 p-3">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="truncate text-[11px] font-black text-white">
-                    {formatInternalGemValue(submission.role || 'role non defini', 'roles')}
-                  </p>
-                  <p className="mt-1 text-[9px] font-semibold text-slate-500">
-                    {formatHistoryDate(submission.savedAt)} - v{submission.formVersion}
-                  </p>
-                </div>
-                <span className={`shrink-0 rounded-full border px-2 py-1 text-[8px] font-black uppercase tracking-[0.1em] ${submissionStatusClass(submission.status)}`}>
-                  {submissionStatusLabel(submission.status)}
-                </span>
-              </div>
-              <div className="mt-2 flex flex-wrap gap-2 text-[9px] font-bold text-slate-400">
-                <span className="rounded-full bg-white/[0.05] px-2 py-1">
-                  {missingCount ? `${missingCount} requis manquant(s)` : 'Complet'}
-                </span>
-                {submission.submittedBy?.name || submission.submittedBy?.email ? (
-                  <span className="rounded-full bg-white/[0.05] px-2 py-1">
-                    {String(submission.submittedBy.name || submission.submittedBy.email)}
-                  </span>
-                ) : null}
-                <button
-                  type="button"
-                  onClick={() => setReceiptSubmission(submission)}
-                  className="rounded-full border border-blue-200/20 bg-blue-300/10 px-2 py-1 text-[9px] font-black uppercase tracking-[0.1em] text-blue-100 hover:bg-blue-300/18"
-                >
-                  Voir recu
-                </button>
-              </div>
-            </div>
-          );
-        })}
-
-        {hiddenHistoryCount > 0 ? (
-          <button
-            type="button"
-            onClick={() => setIsHistoryExpanded((current) => !current)}
-            className="w-full rounded-xl border border-white/[0.08] bg-slate-950/25 px-3 py-2 text-left text-[10px] font-black uppercase tracking-[0.1em] text-slate-400 transition-colors hover:border-blue-200/20 hover:text-blue-100"
-          >
-            {isHistoryExpanded
-              ? `Replier - ${hiddenHistoryCount} autre(s) non affichee(s)`
-              : `Voir ${hiddenHistoryCount} autre(s) soumission(s) chargee(s)`}
-          </button>
-        ) : null}
-
-        {!isHistoryLoading && submissions.length === 0 && !historyError ? (
-          <div className="rounded-xl border border-white/8 bg-slate-950/30 px-3 py-3 text-[10px] font-bold text-slate-500">
-            Aucun envoi interne trouve pour ce menage.
-          </div>
-        ) : null}
-      </div>
-    </div>
-    );
-  };
-
-  const renderLocalQueue = (compact = false) => {
-    if (queueItems.length === 0) return null;
-
-    const visibleQueueItems = queueItems.slice(0, compact ? 2 : 4);
-
-    return (
-      <div className={`rounded-2xl border border-sky-300/15 bg-sky-400/[0.055] ${compact ? 'p-3' : 'p-4'}`}>
-        <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-sky-100">File locale</p>
-            <p className="mt-1 text-[10px] font-semibold text-slate-500">
-              {queueItems.length} saisie(s) gardee(s) sur cet appareil
-            </p>
-          </div>
-          {onFlushQueue ? (
-            <button
-              type="button"
-              onClick={onFlushQueue}
-              disabled={isQueueFlushing || !isOnline}
-              className="inline-flex h-8 shrink-0 items-center gap-1 rounded-xl border border-sky-300/20 bg-sky-300/10 px-2.5 text-[9px] font-black uppercase tracking-[0.1em] text-sky-100 transition-colors hover:bg-sky-300/18 disabled:cursor-not-allowed disabled:opacity-45"
-            >
-              <RefreshCcw size={13} className={isQueueFlushing ? 'animate-spin' : ''} />
-              Envoyer
-            </button>
-          ) : null}
-        </div>
-
-        <div className="mt-3 space-y-2">
-          {visibleQueueItems.map((item) => (
-            <div key={`${item.id || item.clientSubmissionId}`} className="rounded-xl border border-white/[0.07] bg-slate-950/35 p-3">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="truncate text-[11px] font-black text-white">
-                    {item.numeroOrdre ? `Menage ${item.numeroOrdre}` : 'Menage non renseigne'}
-                  </p>
-                  <p className="mt-1 text-[9px] font-semibold text-slate-500">
-                    {formatInternalGemValue(item.role || 'role non defini', 'roles')} - {formatHistoryDate(new Date(item.timestamp).toISOString())}
-                  </p>
-                </div>
-                <span className={`shrink-0 rounded-full border px-2 py-1 text-[8px] font-black uppercase tracking-[0.1em] ${queueStatusClass(item.status)}`}>
-                  {queueStatusLabel(item.status, item.retryCount)}
-                </span>
-              </div>
-              <div className="mt-2 flex flex-wrap gap-2 text-[9px] font-bold text-slate-400">
-                <span className="rounded-full bg-white/[0.05] px-2 py-1">
-                  {submissionStatusLabel(item.submissionStatus)}
-                </span>
-                <span className="rounded-full bg-white/[0.05] px-2 py-1">
-                  {item.retryCount} tentative(s)
-                </span>
-                {item.nextRetryAt && item.nextRetryInMs ? (
-                  <span className="rounded-full bg-amber-400/10 px-2 py-1 text-amber-100">
-                    prochain essai {Math.ceil(item.nextRetryInMs / 1000)}s
-                  </span>
-                ) : null}
-                {item.mediaBytes ? (
-                  <span className="rounded-full bg-white/[0.05] px-2 py-1">
-                    {Math.round(item.mediaBytes / 1024)} Ko media
-                  </span>
-                ) : null}
-                {item.lastError ? (
-                  <span className="max-w-full truncate rounded-full bg-rose-400/10 px-2 py-1 text-rose-100">
-                    {item.lastError}
-                  </span>
-                ) : null}
-              </div>
-            </div>
-          ))}
-          {queueItems.length > visibleQueueItems.length ? (
-            <div className="rounded-xl border border-white/8 bg-slate-950/25 px-3 py-2 text-[10px] font-bold text-slate-500">
-              +{queueItems.length - visibleQueueItems.length} autre(s) saisie(s) en file.
-            </div>
-          ) : null}
-        </div>
-      </div>
-    );
-  };
-
-  const renderValidationAssistant = () => {
-    if (validationIssues.length === 0) {
-      return (
-        <div className="mb-4 rounded-2xl border border-emerald-300/20 bg-emerald-400/[0.08] p-4">
-          <div className="flex items-center gap-3">
-            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-2xl border border-emerald-300/25 bg-emerald-300/12 text-emerald-100">
-              <CheckCircle2 size={18} />
-            </span>
-            <div className="min-w-0">
-              <p className="text-[12px] font-black uppercase tracking-[0.14em] text-emerald-100">Validation GEM Collect prête</p>
-              <p className="mt-1 text-[11px] font-semibold text-slate-300">
-                Tous les champs visibles requis sont remplis. La prochaine action soumettra la fiche au serveur VPS.
-              </p>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div className="mb-4 rounded-2xl border border-amber-300/25 bg-amber-400/[0.08] p-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-[12px] font-black uppercase tracking-[0.14em] text-amber-100">Validation GEM Collect incomplète</p>
-            <p className="mt-1 text-[11px] font-semibold text-slate-300">
-              {missingRequired.length} requis et {constraintIssues.length} valeur(s) a corriger avant la soumission finale.
-            </p>
-          </div>
-          {firstActionableIssue?.section || firstActionableIssue?.runtimePage ? (
-            <button
-              type="button"
-              onClick={() => focusRequiredField(
-                firstActionableIssue.field.name,
-                firstActionableIssue.section?.id,
-                firstActionableIssue.runtimePage?.id
-              )}
-              className="rounded-full border border-amber-200/30 bg-amber-300/15 px-3 py-2 text-[9px] font-black uppercase tracking-[0.12em] text-amber-50 hover:bg-amber-300/25"
-            >
-              Premiere action
-            </button>
-          ) : null}
-        </div>
-
-        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-          {validationIssueDetails.slice(0, 4).map(({ field, section, runtimePage, type, message }) => {
-            const targetTitle = runtimePage?.title || section?.title || 'Etape inconnue';
-            const canOpen = Boolean((section && !section.locked) || (runtimePage && !runtimePage.locked));
-            return (
-              <button
-                key={`${field.name}-${type}`}
-                type="button"
-                disabled={!canOpen}
-                onClick={() => focusRequiredField(field.name, section?.id, runtimePage?.id)}
-                className={`rounded-xl border px-3 py-2 text-left transition-colors ${
-                  canOpen
-                    ? 'border-amber-200/20 bg-slate-950/25 text-amber-50 hover:border-amber-200/40'
-                    : 'cursor-not-allowed border-white/8 bg-slate-950/15 text-slate-500 opacity-60'
-                }`}
-              >
-                <p className="truncate text-[10px] font-black uppercase tracking-[0.1em]">
-                  {targetTitle}
-                </p>
-                <p className="mt-1 line-clamp-2 text-[11px] font-semibold leading-snug">
-                  {field.label}
-                </p>
-                <p className="mt-1 line-clamp-2 text-[10px] font-semibold leading-snug text-amber-100/75">
-                  {message}
-                </p>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-    );
-  };
-
-  const renderReceiptModal = () => {
-    if (!receiptSubmission) return null;
-
-    const valueEntries = Object.entries(receiptSubmission.values || {})
-      .filter(([key, value]) => {
-        if (key.startsWith('_')) return false;
-        if (Array.isArray(value)) return value.length > 0;
-        return value !== undefined && value !== null && String(value).trim() !== '';
-      })
-      .slice(0, 14);
-    const missingItems = Array.isArray(receiptSubmission.requiredMissing)
-      ? receiptSubmission.requiredMissing
-      : [];
-    const metadataEntries = Object.entries(receiptSubmission.metadata || {})
-      .filter(([key, value]) => {
-        if (!key || value === undefined || value === null) return false;
-        if (typeof value === 'string') return value.trim().length > 0;
-        return true;
-      })
-      .slice(0, 8);
-    const clientMetadataEntries = Object.entries(receiptSubmission.values || {})
-      .filter(([key, value]) => {
-        const isClientMetadata =
-          key.startsWith('_gem_collection_') ||
-          key.startsWith('_gem_client_') ||
-          key.startsWith('_gem_session_');
-        if (!isClientMetadata) return false;
-        if (value === undefined || value === null) return false;
-        return String(value).trim().length > 0;
-      })
-      .slice(0, 12);
-
-    return (
-      <div className="absolute inset-0 z-40 flex items-end justify-center bg-slate-950/72 p-3 backdrop-blur-sm sm:items-center sm:p-6">
-        <div className="flex max-h-[92dvh] w-full max-w-2xl flex-col rounded-[1.5rem] border border-blue-300/20 bg-[#0B1728] shadow-2xl shadow-blue-950/30">
-          <div className="shrink-0 border-b border-white/10 p-5">
-            <div className="flex items-start justify-between gap-4">
-              <div className="min-w-0">
-                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-200">Reçu GEM Collect</p>
-                <h4 className="mt-2 truncate text-xl font-black uppercase tracking-tight text-white">
-                  {receiptSubmission.numeroOrdre ? `Menage ${receiptSubmission.numeroOrdre}` : 'Soumission terrain'}
-                </h4>
-                <p className="mt-2 text-[12px] font-semibold leading-relaxed text-slate-300">
-                  Identifiant: <span className="font-black text-blue-100">{receiptSubmission.clientSubmissionId}</span>
-                </p>
-              </div>
-              <div className="flex shrink-0 items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => copyReceiptId(receiptSubmission)}
-                  className="grid h-10 w-10 place-items-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-300 hover:text-white"
-                  aria-label="Copier l'identifiant du recu"
-                  title={copiedReceiptId === receiptSubmission.clientSubmissionId ? 'Copie' : "Copier l'identifiant"}
-                >
-                  <Copy size={16} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => downloadReceiptJson(receiptSubmission)}
-                  className="grid h-10 w-10 place-items-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-300 hover:text-white"
-                  aria-label="Telecharger le recu JSON"
-                  title="Telecharger le recu JSON"
-                >
-                  <Download size={16} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setReceiptSubmission(null)}
-                  className="grid h-10 w-10 place-items-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-400 hover:text-white"
-                  aria-label="Fermer le recu de soumission"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-            </div>
-            {copiedReceiptId === receiptSubmission.clientSubmissionId ? (
-              <div className="mt-3 rounded-2xl border border-emerald-300/20 bg-emerald-400/10 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-100">
-                Identifiant copie
-              </div>
-            ) : null}
-
-            <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
-              <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-3">
-                <p className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Statut</p>
-                <p className="mt-1 truncate text-sm font-black text-white">{submissionStatusLabel(receiptSubmission.status)}</p>
-              </div>
-              <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-3">
-                <p className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Role</p>
-                <p className="mt-1 truncate text-sm font-black text-white">{formatInternalGemValue(receiptSubmission.role || '', 'roles') || 'Non defini'}</p>
-              </div>
-              <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-3">
-                <p className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Date</p>
-                <p className="mt-1 truncate text-sm font-black text-white">{formatHistoryDate(receiptSubmission.savedAt)}</p>
-              </div>
-              <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-3">
-                <p className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Version</p>
-                <p className="mt-1 truncate text-sm font-black text-white">v{receiptSubmission.formVersion}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="min-h-0 flex-1 overflow-y-auto p-5 custom-scrollbar">
-            {missingItems.length > 0 ? (
-              <div className="mb-4 rounded-2xl border border-amber-300/25 bg-amber-400/[0.08] p-3">
-                <p className="text-[10px] font-black uppercase tracking-[0.14em] text-amber-100">Requis manquants au moment de l'envoi</p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {missingItems.map((fieldName) => (
-                    <span key={fieldName} className="rounded-full border border-amber-200/20 bg-amber-300/10 px-2.5 py-1 text-[9px] font-bold text-amber-50">
-                      {fieldLabelByName.get(fieldName) || fieldName}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-
-            <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
-              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-blue-100">Apercu des valeurs envoyees</p>
-              <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                {valueEntries.map(([key, value]) => (
-                  <div key={key} className="min-w-0 rounded-xl border border-white/8 bg-slate-950/25 p-3">
-                    <p className="truncate text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">
-                      {fieldLabelByName.get(key) || key}
-                    </p>
-                    <p className="mt-1 line-clamp-2 text-[11px] font-bold leading-snug text-slate-100">
-                      {formatInternalGemValue(value)}
-                    </p>
-                  </div>
-                ))}
-              </div>
-              {valueEntries.length === 0 ? (
-                <p className="mt-3 text-[11px] font-semibold text-slate-500">Aucune valeur exploitable dans ce recu.</p>
-              ) : null}
-            </div>
-
-            {metadataEntries.length > 0 ? (
-              <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.04] p-3">
-                <p className="text-[10px] font-black uppercase tracking-[0.14em] text-blue-100">Metadonnees de collecte</p>
-                <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  {metadataEntries.map(([key, value]) => (
-                    <div key={key} className="min-w-0 rounded-xl border border-white/8 bg-slate-950/25 p-3">
-                      <p className="truncate text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">
-                        {key}
-                      </p>
-                      <p className="mt-1 line-clamp-3 break-words text-[11px] font-bold leading-snug text-slate-100">
-                        {typeof value === 'object' ? JSON.stringify(value) : String(value)}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-
-            {clientMetadataEntries.length > 0 ? (
-              <div className="mt-4 rounded-2xl border border-cyan-300/15 bg-cyan-400/[0.055] p-3">
-                <p className="text-[10px] font-black uppercase tracking-[0.14em] text-cyan-100">Contexte appareil</p>
-                <p className="mt-1 text-[10px] font-semibold leading-relaxed text-slate-400">
-                  Donnees techniques jointes automatiquement pour tracer la saisie, le mode hors-ligne et la session.
-                </p>
-                <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  {clientMetadataEntries.map(([key, value]) => (
-                    <div key={key} className="min-w-0 rounded-xl border border-cyan-200/10 bg-slate-950/25 p-3">
-                      <p className="truncate text-[9px] font-black uppercase tracking-[0.12em] text-cyan-200/70">
-                        {formatMetadataLabel(key)}
-                      </p>
-                      <p className="mt-1 line-clamp-3 break-words text-[11px] font-bold leading-snug text-slate-100">
-                        {key === '_gem_client_touch'
-                          ? String(value) === 'true' ? 'Oui' : 'Non'
-                          : key === '_gem_session_duration_s'
-                            ? `${String(value)} s`
-                            : String(value)}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-          </div>
-        </div>
-      </div>
-    );
-  };
 
   return (
     <div className={inline ? "flex flex-col h-full w-full bg-transparent" : "fixed inset-0 z-[3000] flex items-end justify-center bg-slate-950/75 p-0 backdrop-blur-md sm:items-center sm:p-4"}>
@@ -2721,11 +2081,11 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
           </div>
 
           <div className="mb-5">
-            {renderSubmissionHistory()}
+            <HistoryPanel submissions={submissions || []} isHistoryLoading={isHistoryLoading} historyError={historyError} onRefreshHistory={onRefreshHistory} onDownloadHistory={downloadSubmissionHistoryJson} onViewReceipt={setReceiptSubmission} />
           </div>
-          {queueItems.length > 0 ? (
+          {queueItems && queueItems.length > 0 ? (
             <div className="mb-5">
-              {renderLocalQueue()}
+              <LocalQueuePanel queueItems={queueItems || []} onFlushQueue={onFlushQueue} isQueueFlushing={isQueueFlushing} isOnline={isOnline} />
             </div>
           ) : null}
 
@@ -2918,7 +2278,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
                       Nouvelle version XLSForm detectee
                     </p>
                     <p className="mt-1 leading-relaxed">
-                      Locale v{xlsFormDefinition?.formVersion || String(values._gem_runtime_form_version || INTERNAL_GEM_FORM_SETTINGS.version)} - VPS v{pendingRuntimeDefinition.formVersion}. Les valeurs deja saisies seront preservees par nom de champ.
+                      Locale v{xlsFormDefinition?.formVersion || String(values._ged_os_runtime_form_version || INTERNAL_GED_OS_FORM_SETTINGS.version)} - VPS v{pendingRuntimeDefinition.formVersion}. Les valeurs deja saisies seront preservees par nom de champ.
                     </p>
                   </div>
                   <button
@@ -2932,7 +2292,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
               </div>
             ) : serverFormStatus.status === 'mismatch' ? (
               <div className="mt-3 hidden rounded-2xl border border-amber-400/25 bg-amber-500/10 px-4 py-3 text-[11px] font-bold text-amber-100 sm:block">
-                Version XLSForm a verifier: locale {xlsFormDefinition?.formVersion || INTERNAL_GEM_FORM_SETTINGS.version}, VPS {serverFormStatus.version || 'inconnue'}.
+                Version XLSForm a verifier: locale {xlsFormDefinition?.formVersion || INTERNAL_GED_OS_FORM_SETTINGS.version}, VPS {serverFormStatus.version || 'inconnue'}.
               </div>
             ) : null}
 
@@ -2946,7 +2306,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
               <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-blue-300/20 bg-blue-400/10 px-4 py-3 text-[11px] font-bold text-blue-100">
                 <span>
                   Brouillon local sauvegarde - {formatHistoryDate(localDraft.updatedAt)}
-                  {localDraft.formVersion && localDraft.formVersion !== (xlsFormDefinition?.formVersion || values._gem_runtime_form_version)
+                  {localDraft.formVersion && localDraft.formVersion !== (xlsFormDefinition?.formVersion || values._ged_os_runtime_form_version)
                     ? ` - version brouillon ${localDraft.formVersion}`
                     : ''}
                 </span>
@@ -3000,16 +2360,16 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
                 ))}
               </select>
               <div className="mt-3">
-                {renderSubmissionHistory(true)}
+                <HistoryPanel compact submissions={submissions || []} isHistoryLoading={isHistoryLoading} historyError={historyError} onRefreshHistory={onRefreshHistory} onDownloadHistory={downloadSubmissionHistoryJson} onViewReceipt={setReceiptSubmission} />
               </div>
-              {queueItems.length > 0 ? (
+              {queueItems && queueItems.length > 0 ? (
                 <div className="mt-3">
-                  {renderLocalQueue(true)}
+                  <LocalQueuePanel compact queueItems={queueItems || []} onFlushQueue={onFlushQueue} isQueueFlushing={isQueueFlushing} isOnline={isOnline} />
                 </div>
               ) : null}
             </div>
 
-            {renderValidationAssistant()}
+            <ValidationAssistantPanel validationIssues={validationIssues} missingRequired={missingRequired} constraintIssues={constraintIssues} firstActionableIssue={firstActionableIssue} validationIssueDetails={validationIssueDetails} focusRequiredField={focusRequiredField} />
 
             {xlsFormDefinition && activeRuntimePage ? (
               renderRuntimePage(activeRuntimePage)
@@ -3106,7 +2466,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
                 <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-3">
                   <p className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Version XLSForm</p>
                   <p className="mt-1 truncate text-sm font-black text-white">
-                    v{xlsFormDefinition?.formVersion || INTERNAL_GEM_FORM_SETTINGS.version}
+                    v{xlsFormDefinition?.formVersion || INTERNAL_GED_OS_FORM_SETTINGS.version}
                   </p>
                   {serverFormStatus.version ? (
                     <p className={`mt-1 truncate text-[10px] font-bold ${
@@ -3159,7 +2519,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
           onSave={saveRuntimeSignature}
           title={signatureTarget?.field.label || signatureTarget?.field.name || 'Signature terrain'}
         />
-        {renderReceiptModal()}
+        {receiptSubmission ? <ReceiptModal receiptSubmission={receiptSubmission} copiedReceiptId={copiedReceiptId} copyReceiptId={copyReceiptId} downloadReceiptJson={downloadReceiptJson} onClose={() => setReceiptSubmission(null)} fieldLabelByName={fieldLabelByName} /> : null}
       </div>
     </div>
   );

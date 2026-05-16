@@ -4,7 +4,7 @@
  */
 
 export const PROJECT_CONFIG = {
-  // Nom principal de l'application (ex: GEM SAAS, PROQUELEC, etc.)
+  // Nom principal de l'application (ex: GED OS, PROQUELEC, etc.)
   appName: import.meta.env.VITE_APP_NAME || 'GED OS',
   
   // Slogan stratégique

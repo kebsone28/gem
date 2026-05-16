@@ -1303,7 +1303,7 @@ export const INTERNAL_GED_OS_CONTROL_FIELD_NAMES = [
   'VALEUR_DE_LA_RESISTANCE_DE_TER',
 ];
 
-const INTERNAL_GED_OS_FIELD_ALIASES: Record<string, string[]> = {
+const INTERNAL_GEM_FIELD_ALIASES: Record<string, string[]> = {
   Longueur_Cable_2_5mm_Int_rieure: [
     'Longueur_c\u00e2ble_2_5mm_Int_rieure',
     'group_wu8kv54/group_sy9vj14/Longueur_Cable_2_5mm_Int_rieure',
@@ -1414,7 +1414,7 @@ const NON_NEGATIVE_INTEGER_FIELDS = new Set(
   )
 );
 
-const parseGedOsNumber = (value: unknown) => {
+const parseGemNumber = (value: unknown) => {
   if (typeof value === 'number') return Number.isFinite(value) ? value : null;
   const normalized = String(value ?? '')
     .trim()
@@ -1425,12 +1425,12 @@ const parseGedOsNumber = (value: unknown) => {
 };
 
 const isValidLatitude = (value: unknown) => {
-  const number = parseGedOsNumber(value);
+  const number = parseGemNumber(value);
   return number !== null && number >= -90 && number <= 90;
 };
 
 const isValidLongitude = (value: unknown) => {
-  const number = parseGedOsNumber(value);
+  const number = parseGemNumber(value);
   return number !== null && number >= -180 && number <= 180;
 };
 
@@ -1441,20 +1441,20 @@ const parseGeopoint = (value: unknown) => {
     .filter(Boolean);
   if (parts.length < 2) return null;
   return {
-    latitude: parseGedOsNumber(parts[0]),
-    longitude: parseGedOsNumber(parts[1]),
+    latitude: parseGemNumber(parts[0]),
+    longitude: parseGemNumber(parts[1]),
   };
 };
 
-const getInternalGedOsConstraintMessage = (
+const getInternalGemConstraintMessage = (
   field: InternalGemField,
   values: Record<string, unknown>
 ) => {
-  const value = getInternalGedOsFieldValue(field, values);
-  if (!hasInternalGedOsValue(value)) return '';
+  const value = getInternalGemFieldValue(field, values);
+  if (!hasInternalGemValue(value)) return '';
 
   if (field.name === 'Numero_ordre') {
-    const number = parseGedOsNumber(value);
+    const number = parseGemNumber(value);
     return number !== null && Number.isInteger(number) && number > 0
       ? ''
       : 'Le numero ordre doit etre un entier positif.';
@@ -1476,7 +1476,7 @@ const getInternalGedOsConstraintMessage = (
   }
 
   if (NON_NEGATIVE_INTEGER_FIELDS.has(field.name)) {
-    const number = parseGedOsNumber(value);
+    const number = parseGemNumber(value);
     return number !== null && Number.isInteger(number) && number >= 0
       ? ''
       : 'La valeur doit etre un entier positif ou nul.';
@@ -1485,40 +1485,40 @@ const getInternalGedOsConstraintMessage = (
   return '';
 };
 
-export const isTruthyGedOsValue = (value: unknown) =>
+export const isTruthyGemValue = (value: unknown) =>
   value === true || value === 'true' || value === 'yes' || value === 'oui' || value === '1';
 
-export const hasInternalGedOsValue = (value: unknown) => {
+export const hasInternalGemValue = (value: unknown) => {
   if (Array.isArray(value)) return value.length > 0;
   return value !== undefined && value !== null && String(value).trim() !== '';
 };
 
-export const getInternalGedOsFieldValue = (
+export const getInternalGemFieldValue = (
   field: InternalGemField,
   values: Record<string, unknown>
 ) => {
   const value = values[field.name];
-  return hasInternalGedOsValue(value) ? value : field.defaultValue;
+  return hasInternalGemValue(value) ? value : field.defaultValue;
 };
 
-export const hasInternalGedOsRequiredValue = (
+export const hasInternalGemRequiredValue = (
   field: InternalGemField,
   values: Record<string, unknown>
 ) => {
-  const value = getInternalGedOsFieldValue(field, values);
-  if (field.type === 'acknowledge') return isTruthyGedOsValue(value);
-  return hasInternalGedOsValue(value);
+  const value = getInternalGemFieldValue(field, values);
+  if (field.type === 'acknowledge') return isTruthyGemValue(value);
+  return hasInternalGemValue(value);
 };
 
-export const getInternalGedOsSubmissionValues = (values: Record<string, unknown>) => {
+export const getInternalGemSubmissionValues = (values: Record<string, unknown>) => {
   const submissionValues: Record<string, unknown> = {};
 
-  getVisibleInternalGedOsFields(values).forEach((field) => {
+  getVisibleInternalGemFields(values).forEach((field) => {
     if (field.type === 'note') return;
-    const value = getInternalGedOsFieldValue(field, values);
-    if (hasInternalGedOsValue(value)) {
+    const value = getInternalGemFieldValue(field, values);
+    if (hasInternalGemValue(value)) {
       submissionValues[field.name] = value;
-      INTERNAL_GED_OS_FIELD_ALIASES[field.name]?.forEach((alias) => {
+      INTERNAL_GEM_FIELD_ALIASES[field.name]?.forEach((alias) => {
         submissionValues[alias] = value;
       });
     }
@@ -1546,12 +1546,12 @@ const evaluateAtomicRelevant = (expression: string, values: Record<string, unkno
   }
 
   const presence = cleaned.match(/^\$\{([^}]+)\}$/);
-  if (presence) return hasInternalGedOsValue(getValue(values, presence[1]));
+  if (presence) return hasInternalGemValue(getValue(values, presence[1]));
 
   return true;
 };
 
-export const isInternalGedOsFieldVisible = (
+export const isInternalGemFieldVisible = (
   field: InternalGemField,
   values: Record<string, unknown>
 ) => {
@@ -1573,45 +1573,45 @@ const dedupeFieldsByName = (fields: InternalGemField[]) => {
   });
 };
 
-export const getVisibleInternalGedOsFields = (values: Record<string, unknown>) =>
+export const getVisibleInternalGemFields = (values: Record<string, unknown>) =>
   dedupeFieldsByName(
     INTERNAL_GED_OS_SECTIONS.flatMap((section) =>
-      section.fields.filter((field) => isInternalGedOsFieldVisible(field, values))
+      section.fields.filter((field) => isInternalGemFieldVisible(field, values))
     )
   );
 
-export const validateInternalGedOsRequiredFields = (values: Record<string, unknown>) =>
-  getVisibleInternalGedOsFields(values).filter(
+export const validateInternalGemRequiredFields = (values: Record<string, unknown>) =>
+  getVisibleInternalGemFields(values).filter(
     (field) =>
-      field.type !== 'note' && field.required && !hasInternalGedOsRequiredValue(field, values)
+      field.type !== 'note' && field.required && !hasInternalGemRequiredValue(field, values)
   );
 
-export const validateInternalGedOsConstraintFields = (
+export const validateInternalGemConstraintFields = (
   values: Record<string, unknown>
 ): InternalGemValidationIssue[] =>
-  getVisibleInternalGedOsFields(values)
+  getVisibleInternalGemFields(values)
     .filter((field) => field.type !== 'note')
     .map((field) => ({
       field,
       type: 'constraint' as const,
-      message: field.constraintMessage || getInternalGedOsConstraintMessage(field, values),
+      message: field.constraintMessage || getInternalGemConstraintMessage(field, values),
     }))
     .filter((issue) => Boolean(issue.message));
 
-export const validateInternalGedOsFields = (
+export const validateInternalGemFields = (
   values: Record<string, unknown>
 ): InternalGemValidationIssue[] => [
-  ...validateInternalGedOsRequiredFields(values).map((field) => ({
+  ...validateInternalGemRequiredFields(values).map((field) => ({
     field,
     type: 'required' as const,
     message: 'Champ obligatoire pour cette branche GED OS.',
   })),
-  ...validateInternalGedOsConstraintFields(values),
+  ...validateInternalGemConstraintFields(values),
 ];
 
-export const formatInternalGedOsValue = (value: unknown, listName?: string): string => {
+export const formatInternalGemValue = (value: unknown, listName?: string): string => {
   if (Array.isArray(value)) {
-    return value.map((item): string => formatInternalGedOsValue(item, listName)).join(', ');
+    return value.map((item): string => formatInternalGemValue(item, listName)).join(', ');
   }
   if (typeof value === 'boolean') return value ? 'Oui' : 'Non';
   const raw = String(value ?? '');
@@ -1621,3 +1621,7 @@ export const formatInternalGedOsValue = (value: unknown, listName?: string): str
     : null;
   return option?.label || raw.replace(/_/g, ' ');
 };
+
+export const formatInternalGedOsValue = formatInternalGemValue;
+export const validateInternalGedOsFields = validateInternalGemFields;
+

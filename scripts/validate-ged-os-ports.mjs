@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * 🔒 GEM PORT VALIDATOR
- * This script ensures that GEM's reserved ports (8888, 8889, 8890) are not modified.
+ * 🔒 GED OS PORT VALIDATOR
+ * This script ensures that GED OS's reserved ports (8888, 8889, 8890) are not modified.
  * It runs automatically before dev:saas starts.
  */
 
@@ -57,7 +57,7 @@ function checkFile(filePath, checks) {
   });
 }
 
-console.log('\n🔒 GEM PORT VALIDATOR - Checking reserved ports...\n');
+console.log('\n🔒 GED OS PORT VALIDATOR - Checking reserved ports...\n');
 
 // Check backend/.env
 checkFile(BACKEND_ENV, [
@@ -93,11 +93,11 @@ checkFile(packageJSON, [
 ]);
 
 if (hasErrors) {
-  console.error('\n🚨 PORT VALIDATION FAILED - Some GEM ports are incorrect!');
+  console.error('\n🚨 PORT VALIDATION FAILED - Some GED OS ports are incorrect!');
   console.error('Please run: npm run validate-ports:fix\n');
   process.exit(1);
 } else {
-  console.log('\n✅ ALL GEM PORTS ARE CORRECTLY CONFIGURED');
+  console.log('\n✅ ALL GED OS PORTS ARE CORRECTLY CONFIGURED');
   console.log('   Backend:  http://localhost:8888');
   console.log('   Frontend: http://localhost:8889');
   console.log('   Preview:  http://localhost:8890\n');

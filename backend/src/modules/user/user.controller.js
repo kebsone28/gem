@@ -72,18 +72,6 @@ export const createUser = async (req, res) => {
       return res.status(400).json({ error: 'Cet email est déjà utilisé dans cette organisation' });
     }
 
-    // Validation des champs obligatoires
-    if (!email || !email.includes('@')) {
-      return res.status(400).json({ error: 'Format email invalide.' });
-    }
-    if (!password || password.length < 6) {
-      return res
-        .status(400)
-        .json({ error: 'Le mot de passe doit contenir au moins 6 caractères.' });
-    }
-    if (!name || name.trim().length < 2) {
-      return res.status(400).json({ error: 'Le nom doit contenir au moins 2 caractères.' });
-    }
 
     let finalRoleId = cleanNullable(roleId);
     if (!finalRoleId && role) {

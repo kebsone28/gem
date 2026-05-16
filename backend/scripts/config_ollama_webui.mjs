@@ -5,7 +5,7 @@ async function configureWithOllama() {
   await ssh.connect({
     host: 'gem.proquelec.sn',
     username: 'root',
-    password: 'Ur94w4NVdhcpJJUPCnFj',
+    password: process.env.VPS_SSH_PASSWORD,
   });
   
   console.log('🔌 Configuration automatique de la connexion Ollama...');

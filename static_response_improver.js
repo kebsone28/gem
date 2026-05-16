@@ -32,9 +32,6 @@ export class StaticResponseImprover {
   // AMÉLIORATIONS BASÉES SUR LES RÉPONSES IA RÉUSSIES
 
   improveWorkflowResponses() {
-    // Amélioration du workflow GED OS
-    this.improvedResponses.set('workflow_missions', {
-      original: "Créer mission → Valider → Approuver",
       improved: `Workflow complet des missions dans GED OS:
 
 1. **Création & Paramétrage** (ADMIN)
@@ -160,7 +157,6 @@ export class StaticResponseImprover {
     );
     analysis.score += foundTerms.length;
 
-    // Analyse de contexte métier
     if (response.toLowerCase().includes('ged os')) {
       analysis.score += 1;
       analysis.strengths.push('Branding GED OS respecté');

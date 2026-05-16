@@ -114,7 +114,7 @@ export const exportCahiersToWord = async (
   // 1. Front Page
   const mainTitle = isMultiple ? 'Cahiers des Charges Complets' : tasks[0].role || 'Sans titre';
   const safeRole = tasks[0].role?.replace(/\s+/g, '_') || 'lot';
-  const qrText = `https://gem-saas.proquelec.sn/verify/${safeRole}_${Date.now()}`;
+  const qrText = `https://ged.proquelec.sn/verify/${safeRole}_${Date.now()}`;
   const qrBuffer = await generateQRCodeBuffer(qrText);
 
   allSections.push({

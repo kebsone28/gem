@@ -317,7 +317,7 @@ model ConflictLog {
   @@index([timestamp])
 }
 
-// Mapping dynamique des champs Kobo vers GEM
+// Mapping dynamique des champs Kobo vers GED OS
 model KoboFormMapping {
   id             String   @id @default(uuid())
   organizationId String

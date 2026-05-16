@@ -343,7 +343,7 @@ export default function TeamDashboard() {
                 </h4>
                 <p className="text-[11px] sm:text-[11px] font-bold text-slate-300 mt-2 tracking-tight leading-relaxed">
                   L'equipe <span className="text-white">{predecessorTrade.label}</span> a
-                  complete <span className="text-white font-black">{predecessorTrade.progress}%</span> des taches. Le protocole GEM requiert{' '}
+                  complete <span className="text-white font-black">{predecessorTrade.progress}%</span> des taches. Le protocole GED OS requiert{' '}
                   <span className="text-amber-400 font-black">80%</span> pour débloquer vos
                   prochaines unités.
                 </p>

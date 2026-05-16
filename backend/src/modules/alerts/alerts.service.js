@@ -426,7 +426,7 @@ export const alertsService = {
           severity: severityMap[pvType] || 'MEDIUM',
           title: `${pvType} généré pour ${household.name || 'Ménage inconnu'}`,
           description: `Un procès-verbal de type ${pvType} a été automatiquement généré.`,
-          recommendedAction: `Consulter le PV et signer électroniquement dans votre espace GEM.`,
+          recommendedAction: `Consulter le PV et signer électroniquement dans votre espace GED OS.`,
           metadata,
           status: 'OPEN',
         },

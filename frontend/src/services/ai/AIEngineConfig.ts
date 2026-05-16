@@ -1,7 +1,7 @@
  
 /**
- * ⚙️ GEM AI ENGINE (V2.0)
- * Gestionnaire de configuration des moteurs IA de GEM SAAS
+ * ⚙️ GED OS AI ENGINE (V2.0)
+ * Gestionnaire de configuration des moteurs IA de GED OS
  * Réservé aux Administrateurs Système — Basculement entre moteurs en temps réel
  */
 

@@ -14,7 +14,7 @@ import { buildPublicUrl } from '../../utils/publicUrl.js';
 import { socketService } from '../../services/socket.service.js';
 
 const isDev = process.env.NODE_ENV !== 'production';
-const SUPER_ADMIN_EMAIL = process.env.SUPER_ADMIN_EMAIL || 'admin_ged_os';
+const SUPER_ADMIN_EMAIL = process.env.SUPER_ADMIN_EMAIL || 'admin_gem';
 const SUBMITTED_MISSION_STATUSES = ['soumise', 'en_attente_validation'];
 const FINAL_MISSION_STATUSES = ['approuvee', 'rejetee'];
 const REJECTION_CATEGORIES = new Set([
@@ -188,7 +188,7 @@ const drawPdfFooter = (doc, orderNumber, publicUrl) => {
     .fillColor('#64748b')
     .font('Helvetica')
     .fontSize(7)
-    .text(`GED OS | Ordre de Mission ${orderNumber}`, 42, footerTextY, {
+    .text(`GEM | Ordre de Mission ${orderNumber}`, 42, footerTextY, {
       width: 250,
       lineBreak: false,
     });
@@ -323,7 +323,7 @@ const buildMissionDocumentBuffer = async (mission) => {
       margin: 42,
       info: {
         Title: `Ordre de Mission ${orderNumber}`,
-        Author: 'GED OS',
+        Author: 'GEM',
       },
     });
     const chunks = [];

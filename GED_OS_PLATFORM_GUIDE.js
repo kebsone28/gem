@@ -139,11 +139,9 @@ CONTEXTE GÉNÉRAL:
 
 UTILISATEUR:
 - Rôle: ${user?.role || 'Inconnu'}
-- Identité: ${user?.name || 'Utilisateur'}
 
-METRIQUES ACTUELLES:
-- Missions: ${state?.stats?.totalMissions || 0}
-- Certifications: ${state?.stats?.totalCertified || 0}
+ÉTAT DU SYSTÈME:
+- Projets actifs: ${state?.stats?.activeProjects || 0}
 - Entités collectées: ${state?.stats?.totalHouseholds || 0}
 
 ARCHITECTURE:

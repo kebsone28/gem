@@ -5,7 +5,7 @@ async function updateWebUI() {
   await ssh.connect({
     host: 'gem.proquelec.sn',
     username: 'root',
-    password: 'Ur94w4NVdhcpJJUPCnFj',
+    password: process.env.VPS_SSH_PASSWORD,
   });
   
   console.log('🔄 Mise à jour de Open WebUI vers la dernière version...');

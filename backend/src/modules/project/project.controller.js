@@ -418,7 +418,7 @@ export const deleteProject = async (req, res) => {
     }
 
     // 4b. PROTECT BASE PROJECT
-    if (project.name === 'GED OS' || project.name === 'GEM SAAS') {
+    if (project.name === 'GEM' || project.name === 'GEM SAAS') {
       return res.status(403).json({ error: 'Le projet système est protégé et ne peut pas être supprimé.' });
     }
 

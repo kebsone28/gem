@@ -221,7 +221,7 @@ export const mentorTrainingService = {
   },
 };
 
-const SUPER_ADMIN_EMAIL = process.env.SUPER_ADMIN_EMAIL || 'admingem';
+const SUPER_ADMIN_EMAIL = process.env.SUPER_ADMIN_EMAIL || 'admingedos';
 
 export function isMentorTrainingAdmin(user = {}) {
   const role = String(user.role || user.roleLegacy || '').toUpperCase();

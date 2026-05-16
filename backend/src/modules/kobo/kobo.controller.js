@@ -147,13 +147,6 @@ export const autoDetectMapping = async (req, res) => {
   const { organizationId } = req.user;
   const { koboAssetId, koboServerUrl } = req.body;
 
-  if (!koboAssetId) {
-    return res.status(400).json({ error: 'koboAssetId requis' });
-  }
-
-  if (koboAssetId && !/^[a-zA-Z0-9_-]+$/.test(koboAssetId)) {
-    return res.status(400).json({ error: 'koboAssetId invalide.' });
-  }
 
   const serverUrl = koboServerUrl || process.env.KOBO_API_URL || 'https://kf.kobotoolbox.org';
 
@@ -189,13 +182,6 @@ export const getMapping = async (req, res) => {
   const { organizationId } = req.user;
   const { koboAssetId } = req.query;
 
-  if (!koboAssetId) {
-    return res.status(400).json({ error: 'koboAssetId requis' });
-  }
-
-  if (koboAssetId && !/^[a-zA-Z0-9_-]+$/.test(koboAssetId)) {
-    return res.status(400).json({ error: 'koboAssetId invalide.' });
-  }
 
   try {
     const mapping = await koboEngine.getMapping(
@@ -219,13 +205,6 @@ export const migrateMapping = async (req, res) => {
   const { organizationId } = req.user;
   const { koboAssetId, koboServerUrl } = req.body;
 
-  if (!koboAssetId) {
-    return res.status(400).json({ error: 'koboAssetId requis' });
-  }
-
-  if (koboAssetId && !/^[a-zA-Z0-9_-]+$/.test(koboAssetId)) {
-    return res.status(400).json({ error: 'koboAssetId invalide.' });
-  }
 
   const serverUrl = koboServerUrl || process.env.KOBO_API_URL || 'https://kf.kobotoolbox.org';
 
@@ -251,19 +230,12 @@ export const migrateMapping = async (req, res) => {
 
 /**
  * POST /api/kobo/transform
- * Transforme des données Kobo en format GEM usando le mapping
+ * Transforme des données Kobo en format GED OS usando le mapping
  */
 export const transformData = async (req, res) => {
   const { organizationId } = req.user;
   const { koboAssetId, koboData, koboServerUrl } = req.body;
 
-  if (!koboAssetId || !koboData) {
-    return res.status(400).json({ error: 'koboAssetId et koboData requis' });
-  }
-
-  if (koboAssetId && !/^[a-zA-Z0-9_-]+$/.test(koboAssetId)) {
-    return res.status(400).json({ error: 'koboAssetId invalide.' });
-  }
 
   const serverUrl = koboServerUrl || process.env.KOBO_API_URL || 'https://kf.kobotoolbox.org';
 

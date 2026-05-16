@@ -37,8 +37,8 @@ const localCorsOrigins = [
 ];
 
 const productionCorsOrigins = [
-    'https://gem.proquelec.sn',
-    'https://www.gem.proquelec.sn'
+    'https://ged-os.proquelec.sn',
+    'https://www.ged-os.proquelec.sn'
 ];
 
 const isLoopbackOrigin = (origin) => {

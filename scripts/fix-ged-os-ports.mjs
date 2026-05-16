@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * 🔧 GEM PORT FIXER
- * This script automatically restores GEM's reserved ports if they've been modified.
+ * 🔧 GED OS PORT FIXER
+ * This script automatically restores GED OS's reserved ports if they've been modified.
  * Run this if port validation fails.
  */
 
@@ -20,7 +20,7 @@ const files = {
   serverJs: path.join(ROOT_DIR, 'backend', 'src', 'server.js'),
 };
 
-console.log('🔧 GEM PORT FIXER - Restoring reserved ports...\n');
+console.log('🔧 GED OS PORT FIXER - Restoring reserved ports...\n');
 
 // Fix backend/.env
 function fixBackendEnv() {
@@ -124,7 +124,7 @@ try {
   fixConfigJs();
   fixServerJs();
   
-  console.log('\n✅ ALL GEM PORTS RESTORED');
+  console.log('\n✅ ALL GED OS PORTS RESTORED');
   console.log('   Backend:  http://localhost:8888');
   console.log('   Frontend: http://localhost:8889');
   console.log('   Preview:  http://localhost:8890\n');

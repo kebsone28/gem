@@ -8,7 +8,7 @@ async function uploadFile() {
     await ssh.connect({
       host: 'gem.proquelec.sn',
       username: 'root',
-      password: 'Ur94w4NVdhcpJJUPCnFj'
+      password: process.env.VPS_SSH_PASSWORD
     });
 
     const localPath = 'c:\\Mes-Sites-Web\\GEM_SAAS\\backend\\src\\modules\\assistant\\mentor.service.js';

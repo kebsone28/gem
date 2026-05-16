@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * 🔒 GEM PORT PRE-COMMIT HOOK
- * Prevents accidental commits that modify GEM's reserved port configurations
+ * 🔒 GED OS PORT PRE-COMMIT HOOK
+ * Prevents accidental commits that modify GED OS's reserved port configurations
  */
 
 import { execSync } from 'child_process';
@@ -47,7 +47,7 @@ try {
   }
 
   if (hasPortViolation) {
-    console.error('\n🔒 GEM ports are protected. Run: npm run validate-ports:fix');
+    console.error('\n🔒 GED OS ports are protected. Run: npm run validate-ports:fix');
     process.exit(1);
   }
 } catch (error) {

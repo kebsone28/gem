@@ -1,8 +1,8 @@
-# 🎨 Design System Centralisé - GEM SAAS
+# 🎨 Design System Centralisé - GED OS SAAS
 
 ## Vue d'ensemble
 
-Ce design system centralise tous les styles, composants et patterns de l'application GEM SAAS. Il élimine la duplication de code et garantit une cohérence parfaite entre toutes les pages.
+Ce design system centralise tous les styles, composants et patterns de l'application GED OS SAAS. Il élimine la duplication de code et garantit une cohérence parfaite entre toutes les pages.
 
 ## 🏗️ Architecture
 

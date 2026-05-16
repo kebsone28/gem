@@ -1,8 +1,8 @@
-# 🧠 Système IA GEM - Documentation
+# 🧠 Système IA GED OS - Documentation
 
 ## Vue d'ensemble
 
-Le système IA GEM est une architecture centralisée et orchestrée qui gère toutes les interactions IA dans l'application GEM SAAS. Il permet l'auto-amélioration basée sur les interactions utilisateur et l'enrichissement automatique des réponses avec des métadonnées techniques.
+Le système IA GED OS est une architecture centralisée et orchestrée qui gère toutes les interactions IA dans l'application GED OS SAAS. Il permet l'auto-amélioration basée sur les interactions utilisateur et l'enrichissement automatique des réponses avec des métadonnées techniques.
 
 ## Architecture
 

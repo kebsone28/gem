@@ -1,7 +1,7 @@
  
 /**
  * 🏛️ DG DECISION ENGINE (V3.0 SUPREME+)
- * Système d'Aide à la Décision (DSS) & Moteur Prédictif GEM SAAS.
+ * Système d'Aide à la Décision (DSS) & Moteur Prédictif GED OS SAAS.
  * 🆕 V3.0 : Score IGP multi-facteurs | Seuils dynamiques | Détection anomalies renforcée
  */
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Quick test: login as admin, GET /api/admin/role-permissions, toggle a permission, verify, restore
 const BASE = process.env.BACKEND_BASE || 'http://localhost:5008';
-const EMAIL = process.env.ADMIN_EMAIL || 'admingem';
+const EMAIL = process.env.ADMIN_EMAIL || 'admingedos';
 const PASSWORD = process.env.ADMIN_PASSWORD || 'suprime';
 const TWO = process.env.ADMIN_2FA || undefined;
 

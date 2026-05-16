@@ -467,7 +467,7 @@ export default function AIEngineAdminPanel({ user, onClose, standalone = false }
                       <h3 className="text-md font-black text-white uppercase tracking-tight">
                         Status IA Bastion
                       </h3>
-                      <p className="text-[10px] text-slate-500 font-bold">gem.proquelec.sn</p>
+                      <p className="text-[10px] text-slate-500 font-bold">ged.proquelec.sn</p>
                     </div>
                   </div>
                   <button

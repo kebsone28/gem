@@ -271,8 +271,8 @@ export default function Sidebar() {
           atelier: 'logistique',
           cahier: 'documents',
           sharedoc: 'documents',
-          ged_os_toolbox: 'documents',
-          ged_os_collect: 'documents',
+          gem_toolbox: 'documents',
+          gem_collect: 'documents',
           pv_automation: 'documents',
           charges: 'advanced_analytics',
           ai_config: 'ai_assistant',
@@ -305,7 +305,7 @@ export default function Sidebar() {
         if (item.id !== 'home') {
           if (enabledModules) {
             const isSystemPage = [
-              'modules', 'diagnostic', 'kobo_terminal', 'ged_os_toolbox', 'ged_os_collect',
+              'modules', 'diagnostic', 'kobo_terminal', 'gem_toolbox', 'gem_collect',
               'organization', 'settings', 'security', 'help', 'users', 'ai_config'
             ].includes(item.id);
 
@@ -314,7 +314,7 @@ export default function Sidebar() {
           } else {
             // Sans projet chargé : les pages système passent toujours pour les admins
             const isSystemPage = [
-              'modules', 'diagnostic', 'kobo_terminal', 'ged_os_toolbox', 'ged_os_collect',
+              'modules', 'diagnostic', 'kobo_terminal', 'gem_toolbox', 'gem_collect',
               'organization', 'settings', 'security', 'help', 'users', 'ai_config'
             ].includes(item.id);
             if (!isSystemPage && !PROJECT_CONFIG.isModuleEnabled(item.id)) return acc;

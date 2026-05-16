@@ -98,8 +98,8 @@ export const BACKEND_MODULE_REGISTRY = {
     packageCategory: 'ADMIN',
     global: false
   },
-  ged_os_toolbox: {
-    name: 'GED OS Toolbox',
+  gem_toolbox: {
+    name: 'GEM Toolbox',
     description: 'Outils internes de collecte terrain',
     isPackage: true,
     packageCategory: 'ADMIN',

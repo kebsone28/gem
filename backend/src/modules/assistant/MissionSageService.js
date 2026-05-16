@@ -36,7 +36,7 @@ function normalizeMessage(message) {
 }
 
 export class MissionSageService {
-  answer(message, organizationName = 'GEM SAAS') {
+  answer(message, organizationName = 'GED OS') {
     const text = normalizeMessage(message);
 
     for (const item of LOCAL_KNOWLEDGE) {

@@ -5,7 +5,7 @@ async function getDockerIP() {
   await ssh.connect({
     host: 'gem.proquelec.sn',
     username: 'root',
-    password: 'Ur94w4NVdhcpJJUPCnFj',
+    password: process.env.VPS_SSH_PASSWORD,
   });
   
   const result = await ssh.execCommand('ip addr show docker0');

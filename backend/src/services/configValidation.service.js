@@ -1,7 +1,7 @@
 import Joi from 'joi';
 
 /**
- * GED OS - Organization Configuration Schema
+ * GEM - Organization Configuration Schema
  * Validates the JSON configuration for each organization.
  */
 const organizationConfigSchema = Joi.object({

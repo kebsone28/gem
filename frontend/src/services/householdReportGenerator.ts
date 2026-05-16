@@ -16,7 +16,7 @@ function drawHeader(doc: jsPDF, title: string, household: any) {
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(18);
   doc.setFont('helvetica', 'bold');
-  doc.text('PROQUELEC - GEM SaaS', 14, 15);
+  doc.text('PROQUELEC - GED OS SaaS', 14, 15);
   
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
@@ -37,7 +37,7 @@ function drawFooter(doc: jsPDF) {
   const w = doc.internal.pageSize.getWidth();
   doc.setFontSize(8);
   doc.setTextColor(...GRAY);
-  doc.text('Document généré par GEM SaaS - PROQUELEC. Confidentiel.', 14, h - 10);
+  doc.text('Document généré par GED OS SaaS - PROQUELEC. Confidentiel.', 14, h - 10);
   doc.text(`Page 1 / 1`, w - 14, h - 10, { align: 'right' });
 }
 

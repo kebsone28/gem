@@ -37,7 +37,7 @@ import logger from '../utils/logger';
 
 /**
  * 🎯 KOBO MASTER ENGINE v2.0 (Multi-Project & Dynamic Field Mapping)
- * Allows administrators to map Kobo fields to GEM fields independently for each project.
+ * Allows administrators to map Kobo fields to GED OS fields independently for each project.
  */
 export default function KoboMappingMaster() {
   const { user } = useAuth();
@@ -51,7 +51,7 @@ export default function KoboMappingMaster() {
   const [searchField, setSearchField] = useState('');
   const [isLocked, setIsLocked] = useState(true);
 
-  // Predefined Database Fields (GEM Targets)
+  // Predefined Database Fields (GED OS Targets)
   const TARGET_FIELDS = [
     {
       section: 'Identité',
@@ -296,7 +296,7 @@ export default function KoboMappingMaster() {
             type="text"
             value={searchField}
             onChange={(e) => setSearchField(e.target.value)}
-            placeholder="Filtrer les champs GEM (label ou ID)..."
+            placeholder="Filtrer les champs GED OS (label ou ID)..."
             className="w-full bg-slate-900/40 border border-slate-800 rounded-2xl pl-12 pr-5 py-3.5 text-white text-sm placeholder:text-slate-600 outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500/50 transition-all"
           />
         </div>

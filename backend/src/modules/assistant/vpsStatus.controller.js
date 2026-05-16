@@ -9,7 +9,7 @@ import logger from '../../utils/logger.js';
 export const getVpsStatus = async (req, res) => {
     try {
         const results = {};
-        const vpsHost = 'gem.proquelec.sn';
+        const vpsHost = 'ged-os.proquelec.sn';
         logger.info(`[VPS STATUS] Starting AI services audit for ${vpsHost}...`);
 
         // 1. Test Ollama (Port 11434)
@@ -35,7 +35,7 @@ export const getVpsStatus = async (req, res) => {
                     ? `⏱ Timeout (4s) : Ollama ne répond pas sur le port 11434. Sur le VPS, lancez : ollama serve`
                     : isRefused
                     ? `🔌 Connexion refusée : Ollama n'est pas démarré sur ce serveur. Sur le VPS, exécutez : ollama serve`
-                    : `💻 En développement local, cette erreur est normale (Ollama n'est pas sur votre PC). Elle disparaîtra une fois déployé sur gem.proquelec.sn.`,
+                    : `💻 En développement local, cette erreur est normale (Ollama n'est pas sur votre PC). Elle disparaîtra une fois déployé sur ged-os.proquelec.sn.`,
                 command: 'ollama serve',
                 isLocalDevOnly: !ollamaUrl.includes('localhost') ? false : true
             };

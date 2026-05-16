@@ -29,7 +29,7 @@ export const agentTools = {
 
   createReport: async (input, context = {}) => {
     const report = {
-      title: input.title || `Rapport ${context.organizationName || 'GEM SAAS'}`,
+      title: input.title || `Rapport ${context.organizationName || 'GED OS'}`,
       generatedAt: new Date().toISOString(),
       summary: input.summary || 'Rapport généré par l’agent',
       items: input.items || []

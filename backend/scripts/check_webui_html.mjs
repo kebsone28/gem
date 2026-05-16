@@ -5,7 +5,7 @@ async function check() {
   await ssh.connect({
     host: 'gem.proquelec.sn',
     username: 'root',
-    password: 'Ur94w4NVdhcpJJUPCnFj',
+    password: process.env.VPS_SSH_PASSWORD,
   });
   
   console.log('🔍 Vérification de la page Open WebUI sur le port 3000...');

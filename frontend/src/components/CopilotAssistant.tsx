@@ -33,7 +33,7 @@ export default function CopilotAssistant() {
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState('');
   const [chat, setChat] = useState<Message[]>([
-    { role: 'assistant', content: 'Bonjour ! Je suis votre copilote GEM. Comment puis-je vous aider aujourd\'hui ?' }
+    { role: 'assistant', content: 'Bonjour ! Je suis votre copilote GED OS. Comment puis-je vous aider aujourd\'hui ?' }
   ]);
   const [isTyping, setIsTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -104,7 +104,7 @@ try {
                   <Bot size={20} />
                 </div>
                 <div>
-                  <h3 className="text-white font-black uppercase tracking-widest text-xs">Copilote GEM</h3>
+                  <h3 className="text-white font-black uppercase tracking-widest text-xs">Copilote GED OS</h3>
                   <div className="flex items-center gap-2">
                     <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
                     <span className="text-[10px] text-slate-500 font-bold uppercase">Assistant Actif</span>

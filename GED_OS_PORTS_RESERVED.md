@@ -34,10 +34,10 @@ Cela va:
 ### 🔧 Commandes d'Entretien
 
 ```bash
-# Valider que les ports GEM sont corrects
+# Valider que les ports GED OS sont corrects
 npm run validate-ports
 
-# Réparer les ports GEM si modifiés accidentellement
+# Réparer les ports GED OS si modifiés accidentellement
 npm run validate-ports:fix
 ```
 
@@ -53,15 +53,15 @@ Les fichiers suivants **NE DOIVENT PAS être modifiés** pour changer les ports:
 ### 📋 Fichiers de Configuration
 
 - **`.ged-os-ports.json`** — Fichier de référence avec tous les ports réservés
-- **`scripts/validate-gem-ports.mjs`** — Valide que les ports sont corrects
-- **`scripts/fix-gem-ports.mjs`** — Restaure les ports en cas de modification
+- **`scripts/validate-ged-os-ports.mjs`** — Valide que les ports sont corrects
+- **`scripts/fix-ged-os-ports.mjs`** — Restaure les ports en cas de modification
 
 ### 🛡️ Protection Automatique
 
 Chaque fois que vous lancez `npm run dev:saas`, le script vérifie automatiquement que les ports sont corrects. Si une autre application a modifié les fichiers de configuration, vous verrez:
 
 ```
-🚨 PORT VALIDATION FAILED - Some GEM ports are incorrect!
+🚨 PORT VALIDATION FAILED - Some GED OS ports are incorrect!
 Please run: npm run validate-ports:fix
 ```
 

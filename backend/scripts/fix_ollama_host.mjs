@@ -5,7 +5,7 @@ async function fixOllamaHost() {
   await ssh.connect({
     host: 'gem.proquelec.sn',
     username: 'root',
-    password: 'Ur94w4NVdhcpJJUPCnFj',
+    password: process.env.VPS_SSH_PASSWORD,
   });
   
   console.log('🔧 Configuration de Ollama pour acceptation des connexions distantes...');

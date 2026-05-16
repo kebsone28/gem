@@ -3,9 +3,9 @@ const ssh = new NodeSSH();
 
 async function wipeAndReinstall() {
   await ssh.connect({
-    host: 'gem.proquelec.sn',
+    host: 'ged.proquelec.sn',
     username: 'root',
-    password: 'Ur94w4NVdhcpJJUPCnFj',
+    password: process.env.VPS_SSH_PASSWORD,
   });
   
   console.log('🧹 Nettoyage complet de Open WebUI...');

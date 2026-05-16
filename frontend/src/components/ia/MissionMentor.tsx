@@ -49,7 +49,7 @@ interface User {
 }
 
 /**
- * COMPOSANT : MissionMentor (GEM-MINT) 🛡️🕌🤖
+ * COMPOSANT : MissionMentor (GED-MINT) 🛡️🕌🤖
  * Le Guide Intelligent de la plateforme PROQUELEC.
  * Sagesse, Respect, Sécurité et Direction Sécure.
  */
@@ -258,17 +258,16 @@ export const MissionMentor: React.FC<MissionMentorProps> = ({
 
   return (
     <>
-      {/* FLOATING BUTTON (GEM-MINT) */}
+      {/* FLOATING BUTTON (GED-MINT) */}
       <div
         className="fixed right-4 bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:bottom-10 sm:right-10 z-[1000] no-print"
-        title="Ouvrir GAM AI"
+        title="Assistant GED OS AI"
       >
         <motion.button
           whileHover={{ scale: 1.1, rotate: 5 }}
           whileTap={{ scale: 0.9 }}
           onClick={() => setIsOpen(!isOpen)}
-          title="Assistant GAM AI"
-          aria-label="Assistant GAM AI"
+          aria-label="Assistant GED OS AI"
           className="w-12 h-12 sm:w-16 sm:h-16 bg-slate-900/90 hover:bg-blue-500 rounded-2xl sm:rounded-3xl shadow-2xl shadow-blue-600/25 flex items-center justify-center border border-white/10 group relative overflow-hidden backdrop-blur-xl"
         >
           <div className="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent animate-pulse" />
@@ -285,7 +284,7 @@ export const MissionMentor: React.FC<MissionMentorProps> = ({
         </motion.button>
       </div>
 
-      {/* AI PANEL (SAGE GEM-MINT) */}
+      {/* AI PANEL (SAGE GED-MINT) */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -302,7 +301,7 @@ export const MissionMentor: React.FC<MissionMentorProps> = ({
                 </div>
                 <div className="min-w-0">
                   <h2 className="text-[10px] sm:text-[11px] font-black tracking-[0.12em] sm:tracking-[0.3em] text-white uppercase italic leading-none truncate">
-                    GAM AI
+                    GED OS AI
                   </h2>
                   <p className="text-[9px] sm:text-[8px] font-black text-blue-500/60 uppercase tracking-[0.06em] sm:tracking-widest mt-1 truncate">
                     Assistant Expert Souverain
@@ -371,7 +370,7 @@ export const MissionMentor: React.FC<MissionMentorProps> = ({
               fileInputRef={fileInputRef}
             />
             <p className="text-center text-[9px] sm:text-[8px] font-black text-slate-700 uppercase tracking-[0.06em] sm:tracking-widest mt-4 flex items-center justify-center gap-2">
-              <Heart size={10} /> Powered by GEM-SAGE Intelligence 8.0
+              <Heart size={10} /> Powered by GED-SAGE Intelligence 8.0
             </p>
           </motion.div>
         )}

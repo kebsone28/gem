@@ -125,7 +125,7 @@ export class ProquelecDatabase extends Dexie {
   projectAssignments!: Table<ProjectAssignment>;
 
   constructor() {
-    super('GED_OS_DB');
+    super('GEM_DB');
     this.version(3).stores({
       organizations: 'id, name',
       users: 'id, organizationId, email, role',

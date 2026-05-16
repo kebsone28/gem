@@ -32,7 +32,7 @@ export const wordReportService = {
   ) {
     // Fetch dynamic QR Code for report validation
     const qrResponse = await fetch(
-      `https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodeURIComponent(`https://ged-os.proquelec.sn/report/strategic-${Date.now()}`)}`
+      `https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodeURIComponent(`https://ged.proquelec.sn/report/strategic-${Date.now()}`)}`
     );
     const qrData = qrResponse.ok ? await qrResponse.arrayBuffer() : null;
 

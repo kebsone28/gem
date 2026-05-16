@@ -1,5 +1,8 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const prisma = new PrismaClient();
 
@@ -23,7 +26,7 @@ async function main() {
 
     const users = [
         {
-            email: 'admingem',
+            email: 'admingedos',
             password: adminPassword,
             name: 'Admin PROQUELEC',
             role: 'ADMIN_PROQUELEC',
@@ -32,43 +35,43 @@ async function main() {
             secret2FAAnswer: admin2FAAnswer
         },
         {
-            email: 'maçongem',
+            email: 'maçongedos',
             password: process.env.INITIAL_MAÇON_PASSWORD || 'CHANGE_ME',
             name: 'Chef Maçons',
             role: 'CHEF_EQUIPE'
         },
         {
-            email: 'reseaugem',
+            email: 'reseaugedos',
             password: process.env.INITIAL_RESEAU_PASSWORD || 'CHANGE_ME',
             name: 'Chef Réseau',
             role: 'CHEF_EQUIPE'
         },
         {
-            email: 'electriciengem',
+            email: 'electriciengedos',
             password: process.env.INITIAL_ELEC_PASSWORD || 'CHANGE_ME',
             name: 'Chef Électricien',
             role: 'CHEF_EQUIPE'
         },
         {
-            email: 'livreurgem',
+            email: 'livreurgedos',
             password: process.env.INITIAL_LIVREUR_PASSWORD || 'CHANGE_ME',
             name: 'Chef Livreur',
             role: 'CHEF_EQUIPE'
         },
         {
-            email: 'dggem',
+            email: 'dggedos',
             password: adminPassword,
             name: 'DG PROQUELEC',
             role: 'DG_PROQUELEC'
         },
         {
-            email: 'cp_gem',
+            email: 'cp_gedos',
             password: 'password123',
             name: 'Chef de Projet Vision',
             role: 'CHEF_PROJET'
         },
         {
-            email: 'compta_gem',
+            email: 'compta_gedos',
             password: 'password123',
             name: 'Responsable Comptabilité',
             role: 'COMPTABLE'
