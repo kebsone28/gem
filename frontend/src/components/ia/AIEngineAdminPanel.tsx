@@ -786,23 +786,23 @@ export default function AIEngineAdminPanel({ user, onClose, standalone = false }
             </Link>
             <div className="flex w-full items-center justify-between">
               <div>
-              <h1 className="text-3xl font-black text-white flex items-center gap-3">
-                <Brain className="text-blue-500" />
-                Console IA Souveraine
-              </h1>
-              <p className="text-gray-500 text-sm mt-2 font-medium">
-                Gestion unifiée du cerveau numérique de PROQUELEC
-              </p>
+                <h1 className="text-3xl font-black text-white flex items-center gap-3">
+                  <Brain className="text-blue-500" />
+                  Console IA Souveraine
+                </h1>
+                <p className="text-gray-500 text-sm mt-2 font-medium">
+                  Gestion unifiée du cerveau numérique de PROQUELEC
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <a
+                  href="/admin/diagnostic"
+                  className="p-3 bg-gray-900 border border-gray-800 rounded-2xl text-gray-400 hover:text-white transition-all"
+                >
+                  <RefreshCw size={20} />
+                </a>
+              </div>
             </div>
-            <div className="flex gap-2">
-              <a
-                href="/admin/diagnostic"
-                className="p-3 bg-gray-900 border border-gray-800 rounded-2xl text-gray-400 hover:text-white transition-all"
-              >
-                <RefreshCw size={20} />
-              </a>
-            </div>
-          </div>
           {content}
         </div>
       </div>
