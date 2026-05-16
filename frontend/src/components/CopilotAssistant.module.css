@@ -1,0 +1,12 @@
+/* Bounce animation delays */
+.delayBounce0 {
+  animation-delay: 0ms;
+}
+
+.delayBounce150 {
+  animation-delay: 150ms;
+}
+
+.delayBounce300 {
+  animation-delay: 300ms;
+}

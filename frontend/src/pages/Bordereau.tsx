@@ -77,7 +77,7 @@ const GrappeCard = memo(({ grappe, onOpenDetails, onExport }: GrappeCardProps) =
   const status = getGrappeStatus(grappe);
 
   return (
-    <div className="group flex flex-col justify-between rounded-2xl border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.02))] p-6 transition-all hover:border-primary/40 hover:bg-white/[0.05] h-[210px]">
+    <div className="group flex flex-col justify-between rounded-2xl border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.02))] p-5 sm:p-6 transition-all hover:border-primary/40 hover:bg-white/[0.05] min-h-[180px] sm:h-[210px]">
       <div className="mb-6">
         <div className="flex items-start justify-between mb-4">
           <div className="min-w-0">
@@ -524,9 +524,9 @@ const Bordereau = () => {
       />
 
       <ContentArea padding="none" className="bg-transparent border-transparent shadow-none">
-        <div className="p-4 md:p-8 space-y-8">
+        <div className="p-2 sm:p-6 md:p-8 space-y-6 sm:space-y-8">
           {/* Summary Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6">
             {[
               {
                 label: 'Total Ménages',
@@ -555,7 +555,7 @@ const Bordereau = () => {
             ].map((kpi, i) => (
               <div
                 key={i}
-                className={`${DASHBOARD_MINI_STAT_CARD} group p-8 hover:bg-white/[0.06] ${
+                className={`${DASHBOARD_MINI_STAT_CARD} group p-4 sm:p-8 hover:bg-white/[0.06] ${
                   i === 0
                     ? DASHBOARD_ACCENT_SURFACE.blue
                     : i === 1
@@ -584,7 +584,7 @@ const Bordereau = () => {
                     {kpi.label}
                   </span>
                 </div>
-                <div className="text-4xl font-black text-white italic tracking-tighter mb-1">
+                <div className="text-2xl sm:text-4xl font-black text-white italic tracking-tighter mb-1">
                   {kpi.value}
                 </div>
                 <div
@@ -604,15 +604,15 @@ const Bordereau = () => {
 
           {/* Filter Bar */}
           <div
-            className={`relative group rounded-3xl ${DASHBOARD_SECTION_SURFACE} ${DASHBOARD_ACCENT_SURFACE.emerald} p-2`}
+            className={`relative group rounded-[1.5rem] sm:rounded-3xl ${DASHBOARD_SECTION_SURFACE} ${DASHBOARD_ACCENT_SURFACE.emerald} p-1 sm:p-2`}
           >
-            <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-300/55 group-focus-within:text-emerald-300 transition-colors" />
+            <Search className="absolute left-5 sm:left-6 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 h-5 text-emerald-300/55 group-focus-within:text-emerald-300 transition-colors" />
             <input
               type="text"
-              placeholder="RECHERCHER UNE RÉGION OU UNE GRAPPE..."
+              placeholder="RECHERCHER..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className={`${DASHBOARD_INPUT} rounded-[1.4rem] py-5 pl-16 pr-6 text-xs font-semibold uppercase tracking-[0.14em] placeholder:text-emerald-200/25 focus:border-emerald-400/35 focus:ring-2 focus:ring-emerald-500/15`}
+              className={`${DASHBOARD_INPUT} rounded-[1.2rem] sm:rounded-[1.4rem] py-3.5 sm:py-5 pl-12 sm:pl-16 pr-4 sm:pr-6 text-[10px] sm:text-xs font-semibold uppercase tracking-[0.14em] placeholder:text-emerald-200/25 focus:border-emerald-400/35 focus:ring-2 focus:ring-emerald-500/15`}
             />
           </div>
 
@@ -686,11 +686,11 @@ const Bordereau = () => {
                                   className="group flex w-full items-center justify-between px-8 py-6 transition-colors hover:bg-white/[0.04]"
                                 >
                                   <div className="flex items-center gap-6">
-                                    <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-blue-800 group-hover:text-primary transition-colors">
-                                      <MapPin size={22} />
+                                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-white/5 flex items-center justify-center text-blue-800 group-hover:text-primary transition-colors">
+                                      <MapPin size={18} className="sm:size-[22px]" />
                                     </div>
                                     <div className="text-left">
-                                      <h2 className="text-xl font-black text-white italic tracking-tight">
+                                      <h2 className="text-lg sm:text-xl font-black text-white italic tracking-tight">
                                         {region}
                                       </h2>
                                       <div className="flex items-center gap-4 mt-1.5">
@@ -716,7 +716,7 @@ const Bordereau = () => {
 
                         return (
                           <div style={style} className="px-1">
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-6">
                               {item.grappes.map((grappe: any) => (
                                 <GrappeCard
                                   key={grappe.id}

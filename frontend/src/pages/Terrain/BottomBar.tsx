@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React from 'react';
 import { Wifi } from 'lucide-react';
 import GisHealthWidget from '../../components/terrain/GisHealthWidget';
@@ -92,36 +92,36 @@ const BottomBar: React.FC<BottomBarProps> = ({
       </div>
 
       <div className="md:hidden pointer-events-auto w-full">
-        <div className="flex items-center gap-2 overflow-x-auto rounded-2xl border border-white/10 bg-[#050F1F]/95 p-2 shadow-xl scrollbar-hide">
-          <span className="shrink-0 text-[10px] font-black px-3 py-1 text-blue-100 bg-blue-500/20 rounded-full tracking-[0.12em] uppercase">
+        <div className="flex items-center gap-2 overflow-x-auto rounded-[1.2rem] border border-white/10 bg-[#050F1F]/95 p-1.5 shadow-2xl scrollbar-hide">
+          <span className="shrink-0 text-[9px] font-black px-2.5 py-1 text-blue-100 bg-blue-500/20 rounded-lg tracking-[0.1em] uppercase">
             {filteredCount.toLocaleString()} {isViewportFiltered ? 'viewport' : 'visibles'}
           </span>
 
           <div
-            className={`flex shrink-0 items-center gap-2 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] rounded-full ${
+            className={`flex shrink-0 items-center gap-1.5 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.1em] rounded-lg ${
               isOfflineMode ? 'text-red-400 bg-red-400/10' : 'text-emerald-400 bg-emerald-400/10'
             }`}
           >
             <Wifi size={10} />
-            {isOfflineMode ? 'Hors-ligne' : 'Connecté'}
+            {isOfflineMode ? 'Off' : 'On'}
           </div>
 
           {(pendingSyncCount > 0 || pendingHouseholdsCount > 0 || errorHouseholdsCount > 0) && (
             <span
-              className={`shrink-0 text-[10px] font-black px-3 py-1 rounded-full tracking-[0.12em] uppercase ${
+              className={`shrink-0 text-[9px] font-black px-2.5 py-1 rounded-lg tracking-[0.1em] uppercase ${
                 hasSyncError || errorHouseholdsCount > 0
                   ? 'text-rose-300 bg-rose-500/10'
                   : 'text-amber-300 bg-amber-500/10'
               }`}
             >
               {errorHouseholdsCount > 0
-                ? `${errorHouseholdsCount} erreur(s)`
-                : `${pendingSyncCount || pendingHouseholdsCount} attente`}
+                ? `${errorHouseholdsCount} ERR`
+                : `${pendingSyncCount || pendingHouseholdsCount} SYNC`}
             </span>
           )}
 
-          <span className="shrink-0 text-[10px] font-black px-3 py-1 text-cyan-200 bg-cyan-500/10 rounded-full tracking-[0.12em] uppercase border border-cyan-500/10">
-            Sync {lastSyncLabel}
+          <span className="shrink-0 text-[9px] font-black px-2.5 py-1 text-cyan-200 bg-cyan-500/10 rounded-lg tracking-[0.1em] uppercase border border-cyan-500/10">
+            {lastSyncLabel}
           </span>
         </div>
       </div>

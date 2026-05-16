@@ -71,62 +71,58 @@ export default function Logistique() {
   return (
     <PageContainer>
       <PageHeader
-        title="Opérations & Logistique"
-        subtitle="Suivi en temps réel du matériel, des performances agents et de l'avancement du déploiement"
+        title="Logistique"
+        subtitle="Suivi temps réel matériel & agents"
         icon={Package}
         accent="logistique"
         actions={
-          <ActionBar className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto sm:flex-nowrap">
-            <div
-              className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 ${logistiqueAccent.badge}`}
-            >
+          <ActionBar className="flex items-center gap-2">
+            <div className={`hidden sm:flex items-center gap-1.5 rounded-full border px-2.5 py-1 ${logistiqueAccent.badge}`}>
               <div className="w-1.5 h-1.5 rounded-full bg-current animate-pulse opacity-80" />
-              <span className="text-xs font-black uppercase tracking-widest leading-none">
-                Live Data
-              </span>
+              <span className="text-[10px] font-black uppercase tracking-widest leading-none">Live</span>
             </div>
             <button
               onClick={handleRefresh}
               disabled={isRefreshing}
-              className={`rounded-xl p-3 transition-all disabled:opacity-50 ${logistiqueAccent.badge} hover:bg-white/8`}
-              aria-label="Synchroniser les données"
+              className={`rounded-2xl p-2.5 sm:p-3 transition-all active:scale-90 disabled:opacity-50 ${logistiqueAccent.badge} hover:bg-white/10`}
+              aria-label="Synchroniser"
             >
-              <RefreshCcw size={20} className={isRefreshing ? 'animate-spin' : ''} />
+              <RefreshCcw size={18} className={isRefreshing ? 'animate-spin' : ''} />
             </button>
           </ActionBar>
         }
       />
 
       <ModulePageShell accent="logistique" className="space-y-4 sm:space-y-6">
-        {/* Barre de recherche — masquée pour les onglets non supportés */}
+        {/* Barre de recherche — Ultra-compacte sur mobile */}
         {SEARCHABLE_TABS.includes(activeTab) && (
-          <div>
+          <div className="px-2 sm:px-0">
             <div
-              className={`group flex w-full max-w-none items-center rounded-2xl border p-0.5 transition-all duration-500 sm:max-w-sm ${isDarkMode ? `${DASHBOARD_SECTION_SURFACE} ${logistiqueAccent.surface}` : 'bg-slate-100/80 border-slate-200'} `}
+              className={`group flex w-full items-center rounded-[1.2rem] sm:rounded-2xl border p-0.5 transition-all duration-500 sm:max-w-sm ${isDarkMode ? `${DASHBOARD_SECTION_SURFACE} ${logistiqueAccent.surface}` : 'bg-slate-100/80 border-slate-200'} `}
             >
               <div className="flex-1 flex items-center gap-3 px-4">
                 <Search
-                  className={`transition-colors duration-300 ${isDarkMode ? 'text-slate-600 group-focus-within:text-amber-300' : 'text-slate-400 group-focus-within:text-amber-500'}`}
+                  className={`transition-colors duration-300 ${isDarkMode ? 'text-slate-600 group-focus-within:text-amber-400' : 'text-slate-400 group-focus-within:text-amber-500'}`}
                   size={16}
                 />
                 <input
                   type="text"
-                  placeholder="Rechercher..."
+                  placeholder="Recherche rapide..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className={`w-full bg-transparent border-none py-3 text-sm font-bold outline-none transition-colors ${isDarkMode ? 'text-white placeholder:text-slate-700' : 'text-slate-700 placeholder:text-slate-400'}`}
+                  className={`w-full bg-transparent border-none py-2.5 sm:py-3 text-sm font-bold outline-none transition-colors ${isDarkMode ? 'text-white placeholder:text-slate-700' : 'text-slate-700 placeholder:text-slate-400'}`}
                 />
               </div>
             </div>
           </div>
         )}
 
-        {/* Navigation par onglets */}
-        <div>
+        {/* Navigation par onglets — Scrollable & Snap */}
+        <div className="px-2 sm:px-0">
           <nav
-            className={`overflow-hidden rounded-2xl border transition-colors ${isDarkMode ? `${DASHBOARD_SECTION_SURFACE} ${logistiqueAccent.surface}` : 'border-slate-200 bg-slate-100/80'}`}
+            className={`overflow-hidden rounded-[1.5rem] border transition-colors ${isDarkMode ? `${DASHBOARD_SECTION_SURFACE} ${logistiqueAccent.surface}` : 'border-slate-200 bg-slate-100/80'}`}
           >
-            <div className="flex overflow-x-auto gap-1 p-1 scrollbar-hide snap-x snap-mandatory">
+            <div className="flex overflow-x-auto gap-0.5 p-1 scrollbar-hide snap-x snap-mandatory">
               {allowedTabs.map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
@@ -135,15 +131,21 @@ export default function Logistique() {
                     key={tab.id}
                     onClick={() => handleTabChange(tab.id)}
                     aria-pressed={isActive}
-                    className={`snap-start shrink-0 flex min-w-fit items-center gap-2 px-4 py-3 whitespace-nowrap font-semibold text-sm transition-all border-b-2 sm:flex-1 sm:justify-center sm:px-5 sm:py-4 ${
+                    className={`snap-start shrink-0 flex min-w-fit items-center gap-2.5 px-5 py-3.5 whitespace-nowrap font-black text-[10px] uppercase tracking-widest transition-all sm:flex-1 sm:justify-center sm:px-5 sm:py-4 ${
                       isActive
-                        ? `border-amber-500 ${isDarkMode ? 'text-amber-300 bg-amber-500/10' : 'text-amber-700 bg-amber-50'}`
-                        : `border-transparent ${isDarkMode ? 'text-slate-400 hover:text-slate-300 hover:bg-slate-800/50' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/50'}`
+                        ? `text-amber-400 bg-white/5 shadow-inner`
+                        : `text-slate-500 hover:text-slate-300 hover:bg-white/5`
                     }`}
                   >
-                    <Icon size={18} />
+                    <Icon size={16} className={isActive ? 'text-amber-400' : 'text-slate-600'} />
                     <span className="sm:hidden">{tab.mobileLabel}</span>
                     <span className="hidden sm:inline">{tab.label}</span>
+                    {isActive && (
+                      <motion.div 
+                        layoutId="activeTabLog"
+                        className="absolute bottom-0 left-0 right-0 h-0.5 bg-amber-500"
+                      />
+                    )}
                   </button>
                 );
               })}

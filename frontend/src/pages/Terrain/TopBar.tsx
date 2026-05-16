@@ -101,14 +101,14 @@ const TopBar: React.FC<TopBarProps> = ({
                     z-[1300]
 
                     bg-slate-950/80 dark:bg-[#050F1F]/90 text-white/90
-                    backdrop-blur-2xl shadow-[0_8px_32px_rgba(0,0,0,0.3)]
+                    backdrop-blur-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)]
                     border border-white/10 dark:border-white/5
-                    rounded-2xl md:rounded-none
+                    rounded-[1.5rem] md:rounded-none
                     transition-all duration-300 ease-in-out
 
-                    ${isMinimized ? 'h-[64px] overflow-hidden' : 'max-h-[85vh] overflow-visible'}
+                    ${isMinimized ? 'h-[60px] overflow-hidden' : 'max-h-[85vh] overflow-visible'}
 
-                    px-2.5 pt-1.5 pb-2 md:p-0
+                    px-2 pt-1 pb-2 md:p-0
                     grid grid-cols-1 md:grid-cols-[auto_1fr_auto]
                     gap-2 md:gap-3
                     pointer-events-none
@@ -116,7 +116,7 @@ const TopBar: React.FC<TopBarProps> = ({
         >
           {/* ================= LEFT COLUMN ================= */}
           <div className="flex flex-col gap-2 md:gap-3 pointer-events-auto w-full md:w-[280px] shrink-0">
-            <div className="relative flex flex-col p-2 rounded-2xl bg-[#050F1F]/96 border border-white/10 shadow-2xl">
+            <div className="relative flex flex-col p-1.5 sm:p-2 rounded-[1.2rem] sm:rounded-2xl bg-[#050F1F]/96 border border-white/10 shadow-2xl">
               {/* Branding + Project Info */}
               <ProjectHeader
                 project={project}

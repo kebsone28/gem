@@ -131,17 +131,17 @@ export const PageHeader: React.FC<PageHeaderProps> = React.memo(withAnalytics(
 
     // Variant default
     return (
-      <div className={`${COMMON_CLASSES.pageHeader} flex flex-col ${accentStyles.border} ${className}`}>
+      <div className={`${COMMON_CLASSES.pageHeader} flex flex-col ${accentStyles.border} ${className} px-4 sm:px-0`}>
         {backLink && (
-          <div className="mb-5">
-            <Link to={backLink.to} className="inline-flex items-center gap-1.5 text-sm font-semibold uppercase tracking-widest text-[var(--color-text-secondary)] hover:text-white transition-colors">
-              <ChevronLeft size={16} className="text-blue-500" />
+          <div className="mb-4 sm:mb-5">
+            <Link to={backLink.to} className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold uppercase tracking-widest text-[var(--color-text-secondary)] hover:text-white transition-colors">
+              <ChevronLeft size={14} className="text-blue-500" />
               {backLink.label}
             </Link>
           </div>
         )}
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between w-full">
-          <div className="flex items-start gap-2.5 min-w-0 flex-1 sm:items-center sm:gap-3">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between w-full">
+          <div className="flex items-start gap-3 min-w-0 flex-1 sm:items-center sm:gap-4">
             {icon && (
               <div
                 className={`p-2 rounded-xl shrink-0 sm:p-2.5 ${accentStyles.icon}`}
@@ -150,18 +150,18 @@ export const PageHeader: React.FC<PageHeaderProps> = React.memo(withAnalytics(
               </div>
             )}
             <div className="min-w-0">
-              <h1 className="mb-0 break-words text-[clamp(1.5rem,6vw,3rem)] font-bold leading-[1] tracking-tight text-[var(--color-text-primary)]">
+              <h1 className="mb-0 break-words text-[1.5rem] xs:text-[1.8rem] sm:text-[2.5rem] md:text-[3rem] font-black leading-[1.1] sm:leading-[1] tracking-tight text-[var(--color-text-primary)]">
                 {title}
               </h1>
               {subtitle && (
-                <p className={`${COMMON_CLASSES.body} ${accentStyles.subtitle} mt-1 max-w-[60ch] text-sm break-words sm:mt-0.5`}>
+                <p className={`${COMMON_CLASSES.body} ${accentStyles.subtitle} mt-1.5 max-w-[60ch] text-[11px] sm:text-sm break-words sm:mt-0.5 leading-relaxed opacity-80`}>
                   {subtitle}
                 </p>
               )}
             </div>
           </div>
           {actions && (
-            <div className="flex w-full flex-col justify-start gap-2 sm:flex-row md:w-auto md:justify-end">
+            <div className="flex w-full flex-col justify-start gap-2 sm:flex-row md:w-auto md:justify-end items-stretch sm:items-center">
               {actions}
             </div>
           )}
@@ -208,6 +208,7 @@ export const PageContainer: React.FC<PageContainerProps> = React.memo(withAnalyt
           'w-full mx-auto',
           maxWidthClasses[maxWidth],
           paddingClasses[padding],
+          'px-2 sm:px-4 lg:px-8', // Added responsive safe padding
           className,
         ].join(' ')}
       >
@@ -282,9 +283,9 @@ export const ContentArea: React.FC<ContentAreaProps> = ({
 }) => {
   const paddingClasses: Record<string, string> = {
     none: '',
-    sm: 'p-3 sm:p-4',
-    md: 'p-4 sm:p-6',
-    lg: 'p-8',
+    sm: 'p-2 sm:p-4',
+    md: 'p-3 sm:p-6',
+    lg: 'p-4 sm:p-8',
   };
 
   return (
@@ -293,6 +294,7 @@ export const ContentArea: React.FC<ContentAreaProps> = ({
         COMMON_CLASSES.card,
         electric ? COMMON_CLASSES.cardHover : '',
         paddingClasses[padding],
+        'rounded-[1.2rem] sm:rounded-[2rem]', // More rounded corners
         className,
       ].join(' ')}
     >

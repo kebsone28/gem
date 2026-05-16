@@ -146,13 +146,15 @@ export default function MissionOrder() {
       return false;
     }
   });
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  
   const toggleSidebar = () =>
     setSidebarCollapsed((prev) => {
       const next = !prev;
       try {
         localStorage.setItem('gem_mission_sidebar_collapsed', next ? '1' : '0');
       } catch {
-        // Ignore storage failures; the sidebar state still updates for this session.
+        // Ignore storage failures
       }
       return next;
     });
@@ -983,42 +985,90 @@ export default function MissionOrder() {
           </WidgetErrorBoundary>
         </div>
 
+        {/* MOBILE SIDEBAR DRAWER */}
+        <AnimatePresence>
+          {isMobileSidebarOpen && (
+            <>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsMobileSidebarOpen(false)}
+                className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-[100] lg:hidden"
+              />
+              <motion.div
+                initial={{ x: '-100%' }}
+                animate={{ x: 0 }}
+                exit={{ x: '-100%' }}
+                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                className="fixed inset-y-0 left-0 w-[280px] bg-slate-900 border-r border-white/10 z-[101] lg:hidden p-4 shadow-2xl"
+              >
+                <div className="flex items-center justify-between mb-6">
+                  <span className="text-xs font-black uppercase tracking-widest text-indigo-400">
+                    Missions Disponibles
+                  </span>
+                  <button
+                    onClick={() => setIsMobileSidebarOpen(false)}
+                    className="p-2 hover:bg-white/5 rounded-xl text-slate-400"
+                  >
+                    <PanelLeftClose size={20} />
+                  </button>
+                </div>
+                <MissionListSidebar
+                  savedMissions={savedMissions}
+                  currentMissionId={state.currentMissionId}
+                  onLoadMission={(m) => {
+                    handleLoadMission(m);
+                    setIsMobileSidebarOpen(false);
+                  }}
+                  onDeleteMission={handleDeleteMission}
+                  isCertifiedByWorkflow={effectiveIsCertified}
+                  role={role || user?.role}
+                  onPurgeAll={handlePurgeAllMissions}
+                />
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
+
         {/* GRILLE PRINCIPALE */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 relative z-10">
-          {/* SIDEBAR GAUCHE : collapsible + sticky + persistante */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 relative z-10">
+          {/* SIDEBAR GAUCHE : desktop seulement */}
           {!focusMode && (
             <div
-              className={`no-print transition-all duration-300 ${sidebarCollapsed ? 'lg:col-span-1' : 'lg:col-span-2'}`}
+              className={`hidden lg:block no-print transition-all duration-300 ${sidebarCollapsed ? 'lg:col-span-1' : 'lg:col-span-2'}`}
             >
               <div className="sticky top-4">
                 {/* Toggle button */}
                 <div className="flex items-center justify-between mb-3">
                   {!sidebarCollapsed && (
-                    <span className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
                       Missions
                     </span>
                   )}
                   <button
                     onClick={toggleSidebar}
-                    className="ml-auto p-1.5 rounded-lg text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10 transition-all"
+                    className="ml-auto p-2 rounded-xl text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10 transition-all border border-transparent hover:border-indigo-500/20"
                     title={sidebarCollapsed ? 'Afficher la liste' : 'Réduire la liste'}
                   >
-                    {sidebarCollapsed ? <PanelLeftOpen size={15} /> : <PanelLeftClose size={15} />}
+                    {sidebarCollapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
                   </button>
                 </div>
                 {!sidebarCollapsed ? (
-                  <MissionListSidebar
-                    savedMissions={savedMissions}
-                    currentMissionId={state.currentMissionId}
-                    onLoadMission={handleLoadMission}
-                    onDeleteMission={handleDeleteMission}
-                    isCertifiedByWorkflow={effectiveIsCertified}
-                    role={role || user?.role}
-                    onPurgeAll={handlePurgeAllMissions}
-                  />
+                  <div className="bg-slate-900/50 backdrop-blur-xl border border-white/5 rounded-[1.5rem] p-1 overflow-hidden">
+                    <MissionListSidebar
+                      savedMissions={savedMissions}
+                      currentMissionId={state.currentMissionId}
+                      onLoadMission={handleLoadMission}
+                      onDeleteMission={handleDeleteMission}
+                      isCertifiedByWorkflow={effectiveIsCertified}
+                      role={role || user?.role}
+                      onPurgeAll={handlePurgeAllMissions}
+                    />
+                  </div>
                 ) : (
                   /* Mini sidebar – points de statut */
-                  <div className="space-y-1.5 max-h-[80vh] overflow-y-auto custom-scrollbar">
+                  <div className="space-y-2 max-h-[80vh] overflow-y-auto no-scrollbar py-2">
                     {savedMissions.slice(0, 30).map((m: any) => {
                       const isActive = state.currentMissionId === m.id;
                       const isCert =
@@ -1029,23 +1079,23 @@ export default function MissionOrder() {
                       const isPend =
                         !isCert && (m.isSubmitted || m.data?.isSubmitted || m.status === 'soumise');
                       const dotColor = isCert
-                        ? 'bg-emerald-500'
+                        ? 'bg-emerald-500 shadow-emerald-500/40'
                         : isPend
-                          ? 'bg-amber-500'
-                          : 'bg-slate-400';
+                          ? 'bg-amber-500 shadow-amber-500/40'
+                          : 'bg-slate-500 shadow-slate-500/40';
                       return (
                         <button
                           key={m.id}
                           onClick={() => handleLoadMission(m)}
                           title={m.purpose || m.title || m.orderNumber || 'Mission'}
-                          className={`w-full flex items-center justify-center p-2 rounded-xl transition-all ${
+                          className={`w-full flex items-center justify-center p-2.5 rounded-2xl transition-all ${
                             isActive
-                              ? 'bg-indigo-600 shadow-lg shadow-indigo-500/20'
-                              : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 hover:border-indigo-400/40'
+                              ? 'bg-indigo-600 shadow-xl shadow-indigo-600/30 ring-2 ring-white/10'
+                              : 'bg-white/5 border border-white/5 hover:border-white/20'
                           }`}
                         >
                           <span
-                            className={`w-2 h-2 rounded-full ${isActive ? 'bg-white' : dotColor}`}
+                            className={`w-2.5 h-2.5 rounded-full shadow-sm ${isActive ? 'bg-white' : dotColor}`}
                           />
                         </button>
                       );
@@ -1103,17 +1153,24 @@ export default function MissionOrder() {
                   </div>
                 )}
 
-                {/* BARRE ONGLETS PILL + BOUTON FOCUS */}
-                <div className="flex items-center gap-2 mb-5">
-                  {/* Segmented control */}
-                  <div className="flex-1 flex gap-1.5 p-1 bg-slate-900/60 dark:bg-slate-800/60 border border-white/5 rounded-2xl min-w-0 overflow-x-auto no-scrollbar shadow-inner">
+                {/* BARRE ONGLETS STICKY + BOUTON FOCUS */}
+                <div className="sticky top-0 z-40 bg-slate-950/80 backdrop-blur-xl py-4 -mx-4 px-4 sm:mx-0 sm:px-0 flex items-center gap-3">
+                  <button
+                    onClick={() => setIsMobileSidebarOpen(true)}
+                    className="lg:hidden p-3 bg-white/5 border border-white/10 rounded-2xl text-slate-400 hover:text-white"
+                  >
+                    <List size={20} />
+                  </button>
+                  
+                  {/* Segmented control Premium */}
+                  <div className="flex-1 flex gap-1 p-1.5 bg-slate-900/60 border border-white/5 rounded-2xl min-w-0 overflow-x-auto no-scrollbar shadow-inner">
                     {(!isDG || (orgConfig?.mission_panels_dg || []).includes('prep')) && (
                       <button
                         onClick={() => setActiveTab('prep')}
-                        className={`flex-1 shrink-0 px-3 py-2 text-[11px] font-black uppercase tracking-wide rounded-xl transition-all duration-200 whitespace-nowrap ${
+                        className={`flex-1 shrink-0 px-4 py-2.5 text-[11px] font-black uppercase tracking-widest rounded-xl transition-all duration-300 whitespace-nowrap ${
                           activeTab === 'prep'
-                            ? 'bg-slate-900 dark:bg-slate-900 text-indigo-400 shadow-md shadow-black/10'
-                            : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                            ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
+                            : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
                         }`}
                       >
                         📋 Préparation
@@ -1122,10 +1179,10 @@ export default function MissionOrder() {
                     {(!isDG || (orgConfig?.mission_panels_dg || []).includes('report')) && (
                       <button
                         onClick={() => setActiveTab('report')}
-                        className={`flex-1 shrink-0 px-3 py-2 text-[11px] font-black uppercase tracking-wide rounded-xl transition-all duration-200 whitespace-nowrap ${
+                        className={`flex-1 shrink-0 px-4 py-2.5 text-[11px] font-black uppercase tracking-widest rounded-xl transition-all duration-300 whitespace-nowrap ${
                           activeTab === 'report'
-                            ? 'bg-slate-900 dark:bg-slate-900 text-emerald-400 shadow-md shadow-black/10'
-                            : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                            ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30'
+                            : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
                         }`}
                       >
                         📝 Rapport
@@ -1134,10 +1191,10 @@ export default function MissionOrder() {
                     {(!isDG || (orgConfig?.mission_panels_dg || []).includes('approval')) && (
                       <button
                         onClick={() => setActiveTab('approval')}
-                        className={`flex-1 shrink-0 px-3 py-2 text-[11px] font-black uppercase tracking-wide rounded-xl transition-all duration-200 whitespace-nowrap ${
+                        className={`flex-1 shrink-0 px-4 py-2.5 text-[11px] font-black uppercase tracking-widest rounded-xl transition-all duration-300 whitespace-nowrap ${
                           activeTab === 'approval'
-                            ? 'bg-slate-900 dark:bg-slate-900 text-amber-400 shadow-lg shadow-black/20 ring-1 ring-white/5'
-                            : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                            ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/30'
+                            : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
                         }`}
                       >
                         ✅ Approbation
@@ -1147,14 +1204,14 @@ export default function MissionOrder() {
                   {/* Bouton Focus Mode */}
                   <button
                     onClick={() => setFocusMode((f) => !f)}
-                    className={`shrink-0 p-3 rounded-xl transition-all border shadow-sm ${
+                    className={`shrink-0 p-3 rounded-2xl transition-all border ${
                       focusMode
-                        ? 'bg-indigo-600 text-white border-indigo-500 shadow-lg shadow-indigo-500/20'
-                        : 'text-slate-400 hover:text-indigo-400 border-white/10 hover:border-indigo-400/50 bg-slate-900/40 dark:bg-slate-900'
+                        ? 'bg-blue-600 text-white border-blue-500 shadow-lg shadow-blue-600/30'
+                        : 'text-slate-400 hover:text-blue-400 border-white/10 hover:border-blue-400/50 bg-white/5'
                     }`}
                     title={focusMode ? 'Quitter le mode plein écran' : 'Mode plein écran'}
                   >
-                    {focusMode ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+                    {focusMode ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
                   </button>
                 </div>
 

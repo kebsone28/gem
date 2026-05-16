@@ -690,7 +690,7 @@ export default function Approbation() {
       />
 
       {/* ── KPI BAR DG ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mt-6 px-2 sm:px-0">
         {[
           {
             label: 'En attente',
@@ -723,10 +723,10 @@ export default function Approbation() {
         ].map((kpi, i) => (
           <div
             key={i}
-            className={`glass-card !p-6 !rounded-3xl border-white/5 flex items-center gap-4`}
+            className={`glass-card !p-4 sm:!p-6 !rounded-2xl sm:!rounded-3xl border-white/5 flex items-center gap-3 sm:gap-4 shadow-xl`}
           >
             <div
-              className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0
+              className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center flex-shrink-0
                             ${
                               kpi.color === 'amber'
                                 ? 'bg-amber-500/10 text-amber-500'
@@ -740,13 +740,13 @@ export default function Approbation() {
               {kpi.icon}
             </div>
             <div className="min-w-0">
-              <div className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] mb-0.5">
+              <div className="text-[8px] sm:text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] mb-0.5">
                 {kpi.label}
               </div>
-              <div className="text-lg font-black text-white tracking-tight truncate">
+              <div className="text-base sm:text-lg font-black text-white tracking-tight truncate">
                 {kpi.value}
               </div>
-              <div className="text-[9px] text-slate-600 font-bold uppercase tracking-widest">
+              <div className="text-[8px] sm:text-[9px] text-slate-600 font-bold uppercase tracking-widest truncate">
                 {kpi.sub}
               </div>
             </div>
@@ -759,17 +759,17 @@ export default function Approbation() {
         <div className="xl:col-span-4 space-y-6">
           <StockMonitorWidget />
 
-          <div className="rounded-[1.75rem] border border-white/10 bg-slate-950/55 p-3 shadow-xl shadow-slate-950/30">
-            <div className="flex items-start justify-between gap-3">
+          <div className="rounded-[1.5rem] sm:rounded-[1.75rem] border border-white/5 bg-slate-950/50 p-4 sm:p-5 shadow-2xl mx-2 sm:mx-0">
+            <div className="flex items-start justify-between gap-3 mb-4 sm:mb-6">
               <div className="min-w-0">
-                <p className="text-[9px] font-black uppercase tracking-[0.26em] text-blue-300">
-                  Validation missions
+                <p className="text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] text-blue-400">
+                  Validation
                 </p>
-                <h3 className="mt-1 text-lg font-black uppercase leading-tight tracking-tight text-white">
+                <h3 className="mt-1 text-base sm:text-xl font-black uppercase leading-tight tracking-tight text-white">
                   {isArchiveMode ? 'Archives' : 'Soumissions'}
                 </h3>
-                <p className="mt-0.5 text-[10px] font-bold text-slate-500">
-                  {filteredMissions.length}/{pendingMissions.length} visible(s)
+                <p className="mt-0.5 text-[9px] sm:text-[10px] font-bold text-slate-600">
+                  {filteredMissions.length} visible(s)
                 </p>
               </div>
               <div className="flex items-center gap-1.5">
@@ -876,10 +876,10 @@ export default function Approbation() {
                       setComment('');
                       setRejectionCategory('DONNEES_INCOMPLETES');
                     }}
-                    className={`approval-mission-card group rounded-[1.55rem] border p-3.5 transition-all cursor-pointer relative overflow-hidden ${
+                    className={`approval-mission-card group rounded-2xl sm:rounded-[1.55rem] border p-3 sm:p-3.5 transition-all cursor-pointer relative overflow-hidden ${
                       selectedMission?.id === mission.id
-                        ? 'border-blue-400/70 bg-blue-600/95 shadow-xl shadow-blue-950/40 ring-2 ring-blue-300/20'
-                        : 'border-white/10 bg-slate-950/55 hover:border-blue-400/35 hover:bg-slate-900/70'
+                        ? 'border-blue-400/70 bg-blue-600 shadow-xl ring-1 sm:ring-2 ring-blue-300/20'
+                        : 'border-white/5 bg-slate-950/40 hover:border-blue-400/30 hover:bg-slate-900/60'
                     }`}
                   >
                     {/* Background Urgency Glow */}
@@ -906,7 +906,7 @@ export default function Approbation() {
                           </span>
                         </div>
                         <h3
-                          className={`approval-mission-title text-[13px] font-black uppercase leading-snug tracking-tight ${
+                          className={`approval-mission-title text-[11px] sm:text-[13px] font-black uppercase leading-snug tracking-tight ${
                             selectedMission?.id === mission.id ? 'text-white' : 'text-slate-200'
                           }`}
                         >
@@ -915,16 +915,16 @@ export default function Approbation() {
                       </div>
 
                       <div
-                        className={`shrink-0 rounded-2xl border px-3 py-2 text-right ${
+                        className={`shrink-0 rounded-xl sm:rounded-2xl border px-2.5 py-1.5 sm:px-3 sm:py-2 text-right ${
                           selectedMission?.id === mission.id
                             ? 'border-white/15 bg-white/10 text-white'
-                            : 'border-emerald-400/15 bg-emerald-500/10 text-emerald-300'
+                            : 'border-emerald-400/15 bg-emerald-500/10 text-emerald-400'
                         }`}
                       >
-                        <div className="text-[7px] font-black uppercase tracking-[0.2em] opacity-60">
+                        <div className="text-[6px] sm:text-[7px] font-black uppercase tracking-[0.2em] opacity-60">
                           Budget
                         </div>
-                        <div className="text-[12px] font-black leading-tight">
+                        <div className="text-[10px] sm:text-[12px] font-black leading-tight">
                           {fmtFCFA(budget)}
                         </div>
                       </div>
@@ -985,7 +985,7 @@ export default function Approbation() {
                 className="space-y-8"
               >
                 {/* ── PANNEAU STRATÉGIE & BUDGET ── */}
-                <div className="glass-card !p-6 !rounded-[2rem] border-white/5 bg-gradient-to-br from-slate-900 to-slate-950 shadow-2xl relative overflow-hidden">
+                <div className="glass-card !p-4 sm:!p-6 sm:!p-10 !rounded-[1.5rem] sm:!rounded-[2rem] border-white/5 bg-gradient-to-br from-slate-900 to-slate-950 shadow-2xl relative overflow-hidden">
                   <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/5 blur-[100px] rounded-full -translate-y-1/2 translate-x-1/2" />
 
                   <div className="flex flex-col lg:flex-row justify-between items-start gap-4 mb-6 relative z-10 border-b border-white/5 pb-6">
@@ -996,22 +996,22 @@ export default function Approbation() {
                           Objectif Strategique
                         </span>
                       </div>
-                      <h2 className="text-2xl font-black text-white italic tracking-tighter uppercase line-clamp-2">
+                      <h2 className="text-lg sm:text-2xl font-black text-white italic tracking-tighter uppercase line-clamp-2">
                         {selectedMission.title}
                       </h2>
                     </div>
 
-                    <div className="p-4 rounded-2xl bg-emerald-500/5 border border-emerald-500/10 text-right min-w-[200px]">
-                      <span className="text-[9px] font-black text-emerald-500/60 uppercase tracking-widest block mb-1">
+                    <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-emerald-500/5 border border-emerald-500/10 text-right min-w-[140px] sm:min-w-[200px]">
+                      <span className="text-[8px] sm:text-[9px] font-black text-emerald-500/60 uppercase tracking-widest block mb-1">
                         Budget Global
                       </span>
-                      <span className="text-2xl font-black text-white tracking-tighter">
+                      <span className="text-base sm:text-2xl font-black text-white tracking-tighter">
                         {fmtFCFA(selectedMission.budget || 0)}
                       </span>
                       {(selectedMission.budget || 0) > 2000000 && (
-                        <div className="mt-1 flex items-center justify-end gap-1 text-[8px] font-black text-rose-500 uppercase tracking-widest animate-pulse">
+                        <div className="mt-1 flex items-center justify-end gap-1 text-[7px] sm:text-[8px] font-black text-rose-500 uppercase tracking-widest animate-pulse">
                           <AlertTriangle size={10} />
-                          Risque Budgétaire Élevé
+                          Risque
                         </div>
                       )}
                     </div>

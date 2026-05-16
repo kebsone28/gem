@@ -253,28 +253,25 @@ export default function StockTab({ searchQuery = '' }: StockTabProps) {
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700 h-full flex flex-col">
-      {/* Premium Header */}
-      <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between bg-slate-900/50 backdrop-blur-xl border border-white/5 p-6 rounded-[2.5rem] shadow-2xl shrink-0">
-        <div className="flex items-center gap-5">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-            <Box className="text-white" size={28} />
+      {/* Premium Header — Compact on Mobile */}
+      <div className="flex flex-col gap-4 sm:gap-6 lg:flex-row lg:items-center lg:justify-between bg-slate-950/50 backdrop-blur-xl border border-white/5 p-4 sm:p-6 rounded-[1.5rem] sm:rounded-[2.5rem] shadow-2xl shrink-0 mx-2 sm:mx-0">
+        <div className="flex items-center gap-4 sm:gap-5">
+          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center shadow-lg shadow-indigo-500/20 shrink-0">
+            <Box className="text-white" size={24} />
           </div>
           <div>
-            <h3 className="text-2xl font-black text-white tracking-tight leading-tight">STOCK & MATÉRIEL</h3>
-            <div className="flex items-center gap-2 mt-1 mb-2">
-              <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-black uppercase tracking-widest border border-emerald-500/20">
+            <h3 className="text-lg sm:text-2xl font-black text-white tracking-tight leading-tight uppercase">Stock</h3>
+            <div className="flex items-center gap-2 mt-0.5 sm:mt-1">
+              <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[8px] sm:text-[10px] font-black uppercase tracking-widest border border-emerald-500/20">
                 <div className="w-1 h-1 rounded-full bg-current animate-pulse" />
-                Tableau Master
+                Master
               </span>
-              <span className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">• Édition Rapide</span>
+              <span className="text-slate-500 text-[8px] sm:text-[10px] font-bold uppercase tracking-widest hidden sm:inline">• Édition Rapide</span>
             </div>
-            <p className="text-slate-400 text-sm max-w-2xl leading-relaxed">
-              Ce panneau vous permet de définir le référentiel complet de vos équipements, kits et consommables (avec l'unité de mesure et les quantités par région). Ces données sont primordiales car elles alimentent les ordres de mission et l'outil de planification de façon dynamique.
-            </p>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <input 
             type="file" 
             accept=".xlsx, .xls" 
@@ -284,26 +281,24 @@ export default function StockTab({ searchQuery = '' }: StockTabProps) {
           />
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-2 px-5 py-3 rounded-2xl font-black text-[11px] uppercase tracking-widest bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white transition-all shadow-xl shadow-slate-900/20"
+            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 sm:px-5 sm:py-3 rounded-xl sm:rounded-2xl font-black text-[9px] sm:text-[11px] uppercase tracking-widest bg-slate-900 text-slate-400 hover:bg-slate-800 hover:text-white transition-all shadow-xl shadow-slate-950/20 border border-white/5"
           >
-            <Upload size={16} />
-            Importer
+            <Upload size={14} />
+            Import
           </button>
           
           <button
             onClick={handleExport}
-            className="flex items-center gap-2 px-5 py-3 rounded-2xl font-black text-[11px] uppercase tracking-widest bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600 hover:text-white transition-all shadow-xl shadow-emerald-900/20"
+            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 sm:px-5 sm:py-3 rounded-xl sm:rounded-2xl font-black text-[9px] sm:text-[11px] uppercase tracking-widest bg-emerald-600/10 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-600 hover:text-white transition-all"
           >
-            <Download size={16} />
-            Exporter
+            <Download size={14} />
+            Export
           </button>
-
-          <div className="w-px h-8 bg-slate-800 mx-2 hidden sm:block" />
 
           <button
             onClick={handleSave}
             disabled={isSaving}
-            className="flex items-center gap-2 px-6 py-3 rounded-2xl font-black text-[11px] uppercase tracking-widest bg-indigo-600 text-white hover:bg-indigo-500 transition-all shadow-xl shadow-indigo-600/20 disabled:opacity-50"
+            className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 sm:py-3.5 rounded-xl sm:rounded-2xl font-black text-[10px] sm:text-[11px] uppercase tracking-[0.2em] bg-indigo-600 text-white hover:bg-indigo-500 transition-all shadow-xl shadow-indigo-600/30 disabled:opacity-50 active:scale-95"
           >
             {isSaving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Save size={16} />}
             Enregistrer
@@ -311,11 +306,11 @@ export default function StockTab({ searchQuery = '' }: StockTabProps) {
         </div>
       </div>
 
-      {/* Spreadsheet View */}
-      <div className="bg-slate-900 border border-slate-800 rounded-[2.5rem] shadow-2xl flex-1 overflow-hidden flex flex-col min-h-[500px]">
-        <div className="overflow-auto flex-1 custom-scrollbar">
-          <table className="w-full text-left border-collapse min-w-[1200px]">
-             <thead className="sticky top-0 z-10 bg-slate-950/95 backdrop-blur-md shadow-sm border-b border-slate-800/60">
+      {/* Spreadsheet View — High Density */}
+      <div className="bg-slate-950/40 backdrop-blur-sm border border-white/5 rounded-[1.5rem] sm:rounded-[2.5rem] shadow-2xl flex-1 overflow-hidden flex flex-col min-h-[400px] sm:min-h-[500px] mx-2 sm:mx-0">
+        <div className="overflow-auto flex-1 scrollbar-hide sm:scrollbar-default">
+          <table className="w-full text-left border-collapse min-w-[900px] sm:min-w-[1200px]">
+             <thead className="sticky top-0 z-20 bg-slate-900/95 backdrop-blur-md shadow-sm border-b border-white/5">
                <tr className="text-[10px] font-black text-slate-500 uppercase tracking-[0.1em]">
                  <th className="px-4 py-3 w-40 align-top">
                    <div className="flex flex-col gap-2">
@@ -448,30 +443,30 @@ export default function StockTab({ searchQuery = '' }: StockTabProps) {
              </tbody>
           </table>
         </div>
-        <div className="p-4 border-t border-slate-800 bg-slate-950/50 flex items-center justify-between">
+        <div className="p-3 sm:p-4 border-t border-white/5 bg-slate-950/80 flex items-center justify-between">
           <button 
             onClick={addRow} 
-            className="flex items-center gap-2 px-4 py-2 text-indigo-400 hover:text-white hover:bg-indigo-500/20 rounded-xl text-xs font-black uppercase tracking-widest transition-colors"
+            className="flex items-center gap-2 px-4 py-2.5 sm:px-5 sm:py-3 text-indigo-400 hover:text-white hover:bg-indigo-600/20 rounded-xl sm:rounded-2xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all active:scale-95"
           >
-            <Plus size={16}/> Ajouter une ligne
+            <Plus size={18}/> Ajouter matériel
           </button>
           
           {tableData.length > 0 && (
             confirmClear ? (
               <div className="flex items-center gap-2 animate-in slide-in-from-right-4">
-                <span className="text-xs font-bold text-rose-500 mr-2 uppercase tracking-widest">Sûr ?</span>
+                <span className="text-[10px] font-black text-rose-500 mr-2 uppercase tracking-[0.2em]">Sûr ?</span>
                 <button 
                   onClick={() => {
                     setTableData([]);
                     setConfirmClear(false);
                   }}
-                  className="px-4 py-2 bg-rose-500/20 text-rose-400 border border-rose-500/50 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-rose-500 hover:text-white transition-all shadow-lg shadow-rose-500/20"
+                  className="px-4 py-2 bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-500 hover:text-white transition-all shadow-lg shadow-rose-500/20"
                 >
                   OUI
                 </button>
                 <button 
                   onClick={() => setConfirmClear(false)}
-                  className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-slate-700 hover:text-white transition-colors"
+                  className="px-4 py-2 bg-slate-800 text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-700 hover:text-white transition-colors"
                 >
                   NON
                 </button>
@@ -479,9 +474,9 @@ export default function StockTab({ searchQuery = '' }: StockTabProps) {
             ) : (
               <button 
                 onClick={() => setConfirmClear(true)}
-                className="flex items-center gap-2 px-4 py-2 text-rose-500/70 hover:text-rose-500 hover:bg-rose-500/10 rounded-xl text-xs font-black uppercase tracking-widest transition-colors"
+                className="flex items-center gap-2 px-4 py-2 text-rose-500/50 hover:text-rose-500 hover:bg-rose-500/10 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors"
               >
-                <Trash2 size={16}/> Tout supprimer
+                <Trash2 size={16}/> Vider tout
               </button>
             )
           )}

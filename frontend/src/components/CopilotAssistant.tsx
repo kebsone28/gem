@@ -11,6 +11,7 @@ import {
 import apiClient from '../api/client';
 import toast from 'react-hot-toast';
 import { useProject } from '../contexts/ProjectContext';
+import styles from './CopilotAssistant.module.css';
 
 interface Suggestion {
   id: string;
@@ -110,7 +111,12 @@ try {
                   </div>
                 </div>
               </div>
-              <button onClick={() => setIsOpen(false)} className="text-slate-500 hover:text-white transition-colors">
+              <button 
+                onClick={() => setIsOpen(false)} 
+                className="text-slate-500 hover:text-white transition-colors"
+                title="Fermer l'assistant"
+                aria-label="Fermer l'assistant"
+              >
                 <X size={20} />
               </button>
             </div>
@@ -168,9 +174,9 @@ try {
                 <div className="flex justify-start">
                   <div className="bg-white/5 p-4 rounded-3xl rounded-tl-none border border-white/5">
                     <div className="flex gap-1">
-                      <div className="w-1.5 h-1.5 bg-slate-600 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                      <div className="w-1.5 h-1.5 bg-slate-600 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                      <div className="w-1.5 h-1.5 bg-slate-600 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                      <div className={`w-1.5 h-1.5 bg-slate-600 rounded-full animate-bounce ${styles.delayBounce0}`} />
+                      <div className={`w-1.5 h-1.5 bg-slate-600 rounded-full animate-bounce ${styles.delayBounce150}`} />
+                      <div className={`w-1.5 h-1.5 bg-slate-600 rounded-full animate-bounce ${styles.delayBounce300}`} />
                     </div>
                   </div>
                 </div>
@@ -191,6 +197,8 @@ try {
                 <button 
                   onClick={handleSend}
                   className="absolute right-2 top-2 w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20"
+                  title="Envoyer le message"
+                  aria-label="Envoyer le message"
                 >
                   <Send size={18} />
                 </button>

@@ -21,9 +21,7 @@ import { FileText, CheckCircle, Shield } from 'lucide-react';
 // ── MODULE ARCHITECTURE ──
 import { DashboardHeader } from './admin/components/DashboardHeader';
 import { GlobalProgressCard } from './admin/components/GlobalProgressCard';
-import { KPISection } from './admin/components/KPISection';
-import { ComplianceSection } from './admin/components/ComplianceSection';
-import { OperationalSection } from './admin/components/OperationalSection';
+import { UnifiedStatsTable } from './admin/components/UnifiedStatsTable';
 import { ControlPanel } from './admin/components/ControlPanel';
 import { TeamPerformance } from '../../components/dashboards/TeamPerformance';
 
@@ -34,6 +32,9 @@ import { useAuditLogs } from './admin/hooks/useAuditLogs';
 import { useSyncHandler } from './admin/hooks/useSyncHandler';
 import { useAutoRefresh } from './admin/hooks/useAutoRefresh';
 import { useServerAIContext } from './admin/hooks/useServerAIContext';
+import { GlobalGedOsAiChat } from '../../components/ia/GlobalGedOsAiChat';
+import AIEngineAdminPanel from '../../components/ia/AIEngineAdminPanel';
+import { Brain } from 'lucide-react';
 
 // ── DEFAULT CONSOLE SETTINGS ──
 const DEFAULT_CONSOLE_SETTINGS: ConsoleSettingsConfig = {
@@ -55,6 +56,7 @@ export default function AdminDashboard() {
   const { peut, PERMISSIONS } = usePermissions();
   const { getLabel } = useLabels();
 
+  const [showAIPanel, setShowAIPanel] = useState(false);
   const [orgConfig, setOrgConfig] = useState<any>(null);
   const nRole = useMemo(() => normalizeRole(user?.role), [user?.role]);
   const isDG = nRole === ROLES.DIRECTEUR;
@@ -66,9 +68,20 @@ export default function AdminDashboard() {
       .catch(() => {});
   }, []);
 
-  // ── CONSOLE CUSTOMIZATION ──
-  const [consoleSettings, setConsoleSettings] =
-    useState<ConsoleSettingsConfig>(DEFAULT_CONSOLE_SETTINGS);
+  // 5. Charger et écouter les réglages de la console
+  const [consoleSettings, setConsoleSettings] = useState<ConsoleSettingsConfig>(() => {
+    const saved = localStorage.getItem('console-settings');
+    return saved ? JSON.parse(saved) : DEFAULT_CONSOLE_SETTINGS;
+  });
+
+  useEffect(() => {
+    const handleSettingsChange = (e: any) => {
+      setConsoleSettings(e.detail);
+    };
+
+    window.addEventListener('ged-os:console-settings-change', handleSettingsChange);
+    return () => window.removeEventListener('ged-os:console-settings-change', handleSettingsChange);
+  }, []);
   useConsoleLayout(consoleSettings);
 
   const canViewReports = peut(PERMISSIONS.TERRAIN_READ) || peut(PERMISSIONS.FINANCE_READ);
@@ -106,7 +119,9 @@ export default function AdminDashboard() {
   }, [refreshAIContext, refreshKPI, refreshMissions, refreshMonitoring, refreshAudit]);
 
   const { isSyncing, handleSync } = useSyncHandler(refreshKPI);
-  useAutoRefresh(refreshAll, 60000); // Efficient auto-refresh every 1 min
+  
+  // Raccordement du rafraîchissement auto au réglage de la console
+  useAutoRefresh(refreshAll, consoleSettings.autoRefresh ? 60000 : 999999999); 
 
   const lastSyncLabel = isSyncing
     ? 'maintenant'
@@ -195,7 +210,7 @@ export default function AdminDashboard() {
           padding="none"
           className="bg-transparent border-none shadow-none relative z-10"
         >
-          <div className="space-y-5 px-3 pb-28 sm:space-y-7 sm:px-6 sm:pb-24 lg:space-y-9 lg:px-10 xl:px-12">
+          <div className="space-y-4 px-2 pb-28 sm:space-y-7 sm:px-6 sm:pb-24 lg:space-y-9 lg:px-10 xl:px-12">
             {/* Header & Main Actions */}
             <DashboardHeader
               projectName={project?.name || ''}
@@ -328,37 +343,41 @@ export default function AdminDashboard() {
             </section>
 
             {/* Level 1: Core Progress */}
-            <GlobalProgressCard metrics={metrics} isLoading={isMetricsLoading} />
+            {consoleSettings.showStats && (
+              <GlobalProgressCard metrics={metrics} isLoading={isMetricsLoading} />
+            )}
 
             {/* Team Production Performance */}
-            <div className="pt-1 sm:pt-4">
-              <TeamPerformance
-                teamStats={metrics.breakdown.byTeam}
-                productionRates={project?.config?.productionRates}
+            {consoleSettings.showTeams && (
+              <div className="pt-1 sm:pt-4">
+                <TeamPerformance
+                  teamStats={metrics.breakdown.byTeam}
+                  productionRates={project?.config?.productionRates}
+                />
+              </div>
+            )}
+
+            {/* Strategic Unified Table (Compact Excel View) */}
+            {consoleSettings.showStats && (
+              <UnifiedStatsTable
+                metrics={metrics}
+                missionStats={missionStats}
+                householdLabel={getLabel('household.plural')}
               />
-            </div>
+            )}
 
-            {/* Operational Performance & Teams */}
-            <OperationalSection metrics={metrics} zonesCount={localZonesCount} />
-
-            {/* Strategic KPIs */}
-            <KPISection
-              metrics={metrics}
-              missionStats={missionStats}
-              householdLabel={getLabel('household.plural')}
-              isLoading={isMetricsLoading}
-            />
-
-            {/* Compliance & Regulation */}
-            <ComplianceSection metrics={metrics} />
+            {/* Compliance & Regulation (Optional: We could also hide this if redundant) */}
+            {/* <ComplianceSection metrics={metrics} /> */}
 
             {/* Infrastructure Control & Live Activity */}
-            <ControlPanel
-              metrics={metrics}
-              feedActivities={feedActivities}
-              missions={missions}
-              isLoading={isMetricsLoading}
-            />
+            {consoleSettings.showLogs && (
+              <ControlPanel
+                metrics={metrics}
+                feedActivities={feedActivities}
+                missions={missions}
+                isLoading={isMetricsLoading}
+              />
+            )}
 
             {/* Secondary Nav / Data Access */}
             <footer className="grid grid-cols-1 gap-4 border-t border-white/5 pt-6 sm:grid-cols-2 sm:gap-5 sm:pt-10 relative z-10">
@@ -379,11 +398,25 @@ export default function AdminDashboard() {
         </ContentArea>
       </PageContainer>
 
-      {/* Console Settings Panel - Outside PageContainer for fixed positioning */}
-      <ConsoleSettings onSettingsChange={setConsoleSettings} />
+      {/* IA Assistante (Positionnée dynamiquement via Props) */}
+      {consoleSettings.showAI && (
+        <GlobalGedOsAiChat className="bottom-6 right-6" />
+      )}
+
+      {/* Le composant ConsoleSettings est conservé ici pour piloter l'état du dashboard, 
+          mais son bouton flottant est masqué (showButton={false}) */}
+      <ConsoleSettings onSettingsChange={setConsoleSettings} showButton={false} />
+
+      {/* Modal IA Avancée (Pilotée depuis la Sidebar maintenant, 
+          mais on peut garder un backup ici si besoin ou le supprimer) */}
+      {showAIPanel && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-md">
+           <AIEngineAdminPanel user={user} onClose={() => setShowAIPanel(false)} />
+        </div>
+      )}
     </>
   );
-}
+};
 
 // ── UTILS ──
 import { type LucideIcon } from 'lucide-react';

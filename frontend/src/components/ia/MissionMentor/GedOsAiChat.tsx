@@ -5,6 +5,7 @@
 
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Sparkles, X, Maximize2, Minimize2, Volume2, VolumeX, Mic, Camera, Send, Bot } from 'lucide-react';
 import { useGedOsAiChat } from '../../../hooks/useGedOsAiCore';
 import type { AIState } from '../../../services/ai/MissionSageService';
 import type { MissionStats } from '../../../services/missionStatsService';
@@ -20,6 +21,7 @@ interface GedOsAiChatProps {
   teams?: Team[];
   regionalSummaries?: any[];
   canManageAI?: boolean;
+  className?: string;
 }
 
 export default function GedOsAiChat({
@@ -29,6 +31,7 @@ export default function GedOsAiChat({
   teams = [],
   regionalSummaries = [],
   canManageAI = false,
+  className = "bottom-32 right-4",
 }: GedOsAiChatProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -101,28 +104,21 @@ export default function GedOsAiChat({
   };
 
   return (
-    <div className={`fixed bottom-4 right-4 z-50 ${isMaximized ? 'inset-4 bottom-4 right-4' : ''}`}>
+    <div className={`fixed z-50 ${className} ${isMaximized ? 'inset-4 bottom-4 right-4' : ''}`}>
       {/* Bouton flottant pour ouvrir/fermer */}
       {!isOpen && (
-        <motion.button
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => setIsOpen(true)}
-          className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-600 to-blue-800 shadow-lg shadow-blue-600/30 flex items-center justify-center text-white border-2 border-white/20"
-          aria-label="Ouvrir le mentor IA"
-        >
-          <svg
-            className="w-8 h-8"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2}
+          <motion.button
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setIsOpen(true)}
+            className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-600 to-indigo-700 shadow-lg shadow-blue-600/40 flex items-center justify-center text-white border-2 border-white/20 relative group"
+            aria-label="Ouvrir GAM AI"
           >
-            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-          </svg>
-        </motion.button>
+            <div className="absolute inset-0 rounded-full bg-blue-400 opacity-0 group-hover:opacity-20 blur-xl transition-opacity" />
+            <Bot size={32} className="relative z-10" />
+          </motion.button>
       )}
 
       {/* Panneau de chat */}
@@ -140,23 +136,15 @@ export default function GedOsAiChat({
             <div className="p-4 sm:p-5 border-b border-white/10 bg-slate-950/50">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-blue-800 flex items-center justify-center text-white shadow-lg shadow-blue-600/20">
-                    <svg
-                      className="w-5 h-5"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth={2}
-                    >
-                      <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-                    </svg>
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/30 border border-white/20">
+                    <Sparkles size={22} />
                   </div>
                   <div>
-                    <h3 className="text-sm font-black text-white uppercase tracking-wider">
-                      Mission Mentor AI
+                    <h3 className="text-lg font-black text-white italic tracking-tighter flex items-center gap-2">
+                      GAM <span className="text-blue-400">AI</span>
                     </h3>
-                    <p className="text-[10px] text-slate-400 font-medium">
-                      Cerveau centralisé GED OS
+                    <p className="text-[9px] text-blue-300 font-black uppercase tracking-[0.2em] opacity-80">
+                      Assistant Intelligent
                     </p>
                   </div>
                 </div>

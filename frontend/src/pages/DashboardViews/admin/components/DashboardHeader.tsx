@@ -184,9 +184,9 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.2, type: 'spring', stiffness: 100 }}
-              className="text-[2rem] font-black tracking-[-0.06em] text-white sm:text-[3rem] xl:text-[4.2rem] leading-[0.95]"
+              className="text-[1.8rem] xs:text-[2.2rem] sm:text-[3rem] xl:text-[4.2rem] font-black tracking-[-0.06em] text-white leading-[0.95]"
             >
-              Console <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-500">Stratégique</span>
+              Console <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-500 drop-shadow-[0_0_15px_rgba(59,130,246,0.3)]">Stratégique</span>
             </motion.h1>
             
             <motion.p 
@@ -230,15 +230,16 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
             <button
               onClick={onSync}
               disabled={isSyncing || isLoading}
-              className="group relative flex h-16 items-center justify-center gap-4 overflow-hidden rounded-2xl bg-blue-600 px-8 text-[0.95rem] font-black uppercase tracking-[0.12em] text-white shadow-[0_20px_40px_rgba(37,99,235,0.3)] transition-all hover:scale-[1.02] hover:bg-blue-500 active:scale-[0.98] disabled:opacity-50 xl:min-w-[320px]"
+              className="group relative flex h-14 sm:h-16 items-center justify-center gap-4 overflow-hidden rounded-2xl bg-blue-600 px-6 sm:px-8 text-[0.85rem] sm:text-[0.95rem] font-black uppercase tracking-[0.12em] text-white shadow-[0_20px_40px_rgba(37,99,235,0.3)] transition-all hover:scale-[1.02] hover:bg-blue-500 active:scale-[0.98] disabled:opacity-50 xl:min-w-[320px]"
             >
               <div className="absolute inset-0 bg-[linear-gradient(120deg,transparent,rgba(255,255,255,0.2),transparent)] -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+              <div className="absolute inset-0 bg-blue-400/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
               <RefreshCw
-                size={22}
+                size={20}
                 className={isSyncing ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-700'}
               />
-              <span className="relative">
-                {isSyncing ? 'Mise à jour flux...' : 'Synchronisation Totale'}
+              <span className="relative z-10">
+                {isSyncing ? 'Mise à jour...' : 'Synchronisation Totale'}
               </span>
             </button>
             

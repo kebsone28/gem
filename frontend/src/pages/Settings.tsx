@@ -95,29 +95,29 @@ export default function Settings() {
                             <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] leading-none">Paramètres Globaux & Déploiement</p>
                         </div>
                     </div>
-                </header>
-
-                {/* ── TABS NAVIGATION ── */}
-
-                <div className="flex gap-2 p-1.5 bg-white/5 rounded-2xl border border-white/5 overflow-x-auto no-scrollbar shadow-sm" role="tablist">
-                    {tabs.map((tab) => (
-                        <button
-                            key={tab.id}
-                            role="tab"
-                            aria-selected={activeTab === tab.id}
-                            aria-controls={`panel-${tab.id}`}
-                            id={`tab-${tab.id}`}
-                            onClick={() => setActiveTab(tab.id as TabType)}
-                            className={`flex items-center gap-2.5 px-6 py-3 rounded-xl transition-all duration-300 whitespace-nowrap group ${activeTab === tab.id
-                                ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/10'
-                                : 'text-slate-500 hover:text-white hover:bg-white/5'
-                                }`}
-                        >
-                            <tab.icon size={16} className={`${activeTab === tab.id ? 'text-white' : 'text-gray-400 group-hover:text-blue-500'} transition-colors`} />
-                            <span className="font-black text-xs uppercase tracking-widest">{tab.label}</span>
-                        </button>
-                    ))}
+                            {/* ── TABS NAVIGATION ── */}
+                <div className="px-2 sm:px-0">
+                    <div className="flex gap-1 sm:gap-2 p-1 bg-white/5 rounded-xl sm:rounded-2xl border border-white/5 overflow-x-auto no-scrollbar shadow-sm" role="tablist">
+                        {tabs.map((tab) => (
+                            <button
+                                key={tab.id}
+                                role="tab"
+                                aria-selected={activeTab === tab.id}
+                                aria-controls={`panel-${tab.id}`}
+                                id={`tab-${tab.id}`}
+                                onClick={() => setActiveTab(tab.id as TabType)}
+                                className={`flex items-center gap-2 px-4 py-2.5 sm:px-6 sm:py-3 rounded-lg sm:rounded-xl transition-all duration-300 whitespace-nowrap group shrink-0 ${activeTab === tab.id
+                                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
+                                    : 'text-slate-500 hover:text-white hover:bg-white/5'
+                                    }`}
+                            >
+                                <tab.icon size={14} className={`${activeTab === tab.id ? 'text-white' : 'text-slate-600 group-hover:text-blue-500'} transition-colors`} />
+                                <span className="font-black text-[10px] uppercase tracking-widest">{tab.label}</span>
+                            </button>
+                        ))}
+                    </div>
                 </div>
+                </header>
 
                 {/* ── TAB CONTENT ── */}
                 <main>
@@ -131,7 +131,7 @@ export default function Settings() {
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 1.02 }}
                             transition={{ duration: 0.3, ease: "circOut" }}
-                            className="bg-white/5 rounded-[2.5rem] border border-white/5 p-8 md:p-12 relative overflow-hidden"
+                            className="bg-white/5 rounded-[1.5rem] sm:rounded-[2.5rem] border border-white/5 p-4 sm:p-8 md:p-12 relative overflow-hidden mx-2 sm:mx-0"
                         >
                             {/* Decorative background element */}
                             <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/5 blur-[100px] pointer-events-none rounded-full" />
@@ -351,52 +351,52 @@ function TeamsSection({ project }: { project: any }) {
             </div>
 
             {/* ── CADENCES DE PRODUCTION ── */}
-            <div className="bg-white/5 p-8 rounded-[2rem] border border-white/5 mb-8">
+            <div className="bg-white/5 p-4 sm:p-8 rounded-2xl sm:rounded-[2rem] border border-white/5 mb-8">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                     <div className="flex items-center gap-3">
                         <Zap size={18} className="text-amber-500" />
-                        <h3 className="text-sm font-black text-white uppercase tracking-widest">Cadence Standard (Foyers / Jour)</h3>
+                        <h3 className="text-[10px] sm:text-sm font-black text-white uppercase tracking-widest leading-none">Cadences (Foyers / Jour)</h3>
                     </div>
                     <button
                         onClick={handleAddProductionRate}
-                        className="px-4 py-2 bg-amber-100 hover:bg-amber-200 dark:bg-amber-900/50 dark:hover:bg-amber-900/70 text-amber-900 dark:text-amber-100 text-xs font-black uppercase tracking-widest rounded-xl transition-all border border-amber-600 dark:border-amber-600"
+                        className="px-4 py-2.5 bg-amber-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl transition-all shadow-lg shadow-amber-600/20 active:scale-95"
                     >
-                        + Ajouter un métier
+                        + Métier
                     </button>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                     {Object.entries(productionRates).map(([tradeKey, rate]) => {
                         const labelMap: Record<string, string> = {
                             macons: 'Maçonnerie',
-                            reseau: 'Déploiement Réseau',
+                            reseau: 'Réseau',
                             interieur_type1: 'Électriciens',
-                            controle: 'Contrôle & Visite',
-                            preparateurs: 'Préparateurs / Magasin'
+                            controle: 'Contrôle',
+                            preparateurs: 'Logistique'
                         };
                         const displayLabel = labelMap[tradeKey] || tradeKey.replace(/_/g, ' ').toUpperCase();
                         const isCoreTrade = ['macons', 'reseau', 'interieur_type1', 'controle', 'preparateurs'].includes(tradeKey);
 
                         return (
-                            <div key={tradeKey} className="bg-white dark:bg-slate-950 border border-gray-100 dark:border-white/5 rounded-2xl p-5 shadow-sm dark:shadow-none relative group">
+                            <div key={tradeKey} className="bg-slate-950/60 border border-white/5 rounded-xl sm:rounded-2xl p-3 sm:p-5 relative group">
                                 {!isCoreTrade && (
                                     <button
                                         onClick={() => handleDeleteProductionRate(tradeKey)}
-                                        className="absolute top-3 right-3 text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                                        aria-label="Supprimer ce métier"
+                                        className="absolute top-2 right-2 text-slate-600 hover:text-red-500 transition-colors"
+                                        aria-label="Supprimer"
                                     >
-                                        <Trash2 size={14} />
+                                        <Trash2 size={12} />
                                     </button>
                                 )}
-                                <label className="text-xs font-black text-gray-400 uppercase tracking-[0.2em] mb-3 block truncate pr-5" title={displayLabel}>{displayLabel}</label>
-                                <div className="flex items-center gap-3">
+                                <label className="text-[8px] sm:text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-2 block truncate pr-5" title={displayLabel}>{displayLabel}</label>
+                                <div className="flex items-center gap-2">
                                     <input
                                         type="number"
                                         title={`Cadence ${displayLabel}`}
                                         value={rate as number}
                                         onChange={e => handleUpdateProductionRate(tradeKey, parseInt(e.target.value) || 1)}
-                                        className="w-full bg-transparent border-b-2 border-gray-100 dark:border-white/10 py-1 text-xl font-black text-blue-600 focus:border-blue-500 outline-none transition-colors"
+                                        className="w-full bg-transparent border-b border-white/10 py-1 text-lg sm:text-xl font-black text-blue-500 focus:border-blue-500 outline-none transition-colors"
                                     />
-                                    <span className="text-xs font-bold text-gray-400">f/j</span>
+                                    <span className="text-[10px] font-bold text-slate-600">f/j</span>
                                 </div>
                             </div>
                         );

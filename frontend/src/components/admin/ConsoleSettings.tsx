@@ -1,32 +1,49 @@
-﻿ 
+
 /**
- * ConsoleSettings - Panneau d'ajustement pour la console d'administration
- * Permet de personnaliser l'affichage en temps réel
+ * ConsoleSettings - Panneau d'ajustement Ultra-Complet
+ * Avec descriptions explicatives pour chaque option
  */
 
 import React, { useState, useEffect } from 'react';
-import { Settings, X, Eye, Layout, Palette } from 'lucide-react';
+import { 
+  Settings, 
+  X, 
+  Eye, 
+  Layout, 
+  Palette, 
+  Columns, 
+  PanelLeft, 
+  BarChart3, 
+  Users2, 
+  History, 
+  Bot,
+  RefreshCw,
+  Volume2,
+  Sparkles,
+  Moon
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface ConsoleSettingsProps {
   onSettingsChange?: (settings: ConsoleSettingsConfig) => void;
+  onClose?: () => void;
+  showButton?: boolean;
 }
 
 export interface ConsoleSettingsConfig {
-  // Affichage
   showSidebar: boolean;
   showStats: boolean;
   showTeams: boolean;
   showLogs: boolean;
-  
-  // Thème
+  showAI: boolean;
+  autoRefresh: boolean;
+  soundEnabled: boolean;
+  animationsEnabled: boolean;
   theme: 'dark' | 'light';
   accentColor: 'blue' | 'purple' | 'green' | 'red';
+  glassEffect: 'low' | 'high';
   compact: boolean;
-  
-  // Layout
   columns: 1 | 2 | 3;
-  gridSpacing: 'tight' | 'normal' | 'spacious';
 }
 
 const DEFAULT_SETTINGS: ConsoleSettingsConfig = {
@@ -34,241 +51,210 @@ const DEFAULT_SETTINGS: ConsoleSettingsConfig = {
   showStats: true,
   showTeams: true,
   showLogs: true,
+  showAI: true,
+  autoRefresh: true,
+  soundEnabled: true,
+  animationsEnabled: true,
   theme: 'dark',
   accentColor: 'blue',
+  glassEffect: 'high',
   compact: false,
   columns: 3,
-  gridSpacing: 'normal',
 };
 
-export const ConsoleSettings: React.FC<ConsoleSettingsProps> = ({ onSettingsChange }) => {
-  const [isOpen, setIsOpen] = useState(false);
+export const ConsoleSettings: React.FC<ConsoleSettingsProps> = ({ onSettingsChange, onClose, showButton = false }) => {
+  const [isOpen, setIsOpen] = useState(!showButton);
   const [settings, setSettings] = useState<ConsoleSettingsConfig>(() => {
-    // Charger depuis localStorage
     const saved = localStorage.getItem('console-settings');
-    return saved ? JSON.parse(saved) : DEFAULT_SETTINGS;
+    try {
+      return saved ? JSON.parse(saved) : DEFAULT_SETTINGS;
+    } catch {
+      return DEFAULT_SETTINGS;
+    }
   });
 
-  // Sauvegarder et notifier les changements
   useEffect(() => {
     localStorage.setItem('console-settings', JSON.stringify(settings));
     onSettingsChange?.(settings);
+    window.dispatchEvent(new CustomEvent('ged-os:console-settings-change', { detail: settings }));
+    
+    const colorMap = { blue: '#3b82f6', purple: '#a855f7', green: '#10b981', red: '#ef4444' };
+    const root = document.documentElement;
+    root.style.setProperty('--accent-color', colorMap[settings.accentColor]);
+    
+    let styleTag = document.getElementById('ged-os-dynamic-theme');
+    if (!styleTag) {
+      styleTag = document.createElement('style');
+      styleTag.id = 'ged-os-dynamic-theme';
+      document.head.appendChild(styleTag);
+    }
+    
+    styleTag.innerHTML = `
+      :root {
+        --accent-color: ${colorMap[settings.accentColor]};
+        --glass-opacity: ${settings.glassEffect === 'high' ? '0.8' : '0.4'};
+      }
+      ${!settings.animationsEnabled ? `* { transition: none !important; animation: none !important; }` : ''}
+      .text-accent { color: ${colorMap[settings.accentColor]} !important; }
+      .bg-accent { background-color: ${colorMap[settings.accentColor]} !important; }
+      .border-accent { border-color: ${colorMap[settings.accentColor]} !important; }
+    `;
   }, [settings, onSettingsChange]);
 
   const toggleSetting = (key: keyof ConsoleSettingsConfig) => {
-    setSettings(prev => ({
-      ...prev,
-      [key]: typeof prev[key] === 'boolean' ? !prev[key] : prev[key]
-    }));
+    setSettings(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const updateSetting = (key: keyof ConsoleSettingsConfig, value: unknown) => {
-    setSettings(prev => ({
-      ...prev,
-      [key]: value
-    } as ConsoleSettingsConfig));
+  const updateSetting = (key: keyof ConsoleSettingsConfig, value: any) => {
+    setSettings(prev => ({ ...prev, [key]: value }));
   };
 
-  const resetSettings = () => {
-    setSettings(DEFAULT_SETTINGS);
+  const accentClasses = {
+    blue: 'bg-blue-500',
+    purple: 'bg-purple-500',
+    green: 'bg-emerald-500',
+    red: 'bg-rose-500',
   };
+
+  const SectionTitle = ({ icon: Icon, children, color }: any) => (
+    <h3 className={`text-[10px] font-black uppercase tracking-[0.2em] mb-4 flex items-center gap-2 ${color}`}>
+      <Icon size={14} /> {children}
+    </h3>
+  );
 
   return (
     <>
-      {/* Bouton Settings */}
-      <button
-        onClick={() => setIsOpen(true)}
-        className="fixed right-4 bottom-[calc(5.25rem+env(safe-area-inset-bottom,0px))] sm:right-6 sm:bottom-6 px-3 py-3 sm:px-4 sm:py-4 rounded-2xl sm:rounded-full bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg hover:shadow-xl sm:hover:scale-110 transition-all z-40 border border-white/10"
-        title="Paramètres de la console"
-        aria-label="Paramètres de la console"
-      >
-        <span className="flex items-center gap-2">
-          <Settings size={18} />
-          <span className="text-[11px] font-bold uppercase tracking-[0.04em] sm:hidden">UI</span>
-        </span>
-      </button>
-
-      {/* Modal Settings */}
       <AnimatePresence>
         {isOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center sm:justify-end"
-            onClick={() => setIsOpen(false)}
-          >
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/70 backdrop-blur-md z-[100]" 
+              onClick={() => { setIsOpen(false); onClose?.(); }} 
+            />
             <motion.div
-              initial={{ x: 400, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: 400, opacity: 0 }}
-              onClick={e => e.stopPropagation()}
-              className="w-full sm:w-96 bg-slate-900 border border-slate-700 rounded-t-2xl sm:rounded-xl shadow-2xl max-h-[85vh] sm:max-h-[90vh] overflow-y-auto"
+              initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="fixed top-0 right-0 bottom-0 w-full sm:w-[400px] bg-[#070b18] z-[101] shadow-2xl flex flex-col border-l border-white/5"
             >
-              {/* Header */}
-              <div className="sticky top-0 flex items-center justify-between p-6 border-b border-slate-700 bg-slate-900/95">
-                <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                  <Settings size={20} />
-                  Paramètres Console
-                </h2>
-                <button
-                  onClick={() => setIsOpen(false)}
-                  className="p-2 hover:bg-slate-800 rounded-lg transition-colors"
-                  aria-label="Fermer"
-                  title="Fermer"
-                >
-                  <X size={20} className="text-slate-400" />
+              <div className="p-8 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
+                <div>
+                  <h2 className="text-xl font-black text-white uppercase tracking-tighter">Console Admin</h2>
+                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Édition de l'Expérience GEM OS</p>
+                </div>
+                <button onClick={() => { setIsOpen(false); onClose?.(); }} className="p-2 text-slate-400 hover:text-white transition-colors">
+                  <X size={28} />
                 </button>
               </div>
 
-              {/* Content */}
-              <div className="p-6 space-y-6">
-                {/* Affichage Section */}
-                <div>
-                  <h3 className="flex items-center gap-2 text-sm font-bold text-blue-400 uppercase tracking-wider mb-3">
-                    <Eye size={16} /> Affichage
-                  </h3>
-                  <div className="space-y-2 pl-6 border-l border-slate-700">
+              <div className="flex-1 overflow-y-auto p-8 space-y-10 no-scrollbar">
+                
+                {/* 👁️ VISIBILITÉ */}
+                <section>
+                  <SectionTitle icon={Eye} color="text-blue-400">Affichage & Navigation</SectionTitle>
+                  <div className="space-y-4">
                     {[
-                      { key: 'showSidebar', label: 'Sidebar' },
-                      { key: 'showStats', label: 'Statistiques KPI' },
-                      { key: 'showTeams', label: 'Performance Équipes' },
-                      { key: 'showLogs', label: 'Logs & Audit' },
-                    ].map(({ key, label }) => (
-                      <label key={key} className="flex items-center gap-3 cursor-pointer group">
-                        <input
-                          type="checkbox"
-                          checked={settings[key as keyof ConsoleSettingsConfig] as boolean}
-                          onChange={() => toggleSetting(key as keyof ConsoleSettingsConfig)}
-                          className="w-4 h-4 rounded cursor-pointer"
-                        />
-                        <span className="text-sm text-slate-300 group-hover:text-white transition-colors">
-                          {label}
-                        </span>
-                      </label>
+                      { key: 'showSidebar', label: 'Sidebar (Mode Rail)', desc: 'Réduit la barre gauche aux icônes pour gagner de l\'espace.', icon: PanelLeft },
+                      { key: 'showStats', label: 'Statistiques KPI', desc: 'Affiche les graphiques et compteurs de progression.', icon: BarChart3 },
+                      { key: 'showTeams', label: 'Équipes Terrain', desc: 'Affiche le tableau de performance des équipes.', icon: Users2 },
+                      { key: 'showLogs', label: 'Journal d\'Audit', desc: 'Affiche le flux d\'activité et les logs système.', icon: History },
+                      { key: 'showAI', label: 'Assistant IA (GAM AI)', desc: 'Active l\'assistant conversationnel sur le dashboard.', icon: Bot },
+                    ].map((item) => (
+                      <div 
+                        key={item.key}
+                        onClick={() => toggleSetting(item.key as any)}
+                        className="flex items-center justify-between p-4 rounded-2xl bg-white/[0.03] border border-white/5 cursor-pointer hover:bg-white/[0.06] transition-all group"
+                      >
+                        <div className="flex items-center gap-4 flex-1 pr-4">
+                          <div className="p-2.5 rounded-xl bg-slate-800 text-slate-400 group-hover:text-blue-400 transition-colors shrink-0">
+                            <item.icon size={18} />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-sm font-bold text-slate-200">{item.label}</div>
+                            <div className="text-[10px] text-slate-500 leading-tight mt-0.5 group-hover:text-slate-400 transition-colors">{item.desc}</div>
+                          </div>
+                        </div>
+                        <div className={`w-11 h-5 rounded-full relative transition-all shrink-0 ${settings[item.key as keyof ConsoleSettingsConfig] ? accentClasses[settings.accentColor] : 'bg-slate-700'}`}>
+                          <motion.div 
+                            animate={{ x: settings[item.key as keyof ConsoleSettingsConfig] ? 24 : 2 }}
+                            className="absolute top-1 w-3 h-3 bg-white rounded-full shadow-lg" 
+                          />
+                        </div>
+                      </div>
                     ))}
                   </div>
-                </div>
+                </section>
 
-                {/* Layout Section */}
-                <div>
-                  <h3 className="flex items-center gap-2 text-sm font-bold text-blue-400 uppercase tracking-wider mb-3">
-                    <Layout size={16} /> Mise en Page
-                  </h3>
-                  <div className="space-y-3 pl-6 border-l border-slate-700">
-                    {/* Colonnes */}
-                    <div>
-                      <label className="text-xs text-slate-400 uppercase tracking-wider">
-                        Colonnes: {settings.columns}
-                      </label>
-                      <div className="flex gap-2 mt-2">
-                        {[1, 2, 3].map(cols => (
-                          <button
-                            key={cols}
-                            onClick={() => updateSetting('columns', cols as 1 | 2 | 3)}
-                            className={`flex-1 py-2 px-3 rounded text-sm font-bold transition-all ${
-                              settings.columns === cols
-                                ? 'bg-blue-500 text-white shadow-lg'
-                                : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
-                            }`}
-                          >
-                            {cols}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Espacement */}
-                    <div>
-                      <label className="text-xs text-slate-400 uppercase tracking-wider">
-                        Espacement: {settings.gridSpacing}
-                      </label>
-                      <div className="flex gap-2 mt-2">
-                        {(['tight', 'normal', 'spacious'] as const).map(spacing => (
-                          <button
-                            key={spacing}
-                            onClick={() => updateSetting('gridSpacing', spacing)}
-                            className={`flex-1 py-2 px-2 rounded text-xs font-bold transition-all ${
-                              settings.gridSpacing === spacing
-                                ? 'bg-blue-500 text-white shadow-lg'
-                                : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
-                            }`}
-                          >
-                            {spacing === 'tight' ? 'Serré' : spacing === 'normal' ? 'Normal' : 'Spacieux'}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Compact Mode */}
-                    <label className="flex items-center gap-3 cursor-pointer group">
-                      <input
-                        type="checkbox"
-                        checked={settings.compact}
-                        onChange={() => toggleSetting('compact')}
-                        className="w-4 h-4 rounded cursor-pointer"
-                      />
-                      <span className="text-sm text-slate-300 group-hover:text-white transition-colors">
-                        Mode Compact
-                      </span>
-                    </label>
+                {/* ⚙️ FONCTIONNALITÉS */}
+                <section>
+                  <SectionTitle icon={Layout} color="text-purple-400">Système & Performances</SectionTitle>
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      { key: 'autoRefresh', label: 'Auto-Refresh', desc: 'Mise à jour auto', icon: RefreshCw },
+                      { key: 'soundEnabled', label: 'Sons Système', desc: 'Alertes audio', icon: Volume2 },
+                      { key: 'animationsEnabled', label: 'Animations', desc: 'Transitions fluides', icon: Sparkles },
+                      { key: 'compact', label: 'Mode Compact', desc: 'Interface dense', icon: Moon },
+                    ].map((item) => (
+                      <button 
+                        key={item.key}
+                        onClick={() => toggleSetting(item.key as any)}
+                        className={`flex flex-col items-center gap-2 p-4 rounded-2xl border transition-all text-center ${
+                          settings[item.key as keyof ConsoleSettingsConfig]
+                            ? 'bg-purple-500/10 border-purple-500/20 text-purple-300'
+                            : 'bg-white/[0.02] border-white/5 text-slate-500'
+                        }`}
+                      >
+                        <item.icon size={20} />
+                        <span className="text-[10px] font-black uppercase tracking-widest">{item.label}</span>
+                        <span className="text-[8px] opacity-60 font-bold uppercase">{item.desc}</span>
+                      </button>
+                    ))}
                   </div>
-                </div>
+                </section>
 
-                {/* Thème Section */}
-                <div>
-                  <h3 className="flex items-center gap-2 text-sm font-bold text-blue-400 uppercase tracking-wider mb-3">
-                    <Palette size={16} /> Thème & Couleurs
-                  </h3>
-                  <div className="space-y-3 pl-6 border-l border-slate-700">
-                    {/* Couleur d'accent */}
-                    <div>
-                      <label className="text-xs text-slate-400 uppercase tracking-wider">
-                        Couleur d'Accent
-                      </label>
-                      <div className="flex gap-2 mt-2">
-                        {['blue', 'purple', 'green', 'red'].map(color => (
-                          <button
-                            key={color}
-                            onClick={() => updateSetting('accentColor', color)}
-                            className={`w-8 h-8 rounded-lg transition-all ${
-                              {
-                                blue: 'bg-blue-500',
-                                purple: 'bg-purple-500',
-                                green: 'bg-green-500',
-                                red: 'bg-red-500',
-                              }[color]
-                            } ${
-                              settings.accentColor === color
-                                ? 'ring-2 ring-offset-2 ring-offset-slate-900 ring-white scale-110'
-                                : 'opacity-60 hover:opacity-100'
-                            }`}
-                            title={color}
-                          />
-                        ))}
-                      </div>
+                {/* 🎨 STYLE */}
+                <section>
+                  <SectionTitle icon={Palette} color="text-emerald-400">Thème & Identité Visuelle</SectionTitle>
+                  <div className="space-y-6">
+                    <div className="flex justify-between items-center p-5 rounded-2xl bg-white/[0.02] border border-white/5">
+                      {['blue', 'purple', 'green', 'red'].map(color => (
+                        <button
+                          key={color}
+                          onClick={() => updateSetting('accentColor', color)}
+                          className={`w-12 h-12 rounded-2xl transition-all ${accentClasses[color as keyof typeof accentClasses]} ${settings.accentColor === color ? 'ring-4 ring-white/30 scale-110 shadow-xl' : 'opacity-30 hover:opacity-100 hover:scale-105'}`}
+                        />
+                      ))}
+                    </div>
+                    <div className="flex gap-3">
+                      {[
+                        { id: 'low', label: 'Verre Discret', desc: 'Style minimaliste' },
+                        { id: 'high', label: 'Verre Givré', desc: 'Effet Premium' }
+                      ].map(val => (
+                        <button
+                          key={val.id}
+                          onClick={() => updateSetting('glassEffect', val.id)}
+                          className={`flex-1 p-4 rounded-2xl transition-all text-center border ${
+                            settings.glassEffect === val.id 
+                              ? 'bg-emerald-500 border-emerald-400 text-white shadow-lg' 
+                              : 'bg-white/[0.02] text-slate-500 border-white/5'
+                          }`}
+                        >
+                          <div className="text-[10px] font-black uppercase tracking-widest">{val.label}</div>
+                          <div className="text-[8px] opacity-80 uppercase mt-0.5">{val.desc}</div>
+                        </button>
+                      ))}
                     </div>
                   </div>
-                </div>
+                </section>
+              </div>
 
-                {/* Actions */}
-                <div className="flex gap-2 pt-6 border-t border-slate-700">
-                  <button
-                    onClick={resetSettings}
-                    className="flex-1 py-2 px-4 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors text-sm font-bold"
-                  >
-                    Réinitialiser
-                  </button>
-                  <button
-                    onClick={() => setIsOpen(false)}
-                    className="flex-1 py-2 px-4 rounded-lg bg-blue-500 text-white hover:bg-blue-600 transition-colors text-sm font-bold"
-                  >
-                    Appliquer
-                  </button>
-                </div>
+              {/* Footer */}
+              <div className="p-8 border-t border-white/5 bg-white/[0.01] flex gap-4">
+                <button onClick={() => { localStorage.removeItem('console-settings'); window.location.reload(); }} className="flex-1 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-white">Réinitialiser</button>
+                <button onClick={() => { setIsOpen(false); onClose?.(); }} className={`flex-[2] py-4 rounded-2xl text-white font-black uppercase tracking-widest text-[11px] shadow-2xl transition-all hover:scale-[1.02] ${accentClasses[settings.accentColor]}`}>Sauvegarder</button>
               </div>
             </motion.div>
-          </motion.div>
+          </>
         )}
       </AnimatePresence>
     </>

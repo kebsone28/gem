@@ -61,7 +61,7 @@ const MODULES_CATEGORIES = [
         name: 'Activation des Modules',
         description: 'Activer ou désactiver des fonctionnalités globales.',
         icon: <Settings className="text-cyan-400" size={20} />,
-        route: '/admin/modules',
+        route: '/admin/hub',
         status: 'Actif'
       }
     ]

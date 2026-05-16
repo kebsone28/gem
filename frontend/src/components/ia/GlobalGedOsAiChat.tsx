@@ -1,32 +1,17 @@
 import React from 'react';
-import { useAuth } from '../../contexts/AuthContext';
-import { useProject } from '../../contexts/ProjectContext';
-import { useServerAIContext } from '../../pages/DashboardViews/admin/hooks/useServerAIContext';
-import { useMissionStats } from '../../pages/DashboardViews/admin/hooks/useMissionStats';
 import GedOsAiChat from './MissionMentor/GedOsAiChat';
+import { useServerAIContext } from '../../pages/DashboardViews/admin/hooks/useServerAIContext';
 
 /**
- * 🌍 GLOBAL GED OS AI CHAT
- * Wraps the GedOsAiChat with all required context hooks to make it available everywhere.
+ * GlobalGedOsAiChat - Wrapper global pour l'assistant IA
  */
-export const GlobalGedOsAiChat: React.FC = () => {
-  const { user } = useAuth();
-  const { project } = useProject();
-  
-  const projectId = project?.id || '';
-  // Only enable context fetching if user is logged in
-  const isEnabled = !!user && !!projectId;
 
-  // ── HOOKS FROM ADMIN DASHBOARD ──
-  const { stats } = useMissionStats(user as any, projectId);
-  const { 
-    households, 
-    teams, 
-    auditLogs, 
-    regionalSummaries 
-  } = useServerAIContext(projectId, isEnabled);
+interface GlobalGedOsAiChatProps {
+  className?: string;
+}
 
-  if (!user) return null;
+export const GlobalGedOsAiChat: React.FC<GlobalGedOsAiChatProps> = ({ className }) => {
+  const { stats, auditLogs, households, teams, regionalSummaries } = useServerAIContext();
 
   return (
     <GedOsAiChat
@@ -35,8 +20,7 @@ export const GlobalGedOsAiChat: React.FC = () => {
       households={households}
       teams={teams}
       regionalSummaries={regionalSummaries}
+      className={className || "bottom-4 right-4"}
     />
   );
 };
-
-export default GlobalGedOsAiChat;

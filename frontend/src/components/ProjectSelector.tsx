@@ -347,6 +347,8 @@ export default function ProjectSelector({
               <button
                 onClick={toggleUserManagement}
                 className="p-2 bg-slate-700 text-slate-300 rounded-lg hover:bg-slate-600 transition-all"
+                title="Fermer la gestion des utilisateurs"
+                aria-label="Fermer la gestion des utilisateurs"
               >
                 <X size={16} />
               </button>
@@ -368,13 +370,25 @@ export default function ProjectSelector({
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <button className="p-2 bg-slate-700 text-slate-300 rounded hover:bg-slate-600 transition-all">
+                      <button 
+                        className="p-2 bg-slate-700 text-slate-300 rounded hover:bg-slate-600 transition-all"
+                        title="Voir l'utilisateur"
+                        aria-label="Voir l'utilisateur"
+                      >
                         <Eye size={14} />
                       </button>
-                      <button className="p-2 bg-slate-700 text-slate-300 rounded hover:bg-slate-600 transition-all">
+                      <button 
+                        className="p-2 bg-slate-700 text-slate-300 rounded hover:bg-slate-600 transition-all"
+                        title="Modifier l'utilisateur"
+                        aria-label="Modifier l'utilisateur"
+                      >
                         <Edit size={14} />
                       </button>
-                      <button className="p-2 bg-red-500/20 text-red-400 rounded hover:bg-red-500/30 transition-all">
+                      <button 
+                        className="p-2 bg-red-500/20 text-red-400 rounded hover:bg-red-500/30 transition-all"
+                        title="Supprimer l'utilisateur"
+                        aria-label="Supprimer l'utilisateur"
+                      >
                         <Trash2 size={14} />
                       </button>
                     </div>

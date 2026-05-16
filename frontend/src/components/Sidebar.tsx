@@ -42,6 +42,8 @@ import { AppRole } from '../utils/security/types';
 import type { UserRole } from '../utils/security/types';
 import { useProject } from '../contexts/ProjectContext';
 import { NotificationCenter } from './layout';
+import { ConsoleSettings } from './admin/ConsoleSettings';
+import AIEngineAdminPanel from './ia/AIEngineAdminPanel';
 import { organizationService } from '../services/organizationService';
 import { modulesManagementService } from '../services/modulesManagementService';
 import { PROJECT_CONFIG } from '../config/projectConfig';
@@ -80,9 +82,10 @@ const LUCIDE_ICONS: Record<string, any> = {
  */
 export default function Sidebar() {
   const { user, logout, stopImpersonation } = useAuth();
-  const location = useLocation();
   const { project, t } = useProject();
   const { forceSync } = useSync();
+  const [showAIPanel, setShowAIPanel] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   // En SaaS, on simule l'état de sync (le store Dexie est géré par BackgroundServices)
   const isSyncing = false;
   const { peut, isAdmin, PERMISSIONS } = usePermissions();
@@ -131,7 +134,7 @@ export default function Sidebar() {
   // 🛡️ [ORCHESTRATION] Détecter si on est dans le "Cœur du Système" (Global Admin)
   const isGlobalAdminContext = useMemo(() => {
     const globalRoutes = [
-      '/admin/modules',
+      '/admin/hub',
       '/admin/users',
       '/admin/diagnostic',
       '/admin/organization',
@@ -171,6 +174,17 @@ export default function Sidebar() {
       new CustomEvent('ged-os:sidebar-mode-change', { detail: { mode: sidebarMode } })
     );
   }, [sidebarMode]);
+
+  // Écouter les réglages de la console pour forcer le mode Rail
+  useEffect(() => {
+    const handleGlobalSettings = (e: any) => {
+      const settings = e.detail;
+      // Si showSidebar est FALSE dans les réglages, on passe en mode RAIL
+      setSidebarMode(settings.showSidebar ? 'wide' : 'rail');
+    };
+    window.addEventListener('ged-os:console-settings-change', handleGlobalSettings);
+    return () => window.removeEventListener('ged-os:console-settings-change', handleGlobalSettings);
+  }, []);
 
   interface NavItem {
     id: string;
@@ -626,6 +640,28 @@ export default function Sidebar() {
         <div
           className={`relative mt-auto border-t border-white/6 p-3 ${isRailDesktop ? 'lg:px-2.5 lg:py-4' : 'lg:p-4'}`}
         >
+          {/* Actions Systèmes IA & UI */}
+          {isAdmin && (
+            <div className={`grid gap-2 mb-4 ${isRailDesktop ? 'grid-cols-1' : 'grid-cols-2'}`}>
+              <button
+                onClick={() => setShowAIPanel(true)}
+                className={`flex items-center gap-3 p-3 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 hover:bg-indigo-500/20 transition-all ${isRailDesktop ? 'justify-center' : ''}`}
+                title="Configuration IA Avancée"
+              >
+                <Brain size={18} />
+                {!isRailDesktop && <span className="text-[11px] font-bold uppercase tracking-wider">IA Admin</span>}
+              </button>
+              <button
+                onClick={() => setShowSettings(true)}
+                className={`flex items-center gap-3 p-3 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-300 hover:bg-blue-500/20 transition-all ${isRailDesktop ? 'justify-center' : ''}`}
+                title="Paramètres de la Console"
+              >
+                <Settings size={18} />
+                {!isRailDesktop && <span className="text-[11px] font-bold uppercase tracking-wider">Interface</span>}
+              </button>
+            </div>
+          )}
+
           {!isRailDesktop && (
             <div className="rounded-[1.5rem] border border-white/6 bg-white/[0.025] px-4 py-3 text-[11px] text-slate-400">
               <div className="flex items-center justify-between gap-3">
@@ -655,6 +691,19 @@ export default function Sidebar() {
           </button>
         </div>
       </aside>
+
+      {/* Modaux Globales (IA & UI) */}
+      {showAIPanel && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-md">
+           <AIEngineAdminPanel user={user} onClose={() => setShowAIPanel(false)} />
+        </div>
+      )}
+      
+      {showSettings && (
+        <div className="fixed inset-0 z-[100]">
+           <ConsoleSettings onSettingsChange={() => {}} onClose={() => setShowSettings(false)} />
+        </div>
+      )}
 
       {/* Mobile Overlay */}
       {mobileOpen && (

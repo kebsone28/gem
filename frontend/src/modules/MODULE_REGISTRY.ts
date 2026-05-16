@@ -375,6 +375,16 @@ export const MODULE_REGISTRY: Record<string, ModuleRegistryEntry> = {
     category: 'SYSTÈME',
     description: 'Initialisation de nouveaux projets et templates',
   },
+  project_edit: {
+    key: 'project_edit',
+    name: 'Modification Projet',
+    icon: 'Pencil',
+    component: lazyWithRetry(() => import('../pages/AdminProjectEdit'), 'lazy:admin-project-edit'),
+    route: '/admin/project-edit/:id',
+    requiredPermission: PERMISSIONS.SYSTEM_CONFIG,
+    category: 'SYSTÈME',
+    description: 'Mise à jour des paramètres et de la configuration du projet',
+  },
   help: {
     key: 'help',
     name: "Centre d'Aide",
