@@ -203,8 +203,7 @@ export default function SenelecDashboard() {
     document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
-  // Composants de navigation
-  const ViewSelector = () => (
+  const renderViewSelector = () => (
     <div className="flex gap-2 p-1 bg-white/5 rounded-xl">
       {[
         { id: 'overview', label: "Vue d'ensemble", icon: BarChart3 },
@@ -264,7 +263,7 @@ export default function SenelecDashboard() {
                     Inspection, validation et surveillance des installations électriques.
                   </p>
                 </div>
-                <ViewSelector />
+                {renderViewSelector()}
               </div>
 
               {/* Actions rapides */}
