@@ -11,7 +11,7 @@ export const registerOrganizationSchema = {
 
 export const loginSchema = {
   body: Joi.object({
-    email: Joi.string().email().required(),
+    email: Joi.string().required(),
     password: Joi.string().required(),
     twoFactorCode: Joi.string().optional()
   })
@@ -20,7 +20,7 @@ export const loginSchema = {
 export const verify2FASchema = {
   body: Joi.object({
     id: Joi.string().uuid().optional(),
-    email: Joi.string().email().optional(),
+    email: Joi.string().optional(),
     answer: Joi.string().required()
   }).or('id', 'email')
 };
