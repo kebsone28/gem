@@ -18,8 +18,25 @@ export const CahierContractView: React.FC<CahierContractViewProps> = ({
   editData,
   setEditData,
 }) => {
-  const currentLot = selectedRole === 'Maçonnerie' ? 'LOT B' : selectedRole === 'Réseau Extérieur' ? 'LOT C' : 'LOT D';
+  // Map selectedRole → valid library key. Falls back to 'LOT A' so
+  // template is never undefined (avoids runtime crash on unknown roles).
+  const LOT_MAP: Record<string, string> = {
+    'Pré-câblage': 'LOT A',
+    'Maçonnerie': 'LOT B',
+    'Réseau Extérieur': 'LOT C',
+  };
+  const currentLot = LOT_MAP[selectedRole] ?? Object.keys(contractLibrary)[0] ?? 'LOT A';
   const template = contractLibrary[currentLot];
+
+
+  if (!template) {
+    return (
+      <div className="max-w-4xl mx-auto py-20 text-center text-slate-500">
+        <p className="text-lg font-bold">Aucun contrat disponible pour ce lot.</p>
+        <p className="text-sm mt-2 opacity-60">Rôle sélectionné : {selectedRole}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">

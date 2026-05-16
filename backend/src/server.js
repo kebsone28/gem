@@ -3,6 +3,41 @@ import { config } from './core/config/config.js';
 
 const PORT = config.port || 5005;
 
+// ── CORS ALLOWLIST ──────────────────────────────────────────────────
+// Only origins explicitly listed here are granted cross-origin access.
+// Never reflect req.headers.origin without validation when credentials
+// are enabled – doing so opens a full CORS bypass.
+const CORS_ALLOWED_ORIGINS = (() => {
+  const fromEnv = (process.env.CORS_ORIGINS || '')
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
+  const fromFrontend = process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : [];
+  const devOrigins = [
+    'http://localhost:5173',
+    'http://localhost:8889',
+    'http://127.0.0.1:5173',
+    'http://127.0.0.1:8889',
+  ];
+  return new Set([...fromEnv, ...fromFrontend, ...devOrigins]);
+})();
+
+/**
+ * Apply CORS headers only for known, allowlisted origins.
+ * Returns true if the origin was accepted.
+ */
+function applyCors(req, res) {
+  const origin = req.headers.origin;
+  if (origin && CORS_ALLOWED_ORIGINS.has(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Vary', 'Origin');
+    return true;
+  }
+  return false;
+}
+// ────────────────────────────────────────────────────────────────────
+
 /**
  * Auto-create admin user if none exists
  */
@@ -84,10 +119,8 @@ async function bootstrap() {
   console.log(`🚀 Bootstrapping PROQUELEC Server on port ${PORT}...`);
 
   const server = http.createServer((req, res) => {
-    // Add basic CORS for bootstrap phase debugging
-    const origin = req.headers.origin || process.env.FRONTEND_URL || 'http://localhost:8889';
-    res.setHeader('Access-Control-Allow-Origin', origin);
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    // Apply CORS only for allowlisted origins (never reflect arbitrary Origin).
+    applyCors(req, res);
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
     res.setHeader(
       'Access-Control-Allow-Headers',
@@ -192,9 +225,7 @@ async function bootstrap() {
       // Fallback handler to show the error in the browser/curl
       server.removeAllListeners('request');
       server.on('request', (req, res) => {
-        const origin = req.headers.origin || process.env.FRONTEND_URL || 'http://localhost:5173';
-        res.setHeader('Access-Control-Allow-Origin', origin);
-        res.setHeader('Access-Control-Allow-Credentials', 'true');
+        applyCors(req, res);
         res.writeHead(500, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'Service temporairement indisponible' }));
       });

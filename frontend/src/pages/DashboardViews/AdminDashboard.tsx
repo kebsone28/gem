@@ -71,7 +71,11 @@ export default function AdminDashboard() {
   // 5. Charger et écouter les réglages de la console
   const [consoleSettings, setConsoleSettings] = useState<ConsoleSettingsConfig>(() => {
     const saved = localStorage.getItem('console-settings');
-    return saved ? JSON.parse(saved) : DEFAULT_CONSOLE_SETTINGS;
+    try {
+      return saved ? JSON.parse(saved) : DEFAULT_CONSOLE_SETTINGS;
+    } catch {
+      return DEFAULT_CONSOLE_SETTINGS;
+    }
   });
 
   useEffect(() => {

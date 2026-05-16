@@ -53,7 +53,7 @@ export default function Home() {
     normalizedRole === ROLES.ADMIN ||
     normalizedRole === ROLES.DIRECTEUR;
 
-  const availableProjects = projects;
+  const availableProjects = filteredProjects;
 
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showNotifications, setShowNotifications] = useState(false);
