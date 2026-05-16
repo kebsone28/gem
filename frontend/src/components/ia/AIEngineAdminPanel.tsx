@@ -803,6 +803,7 @@ export default function AIEngineAdminPanel({ user, onClose, standalone = false }
                 </a>
               </div>
             </div>
+          </div>
           {content}
         </div>
       </div>
