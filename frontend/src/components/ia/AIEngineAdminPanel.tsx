@@ -238,9 +238,8 @@ export default function AIEngineAdminPanel({ user, onClose, standalone = false }
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-6 py-5 text-[10px] font-black uppercase tracking-[0.15em] transition-all relative overflow-hidden group ${
-                isActive ? 'text-blue-400' : 'text-slate-500 hover:text-slate-300'
-              }`}
+              className={`flex items-center gap-2 px-6 py-5 text-[10px] font-black uppercase tracking-[0.15em] transition-all relative overflow-hidden group ${isActive ? 'text-blue-400' : 'text-slate-500 hover:text-slate-300'
+                }`}
             >
               <Icon size={16} className={isActive ? 'animate-pulse' : ''} />
               <span className="hidden sm:inline">{tab.label}</span>
@@ -287,11 +286,10 @@ export default function AIEngineAdminPanel({ user, onClose, standalone = false }
                     <button
                       key={mode}
                       onClick={() => update({ mode })}
-                      className={`text-left p-6 rounded-3xl border-2 transition-all duration-500 relative overflow-hidden group shadow-lg ${
-                        isActive
+                      className={`text-left p-6 rounded-3xl border-2 transition-all duration-500 relative overflow-hidden group shadow-lg ${isActive
                           ? MODE_COLORS[mode] + ' ring-4 ring-blue-500/5'
                           : 'border-slate-800/60 bg-slate-900/40 hover:bg-slate-800/60 hover:border-slate-700/80 opacity-80 hover:opacity-100'
-                      }`}
+                        }`}
                     >
                       <div className="flex items-center gap-4 mb-3 relative z-10">
                         <div
@@ -521,24 +519,22 @@ export default function AIEngineAdminPanel({ user, onClose, standalone = false }
                     return (
                       <div
                         key={service.id}
-                        className={`border rounded-2xl p-5 transition-all duration-500 ${
-                          isOk
+                        className={`border rounded-2xl p-5 transition-all duration-500 ${isOk
                             ? 'bg-emerald-950/20 border-emerald-500/25 shadow-[0_0_15px_rgba(16,185,129,0.05)]'
                             : isErr
                               ? 'bg-rose-950/20 border-rose-500/20'
                               : 'bg-slate-900/40 border-slate-800'
-                        }`}
+                          }`}
                       >
                         {/* Header de la carte */}
                         <div className="flex items-center gap-4 mb-3">
                           <div
-                            className={`w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 ${
-                              isOk
+                            className={`w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 ${isOk
                                 ? 'bg-emerald-600/20 text-emerald-400'
                                 : isErr
                                   ? 'bg-rose-600/10 text-rose-500'
                                   : 'bg-slate-800 text-slate-500'
-                            }`}
+                              }`}
                           >
                             {isChecking ? (
                               <RefreshCw size={20} className="animate-spin" />
@@ -552,13 +548,12 @@ export default function AIEngineAdminPanel({ user, onClose, standalone = false }
                                 {service.label}
                               </p>
                               <div
-                                className={`text-[8px] font-black px-2.5 py-1 rounded-full flex-shrink-0 tracking-widest ${
-                                  isOk
+                                className={`text-[8px] font-black px-2.5 py-1 rounded-full flex-shrink-0 tracking-widest ${isOk
                                     ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30'
                                     : isErr
                                       ? 'bg-rose-600/10 text-rose-400 border border-rose-500/30'
                                       : 'bg-slate-800 text-slate-500'
-                                }`}
+                                  }`}
                               >
                                 {isOk ? 'OPÉRATIONNEL' : isErr ? 'HORS-LIGNE' : 'TEST...'}
                               </div>
@@ -572,11 +567,10 @@ export default function AIEngineAdminPanel({ user, onClose, standalone = false }
                         {/* Message de diagnostic */}
                         {(isErr || isOk) && (
                           <div
-                            className={`rounded-xl p-3 mt-2 text-[10px] leading-relaxed font-bold ${
-                              isOk
+                            className={`rounded-xl p-3 mt-2 text-[10px] leading-relaxed font-bold ${isOk
                                 ? 'bg-emerald-950/50 text-emerald-300/80 border border-emerald-500/10'
                                 : 'bg-rose-950/40 text-rose-300/80 border border-rose-500/10'
-                            }`}
+                              }`}
                           >
                             {info.hint || service.docHint}
                           </div>
@@ -751,11 +745,10 @@ export default function AIEngineAdminPanel({ user, onClose, standalone = false }
           <button
             onClick={handleSave}
             disabled={!dirty}
-            className={`flex-1 py-5 px-10 rounded-2xl font-black text-[12px] uppercase tracking-[0.2em] transition-all shadow-2xl relative overflow-hidden group ${
-              dirty
+            className={`flex-1 py-5 px-10 rounded-2xl font-black text-[12px] uppercase tracking-[0.2em] transition-all shadow-2xl relative overflow-hidden group ${dirty
                 ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-blue-900/40 hover:scale-[1.02] active:scale-95'
                 : 'bg-slate-800/50 text-slate-600 border border-slate-800/50 grayscale cursor-not-allowed'
-            }`}
+              }`}
           >
             {dirty && (
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
