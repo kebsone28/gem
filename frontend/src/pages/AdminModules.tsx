@@ -13,7 +13,7 @@ import {
   EyeOff,
   RefreshCw,
   AlertTriangle,
-  BarChart3,
+  BarChart,
   Zap,
   ShieldCheck,
   CheckCircle2,
@@ -271,7 +271,7 @@ export default function AdminModules() {
             <div className="p-6 bg-gradient-to-br from-blue-500/10 to-blue-600/10 border border-blue-500/20 rounded-2xl">
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-10 h-10 bg-blue-500/20 rounded-xl flex items-center justify-center">
-                  <BarChart3 className="text-blue-400" size={20} />
+                  <BarChart className="text-blue-400" size={20} />
                 </div>
                 <span className="text-blue-400 text-sm font-medium">Modules Core</span>
               </div>

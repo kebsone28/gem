@@ -32,7 +32,7 @@ import {
   CheckCircle,
   X,
   Database,
-  BarChart3,
+  BarChart,
   Search,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -383,7 +383,7 @@ export default function AIEngineAdminPanel({ user, onClose, standalone = false }
                     key: 'enableLearningMetrics',
                     label: 'Métriques Avancées',
                     desc: 'Analytiques de progression.',
-                    icon: BarChart3,
+                    icon: BarChart,
                     color: 'from-amber-500 to-orange-500',
                   },
                   {
