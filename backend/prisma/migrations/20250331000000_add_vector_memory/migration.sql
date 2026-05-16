@@ -1,5 +1,5 @@
 -- Enable pgvector extension
-CREATE EXTENSION IF NOT EXISTS "vector";
+-- CREATE EXTENSION IF NOT EXISTS "vector";
 
 -- CreateTable VectorMemory
 CREATE TABLE "VectorMemory" (
@@ -7,7 +7,7 @@ CREATE TABLE "VectorMemory" (
   "userId" TEXT NOT NULL,
   "userMemoryId" TEXT NOT NULL,
   "content" TEXT NOT NULL,
-  "embedding" vector(1536),
+  "embedding" JSONB,
   "intent" TEXT,
   "emotion" TEXT,
   "source" TEXT NOT NULL DEFAULT 'conversation',
