@@ -115,7 +115,7 @@ $resolvedHost = Get-FirstNonEmpty @($ServerHost, $env:WANEKOO_HOST, $env:DEPLOY_
 $resolvedUser = Get-FirstNonEmpty @($ServerUser, $env:WANEKOO_USER, $env:DEPLOY_USER, 'root')
 $resolvedPath = Get-FirstNonEmpty @($DeployPath, $env:WANEKOO_DEPLOY_PATH, $env:DEPLOY_PATH, '/var/www/proquelec/ged.proquelec.sn')
 $resolvedSshConfigHost = Get-FirstNonEmpty @($SshConfigHost, $env:WANEKOO_SSH_HOST_ALIAS, $env:DEPLOY_SSH_HOST_ALIAS)
-$resolvedSshKeyPath = Get-FirstNonEmpty @($SshKeyPath, $env:WANEKOO_SSH_KEY_PATH, $env:DEPLOY_SSH_KEY_PATH)
+$resolvedSshKeyPath = Get-FirstNonEmpty @($SshKeyPath, $env:WANEKOO_SSH_KEY_PATH, $env:DEPLOY_SSH_KEY_PATH, "$env:USERPROFILE\.ssh\gem_vps")
 $sshTarget = if ($resolvedSshConfigHost) { $resolvedSshConfigHost } else { "$resolvedUser@$resolvedHost" }
 
 Write-Host "GEM SAAS deployment" -ForegroundColor Green
