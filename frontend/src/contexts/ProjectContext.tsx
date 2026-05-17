@@ -7,6 +7,7 @@ import { projectService } from '../services/projectService';
 import * as safeStorage from '../utils/safeStorage';
 import logger from '../utils/logger';
 import { useAuth } from './AuthContext';
+import apiClient from '../api/client';
 
 interface ProjectContextType {
   project: Project | null;
