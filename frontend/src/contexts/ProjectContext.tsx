@@ -133,7 +133,14 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
           return [];
         }
 
-        const response = await apiClient.get('/projects');
+        const networkTimeout = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('Timeout réseau (15s)')), 15000)
+        );
+
+        const response = await Promise.race([
+          apiClient.get('/projects'),
+          networkTimeout
+        ]);
         const data = response?.data || {};
         const serverProjects: Project[] = data.projects || (Array.isArray(data) ? data : []);
 
