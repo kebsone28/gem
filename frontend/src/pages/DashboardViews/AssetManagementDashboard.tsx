@@ -88,199 +88,201 @@ interface MaintenanceData {
   description: string;
 }
 
+const ViewSelector = ({ selectedView, setSelectedView }: { 
+  selectedView: 'overview' | 'assets' | 'maintenance' | 'reports';
+  setSelectedView: React.Dispatch<React.SetStateAction<'overview' | 'assets' | 'maintenance' | 'reports'>>;
+}) => (
+  <div className="flex gap-2 p-1 bg-white/5 rounded-xl">
+    {[
+      { id: 'overview', label: "Vue d'ensemble", icon: BarChart3 },
+      { id: 'assets', label: 'Actifs', icon: Package },
+      { id: 'maintenance', label: 'Maintenance', icon: Wrench },
+      { id: 'reports', label: 'Rapports', icon: FileText },
+    ].map(({ id, label, icon: Icon }) => (
+      <button
+        key={id}
+        onClick={() => setSelectedView(id as any)}
+        className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+          selectedView === id
+            ? 'bg-blue-600 text-white'
+            : 'text-slate-400 hover:text-white hover:bg-white/10'
+        }`}
+      >
+        <Icon size={16} />
+        {label}
+      </button>
+    ))}
+  </div>
+);
+
 export default function AssetManagementDashboard() {
-  const { user } = useAuth();
-  const { peut, PERMISSIONS } = usePermissions();
-  const navigate = useNavigate();
-  const households = useLiveQuery(() => db.households.toArray()) || [];
-  const zones = useLiveQuery(() => db.zones.toArray()) || [];
+   const { user } = useAuth();
+   const { peut, PERMISSIONS } = usePermissions();
+   const navigate = useNavigate();
+   const households = useLiveQuery(() => db.households.toArray()) || [];
+   const zones = useLiveQuery(() => db.zones.toArray()) || [];
 
-  const [selectedView, setSelectedView] = useState<
-    'overview' | 'assets' | 'maintenance' | 'reports'
-  >('overview');
+   const [selectedView, setSelectedView] = useState<
+     'overview' | 'assets' | 'maintenance' | 'reports'
+   >('overview');
 
-  // Vérification des permissions
-  const canViewMissions = peut(PERMISSIONS.MISSIONS_READ);
-  const canViewTeams = peut(PERMISSIONS.UI_TEAMS);
-  const canViewAssets = peut(PERMISSIONS.TERRAIN_MENAGES);
-  const canManageLogistics = peut(PERMISSIONS.LOGISTIQUE_MANAGE);
-  const canViewReports = peut(PERMISSIONS.TERRAIN_READ);
-  const canExportData = peut(PERMISSIONS.SYSTEM_EXPORT);
+   // Vérification des permissions
+   const canViewMissions = peut(PERMISSIONS.MISSIONS_READ);
+   const canViewTeams = peut(PERMISSIONS.UI_TEAMS);
+   const canViewAssets = peut(PERMISSIONS.TERRAIN_MENAGES);
+   const canManageLogistics = peut(PERMISSIONS.LOGISTIQUE_MANAGE);
+   const canViewReports = peut(PERMISSIONS.TERRAIN_READ);
+   const canExportData = peut(PERMISSIONS.SYSTEM_EXPORT);
 
-  // Calcul des métriques patrimoniales
-  const assetMetrics: AssetMetrics = useMemo(() => {
-    // Simulations des métriques patrimoniales
-    const totalAssets = 175; // valeur représentative — à brancher sur API
-    const assetsActifs = Math.floor(totalAssets * 0.85); // 85% actifs
-    const assetsMaintenance = Math.floor(totalAssets * 0.1); // 10% en maintenance
-    const assetsHorsService = totalAssets - assetsActifs - assetsMaintenance;
+   // Calcul des métriques patrimoniales
+   const assetMetrics: AssetMetrics = useMemo(() => {
+     // Simulations des métriques patrimoniales
+     const totalAssets = 175; // valeur représentative — à brancher sur API
+     const assetsActifs = Math.floor(totalAssets * 0.85); // 85% actifs
+     const assetsMaintenance = Math.floor(totalAssets * 0.1); // 10% en maintenance
+     const assetsHorsService = totalAssets - assetsActifs - assetsMaintenance;
 
-    const valeurTotale = 55000000; // valeur représentative — à brancher sur API
-    const valeurActifs = valeurTotale * 0.85;
-    const amortissementCumule = valeurTotale * 0.25; // 25% amortissement
-    const valeurNetComptable = valeurTotale - amortissementCumule;
+     const valeurTotale = 55000000; // valeur représentative — à brancher sur API
+     const valeurActifs = valeurTotale * 0.85;
+     const amortissementCumule = valeurTotale * 0.25; // 25% amortissement
+     const valeurNetComptable = valeurTotale - amortissementCumule;
 
-    const interventionsPlanifiees = 16; // valeur représentative
-    const interventionsUrgentes = 1; // valeur représentative
-    const tempsMoyenIntervention = 4.5; // heures
-    const coutMaintenanceMensuel = 3000000; // 3M FCFA représentatif
+     const interventionsPlanifiees = 16; // valeur représentative
+     const interventionsUrgentes = 1; // valeur représentative
+     const tempsMoyenIntervention = 4.5; // heures
+     const coutMaintenanceMensuel = 3000000; // 3M FCFA représentatif
 
-    const tauxDisponibilite = 95; // 95% représentatif
-    const tauxPanne = 100 - tauxDisponibilite;
-    const ageMoyenActifs = 4.2; // ans représentatif
-    const efficaciteMaintenance = 93; // 93% représentatif
+     const tauxDisponibilite = 95; // 95% représentatif
+     const tauxPanne = 100 - tauxDisponibilite;
+     const ageMoyenActifs = 4.2; // ans représentatif
+     const efficaciteMaintenance = 93; // 93% représentatif
 
-    return {
-      totalAssets,
-      assetsActifs,
-      assetsMaintenance,
-      assetsHorsService,
-      valeurTotale,
-      valeurActifs,
-      amortissementCumule,
-      valeurNetComptable,
-      interventionsPlanifiees,
-      interventionsUrgentes,
-      tempsMoyenIntervention,
-      coutMaintenanceMensuel,
-      tauxDisponibilite,
-      tauxPanne,
-      ageMoyenActifs,
-      efficaciteMaintenance,
-    };
-  }, []);
+     return {
+       totalAssets,
+       assetsActifs,
+       assetsMaintenance,
+       assetsHorsService,
+       valeurTotale,
+       valeurActifs,
+       amortissementCumule,
+       valeurNetComptable,
+       interventionsPlanifiees,
+       interventionsUrgentes,
+       tempsMoyenIntervention,
+       coutMaintenanceMensuel,
+       tauxDisponibilite,
+       tauxPanne,
+       ageMoyenActifs,
+       efficaciteMaintenance,
+     };
+   }, []);
 
-  // Données des actifs
-  const assetsData: AssetData[] = useMemo(() => {
-    return [
-      {
-        id: '1',
-        nom: 'Groupe électrogène GE-001',
-        type: 'equipement',
-        statut: 'actif',
-        localisation: 'Zone A - Site Principal',
-        dateAcquisition: new Date('2022-01-15'),
-        valeurAcquisition: 5000000,
-        valeurActuelle: 4250000,
-        derniereMaintenance: new Date('2024-10-15'),
-        prochaineMaintenance: new Date('2025-01-15'),
-        responsable: 'Technicien Alpha',
-        performance: 95,
-      },
-      {
-        id: '2',
-        nom: 'Camionnette Utilitaire CU-012',
-        type: 'vehicule',
-        statut: 'maintenance',
-        localisation: 'Atelier Central',
-        dateAcquisition: new Date('2021-06-20'),
-        valeurAcquisition: 8000000,
-        valeurActuelle: 6400000,
-        derniereMaintenance: new Date('2024-11-01'),
-        prochaineMaintenance: new Date('2024-11-15'),
-        responsable: 'Mécanicien Beta',
-        performance: 78,
-      },
-      {
-        id: '3',
-        nom: "Kit d'Outils Électriques KO-003",
-        type: 'outillage',
-        statut: 'actif',
-        localisation: 'Zone B - Dépôt',
-        dateAcquisition: new Date('2023-03-10'),
-        valeurAcquisition: 1500000,
-        valeurActuelle: 1350000,
-        derniereMaintenance: new Date('2024-09-20'),
-        prochaineMaintenance: new Date('2025-03-20'),
-        responsable: 'Équipe Gamma',
-        performance: 88,
-      },
-      {
-        id: '4',
-        nom: 'Bureau Administratif BA-001',
-        type: 'batiment',
-        statut: 'hors_service',
-        localisation: 'Siège Social',
-        dateAcquisition: new Date('2020-01-01'),
-        valeurAcquisition: 25000000,
-        valeurActuelle: 20000000,
-        derniereMaintenance: new Date('2024-08-10'),
-        prochaineMaintenance: new Date('2025-02-10'),
-        responsable: 'Service Technique',
-        performance: 65,
-      },
-    ];
-  }, []);
+   // Données des actifs
+   const assetsData: AssetData[] = useMemo(() => {
+     return [
+       {
+         id: '1',
+         nom: 'Groupe électrogène GE-001',
+         type: 'equipement',
+         statut: 'actif',
+         localisation: 'Zone A - Site Principal',
+         dateAcquisition: new Date('2022-01-15'),
+         valeurAcquisition: 5000000,
+         valeurActuelle: 4250000,
+         derniereMaintenance: new Date('2024-10-15'),
+         prochaineMaintenance: new Date('2025-01-15'),
+         responsable: 'Technicien Alpha',
+         performance: 95,
+       },
+       {
+         id: '2',
+         nom: 'Camionnette Utilitaire CU-012',
+         type: 'vehicule',
+         statut: 'maintenance',
+         localisation: 'Atelier Central',
+         dateAcquisition: new Date('2021-06-20'),
+         valeurAcquisition: 8000000,
+         valeurActuelle: 6400000,
+         derniereMaintenance: new Date('2024-11-01'),
+         prochaineMaintenance: new Date('2024-11-15'),
+         responsable: 'Mécanicien Beta',
+         performance: 78,
+       },
+       {
+         id: '3',
+         nom: "Kit d'Outils Électriques KO-003",
+         type: 'outillage',
+         statut: 'actif',
+         localisation: 'Zone B - Dépôt',
+         dateAcquisition: new Date('2023-03-10'),
+         valeurAcquisition: 1500000,
+         valeurActuelle: 1350000,
+         derniereMaintenance: new Date('2024-09-20'),
+         prochaineMaintenance: new Date('2025-03-20'),
+         responsable: 'Équipe Gamma',
+         performance: 88,
+       },
+       {
+         id: '4',
+         nom: 'Bureau Administratif BA-001',
+         type: 'batiment',
+         statut: 'hors_service',
+         localisation: 'Siège Social',
+         dateAcquisition: new Date('2020-01-01'),
+         valeurAcquisition: 25000000,
+         valeurActuelle: 20000000,
+         derniereMaintenance: new Date('2024-08-10'),
+         prochaineMaintenance: new Date('2025-02-10'),
+         responsable: 'Service Technique',
+         performance: 65,
+       },
+     ];
+   }, []);
 
-  // Données de maintenance
-  const maintenanceData: MaintenanceData[] = useMemo(() => {
-    return [
-      {
-        id: '1',
-        assetId: '1',
-        type: 'preventive',
-        date: new Date('2025-01-15'),
-        cout: 250000,
-        duree: 4,
-        technicien: 'Technicien Alpha',
-        statut: 'planifiee',
-        description: 'Maintenance préventive trimestrielle groupe électrogène',
-      },
-      {
-        id: '2',
-        assetId: '2',
-        type: 'corrective',
-        date: new Date('2024-11-15'),
-        cout: 450000,
-        duree: 8,
-        technicien: 'Mécanicien Beta',
-        statut: 'en_cours',
-        description: 'Réparation système freinage camionnette',
-      },
-      {
-        id: '3',
-        assetId: '3',
-        type: 'urgente',
-        date: new Date('2024-11-10'),
-        cout: 120000,
-        duree: 2,
-        technicien: 'Équipe Gamma',
-        statut: 'terminee',
-        description: 'Remplacement pince ampèremétrique défectueuse',
-      },
-    ];
-  }, []);
+   // Données de maintenance
+   const maintenanceData: MaintenanceData[] = useMemo(() => {
+     return [
+       {
+         id: '1',
+         assetId: '1',
+         type: 'preventive',
+         date: new Date('2025-01-15'),
+         cout: 250000,
+         duree: 4,
+         technicien: 'Technicien Alpha',
+         statut: 'planifiee',
+         description: 'Maintenance préventive trimestrielle groupe électrogène',
+       },
+       {
+         id: '2',
+         assetId: '2',
+         type: 'corrective',
+         date: new Date('2024-11-15'),
+         cout: 450000,
+         duree: 8,
+         technicien: 'Mécanicien Beta',
+         statut: 'en_cours',
+         description: 'Réparation système freinage camionnette',
+       },
+       {
+         id: '3',
+         assetId: '3',
+         type: 'urgente',
+         date: new Date('2024-11-10'),
+         cout: 120000,
+         duree: 2,
+         technicien: 'Équipe Gamma',
+         statut: 'terminee',
+         description: 'Remplacement pince ampèremétrique défectueuse',
+       },
+     ];
+   }, []);
 
-  const scrollToSection = (sectionId: string) => {
-    document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
+   const scrollToSection = (sectionId: string) => {
+     document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+   };
 
-  // Composants de navigation
-  const ViewSelector = () => (
-    <div className="flex gap-2 p-1 bg-white/5 rounded-xl">
-      {[
-        { id: 'overview', label: "Vue d'ensemble", icon: BarChart3 },
-        { id: 'assets', label: 'Actifs', icon: Package },
-        { id: 'maintenance', label: 'Maintenance', icon: Wrench },
-        { id: 'reports', label: 'Rapports', icon: FileText },
-      ].map(({ id, label, icon: Icon }) => (
-        <button
-          key={id}
-          onClick={() => setSelectedView(id as any)}
-          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-            selectedView === id
-              ? 'bg-blue-600 text-white'
-              : 'text-slate-400 hover:text-white hover:bg-white/10'
-          }`}
-        >
-          <Icon size={16} />
-          {label}
-        </button>
-      ))}
-    </div>
-  );
-
-  return (
+   return (
     <PageContainer className="min-h-screen bg-slate-950 text-white selection:bg-blue-500/30">
       <div className="absolute top-0 left-0 w-full h-[500px] bg-gradient-to-b from-blue-600/10 via-blue-600/5 to-transparent pointer-events-none" />
 
@@ -300,24 +302,24 @@ export default function AssetManagementDashboard() {
         <div className="px-3 sm:px-6 lg:px-12 pb-16 sm:pb-24 space-y-6 sm:space-y-8 lg:space-y-12">
           {/* Header avec navigation */}
           <header className={DASHBOARD_STICKY_PANEL}>
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                <div className="min-w-0">
-                  <div className="mb-2 flex flex-wrap items-center gap-2">
-                    <StatusBadge status="info" label="Gestion Patrimoine" />
-                    <span className="min-w-0 truncate text-[10px] font-black uppercase tracking-[0.08em] text-blue-300/55">
-                      Suivi actifs et maintenance
-                    </span>
-                  </div>
-                  <h2 className="text-lg font-black tracking-tight text-white sm:text-xl">
-                    Console de gestion patrimoniale
-                  </h2>
-                  <p className="text-[13px] text-slate-400">
-                    Inventaire, maintenance planifiée et optimisation des actifs.
-                  </p>
-                </div>
-                <ViewSelector />
-              </div>
+               <div className="flex flex-col gap-4">
+                 <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                   <div className="min-w-0">
+                     <div className="mb-2 flex flex-wrap items-center gap-2">
+                       <StatusBadge status="info" label="Gestion Patrimoine" />
+                       <span className="min-w-0 truncate text-[10px] font-black uppercase tracking-[0.08em] text-blue-300/55">
+                         Suivi actifs et maintenance
+                       </span>
+                     </div>
+                     <h2 className="text-lg font-black tracking-tight text-white sm:text-xl">
+                       Console de gestion patrimoniale
+                     </h2>
+                     <p className="text-[13px] text-slate-400">
+                       Inventaire, maintenance planifiée et optimisation des actifs.
+                     </p>
+                   </div>
+                   <ViewSelector selectedView={selectedView} setSelectedView={setSelectedView} />
+                 </div>
 
               {/* Actions rapides */}
               <div className="grid grid-cols-2 gap-3">

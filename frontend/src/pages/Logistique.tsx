@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { useState } from 'react';
+import { motion } from 'framer-motion';
 import { Package, Truck, Users, Wrench, Map as MapIcon, RefreshCcw, Search } from 'lucide-react';
 import StockTab from '../components/logistique/StockTab';
 import DeliveriesTab from '../components/logistique/DeliveriesTab';

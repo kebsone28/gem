@@ -1,35 +1,34 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '../../api/client';
-import { useAuth } from '../../contexts/AuthContext';
 import { usePermissions } from '../../hooks/usePermissions';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../store/db';
 import { motion } from 'framer-motion';
 import {
-  ShieldCheck,
-  Users,
-  TrendingUp,
-  AlertTriangle,
-  Activity,
-  BarChart3,
-  Target,
-  Clock,
-  CheckCircle2,
-  FileText,
-  Settings,
-  DollarSign,
-  Zap,
+   ShieldCheck,
+   Users,
+   TrendingUp,
+   AlertTriangle,
+   Activity,
+   BarChart3,
+   Target,
+   Clock,
+   CheckCircle2,
+   FileText,
+   Settings,
+   DollarSign,
+   Zap,
 } from 'lucide-react';
 import { PageContainer, PageHeader, ContentArea } from '../../components';
 import {
-  DASHBOARD_ACTION_TILE_PRIMARY,
-  DASHBOARD_ACTION_TILE_SECONDARY,
-  DASHBOARD_MINI_STAT_CARD,
-  DASHBOARD_STICKY_PANEL,
-  StatusBadge,
-  KPICard,
-  ProgressBar,
+   DASHBOARD_ACTION_TILE_PRIMARY,
+   DASHBOARD_ACTION_TILE_SECONDARY,
+   DASHBOARD_MINI_STAT_CARD,
+   DASHBOARD_STICKY_PANEL,
+   StatusBadge,
+   KPICard,
+   ProgressBar,
 } from '../../components/dashboards/DashboardComponents';
 import { useProject } from '../../contexts/ProjectContext';
 import { SECTOR_PACKS } from '../../config/packs/sectorPacks';

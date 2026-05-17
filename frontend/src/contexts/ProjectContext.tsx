@@ -3,7 +3,7 @@ import React, { createContext, useContext, useState, useEffect, useRef } from 'r
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../store/db';
 import type { Project } from '../utils/types';
-import apiClient from '../api/client';
+import { projectService } from '../services/projectService';
 import * as safeStorage from '../utils/safeStorage';
 import logger from '../utils/logger';
 import { useAuth } from './AuthContext';
@@ -14,7 +14,7 @@ interface ProjectContextType {
   activeProjectId: string | null;
   setActiveProjectId: (id: string | null) => void;
   refreshProjects: (preferredProjectId?: string | null) => Promise<Project[]>;
-  createProject: (name: string) => Promise<Project>;
+  createProject: (data: Partial<Project>) => Promise<Project>;
   updateProject: (updates: Partial<Project>, id?: string) => Promise<void>;
   deleteProject: (
     projectId: string,
@@ -166,9 +166,8 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     logger.debug(id ? `🎯 [PROJECT] Switched to ${id}` : '🎯 [PROJECT] Active project cleared');
   };
 
-  const createProject = async (name: string) => {
-    const response = await apiClient.post('/projects', { name, status: 'active', config: {} });
-    const serverProject = response.data;
+  const createProject = async (data: Partial<Project>) => {
+    const serverProject = await projectService.createProject(data);
     await syncProjectsFromServer(serverProject.id);
     return serverProject;
   };

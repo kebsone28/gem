@@ -139,9 +139,20 @@ export const createProject = async (req, res) => {
     const { id, name, budget, duration, totalHouses, config } = req.body;
     const { organizationId, id: userId } = req.user;
 
+    if (!name || typeof name !== 'string' || !name.trim()) {
+      return res.status(400).json({ error: 'Le nom du projet est requis.' });
+    }
+
+    if (!req.body.client || typeof req.body.client !== 'string' || !req.body.client.trim()) {
+      return res.status(400).json({ error: 'Le champ client est requis.' });
+    }
+
+    const safeName = name.trim();
+    const safeClient = req.body.client.trim();
+
     // Check for duplicate name
     const existing = await prisma.project.findFirst({
-      where: { organizationId, name, deletedAt: null },
+      where: { organizationId, name: safeName, deletedAt: null },
     });
 
     if (existing) {
@@ -157,15 +168,17 @@ export const createProject = async (req, res) => {
       const newProject = await tx.project.create({
         data: {
           id: id || undefined,
-          name,
+          name: safeName,
           status: 'active',
           budget: budget || 0,
           duration: duration || 12,
           totalHouses: totalHouses || 0,
           config: {
             ...config,
-            client: req.body.client || 'N/A',
-            assignedUsers: req.body.assignedUsers || []
+            client: safeClient,
+            assignedUsers: Array.isArray(req.body.assignedUsers) && req.body.assignedUsers.length > 0
+              ? req.body.assignedUsers
+              : [userId],
           },
           organizationId,
           updatedById: userId,
@@ -223,7 +236,10 @@ export const createProject = async (req, res) => {
     res.status(201).json(project);
   } catch (error) {
     console.error('Create project error:', error);
-    res.status(500).json({ error: 'Server error while creating project' });
+    res.status(500).json({
+      error: 'Server error while creating project',
+      message: error?.message || 'Erreur interne',
+    });
   }
 };
 

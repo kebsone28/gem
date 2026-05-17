@@ -234,24 +234,24 @@ export default function AccountingDashboard() {
         <div className="px-3 sm:px-6 lg:px-12 pb-16 sm:pb-24 space-y-6 sm:space-y-8 lg:space-y-12">
           {/* Header avec navigation */}
           <header className={DASHBOARD_STICKY_PANEL}>
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                <div className="min-w-0">
-                  <div className="mb-2 flex flex-wrap items-center gap-2">
-                    <StatusBadge status="success" label="Comptable" />
-                    <span className="min-w-0 truncate text-[10px] font-black uppercase tracking-[0.08em] text-blue-300/55">
-                      Gestion financière complète
-                    </span>
-                  </div>
-                  <h2 className="text-lg font-black tracking-tight text-white sm:text-xl">
-                    Console financière
-                  </h2>
-                  <p className="text-[13px] text-slate-400">
-                    Suivi budgétaire, trésorerie et conformité réglementaire.
-                  </p>
-                </div>
-                <ViewSelector />
-              </div>
+               <div className="flex flex-col gap-4">
+                 <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                   <div className="min-w-0">
+                     <div className="mb-2 flex flex-wrap items-center gap-2">
+                       <StatusBadge status="success" label="Comptable" />
+                       <span className="min-w-0 truncate text-[10px] font-black uppercase tracking-[0.08em] text-blue-300/55">
+                         Gestion financière complète
+                       </span>
+                     </div>
+                     <h2 className="text-lg font-black tracking-tight text-white sm:text-xl">
+                       Console financière
+                     </h2>
+                     <p className="text-[13px] text-slate-400">
+                       Suivi budgétaire, trésorerie et conformité réglementaire.
+                     </p>
+                   </div>
+                   <ViewSelector selectedView={selectedView} setSelectedView={setSelectedView} />
+                 </div>
 
               {/* Actions rapides */}
               <div className="grid grid-cols-2 gap-3">

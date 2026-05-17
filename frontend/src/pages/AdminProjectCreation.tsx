@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import apiClient from '../api/client';
+import { projectService } from '../services/projectService';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -178,6 +178,34 @@ const GET_CORE_FEATURES = (): ProjectFeature[] => {
     }));
 };
 
+const normalizeCustomFields = (fields: { id: string; label: string; type: string }[]) =>
+  fields.map((field, index) => {
+    const sanitizedLabel = field.label?.trim() || `Champ ${index + 1}`;
+    const sanitizedId = field.id && field.id !== 'new'
+      ? field.id.trim().replace(/[^a-z0-9_]/gi, '_')
+      : sanitizedLabel.toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^_+|_+$/g, '') || `field_${index}`;
+    return {
+      ...field,
+      label: sanitizedLabel,
+      id: sanitizedId,
+    };
+  });
+
+const validateProjectPayload = (
+  payload: {
+    name: string;
+    client: string;
+    customFields: { id: string; label: string; type: string }[];
+  },
+  selectedFeatures: ProjectFeature[]
+) => {
+  if (!payload.name?.trim()) return 'Le nom du projet est requis.';
+  if (!payload.client?.trim()) return 'Le client / organisation est requis.';
+  if (!selectedFeatures.some(f => f.enabled)) return 'Sélectionnez au moins un module actif.';
+  if (payload.customFields.some(field => !field.label?.trim())) return 'Tous les champs métier doivent avoir un libellé.';
+  return null;
+};
+
 export default function AdminProjectCreation() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -263,6 +291,12 @@ export default function AdminProjectCreation() {
   };
 
   const handleCreateProject = async () => {
+    const validationError = validateProjectPayload(projectData, selectedFeatures);
+    if (validationError) {
+      toast.error(validationError);
+      return;
+    }
+
     setLoading(true);
     try {
       const config = {
@@ -270,22 +304,20 @@ export default function AdminProjectCreation() {
         country: projectData.country,
         mode: projectData.mode,
         sector: selectedTemplate?.id || 'elec_bt',
-        customFields: projectData.customFields,
+        customFields: normalizeCustomFields(projectData.customFields),
         labels: projectData.labels,
         complexity,
+        client: projectData.client,
       };
 
-      const response = await apiClient.post('/projects', {
-        name: projectData.name,
-        client: projectData.client,
-        budget: projectData.budget,
-        config: config,
-        status: 'active'
+      const newProject = await projectService.createProject({
+        name: projectData.name.trim(),
+        client: projectData.client.trim(),
+        budget: projectData.budget || 0,
+        status: 'active',
+        config,
       });
 
-      const newProject = response.data;
-
-      // 🔄 Sync and activate the new project immediately
       await refreshProjects(newProject.id);
       setActiveProjectId(newProject.id);
 
@@ -293,12 +325,8 @@ export default function AdminProjectCreation() {
       navigate('/dashboard');
     } catch (err: any) {
       console.error('FULL CREATE PROJECT ERROR:', err);
-      if (err.response?.data) {
-        console.error('SERVER ERROR DETAILS:', err.response.data);
-        toast.error(`Erreur: ${err.response.data.message || 'Initialisation échouée'}`);
-      } else {
-        toast.error('Erreur lors de l\'initialisation');
-      }
+      const message = err?.response?.data?.error || err?.response?.data?.message || err?.message || 'Initialisation échouée';
+      toast.error(`Erreur: ${message}`);
     } finally {
       setLoading(false);
     }
@@ -462,10 +490,13 @@ export default function AdminProjectCreation() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="space-y-3">
-                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 flex items-center gap-2">
+                    <label htmlFor="project-mode" className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 flex items-center gap-2">
                       <Target size={12} /> Mode de Gouvernance
                     </label>
                     <select
+                      id="project-mode"
+                      aria-label="Mode de gouvernance"
+                      title="Mode de gouvernance"
                       value={projectData.mode}
                       onChange={e => setProjectData(p => ({ ...p, mode: e.target.value as any }))}
                       className="w-full bg-slate-800/50 border border-white/5 p-4 rounded-2xl outline-none font-bold text-white"
@@ -477,10 +508,14 @@ export default function AdminProjectCreation() {
                     </select>
                   </div>
                   <div className="space-y-3">
-                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 flex items-center gap-2">
+                    <label htmlFor="project-client" className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 flex items-center gap-2">
                        Client / Organisation
                     </label>
                     <input
+                      id="project-client"
+                      aria-label="Client ou organisation"
+                      title="Client ou organisation"
+                      placeholder="Nom du client ou de l'organisation"
                       value={projectData.client}
                       onChange={e => setProjectData(p => ({ ...p, client: e.target.value }))}
                       className="w-full bg-slate-800/50 border border-white/5 p-4 rounded-2xl"
@@ -506,6 +541,7 @@ export default function AdminProjectCreation() {
                       <div key={i} className="flex gap-4 p-5 bg-white/5 border border-white/5 rounded-[1.5rem] items-center">
                         <div className="flex-1">
                           <input
+                            title={field.label ? `Champ métier: ${field.label}` : `Champ métier ${i + 1}`}
                             value={field.label}
                             onChange={e => {
                               const f = [...projectData.customFields];
@@ -518,6 +554,8 @@ export default function AdminProjectCreation() {
                           />
                         </div>
                         <select 
+                          aria-label={`Type du champ ${field.label || i + 1}`}
+                          title={`Type du champ ${field.label || i + 1}`}
                           value={field.type}
                           onChange={e => {
                             const f = [...projectData.customFields];
@@ -532,6 +570,8 @@ export default function AdminProjectCreation() {
                           <option value="select">Liste</option>
                         </select>
                         <button 
+                          aria-label="Supprimer le champ"
+                          title="Supprimer le champ"
                           onClick={() => setProjectData(p => ({ ...p, customFields: p.customFields.filter((_, idx) => idx !== i) }))}
                           className="p-2 hover:bg-rose-500/20 text-rose-500 rounded-lg transition-colors"
                         >

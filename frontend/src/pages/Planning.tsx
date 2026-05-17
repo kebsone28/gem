@@ -86,6 +86,7 @@ import {
   isPreparationPlanningTeam,
   teamMatchesPlanningRegion,
 } from '../services/planningAllocation';
+import { TRADE_FILTER_OPTIONS } from '../services/planningCalculations';
 import type { AuditLog } from '../utils/types';
 
 type ViewMode = 'calendar' | 'timeline' | 'kanban' | 'gantt';
