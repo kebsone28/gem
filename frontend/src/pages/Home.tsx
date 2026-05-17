@@ -389,7 +389,7 @@ export default function Home() {
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 1 }}
-                className="absolute -top-12 -left-16 bg-white/10 backdrop-blur-2xl border border-white/20 p-5 rounded-[1.5rem] shadow-2xl max-w-[240px] z-20"
+                className="absolute -top-12 -left-36 bg-white/10 backdrop-blur-2xl border border-white/20 p-5 rounded-[1.5rem] shadow-2xl max-w-[240px] z-20"
               >
                 <p className="text-sm font-bold text-white italic leading-relaxed">
                   "Bonjour {user.name.split(' ')[0]} ! Prêt à transformer vos objectifs en réalité ?"
