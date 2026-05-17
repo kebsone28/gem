@@ -36,7 +36,20 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
   
   const lastSyncedUserIdRef = useRef<string | null>(null);
+  const lastSyncedOrgIdRef = useRef<string | null>(null);
   const syncMutexRef = useRef<Promise<Project[]> | null>(null);
+
+  // Refs synchronisées à jour pour éviter tout problème de closure React
+  const userRef = useRef(user);
+  const activeProjectIdRef = useRef(activeProjectId);
+
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
+
+  useEffect(() => {
+    activeProjectIdRef.current = activeProjectId;
+  }, [activeProjectId]);
 
   // Charger le projet actif du tenant dès que l'utilisateur ou l'organisation change
   useEffect(() => {
@@ -113,7 +126,8 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       setSyncError(null);
       setIsSyncing(true);
       try {
-        if (!user?.organizationId) {
+        const currentUser = userRef.current;
+        if (!currentUser?.organizationId) {
           return [];
         }
 
@@ -123,16 +137,19 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
         // Filtrer les projets pour l'organisation de l'utilisateur
         const filteredServerProjects = serverProjects.filter(
-          (p) => p.organizationId === user.organizationId
+          (p) => p.organizationId === currentUser.organizationId
         );
 
         logger.debug(`[PROJECT] Serveur a renvoyé ${filteredServerProjects.length} projet(s)`);
+
+        // Sécurité bulkDelete : on ne supprime que s'il s'agit d'une synchro complète (fullSync)
+        const isFullSync = data.isFullSync !== false;
 
         // Transaction atomique : MERGE intelligent ciblé par tenant pour préserver le cache local
         await (db as any).transaction('rw', db.projects, async () => {
           const existing = await db.projects
             .where('organizationId')
-            .equals(user.organizationId)
+            .equals(currentUser.organizationId)
             .toArray();
 
           const serverIds = new Set(filteredServerProjects.map((p) => p.id));
@@ -142,16 +159,17 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
             await (db.projects as any).bulkPut(filteredServerProjects);
           }
 
-          if (toDelete.length > 0) {
+          if (isFullSync && toDelete.length > 0) {
             await db.projects.bulkDelete(toDelete);
           }
         });
 
+        const currentActiveId = activeProjectIdRef.current;
         const nextActiveId =
           preferredProjectId && filteredServerProjects.some((project) => project.id === preferredProjectId)
             ? preferredProjectId
-            : activeProjectId && filteredServerProjects.some((project) => project.id === activeProjectId)
-              ? activeProjectId
+            : currentActiveId && filteredServerProjects.some((project) => project.id === currentActiveId)
+              ? currentActiveId
               : filteredServerProjects[0]?.id || null;
 
         persistActiveProjectId(nextActiveId);
@@ -160,10 +178,11 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         return filteredServerProjects;
       } catch (err: any) {
         logger.warn('⚠️ [PROJECT] Sync réseau échouée, utilisation du cache local', err);
-        if (user?.organizationId) {
+        const currentUser = userRef.current;
+        if (currentUser?.organizationId) {
           const localProjects = await db.projects
             .where('organizationId')
-            .equals(user.organizationId)
+            .equals(currentUser.organizationId)
             .toArray();
 
           if (localProjects.length > 0) {
@@ -198,10 +217,11 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   useEffect(() => {
     const handleUserSession = async () => {
       if (!user?.id) {
-        const prevOrgId = lastSyncedUserIdRef.current;
+        const prevOrgId = lastSyncedOrgIdRef.current;
         lastSyncedUserIdRef.current = null;
+        lastSyncedOrgIdRef.current = null;
         if (prevOrgId) {
-          logger.debug(`🧹 [PROJECT] Déconnexion détectée, purge des projets du tenant...`);
+          logger.debug(`🧹 [PROJECT] Déconnexion détectée, purge des projets du tenant ${prevOrgId}...`);
           // Purge ciblée uniquement pour la sécurité multi-tenant
           await db.projects.where('organizationId').equals(prevOrgId).delete();
         }
@@ -209,8 +229,9 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         return;
       }
 
-      if (lastSyncedUserIdRef.current === user.id) return;
+      if (lastSyncedUserIdRef.current === user.id && lastSyncedOrgIdRef.current === user.organizationId) return;
       lastSyncedUserIdRef.current = user.id;
+      lastSyncedOrgIdRef.current = user.organizationId || null;
 
       try {
         logger.debug(`🔄 [PROJECT] Déclenchement sync initiale pour user ${user.id}`);
@@ -218,6 +239,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       } catch (err) {
         logger.error('❌ Échec de synchronisation initiale des projets', err);
         lastSyncedUserIdRef.current = null;
+        lastSyncedOrgIdRef.current = null;
       }
     };
 
@@ -299,7 +321,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   return (
     <ProjectContext.Provider
       value={{
-        project: activeProject || null,
+        project: activeProject === undefined ? null : activeProject,
         projects,
         activeProjectId,
         setActiveProjectId,
