@@ -116,60 +116,46 @@ function ensureLayers(map: maplibregl.Map, iconsReady: boolean) {
   if (!map.getSource(SRC_HOUSEHOLDS) || !map.getSource(SRC_CLUSTERS)) return;
   ensureZoneBadgeImages(map);
 
-  if (!map.getLayer('cluster-zone-fill')) {
-    map.addLayer({
-      id: 'cluster-zone-fill',
-      type: 'fill',
-      source: SRC_HULLS,
-      paint: {
-        'fill-color': ['coalesce', ['get', 'zoneColor'], '#0F766E'],
-        'fill-opacity': [
-          'interpolate',
-          ['linear'],
-          ['zoom'],
-          6,
-          [
-            'case',
-            ['>', ['to-number', ['coalesce', ['get', 'critical_count'], 0]], 0],
-            0.11,
-            ['>', ['to-number', ['coalesce', ['get', 'blocked_count'], 0]], 0],
-            0.09,
-            ['>', ['to-number', ['coalesce', ['get', 'pending_count'], 0]], 0],
-            0.075,
-            ['==', ['to-number', ['coalesce', ['get', 'compliant_count'], 0]], ['to-number', ['coalesce', ['get', 'point_count'], 0]]],
-            0.032,
-            0.05,
-          ],
-          13.5,
-          [
-            'case',
-            ['>', ['to-number', ['coalesce', ['get', 'critical_count'], 0]], 0],
-            0.085,
-            ['>', ['to-number', ['coalesce', ['get', 'blocked_count'], 0]], 0],
-            0.065,
-            ['>', ['to-number', ['coalesce', ['get', 'pending_count'], 0]], 0],
-            0.052,
-            ['==', ['to-number', ['coalesce', ['get', 'compliant_count'], 0]], ['to-number', ['coalesce', ['get', 'point_count'], 0]]],
-            0.022,
-            0.038,
-          ],
-          16,
-          [
-            'case',
-            ['>', ['to-number', ['coalesce', ['get', 'critical_count'], 0]], 0],
-            0.05,
-            ['>', ['to-number', ['coalesce', ['get', 'blocked_count'], 0]], 0],
-            0.04,
-            ['>', ['to-number', ['coalesce', ['get', 'pending_count'], 0]], 0],
-            0.032,
-            ['==', ['to-number', ['coalesce', ['get', 'compliant_count'], 0]], ['to-number', ['coalesce', ['get', 'point_count'], 0]]],
-            0.014,
-            0.024,
-          ],
-        ],
-      },
-    });
-  }
+  const addZoneFillLayer = (id: string, filterVal: any, opacity6: number, opacity13_5: number, opacity16: number) => {
+    if (!map.getLayer(id)) {
+      map.addLayer({
+        id,
+        type: 'fill',
+        source: SRC_HULLS,
+        filter: filterVal,
+        paint: {
+          'fill-color': ['coalesce', ['get', 'zoneColor'], '#0F766E'],
+          'fill-opacity': ['interpolate', ['linear'], ['zoom'], 6, opacity6, 13.5, opacity13_5, 16, opacity16],
+        },
+      });
+    }
+  };
+
+  addZoneFillLayer(
+    'cluster-zone-fill-critical',
+    ['>', ['coalesce', ['get', 'critical_count'], 0], 0],
+    0.11, 0.085, 0.05
+  );
+  addZoneFillLayer(
+    'cluster-zone-fill-blocked',
+    ['all', ['==', ['coalesce', ['get', 'critical_count'], 0], 0], ['>', ['coalesce', ['get', 'blocked_count'], 0], 0]],
+    0.09, 0.065, 0.04
+  );
+  addZoneFillLayer(
+    'cluster-zone-fill-pending',
+    ['all', ['==', ['coalesce', ['get', 'critical_count'], 0], 0], ['==', ['coalesce', ['get', 'blocked_count'], 0], 0], ['>', ['coalesce', ['get', 'pending_count'], 0], 0]],
+    0.075, 0.052, 0.032
+  );
+  addZoneFillLayer(
+    'cluster-zone-fill-compliant',
+    ['all', ['==', ['coalesce', ['get', 'critical_count'], 0], 0], ['==', ['coalesce', ['get', 'blocked_count'], 0], 0], ['==', ['coalesce', ['get', 'pending_count'], 0], 0], ['==', ['to-number', ['coalesce', ['get', 'compliant_count'], 0]], ['to-number', ['coalesce', ['get', 'point_count'], 0]]]],
+    0.032, 0.022, 0.014
+  );
+  addZoneFillLayer(
+    'cluster-zone-fill-default',
+    ['all', ['==', ['coalesce', ['get', 'critical_count'], 0], 0], ['==', ['coalesce', ['get', 'blocked_count'], 0], 0], ['==', ['coalesce', ['get', 'pending_count'], 0], 0], ['!=', ['to-number', ['coalesce', ['get', 'compliant_count'], 0]], ['to-number', ['coalesce', ['get', 'point_count'], 0]]]],
+    0.05, 0.038, 0.024
+  );
 
   if (!map.getLayer('cluster-zone-outline')) {
     map.addLayer({
@@ -216,48 +202,37 @@ function ensureLayers(map: maplibregl.Map, iconsReady: boolean) {
     });
   }
 
-  if (!map.getLayer('cluster-zone-halo')) {
-    map.addLayer({
-      id: 'cluster-zone-halo',
-      type: 'line',
-      source: SRC_HULLS,
-      layout: {
-        'line-join': 'round',
-        'line-cap': 'round',
-      },
-      paint: {
-        'line-color': ['coalesce', ['get', 'zoneHalo'], '#2DD4BF'],
-        'line-width': ['interpolate', ['linear'], ['zoom'], 6, 4.4, 12, 6.8, 15, 8.4],
-        'line-opacity': [
-          'interpolate',
-          ['linear'],
-          ['zoom'],
-          6,
-          [
-            'case',
-            ['>', ['to-number', ['coalesce', ['get', 'critical_count'], 0]], 0],
-            0.16,
-            0.045,
-          ],
-          14.5,
-          [
-            'case',
-            ['>', ['to-number', ['coalesce', ['get', 'critical_count'], 0]], 0],
-            0.11,
-            0.024,
-          ],
-          16.5,
-          [
-            'case',
-            ['>', ['to-number', ['coalesce', ['get', 'critical_count'], 0]], 0],
-            0.08,
-            0.014,
-          ],
-        ],
-        'line-blur': 2.4,
-      },
-    });
-  }
+  const addZoneHaloLayer = (id: string, filterVal: any, opacity6: number, opacity14_5: number, opacity16_5: number) => {
+    if (!map.getLayer(id)) {
+      map.addLayer({
+        id,
+        type: 'line',
+        source: SRC_HULLS,
+        filter: filterVal,
+        layout: {
+          'line-join': 'round',
+          'line-cap': 'round',
+        },
+        paint: {
+          'line-color': ['coalesce', ['get', 'zoneHalo'], '#2DD4BF'],
+          'line-width': ['interpolate', ['linear'], ['zoom'], 6, 4.4, 12, 6.8, 15, 8.4],
+          'line-opacity': ['interpolate', ['linear'], ['zoom'], 6, opacity6, 14.5, opacity14_5, 16.5, opacity16_5],
+          'line-blur': 2.4,
+        },
+      });
+    }
+  };
+
+  addZoneHaloLayer(
+    'cluster-zone-halo-critical',
+    ['>', ['coalesce', ['get', 'critical_count'], 0], 0],
+    0.16, 0.11, 0.08
+  );
+  addZoneHaloLayer(
+    'cluster-zone-halo-default',
+    ['==', ['coalesce', ['get', 'critical_count'], 0], 0],
+    0.045, 0.024, 0.014
+  );
 
   if (!map.getLayer('cluster-zone-badge-glow')) {
     map.addLayer({
@@ -739,7 +714,14 @@ const HouseholdLayer: React.FC<HouseholdLayerProps> = ({
       );
     };
 
-    ['cluster-zone-fill', 'cluster-zone-badge-shell', 'cluster-zone-name-labels', 'cluster-zone-labels'].forEach((layerId) => {
+    const fillLayerIds = [
+      'cluster-zone-fill-critical',
+      'cluster-zone-fill-blocked',
+      'cluster-zone-fill-pending',
+      'cluster-zone-fill-compliant',
+      'cluster-zone-fill-default'
+    ];
+    [...fillLayerIds, 'cluster-zone-badge-shell', 'cluster-zone-name-labels', 'cluster-zone-labels'].forEach((layerId) => {
       map.on('click', layerId, onZoneClick);
       map.on('mouseenter', layerId, () => {
         map.getCanvas().style.cursor = 'pointer';
@@ -767,7 +749,7 @@ const HouseholdLayer: React.FC<HouseholdLayerProps> = ({
 
     return () => {
       window.removeEventListener('map:select-household', handleDetailEvent);
-      ['cluster-zone-fill', 'cluster-zone-badge-shell', 'cluster-zone-name-labels', 'cluster-zone-labels'].forEach((layerId) => {
+      [...fillLayerIds, 'cluster-zone-badge-shell', 'cluster-zone-name-labels', 'cluster-zone-labels'].forEach((layerId) => {
         map.off('click', layerId, onZoneClick);
       });
       popupRef.current?.remove();
@@ -898,9 +880,18 @@ const HouseholdLayer: React.FC<HouseholdLayerProps> = ({
       ['cluster-halo', 'cluster-circles', 'cluster-counts'].forEach((id) => {
         if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', showClusters ? 'visible' : 'none');
       });
-      if (map.getLayer('cluster-zone-fill')) {
-        map.setLayoutProperty('cluster-zone-fill', 'visibility', showZoneFill ? 'visible' : 'none');
-      }
+      const fillLayerIds = [
+        'cluster-zone-fill-critical',
+        'cluster-zone-fill-blocked',
+        'cluster-zone-fill-pending',
+        'cluster-zone-fill-compliant',
+        'cluster-zone-fill-default'
+      ];
+      fillLayerIds.forEach((id) => {
+        if (map.getLayer(id)) {
+          map.setLayoutProperty(id, 'visibility', showZoneFill ? 'visible' : 'none');
+        }
+      });
       if (map.getLayer('cluster-zone-outline')) {
         map.setLayoutProperty(
           'cluster-zone-outline',
@@ -915,9 +906,15 @@ const HouseholdLayer: React.FC<HouseholdLayerProps> = ({
           showZoneOutline ? 'visible' : 'none'
         );
       }
-      if (map.getLayer('cluster-zone-halo')) {
-        map.setLayoutProperty('cluster-zone-halo', 'visibility', showZoneHalo ? 'visible' : 'none');
-      }
+      const haloLayerIds = [
+        'cluster-zone-halo-critical',
+        'cluster-zone-halo-default'
+      ];
+      haloLayerIds.forEach((id) => {
+        if (map.getLayer(id)) {
+          map.setLayoutProperty(id, 'visibility', showZoneHalo ? 'visible' : 'none');
+        }
+      });
       if (map.getLayer('cluster-zone-badge-glow')) {
         map.setLayoutProperty(
           'cluster-zone-badge-glow',
