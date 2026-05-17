@@ -337,6 +337,10 @@ export interface Project {
   updatedAt?: string;
   updatedBy?: { name: string; email: string };
   _count?: { zones: number };
+  lastSyncedAt?: number;
+  dirty?: boolean;
+  deletedAt?: number | null;
+  syncStatus?: 'synced' | 'pending' | 'failed';
 }
 
 export type TradeKey = string;
