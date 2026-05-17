@@ -33,7 +33,7 @@ import {
   mergeManualOverrides,
   removeManualOverrides,
 } from '../constants/householdLocks';
-// useNavigate removed (not used in this page)
+import { useNavigate } from 'react-router-dom';
 
 import { useGeolocation } from '../hooks/useGeolocation';
 import {
@@ -62,6 +62,7 @@ import { MODULE_ACCENTS } from '../components/dashboards/DashboardComponents';
 const Terrain: React.FC = () => {
   const terrainAccent = MODULE_ACCENTS.terrain;
   // 1. Core Data & Contexts
+  const navigate = useNavigate();
   const {
     households,
     updateHouseholdStatus,
@@ -210,6 +211,10 @@ const Terrain: React.FC = () => {
   // ✅ GUARD: Prevent double-initialization from StrictMode
   const autoCenterInitializedRef = useRef(false);
 
+  useEffect(() => {
+    autoCenterInitializedRef.current = false;
+  }, [project?.id]);
+
   // 5. Auto-Center
   useEffect(() => {
     // Guard: Only auto-center once on first household load
@@ -321,11 +326,10 @@ const Terrain: React.FC = () => {
         toast.dismiss(dismissId);
       }
       // Defer state updates to avoid synchronous setState-in-effect warnings
-      const t = window.setTimeout(() => {
+      Promise.resolve().then(() => {
         setGeolocationToastId(null);
         setIsGeolocationRequestInProgress(false);
-      }, 0);
-      return () => clearTimeout(t);
+      });
     }
   }, [userLocation, geolocationError, geolocationToastId]);
 
@@ -385,10 +389,15 @@ const Terrain: React.FC = () => {
 
   const handleTraceItinerary = useCallback(() => {
     const h = households?.find((hh) => hh.id === selectedHouseholdId);
-    if (!h || !hasValidCoordinates(h)) return;
+    if (!h) return;
 
-    const lng = Number(h.location?.coordinates?.[0] || h.longitude);
-    const lat = Number(h.location?.coordinates?.[1] || h.latitude);
+    const lng = Number(h.location?.coordinates?.[0] ?? h.longitude);
+    const lat = Number(h.location?.coordinates?.[1] ?? h.latitude);
+    
+    if (!Number.isFinite(lng) || !Number.isFinite(lat) || Math.abs(lng) > 180 || Math.abs(lat) > 90) {
+      return;
+    }
+
     const dest: [number, number] = [lng, lat];
 
     setRoutingDest(dest);
@@ -405,7 +414,8 @@ const Terrain: React.FC = () => {
         () => {
           toast.error('Géolocalisation impossible');
           setRoutingStart(null);
-        }
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
       );
     }
   }, [
@@ -465,21 +475,19 @@ const Terrain: React.FC = () => {
       const chunkSize = 20;
       for (let i = 0; i < lockableConformingHouseholds.length; i += chunkSize) {
         const chunk = lockableConformingHouseholds.slice(i, i + chunkSize);
-        const results = await Promise.allSettled(
-          chunk.map((household) =>
-            updateHousehold(household.id, {
+        for (const household of chunk) {
+          try {
+            await updateHousehold(household.id, {
               manualOverrides: mergeManualOverrides(
                 household.manualOverrides,
                 CONFORMING_HOUSEHOLD_LOCK_FIELDS
               ),
-            })
-          )
-        );
-
-        results.forEach((result) => {
-          if (result.status === 'fulfilled') updatedCount += 1;
-          else failedCount += 1;
-        });
+            });
+            updatedCount += 1;
+          } catch (error) {
+            failedCount += 1;
+          }
+        }
       }
 
       if (updatedCount > 0 && failedCount === 0) {
@@ -517,22 +525,20 @@ const Terrain: React.FC = () => {
       const chunkSize = 20;
       for (let i = 0; i < unlockableConformingHouseholds.length; i += chunkSize) {
         const chunk = unlockableConformingHouseholds.slice(i, i + chunkSize);
-        const results = await Promise.allSettled(
-          chunk.map((household) =>
-            updateHousehold(household.id, {
+        for (const household of chunk) {
+          try {
+            await updateHousehold(household.id, {
               manualOverrides: removeManualOverrides(
                 household.manualOverrides,
                 CONFORMING_HOUSEHOLD_LOCK_FIELDS
               ),
               unlockFields: CONFORMING_HOUSEHOLD_LOCK_FIELDS as unknown as string[],
-            } as Partial<Household>)
-          )
-        );
-
-        results.forEach((result) => {
-          if (result.status === 'fulfilled') updatedCount += 1;
-          else failedCount += 1;
-        });
+            } as Partial<Household>);
+            updatedCount += 1;
+          } catch (error) {
+            failedCount += 1;
+          }
+        }
       }
 
       if (updatedCount > 0 && failedCount === 0) {
@@ -557,6 +563,16 @@ const Terrain: React.FC = () => {
   // Keyboard shortcuts removed
 
   // 7. Memoized Computed Values
+  const validFilteredHouseholds = useMemo(
+    () => (filteredHouseholds || []).filter(hasValidCoordinates),
+    [filteredHouseholds]
+  );
+
+  const validHouseholds = useMemo(
+    () => (households || []).filter(hasValidCoordinates),
+    [households]
+  );
+
   const selectedHousehold = useMemo(
     () => (households || []).find((h) => h.id === selectedHouseholdId) || null,
     [households, selectedHouseholdId]
@@ -838,15 +854,13 @@ const Terrain: React.FC = () => {
         project={project}
         onSync={handleManualSync}
         onOpenDataHub={() => {
-          window.location.href = '/settings?tab=datahub';
+          navigate('/settings?tab=datahub');
         }}
         viewMode={viewMode}
         onViewModeChange={setViewMode}
         onRecenter={handleRecenterOnUser}
         peutVoirDataHub={peutVoirDataHub}
         isSyncing={isSyncing}
-        showSearch={terrainFeatures.search}
-        showSync={terrainFeatures.sync}
         showSearch={terrainFeatures.search && peut(PERMISSIONS.TERRAIN_READ)}
         showSync={terrainFeatures.sync && peut(PERMISSIONS.SYSTEM_SYNC)}
         showDataHub={terrainFeatures.dataHub && peutVoirDataHub}
@@ -882,8 +896,8 @@ const Terrain: React.FC = () => {
 
       {/* 📊 BOTTOM OVERLAY */}
       <BottomBar
-        filteredCount={(filteredHouseholds?.filter(hasValidCoordinates) || []).length}
-        totalCount={(households?.filter(hasValidCoordinates) || []).length}
+        filteredCount={validFilteredHouseholds.length}
+        totalCount={validHouseholds.length}
         isOfflineMode={isOfflineMode}
         auditResult={auditResult}
         pendingSyncCount={pendingSyncCount}
@@ -967,12 +981,10 @@ const Terrain: React.FC = () => {
             isAdmin={terrainFeatures.householdAdminEdit}
             pendingSyncCount={pendingSyncCount}
             resolveHouseholdByNumero={resolveHouseholdByNumero}
-            koboAssetUid={
-              (project?.config as any)?.kobo?.formUrl ||
-              (project?.config as any)?.kobo?.webformUrl ||
-              (project?.config as any)?.kobo?.publicUrl ||
-              (project?.config as any)?.kobo?.assetUid
-            }
+            koboAssetUid={(() => {
+              const kobo = (project?.config as { kobo?: { formUrl?: string; webformUrl?: string; publicUrl?: string; assetUid?: string } })?.kobo;
+              return kobo?.formUrl || kobo?.webformUrl || kobo?.publicUrl || kobo?.assetUid;
+            })()}
           />
         </TerrainErrorBoundary>
       )}
