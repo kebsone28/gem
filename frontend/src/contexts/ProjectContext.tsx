@@ -70,7 +70,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     [user?.organizationId]
   ) || [];
 
-  // 2. ISOLATION TENANT - PROJET ACTIF DU TENANT ACTIF SANS FLICKER
+  // 2. ISOLATION TENANT - PROJET ACTIF DU TENANT ACTIF SANS FLICKER (AVEC NULL EN PARFAIT DEFAULT)
   const activeProject = useLiveQuery(
     async () => {
       if (!user?.organizationId) return null;
@@ -83,13 +83,15 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const all = await db.projects.where('organizationId').equals(user.organizationId).toArray();
       return all[0] ?? null;
     },
-    [activeProjectId, user?.organizationId]
+    [activeProjectId, user?.organizationId],
+    null
   );
 
   const persistActiveProjectId = (id: string | null) => {
     setActiveProjectIdState(id);
-    if (user?.organizationId) {
-      const key = `active_project_${user.organizationId}`;
+    const currentUser = userRef.current;
+    if (currentUser?.organizationId) {
+      const key = `active_project_${currentUser.organizationId}`;
       if (id) {
         safeStorage.setItem(key, id);
       } else {
@@ -321,7 +323,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   return (
     <ProjectContext.Provider
       value={{
-        project: activeProject === undefined ? null : activeProject,
+        project: activeProject,
         projects,
         activeProjectId,
         setActiveProjectId,
@@ -329,7 +331,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         createProject,
         updateProject,
         deleteProject,
-        isLoading: activeProject === undefined || (projects.length === 0 && isSyncing),
+        isLoading: activeProject === null && projects.length === 0 && isSyncing,
         isSyncing,
         syncError,
         t,
