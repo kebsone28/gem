@@ -164,6 +164,37 @@ const MapLibreVectorMap: React.FC<any> = ({
   const [isMapReady, setIsMapReady] = useState(false);
   const [mapInitError, setMapInitError] = useState<string | null>(null);
   const [mapForChildren, setMapForChildren] = useState<maplibregl.Map | null>(null);
+
+  useEffect(() => {
+    const handleError = (event: ErrorEvent) => {
+      const error = event.error || {};
+      const msg = error.message || event.message || 'Unknown error';
+      const stack = error.stack || '';
+      console.error('[Diagnostic] Global error caught:', msg, stack);
+      setMapInitError((prev) => {
+        const header = prev && !prev.includes('Stack:') ? prev : 'Erreur d\'initialisation cartographique';
+        return `${header}\n\nStack:\n${msg}\n${stack}`;
+      });
+    };
+
+    const handleRejection = (event: PromiseRejectionEvent) => {
+      const reason = event.reason || {};
+      const msg = reason.message || String(reason || '');
+      const stack = reason.stack || '';
+      console.error('[Diagnostic] Promise rejection caught:', msg, stack);
+      setMapInitError((prev) => {
+        const header = prev && !prev.includes('Stack:') ? prev : 'Promesse rejetée';
+        return `${header}\n\nStack:\n${msg}\n${stack}`;
+      });
+    };
+
+    window.addEventListener('error', handleError);
+    window.addEventListener('unhandledrejection', handleRejection);
+    return () => {
+      window.removeEventListener('error', handleError);
+      window.removeEventListener('unhandledrejection', handleRejection);
+    };
+  }, []);
   const [mapDiagnostics, setMapDiagnostics] = useState<{
     hostWidth: number;
     hostHeight: number;
@@ -514,6 +545,9 @@ const MapLibreVectorMap: React.FC<any> = ({
         maxPitch: 85,
         bearing: 0,
         transformRequest: (url, resourceType) => {
+          if (typeof url !== 'string' || !url) {
+            return { url: url || '' };
+          }
           // 1. Force refresh for dynamic households data
           if (url.includes('households') && !url.includes('t=')) {
             return { url: `${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}` };
@@ -1009,7 +1043,7 @@ const MapLibreVectorMap: React.FC<any> = ({
           <div className="max-w-lg rounded-3xl border border-rose-500/20 bg-rose-500/10 p-6 shadow-2xl">
             <div className="mb-3 text-4xl">⚠️</div>
             <h3 className="text-lg font-bold text-white">Initialisation carte impossible</h3>
-            <p className="mt-2 text-sm text-rose-100/90">
+            <p className="mt-2 text-left text-[10px] text-rose-100/90 whitespace-pre-wrap max-h-[60vh] overflow-y-auto font-mono">
               {mapInitError}
             </p>
           </div>
