@@ -6,12 +6,11 @@
  * After this, the DATABASE is the SINGLE SOURCE OF TRUTH.
  */
 
-import { PrismaClient } from '../src/generated/prisma/index.js';
+import { basePrisma as prisma } from '../src/core/utils/prisma.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { readFirstSheetJson } from '../src/utils/safeExcel.js';
 
-const prisma = new PrismaClient();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Excel file is located in the root archive folder, not in backend

@@ -2,7 +2,8 @@
 
 **Date**: 17 mai 2026  
 **Status**: Sprint 1 Foundation ✅ COMPLETE  
-**Prochaine Action**: 24 mai 2026 (Prisma Migration)
+**Prochaine Action**: 24 mai 2026 (Prisma Migration)  
+**Dernière mise à jour**: 17 mai 2026 — migration DomainConfig appliquée et middleware intégré en préparation
 
 ---
 
@@ -48,7 +49,7 @@ npx prisma generate
 
 ---
 
-### Step 2️⃣ — Exécuter Migration Prisma
+### Step 2️⃣ — Appliquer la migration Prisma DomainConfig
 
 **When**: 24 mai, 9h05  
 **Duration**: ~5 minutes  
@@ -56,19 +57,22 @@ npx prisma generate
 
 ```bash
 cd backend
-npx prisma migrate dev --name add_domain_config
+npx prisma migrate deploy
 ```
 
 **Expected Output**:
 ```
-✓ Database migration created
-✓ Generated Prisma Client
+Applying migration `20260517_add_domain_config`
+All migrations have been successfully applied.
 ```
 
+**Status**: ✅ Terminé — migration DomainConfig appliquée
+
 **If Error**:
-- Check DATABASE_URL: `echo $DATABASE_URL`
-- Check Postgres running: `psql --version`
-- Manual rollback: `npx prisma migrate resolve --rolled-back add_domain_config`
+- Vérifier `DATABASE_URL` et l’accès à Postgres
+- Vérifier que la table `Organization` existe
+- Vérifier le fichier `backend/prisma/migrations/20260517_add_domain_config/migration.sql`
+- En dernier recours : `npx prisma migrate resolve --rolled-back 20260517_add_domain_config`
 
 ---
 
@@ -76,24 +80,24 @@ npx prisma migrate dev --name add_domain_config
 
 **When**: 24 mai, 9h15  
 **Duration**: ~10 minutes  
-**File to Edit**: `backend/src/app.ts` ou `backend/src/server.js`
+**File to Edit**: `backend/src/app.js`
 
-**Add After Auth Middleware**:
+**Add After Tenant Resolver**:
 
-```typescript
-// 1. Add import at top
-import { domainContext } from './middleware/domainContext';
+```js
+import { domainContext } from './middleware/domainContext.js';
+```
 
-// 2. Add middleware after authMiddleware
-app.use(authMiddleware);    // Existing
-app.use(domainContext);      // NEW ← Add this line
-app.use(routes);            // Existing
+```js
+app.use('/api/auth', authRoutes);
+app.use(tenantResolver);
+app.use(domainContext);
+app.use('/api/users', userRoutes);
 ```
 
 **Verify**:
 ```bash
-grep -n "domainContext" backend/src/app.ts
-# Should output: import and app.use lines
+grep -n "domainContext" backend/src/app.js
 ```
 
 ---
@@ -128,18 +132,11 @@ curl "http://localhost:3000/api/households" \
 
 ```bash
 cd backend
-
-# TypeScript check
 npm run lint
-
-# Unit tests
-npm run test:adapters
-
-# E2E tests  
-npm run test:e2e
+npm test
 ```
 
-**Target**: ✅ All tests pass, 0 regressions
+**Target**: ✅ Tests pertinents passent, 0 régressions
 
 ---
 
@@ -163,6 +160,18 @@ git push origin main
 - Household POST/PUT/DELETE ✅
 - Charts/Dashboards ✅
 - Offline mode ✅
+
+---
+
+### Step 7️⃣ — Valider le staging
+
+**When**: 24 mai, 15h00  
+**Duration**: ~20 minutes
+
+- [ ] Revue des logs staging
+- [ ] Vérifier l’intégrité API Household
+- [ ] Vérifier la création / lecture de `DomainConfig` en base
+- [ ] Confirmer qu’il n’y a pas de régression apparente
 
 ---
 

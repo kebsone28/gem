@@ -1,10 +1,8 @@
-import { PrismaClient } from '@prisma/client';
+import { basePrisma as prisma } from '../src/core/utils/prisma.js';
 import bcrypt from 'bcryptjs';
 import dotenv from 'dotenv';
 
 dotenv.config();
-
-const prisma = new PrismaClient();
 
 async function main() {
     console.log('🌱 Starting seed...');
@@ -83,7 +81,12 @@ async function main() {
         const hashed2FAAnswer = u.secret2FAAnswer ? await bcrypt.hash(u.secret2FAAnswer.trim().toLowerCase(), 10) : null;
 
         await prisma.user.upsert({
-            where: { email: u.email },
+            where: {
+                email_organizationId: {
+                    email: u.email,
+                    organizationId: org.id
+                }
+            },
             update: {
                 passwordHash: hashedPassword,
                 roleLegacy: u.role,
