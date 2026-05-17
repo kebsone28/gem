@@ -74,147 +74,147 @@ interface ComplianceMetrics {
   lastAuditDate: Date;
 }
 
+const ViewSelector = ({ selectedView, setSelectedView }: { 
+  selectedView: 'overview' | 'budget' | 'cashflow' | 'reports' | 'compliance';
+  setSelectedView: React.Dispatch<React.SetStateAction<'overview' | 'budget' | 'cashflow' | 'reports' | 'compliance'>>;
+}) => (
+  <div className="flex gap-2 p-1 bg-white/5 rounded-xl">
+    {[
+      { id: 'overview', label: "Vue d'ensemble", icon: BarChart3 },
+      { id: 'budget', label: 'Budget', icon: Calculator },
+      { id: 'cashflow', label: 'Trésorerie', icon: CreditCard },
+      { id: 'reports', label: 'Rapports', icon: FileText },
+      { id: 'compliance', label: 'Conformité', icon: CheckCircle2 },
+    ].map(({ id, label, icon: Icon }) => (
+      <button
+        key={id}
+        onClick={() => setSelectedView(id as any)}
+        className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+          selectedView === id
+            ? 'bg-blue-600 text-white'
+            : 'text-slate-400 hover:text-white hover:bg-white/10'
+        }`}
+      >
+        <Icon size={16} />
+        {label}
+      </button>
+    ))}
+  </div>
+);
+
 export default function AccountingDashboard() {
-  const { user } = useAuth();
-  const { peut, PERMISSIONS } = usePermissions();
-  const { getLabel } = useLabels();
-  const navigate = useNavigate();
-  const households = useLiveQuery(() => db.households.toArray()) || [];
-  const teams = useLiveQuery(() => db.teams.toArray()) || [];
+   const { user } = useAuth();
+   const { peut, PERMISSIONS } = usePermissions();
+   const { getLabel } = useLabels();
+   const navigate = useNavigate();
+   const households = useLiveQuery(() => db.households.toArray()) || [];
+   const teams = useLiveQuery(() => db.teams.toArray()) || [];
 
-  const [selectedView, setSelectedView] = useState<
-    'overview' | 'budget' | 'cashflow' | 'reports' | 'compliance'
-  >('overview');
+   const [selectedView, setSelectedView] = useState<
+     'overview' | 'budget' | 'cashflow' | 'reports' | 'compliance'
+   >('overview');
 
-  // Vérification des permissions
-  const canViewFinances = peut(PERMISSIONS.FINANCE_READ);
-  const canViewPayments = peut(PERMISSIONS.FINANCE_PAYMENTS);
-  const canExportAccounting = peut(PERMISSIONS.FINANCE_EXPORT);
-  const _canManageLogistics = peut(PERMISSIONS.LOGISTIQUE_MANAGE);
-  const _canViewLogistics = peut(PERMISSIONS.LOGISTIQUE_READ);
+   // Vérification des permissions
+   const canViewFinances = peut(PERMISSIONS.FINANCE_READ);
+   const canViewPayments = peut(PERMISSIONS.FINANCE_PAYMENTS);
+   const canExportAccounting = peut(PERMISSIONS.FINANCE_EXPORT);
 
-  // Calcul des métriques budgétaires
-  const budgetMetrics: BudgetMetrics = useMemo(() => {
-    // Simulation de données budgétaires (à remplacer avec vraies données)
-    const totalBudget = 50000000; // 50M FCFA
-    const completedHouseholds = households.filter((h) => h.status === 'Terminé').length;
-    const totalHouseholds = households.length;
-    const progress = totalHouseholds > 0 ? completedHouseholds / totalHouseholds : 0;
+   // Calcul des métriques budgétaires
+   const budgetMetrics: BudgetMetrics = useMemo(() => {
+     // Simulation de données budgétaires (à remplacer avec vraies données)
+     const totalBudget = 50000000; // 50M FCFA
+     const completedHouseholds = households.filter((h) => h.status === 'Terminé').length;
+     const totalHouseholds = households.length;
+     const progress = totalHouseholds > 0 ? completedHouseholds / totalHouseholds : 0;
 
-    const utilizedBudget = totalBudget * progress;
-    const remainingBudget = totalBudget - utilizedBudget;
-    const utilizationRate = (utilizedBudget / totalBudget) * 100;
-    const monthlyBurnRate = totalBudget / 12; // 12 mois de projet
-    const projectedCompletion = progress > 0 ? totalBudget / (utilizedBudget / progress) : 0;
-    const budgetVariance = utilizationRate > 100 ? -5 : utilizationRate > 80 ? 2 : 0; // déterministe
+     const utilizedBudget = totalBudget * progress;
+     const remainingBudget = totalBudget - utilizedBudget;
+     const utilizationRate = (utilizedBudget / totalBudget) * 100;
+     const monthlyBurnRate = totalBudget / 12; // 12 mois de projet
+     const projectedCompletion = progress > 0 ? totalBudget / (utilizedBudget / progress) : 0;
+     const budgetVariance = utilizationRate > 100 ? -5 : utilizationRate > 80 ? 2 : 0; // déterministe
 
-    return {
-      totalBudget,
-      utilizedBudget,
-      remainingBudget,
-      utilizationRate,
-      monthlyBurnRate,
-      projectedCompletion,
-      budgetVariance,
-    };
-  }, [households]);
+     return {
+       totalBudget,
+       utilizedBudget,
+       remainingBudget,
+       utilizationRate,
+       monthlyBurnRate,
+       projectedCompletion,
+       budgetVariance,
+     };
+   }, [households]);
 
-  // Calcul des métriques de trésorerie
-  const cashFlowMetrics: CashFlowMetrics = useMemo(() => {
-    const currentBalance = budgetMetrics.remainingBudget;
-    const monthlyInflow = 5000000; // 5M FCFA/mois
-    const monthlyOutflow = budgetMetrics.monthlyBurnRate;
-    const netCashFlow = monthlyInflow - monthlyOutflow;
-    const cashFlowTrend = netCashFlow > 0 ? 'up' : netCashFlow < 0 ? 'down' : 'stable';
-    const workingCapital = currentBalance * 0.3; // 30% en fonds de roulement
-    const liquidityRatio = currentBalance > 0 ? currentBalance / monthlyOutflow : 0;
+   // Calcul des métriques de trésorerie
+   const cashFlowMetrics: CashFlowMetrics = useMemo(() => {
+     const currentBalance = budgetMetrics.remainingBudget;
+     const monthlyInflow = 5000000; // 5M FCFA/mois
+     const monthlyOutflow = budgetMetrics.monthlyBurnRate;
+     const netCashFlow = monthlyInflow - monthlyOutflow;
+     const cashFlowTrend = netCashFlow > 0 ? 'up' : netCashFlow < 0 ? 'down' : 'stable';
+     const workingCapital = currentBalance * 0.3; // 30% en fonds de roulement
+     const liquidityRatio = currentBalance > 0 ? currentBalance / monthlyOutflow : 0;
 
-    return {
-      currentBalance,
-      monthlyInflow,
-      monthlyOutflow,
-      netCashFlow,
-      cashFlowTrend,
-      workingCapital,
-      liquidityRatio,
-    };
-  }, [budgetMetrics]);
+     return {
+       currentBalance,
+       monthlyInflow,
+       monthlyOutflow,
+       netCashFlow,
+       cashFlowTrend,
+       workingCapital,
+       liquidityRatio,
+     };
+   }, [budgetMetrics]);
 
-  // Calcul des rapports financiers
-  const financialReports: FinancialReports = useMemo(() => {
-    const revenueGenerated = budgetMetrics.utilizedBudget * 1.1; // 10% marge
-    const operatingCosts = budgetMetrics.utilizedBudget;
-    const grossMargin = revenueGenerated - operatingCosts;
-    const netProfit = grossMargin * 0.85; // 15% impôts
-    const profitMargin = (netProfit / revenueGenerated) * 100;
+   // Calcul des rapports financiers
+   const financialReports: FinancialReports = useMemo(() => {
+     const revenueGenerated = budgetMetrics.utilizedBudget * 1.1; // 10% marge
+     const operatingCosts = budgetMetrics.utilizedBudget;
+     const grossMargin = revenueGenerated - operatingCosts;
+     const netProfit = grossMargin * 0.85; // 15% impôts
+     const profitMargin = (netProfit / revenueGenerated) * 100;
 
-    const expensesBreakdown = [
-      { category: 'Salaires', amount: operatingCosts * 0.4, percentage: 40 },
-      { category: 'Matériel', amount: operatingCosts * 0.3, percentage: 30 },
-      { category: 'Logistique', amount: operatingCosts * 0.2, percentage: 20 },
-      { category: 'Autres', amount: operatingCosts * 0.1, percentage: 10 },
-    ];
+     const expensesBreakdown = [
+       { category: 'Salaires', amount: operatingCosts * 0.4, percentage: 40 },
+       { category: 'Matériel', amount: operatingCosts * 0.3, percentage: 30 },
+       { category: 'Logistique', amount: operatingCosts * 0.2, percentage: 20 },
+       { category: 'Autres', amount: operatingCosts * 0.1, percentage: 10 },
+     ];
 
-    return {
-      revenueGenerated,
-      operatingCosts,
-      grossMargin,
-      netProfit,
-      profitMargin,
-      expensesBreakdown,
-    };
-  }, [budgetMetrics]);
+     return {
+       revenueGenerated,
+       operatingCosts,
+       grossMargin,
+       netProfit,
+       profitMargin,
+       expensesBreakdown,
+     };
+   }, [budgetMetrics]);
 
-  // Calcul des métriques de conformité
-  const complianceMetrics: ComplianceMetrics = useMemo(() => {
-    const auditScore = 90; // score fixe — remplacer par API audit réelle
-    const complianceRate = 94; // taux fixe — remplacer par API
-    const pendingAudits = 0; // à brancher sur API
-    const validatedTransactions = Math.floor(households.length * 0.95);
-    const flaggedTransactions = Math.floor(households.length * 0.05);
-    const lastAuditDate = new Date(new Date().setDate(new Date().getDate() - 7));
+   // Calcul des métriques de conformité
+   const complianceMetrics: ComplianceMetrics = useMemo(() => {
+     const auditScore = 90; // score fixe — remplacer par API audit réelle
+     const complianceRate = 94; // taux fixe — remplacer par API
+     const pendingAudits = 0; // à brancher sur API
+     const validatedTransactions = Math.floor(households.length * 0.95);
+     const flaggedTransactions = Math.floor(households.length * 0.05);
+     const lastAuditDate = new Date(new Date().setDate(new Date().getDate() - 7));
 
-    return {
-      auditScore,
-      complianceRate,
-      pendingAudits,
-      validatedTransactions,
-      flaggedTransactions,
-      lastAuditDate,
-    };
-  }, [households]);
+     return {
+       auditScore,
+       complianceRate,
+       pendingAudits,
+       validatedTransactions,
+       flaggedTransactions,
+       lastAuditDate,
+     };
+   }, [households]);
 
-  const scrollToSection = (sectionId: string) => {
-    document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
+   const scrollToSection = (sectionId: string) => {
+     document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+   };
 
-  // Composants de navigation
-  const ViewSelector = () => (
-    <div className="flex gap-2 p-1 bg-white/5 rounded-xl">
-      {[
-        { id: 'overview', label: "Vue d'ensemble", icon: BarChart3 },
-        { id: 'budget', label: 'Budget', icon: Calculator },
-        { id: 'cashflow', label: 'Trésorerie', icon: CreditCard },
-        { id: 'reports', label: 'Rapports', icon: FileText },
-        { id: 'compliance', label: 'Conformité', icon: CheckCircle2 },
-      ].map(({ id, label, icon: Icon }) => (
-        <button
-          key={id}
-          onClick={() => setSelectedView(id as any)}
-          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-            selectedView === id
-              ? 'bg-blue-600 text-white'
-              : 'text-slate-400 hover:text-white hover:bg-white/10'
-          }`}
-        >
-          <Icon size={16} />
-          {label}
-        </button>
-      ))}
-    </div>
-  );
-
-  return (
+   return (
     <PageContainer className="min-h-screen bg-slate-950 text-white selection:bg-blue-500/30">
       <div className="absolute top-0 left-0 w-full h-[500px] bg-gradient-to-b from-blue-600/10 via-blue-600/5 to-transparent pointer-events-none" />
 
