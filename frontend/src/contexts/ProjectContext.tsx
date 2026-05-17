@@ -22,6 +22,7 @@ interface ProjectContextType {
     password: string
   ) => Promise<{ success: boolean; error?: string }>;
   isLoading: boolean;
+  isSyncing: boolean;
   syncError: string | null;
   t: (key: string, defaultValue: string) => string;
 }
@@ -30,12 +31,22 @@ const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
 
 export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
-  const [activeProjectId, setActiveProjectIdState] = useState<string | null>(
-    safeStorage.getItem('active_project_id')
-  );
+  const [activeProjectId, setActiveProjectIdState] = useState<string | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  
   const lastSyncedUserIdRef = useRef<string | null>(null);
   const syncMutexRef = useRef<Promise<Project[]> | null>(null);
+
+  // Charger le projet actif du tenant dès que l'utilisateur ou l'organisation change
+  useEffect(() => {
+    if (user?.organizationId) {
+      const storedId = safeStorage.getItem(`active_project_${user.organizationId}`);
+      setActiveProjectIdState(storedId);
+    } else {
+      setActiveProjectIdState(null);
+    }
+  }, [user?.organizationId]);
 
   // 1. ISOLATION TENANT - CHARGEMENT DES PROJETS UNIQUEMENT DU TENANT ACTIF
   const projects = useLiveQuery(
@@ -46,7 +57,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     [user?.organizationId]
   ) || [];
 
-  // 2. ISOLATION TENANT - PROJET ACTIF DU TENANT ACTIF SANS UNDEFINED
+  // 2. ISOLATION TENANT - PROJET ACTIF DU TENANT ACTIF SANS FLICKER
   const activeProject = useLiveQuery(
     async () => {
       if (!user?.organizationId) return null;
@@ -59,16 +70,18 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const all = await db.projects.where('organizationId').equals(user.organizationId).toArray();
       return all[0] ?? null;
     },
-    [activeProjectId, user?.organizationId],
-    null
+    [activeProjectId, user?.organizationId]
   );
 
   const persistActiveProjectId = (id: string | null) => {
     setActiveProjectIdState(id);
-    if (id) {
-      safeStorage.setItem('active_project_id', id);
-    } else {
-      safeStorage.removeItem('active_project_id');
+    if (user?.organizationId) {
+      const key = `active_project_${user.organizationId}`;
+      if (id) {
+        safeStorage.setItem(key, id);
+      } else {
+        safeStorage.removeItem(key);
+      }
     }
   };
 
@@ -98,6 +111,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     const syncPromise = (async (): Promise<Project[]> => {
       setSyncError(null);
+      setIsSyncing(true);
       try {
         if (!user?.organizationId) {
           return [];
@@ -114,7 +128,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
         logger.debug(`[PROJECT] Serveur a renvoyé ${filteredServerProjects.length} projet(s)`);
 
-        // Transaction atomique : MERGE intelligent pour éviter de vider la base locale par erreur
+        // Transaction atomique : MERGE intelligent ciblé par tenant pour préserver le cache local
         await (db as any).transaction('rw', db.projects, async () => {
           const existing = await db.projects
             .where('organizationId')
@@ -166,6 +180,8 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setSyncError(errorMessage);
         logger.error('❌ [PROJECT] Erreur lors de la synchronisation des projets', err);
         return [];
+      } finally {
+        setIsSyncing(false);
       }
     })();
 
@@ -178,13 +194,17 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
-  // 5. AUTO-SYNC & PURGE COMPLÈTE AU LOGOUT (MULTI-TENANT SAFETY)
+  // 5. AUTO-SYNC & PURGE CIBLÉE DU TENANT AU LOGOUT (MULTI-TENANT SAFETY)
   useEffect(() => {
     const handleUserSession = async () => {
       if (!user?.id) {
+        const prevOrgId = lastSyncedUserIdRef.current;
         lastSyncedUserIdRef.current = null;
-        logger.debug('🧹 [PROJECT] Déconnexion détectée, purge complète des données locales...');
-        await db.projects.clear();
+        if (prevOrgId) {
+          logger.debug(`🧹 [PROJECT] Déconnexion détectée, purge des projets du tenant...`);
+          // Purge ciblée uniquement pour la sécurité multi-tenant
+          await db.projects.where('organizationId').equals(prevOrgId).delete();
+        }
         persistActiveProjectId(null);
         return;
       }
@@ -215,7 +235,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return serverProject;
   };
 
-  // 6. UPDATE AVEC ROLLBACK (OPTIMISTIC UPDATE SECURITY)
+  // 6. UPDATE AVEC ROLLBACK ET SÉCURITÉ TENANT DE BOUT EN BOUT
   const updateProject = async (updates: Partial<Project>, id?: string) => {
     const currentId = id || activeProjectId;
     if (!currentId) return;
@@ -223,6 +243,12 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     // Sauvegarde pour rollback en cas d'échec
     const oldProject = await db.projects.get(currentId);
     if (!oldProject) return;
+
+    // Protection de sécurité tenant stricte
+    if (oldProject.organizationId !== user?.organizationId) {
+      logger.error('❌ [SECURITY-VIOLATION] Tentative de modification hors tenant bloquée.');
+      throw new Error('Non autorisé');
+    }
 
     try {
       // Étape 1 : Mise à jour optimiste dans Dexie
@@ -243,6 +269,11 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const deleteProject = async (projectId: string, password: string) => {
     try {
+      const existing = await db.projects.get(projectId);
+      if (!existing || existing.organizationId !== user?.organizationId) {
+        return { success: false, error: 'Non autorisé' };
+      }
+
       await apiClient.delete(`/projects/${projectId}`, { data: { password } });
       await db.projects.delete(projectId); // Optimistic local deletion
       const fallbackProjectId = activeProjectId === projectId ? null : activeProjectId;
@@ -276,7 +307,8 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         createProject,
         updateProject,
         deleteProject,
-        isLoading: activeProject === null && projects.length === 0,
+        isLoading: activeProject === undefined || (projects.length === 0 && isSyncing),
+        isSyncing,
         syncError,
         t,
       }}

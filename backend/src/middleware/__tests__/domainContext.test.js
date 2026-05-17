@@ -41,7 +41,7 @@ describe('domainContext middleware', () => {
     expect(req.domainAdapter).toBeDefined();
   });
 
-  it('returns 401 when organization id is missing', async () => {
+  it('calls next when organization id is missing (unauthenticated routes allowed)', async () => {
     const req = {
       query: { domainType: 'electricity' },
       headers: {},
@@ -55,7 +55,7 @@ describe('domainContext middleware', () => {
 
     await domainContext(req, res, next);
 
-    expect(next).not.toHaveBeenCalled();
-    expect(res.status).toHaveBeenCalledWith(401);
+    expect(next).toHaveBeenCalled();
+    expect(res.status).not.toHaveBeenCalled();
   });
 });
