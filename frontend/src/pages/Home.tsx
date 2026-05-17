@@ -384,17 +384,21 @@ export default function Home() {
                 />
               </motion.div>
 
-              {/* Glass Bubble */}
+              {/* Glass Bubble - Premium, Pixel-Perfect Speech Indicator */}
               <motion.div
-                initial={{ opacity: 0, x: 20 }}
+                initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 1 }}
-                className="absolute -top-10 -left-10 bg-white/10 backdrop-blur-2xl border border-white/20 p-5 rounded-[1.5rem] shadow-2xl max-w-[220px] z-20"
+                className="absolute -top-12 -left-16 bg-white/10 backdrop-blur-2xl border border-white/20 p-5 rounded-[1.5rem] shadow-2xl max-w-[240px] z-20"
               >
                 <p className="text-sm font-bold text-white italic leading-relaxed">
                   "Bonjour {user.name.split(' ')[0]} ! Prêt à transformer vos objectifs en réalité ?"
                 </p>
-                <div className="absolute bottom-[-8px] right-10 w-4 h-4 bg-white/10 backdrop-blur-2xl border-r border-b border-white/20 rotate-45" />
+                {/* Clean Right Pointer - Clipped to eliminate double-opacity internal lines */}
+                <div 
+                  className="absolute right-[-8px] top-1/2 -translate-y-1/2 w-4 h-4 bg-white/10 backdrop-blur-2xl border-t border-r border-white/20 rotate-45" 
+                  style={{ clipPath: 'polygon(0 0, 100% 0, 100% 100%)' }}
+                />
               </motion.div>
               
               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-blue-600/20 rounded-full blur-[80px] -z-10" />
