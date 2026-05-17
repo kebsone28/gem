@@ -26,7 +26,9 @@ const ZONE_LAYERS = [
   'village-fill',
   'village-outline',
   'village-outline-color',
-  'village-hierarchy-points',
+  'village-hierarchy-points-grappe',
+  'village-hierarchy-points-sous_grappe',
+  'village-hierarchy-points-auto',
   'village-labels',
 ];
 const SAFE_TEXT_FONT = ['Open Sans Regular', 'Arial Unicode MS Regular'];
@@ -323,50 +325,30 @@ const ZoneLayer: React.FC<ZoneLayerProps> = ({
           });
         }
 
-        if (m.getSource('village-centroids') && !m.getLayer('village-hierarchy-points')) {
-          m.addLayer({
-            id: 'village-hierarchy-points',
-            type: 'circle',
-            source: 'village-centroids',
-            layout: { visibility: showZones ? 'visible' : 'none' },
-            paint: {
-              'circle-color': ['coalesce', ['get', 'pointColor'], '#6366F1'],
-              'circle-radius': [
-                'interpolate',
-                ['linear'],
-                ['zoom'],
-                6,
-                [
-                  'case',
-                  ['==', ['coalesce', ['get', 'zoneLevel'], ''], 'grappe'],
-                  8,
-                  ['==', ['coalesce', ['get', 'zoneLevel'], ''], 'sous_grappe'],
-                  6,
-                  5,
-                ],
-                12,
-                [
-                  'case',
-                  ['==', ['coalesce', ['get', 'zoneLevel'], ''], 'grappe'],
-                  14,
-                  ['==', ['coalesce', ['get', 'zoneLevel'], ''], 'sous_grappe'],
-                  10,
-                  8,
-                ],
-              ],
-              'circle-opacity': ['case', ['==', ['coalesce', ['get', 'sourceType'], ''], 'official'], 0.95, 0.8],
-              'circle-stroke-width': [
-                'case',
-                ['==', ['coalesce', ['get', 'zoneLevel'], ''], 'grappe'],
-                2.5,
-                ['==', ['coalesce', ['get', 'zoneLevel'], ''], 'sous_grappe'],
-                1.5,
-                1,
-              ],
-              'circle-stroke-color': '#FFFFFF',
-            },
-          });
-        }
+        const addHierarchyLayer = (id: string, filterVal: string, minRadius: number, maxRadius: number, strokeWidth: number) => {
+          if (m.getSource('village-centroids') && !m.getLayer(id)) {
+            m.addLayer({
+              id,
+              type: 'circle',
+              source: 'village-centroids',
+              filter: filterVal === 'auto'
+                ? ['all', ['!=', ['coalesce', ['get', 'zoneLevel'], ''], 'grappe'], ['!=', ['coalesce', ['get', 'zoneLevel'], ''], 'sous_grappe']]
+                : ['==', ['coalesce', ['get', 'zoneLevel'], ''], filterVal],
+              layout: { visibility: showZones ? 'visible' : 'none' },
+              paint: {
+                'circle-color': ['coalesce', ['get', 'pointColor'], '#6366F1'],
+                'circle-radius': ['interpolate', ['linear'], ['zoom'], 6, minRadius, 12, maxRadius],
+                'circle-opacity': ['case', ['==', ['coalesce', ['get', 'sourceType'], ''], 'official'], 0.95, 0.8],
+                'circle-stroke-width': strokeWidth,
+                'circle-stroke-color': '#FFFFFF',
+              },
+            });
+          }
+        };
+
+        addHierarchyLayer('village-hierarchy-points-grappe', 'grappe', 8, 14, 2.5);
+        addHierarchyLayer('village-hierarchy-points-sous_grappe', 'sous_grappe', 6, 10, 1.5);
+        addHierarchyLayer('village-hierarchy-points-auto', 'auto', 5, 8, 1);
 
         if (m.getSource('village-centroids') && !m.getLayer('village-labels')) {
           m.addLayer({
@@ -523,7 +505,7 @@ const ZoneLayer: React.FC<ZoneLayerProps> = ({
       zoomToFeature(feature);
     };
 
-    ['village-fill', 'village-outline', 'village-outline-color', 'village-hierarchy-points', 'village-labels'].forEach((layerId) => {
+    ['village-fill', 'village-outline', 'village-outline-color', 'village-hierarchy-points-grappe', 'village-hierarchy-points-sous_grappe', 'village-hierarchy-points-auto', 'village-labels'].forEach((layerId) => {
       if (map.getLayer(layerId)) {
         map.on('click', layerId as any, handleZoneClick);
       }
@@ -531,7 +513,7 @@ const ZoneLayer: React.FC<ZoneLayerProps> = ({
 
     return () => {
       if (!isMapAlive(map)) return;
-      ['village-fill', 'village-outline', 'village-outline-color', 'village-hierarchy-points', 'village-labels'].forEach((layerId) => {
+      ['village-fill', 'village-outline', 'village-outline-color', 'village-hierarchy-points-grappe', 'village-hierarchy-points-sous_grappe', 'village-hierarchy-points-auto', 'village-labels'].forEach((layerId) => {
         if (map.getLayer(layerId)) {
           map.off('click', layerId as any, handleZoneClick);
         }
