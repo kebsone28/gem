@@ -365,43 +365,48 @@ export default function Home() {
               </div>
             </motion.div>
 
-            {/* Mascot Container - Dynamic on Mobile too */}
+            {/* Mascot Container - Dynamic and Responsive on Mobile/Tablet/Desktop */}
             <motion.div
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.3, duration: 0.8 }}
-              className="relative shrink-0 lg:block hidden"
+              className="relative shrink-0 flex flex-col items-center mt-16 lg:mt-0"
             >
               <motion.div
-                animate={{ y: [0, -20, 0] }}
+                animate={{ y: [0, -15, 0] }}
                 transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
                 className="relative z-10"
               >
                 <img
                   src="/assets/mascot.png"
                   alt="GEM Mascot"
-                  className="w-64 md:w-80 h-auto drop-shadow-[0_32px_64px_rgba(59,130,246,0.4)]"
+                  className="w-48 sm:w-56 lg:w-80 h-auto drop-shadow-[0_32px_64px_rgba(59,130,246,0.4)]"
                 />
               </motion.div>
 
-              {/* Glass Bubble - Premium, Pixel-Perfect Speech Indicator */}
+              {/* Glass Bubble - Premium, Responsive & Pixel-Perfect Speech Indicator */}
               <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 1 }}
-                className="absolute -top-12 -left-36 bg-white/10 backdrop-blur-2xl border border-white/20 p-5 rounded-[1.5rem] shadow-2xl max-w-[240px] z-20"
+                className="absolute -top-20 left-1/2 -translate-x-1/2 lg:-top-12 lg:-left-36 lg:translate-x-0 bg-white/10 backdrop-blur-2xl border border-white/20 p-4 sm:p-5 rounded-[1.5rem] shadow-2xl w-[200px] xs:w-[220px] sm:w-[240px] z-20"
               >
-                <p className="text-sm font-bold text-white italic leading-relaxed">
+                <p className="text-xs sm:text-sm font-bold text-white italic leading-relaxed text-center lg:text-left">
                   "Bonjour {user.name.split(' ')[0]} ! Prêt à transformer vos objectifs en réalité ?"
                 </p>
-                {/* Clean Right Pointer - Clipped to eliminate double-opacity internal lines */}
+                {/* Mobile Pointer - Bottom Centered (Visible on mobile/tablet) */}
                 <div 
-                  className="absolute right-[-8px] top-1/2 -translate-y-1/2 w-4 h-4 bg-white/10 backdrop-blur-2xl border-t border-r border-white/20 rotate-45" 
+                  className="absolute bottom-[-8px] left-1/2 -translate-x-1/2 w-4 h-4 bg-white/10 backdrop-blur-2xl border-r border-b border-white/20 rotate-45 lg:hidden" 
+                  style={{ clipPath: 'polygon(0% 100%, 100% 100%, 100% 0%)' }}
+                />
+                {/* Desktop Pointer - Right Centered (Visible on desktop) */}
+                <div 
+                  className="absolute right-[-8px] top-1/2 -translate-y-1/2 w-4 h-4 bg-white/10 backdrop-blur-2xl border-t border-r border-white/20 rotate-45 hidden lg:block" 
                   style={{ clipPath: 'polygon(0 0, 100% 0, 100% 100%)' }}
                 />
               </motion.div>
               
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-blue-600/20 rounded-full blur-[80px] -z-10" />
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-60 h-60 sm:w-72 sm:h-72 bg-blue-600/20 rounded-full blur-[80px] -z-10" />
             </motion.div>
           </div>
 
