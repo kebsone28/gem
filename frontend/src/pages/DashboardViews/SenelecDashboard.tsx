@@ -6,30 +6,26 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../store/db';
 import { motion } from 'framer-motion';
 import {
-  ShieldCheck,
-  Zap,
-  CheckCircle2,
-  AlertTriangle,
-  FileText,
-  Eye,
-  TrendingUp,
-  Users,
-  Activity,
-  Award,
-  Settings,
-  BarChart3,
-  Clock,
+   ShieldCheck,
+   Zap,
+   CheckCircle2,
+   AlertTriangle,
+   FileText,
+   Eye,
+   TrendingUp,
+   Award,
+   BarChart3,
 } from 'lucide-react';
 import { PageContainer, PageHeader, ContentArea } from '../../components';
 import {
-  DASHBOARD_ACTION_TILE_PRIMARY,
-  DASHBOARD_ACTION_TILE_SECONDARY,
-  DASHBOARD_MINI_STAT_CARD,
-  DASHBOARD_PRIMARY_BUTTON,
-  DASHBOARD_STICKY_PANEL,
-  StatusBadge,
-  KPICard,
-  ProgressBar,
+   DASHBOARD_ACTION_TILE_PRIMARY,
+   DASHBOARD_ACTION_TILE_SECONDARY,
+   DASHBOARD_MINI_STAT_CARD,
+   DASHBOARD_PRIMARY_BUTTON,
+   DASHBOARD_STICKY_PANEL,
+   StatusBadge,
+   KPICard,
+   ProgressBar,
 } from '../../components/dashboards/DashboardComponents';
 import { fmtNum } from '../../utils/format';
 

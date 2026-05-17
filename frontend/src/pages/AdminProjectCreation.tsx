@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { projectService } from '../services/projectService';
+import { buildProjectCreationPayload, validateProjectCreation } from '../utils/projectValidators';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -178,33 +179,6 @@ const GET_CORE_FEATURES = (): ProjectFeature[] => {
     }));
 };
 
-const normalizeCustomFields = (fields: { id: string; label: string; type: string }[]) =>
-  fields.map((field, index) => {
-    const sanitizedLabel = field.label?.trim() || `Champ ${index + 1}`;
-    const sanitizedId = field.id && field.id !== 'new'
-      ? field.id.trim().replace(/[^a-z0-9_]/gi, '_')
-      : sanitizedLabel.toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^_+|_+$/g, '') || `field_${index}`;
-    return {
-      ...field,
-      label: sanitizedLabel,
-      id: sanitizedId,
-    };
-  });
-
-const validateProjectPayload = (
-  payload: {
-    name: string;
-    client: string;
-    customFields: { id: string; label: string; type: string }[];
-  },
-  selectedFeatures: ProjectFeature[]
-) => {
-  if (!payload.name?.trim()) return 'Le nom du projet est requis.';
-  if (!payload.client?.trim()) return 'Le client / organisation est requis.';
-  if (!selectedFeatures.some(f => f.enabled)) return 'Sélectionnez au moins un module actif.';
-  if (payload.customFields.some(field => !field.label?.trim())) return 'Tous les champs métier doivent avoir un libellé.';
-  return null;
-};
 
 export default function AdminProjectCreation() {
   const { user } = useAuth();
@@ -291,7 +265,7 @@ export default function AdminProjectCreation() {
   };
 
   const handleCreateProject = async () => {
-    const validationError = validateProjectPayload(projectData, selectedFeatures);
+    const validationError = validateProjectCreation(projectData, selectedFeatures);
     if (validationError) {
       toast.error(validationError);
       return;
@@ -299,24 +273,8 @@ export default function AdminProjectCreation() {
 
     setLoading(true);
     try {
-      const config = {
-        enabledModules: selectedFeatures.filter(f => f.enabled).map(f => f.module),
-        country: projectData.country,
-        mode: projectData.mode,
-        sector: selectedTemplate?.id || 'elec_bt',
-        customFields: normalizeCustomFields(projectData.customFields),
-        labels: projectData.labels,
-        complexity,
-        client: projectData.client,
-      };
-
-      const newProject = await projectService.createProject({
-        name: projectData.name.trim(),
-        client: projectData.client.trim(),
-        budget: projectData.budget || 0,
-        status: 'active',
-        config,
-      });
+      const payload = buildProjectCreationPayload(projectData, selectedFeatures, selectedTemplate?.id, complexity);
+      const newProject = await projectService.createProject(payload);
 
       await refreshProjects(newProject.id);
       setActiveProjectId(newProject.id);

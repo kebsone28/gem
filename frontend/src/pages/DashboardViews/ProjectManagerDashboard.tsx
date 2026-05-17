@@ -84,200 +84,196 @@ interface RiskManagementMetrics {
   contingencyReserves: number;
 }
 
+const ViewSelector = ({ selectedView, setSelectedView }: { 
+  selectedView: 'overview' | 'teams' | 'risks' | 'reports';
+  setSelectedView: React.Dispatch<React.SetStateAction<'overview' | 'teams' | 'risks' | 'reports'>>;
+}) => (
+  <div className="flex gap-2 p-1 bg-white/5 rounded-xl">
+    {[
+      { id: 'overview', label: "Vue d'ensemble", icon: BarChart3 },
+      { id: 'teams', label: 'Équipes', icon: Users },
+      { id: 'risks', label: 'Risques', icon: AlertTriangle },
+      { id: 'reports', label: 'Rapports', icon: FileText },
+    ].map(({ id, label, icon: Icon }) => (
+      <button
+        key={id}
+        onClick={() => setSelectedView(id as any)}
+        className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+          selectedView === id
+            ? 'bg-blue-600 text-white'
+            : 'text-slate-400 hover:text-white hover:bg-white/10'
+        }`}
+      >
+        <Icon size={16} />
+        {label}
+      </button>
+    ))}
+  </div>
+);
+
 export default function ProjectManagerDashboard() {
-  const { peut, PERMISSIONS } = usePermissions();
-  const navigate = useNavigate();
-  const { project } = useProject();
-  const households = useLiveQuery(() => db.households.toArray()) || [];
-  const teams = useLiveQuery(() => db.teams.toArray()) || [];
+   const { peut, PERMISSIONS } = usePermissions();
+   const navigate = useNavigate();
+   const { project } = useProject();
+   const households = useLiveQuery(() => db.households.toArray()) || [];
+   const teams = useLiveQuery(() => db.teams.toArray()) || [];
 
-  const [selectedView, setSelectedView] = useState<'overview' | 'teams' | 'risks' | 'reports'>(
-    'overview'
-  );
+   const [selectedView, setSelectedView] = useState<'overview' | 'teams' | 'risks' | 'reports'>(
+     'overview'
+   );
 
-  // Vérification des permissions
-  const _canViewProjects = peut(PERMISSIONS.UI_PROJECTS);
-  const _canManageProjects = peut(PERMISSIONS.MISSIONS_UPDATE);
-  const canViewTeams = peut(PERMISSIONS.UI_TEAMS);
-  const canViewMissions = peut(PERMISSIONS.MISSIONS_READ);
-  const canViewFinances = peut(PERMISSIONS.FINANCE_READ);
-  const canViewReports = peut(PERMISSIONS.TERRAIN_READ);
-  const canManagePlanning = peut(PERMISSIONS.MISSIONS_PLANNING);
-  const [realStats, setRealStats] = useState<any>(null);
-  const [timeline, setTimeline] = useState<any[]>([]);
+   // Vérification des permissions
+   const canViewTeams = peut(PERMISSIONS.UI_TEAMS);
+   const canViewMissions = peut(PERMISSIONS.MISSIONS_READ);
+   const canViewFinances = peut(PERMISSIONS.FINANCE_READ);
+   const canViewReports = peut(PERMISSIONS.TERRAIN_READ);
+   const canManagePlanning = peut(PERMISSIONS.MISSIONS_PLANNING);
+   const [realStats, setRealStats] = useState<any>(null);
 
-  // 📡 FETCH REAL ANALYTICS (PHASE 4 ENGINE)
-  useEffect(() => {
-    if (project?.id) {
-      apiClient.get(`/projects/${project.id}/analytics`)
-        .then(res => {
-          if (res.data?.success) {
-            setRealStats(res.data.data.stats);
-            setTimeline(res.data.data.timeline);
-          }
-        })
-        .catch(err => console.error('Error fetching real analytics:', err));
-    }
-  }, [project?.id]);
+   // 📡 FETCH REAL ANALYTICS (PHASE 4 ENGINE)
+   useEffect(() => {
+     if (project?.id) {
+       apiClient.get(`/projects/${project.id}/analytics`)
+         .then(res => {
+           if (res.data?.success) {
+             setRealStats(res.data.data.stats);
+           }
+         })
+         .catch(err => console.error('Error fetching real analytics:', err));
+     }
+   }, [project?.id]);
 
-  // Calcul des métriques de projet
-  const projectMetrics: ProjectMetrics = useMemo(() => {
-    const total = households.length;
-    const completed = households.filter((h) => h.status === 'Terminé' || h.status === 'APPROVED').length;
-    
-    // Priorité aux stats réelles du serveur si disponibles
-    const overallProgress = realStats?.overallProgress ?? (total > 0 ? Math.round((completed / total) * 100) : 0);
-    const slaScore = realStats?.slaScore ?? 100;
-    const approvalRate = realStats?.approvalRate ?? 100;
+   // Calcul des métriques de projet
+   const projectMetrics: ProjectMetrics = useMemo(() => {
+     const total = households.length;
+     const completed = households.filter((h) => h.status === 'Terminé' || h.status === 'APPROVED').length;
+     
+     // Priorité aux stats réelles du serveur si disponibles
+     const overallProgress = realStats?.overallProgress ?? (total > 0 ? Math.round((completed / total) * 100) : 0);
 
-    const budgetUtilization = Math.min(85, overallProgress);
-    const timelineAdherence = realStats ? realStats.slaScore : (overallProgress >= 70 ? 95 : Math.max(60, overallProgress - 10));
-    const qualityScore = approvalRate;
+     const budgetUtilization = Math.min(85, overallProgress);
+     const timelineAdherence = realStats ? realStats.slaScore : (overallProgress >= 70 ? 95 : Math.max(60, overallProgress - 10));
+     const qualityScore = realStats?.approvalRate ?? 100;
 
-    const activeTeams = teams.filter((t) => t.status === 'active').length;
-    const atRiskTasks = realStats?.activityLevel < 5 ? 10 : 0; // Alerte si peu d'activité
-    const monthlyBurnRate = 125000; 
+     const activeTeams = teams.filter((t) => t.status === 'active').length;
+     const atRiskTasks = realStats?.activityLevel < 5 ? 10 : 0; // Alerte si peu d'activité
+     const monthlyBurnRate = 125000; 
 
-    const projectedCompletion = new Date();
-    projectedCompletion.setMonth(projectedCompletion.getMonth() + (100 - overallProgress) / 20);
+     const projectedCompletion = new Date();
+     projectedCompletion.setMonth(projectedCompletion.getMonth() + (100 - overallProgress) / 20);
 
-    return {
-      overallProgress,
-      budgetUtilization,
-      timelineAdherence,
-      qualityScore,
-      activeTeams,
-      atRiskTasks,
-      monthlyBurnRate,
-      projectedCompletion,
-    };
-  }, [households, teams, realStats]);
+     return {
+       overallProgress,
+       budgetUtilization,
+       timelineAdherence,
+       qualityScore,
+       activeTeams,
+       atRiskTasks,
+       monthlyBurnRate,
+       projectedCompletion,
+     };
+   }, [households, teams, realStats]);
 
-  // Récupération du Pack Sectoriel
-  const sectorPack = useMemo(() => {
-    const sectorId = project?.config?.sector || 'elec_bt';
-    return Object.values(SECTOR_PACKS).find(p => p.id === sectorId) || SECTOR_PACKS.ELECTRICITY_BT;
-  }, [project]);
+   // Récupération du Pack Sectoriel
+   const sectorPack = useMemo(() => {
+     const sectorId = project?.config?.sector || 'elec_bt';
+     return Object.values(SECTOR_PACKS).find(p => p.id === sectorId) || SECTOR_PACKS.ELECTRICITY_BT;
+   }, [project]);
 
-  // Calcul des métriques de coordination d'équipe
-  const teamCoordination: TeamCoordinationMetrics = useMemo(() => {
-    const teamPerformance = teams.map((team) => {
-      const teamHouseholds = households.filter((h) => h.assignedTeams?.includes(team.id));
-      const completed = teamHouseholds.filter((h) => h.status === 'Terminé').length;
-      const progress =
-        teamHouseholds.length > 0 ? Math.round((completed / teamHouseholds.length) * 100) : 0;
-      const efficiency = Math.min(100, progress + 10); // +10% déterministe — à brancher sur API
-      const workload = teamHouseholds.length;
+   // Calcul des métriques de coordination d'équipe
+   const teamCoordination: TeamCoordinationMetrics = useMemo(() => {
+     const teamPerformance = teams.map((team) => {
+       const teamHouseholds = households.filter((h) => h.assignedTeams?.includes(team.id));
+       const completed = teamHouseholds.filter((h) => h.status === 'Terminé').length;
+       const progress =
+         teamHouseholds.length > 0 ? Math.round((completed / teamHouseholds.length) * 100) : 0;
+       const efficiency = Math.min(100, progress + 10); // +10% déterministe — à brancher sur API
+       const workload = teamHouseholds.length;
 
-      return {
-        id: team.id,
-        name: team.name,
-        progress,
-        efficiency,
-        workload,
-      };
-    });
+       return {
+         id: team.id,
+         name: team.name,
+         progress,
+         efficiency,
+         workload,
+       };
+     });
 
-    // Simulation des dépendances
-    const dependencies = [
-      { from: 'team_macons', to: 'team_reseau', status: 'ok' as const },
-      { from: 'team_reseau', to: 'team_interieur', status: 'warning' as const },
-      { from: 'team_interieur', to: 'team_livraison', status: 'ok' as const },
-    ];
+     // Simulation des dépendances
+     const dependencies = [
+       { from: 'team_macons', to: 'team_reseau', status: 'ok' as const },
+       { from: 'team_reseau', to: 'team_interieur', status: 'warning' as const },
+       { from: 'team_interieur', to: 'team_livraison', status: 'ok' as const },
+     ];
 
-    const resourceAllocation = teams.map((team) => {
-      const allocated = Math.round(team.capacity * 0.8);
-      return {
-        teamId: team.id,
-        allocated,
-        capacity: team.capacity,
-        utilization:
-          team.capacity > 0 ? Math.min(100, Math.round((allocated / team.capacity) * 100)) : 80,
-      };
-    });
+     const resourceAllocation = teams.map((team) => {
+       const allocated = Math.round(team.capacity * 0.8);
+       return {
+         teamId: team.id,
+         allocated,
+         capacity: team.capacity,
+         utilization:
+           team.capacity > 0 ? Math.min(100, Math.round((allocated / team.capacity) * 100)) : 80,
+       };
+     });
 
-    return { teamPerformance, dependencies, resourceAllocation };
-  }, [teams, households]);
+     return { teamPerformance, dependencies, resourceAllocation };
+   }, [teams, households]);
 
-  // Calcul des métriques de gestion des risques
-  const riskManagement: RiskManagementMetrics = useMemo(() => {
-    const identifiedRisks = [
-      {
-        id: 'risk_1',
-        title: 'Retard livraison matériel',
-        severity: 'medium' as const,
-        probability: 0.3,
-        impact: 0.7,
-        status: 'open' as const,
-      },
-      {
-        id: 'risk_2',
-        title: "Pénurie d'électriciens qualifiés",
-        severity: 'high' as const,
-        probability: 0.2,
-        impact: 0.8,
-        status: 'mitigated' as const,
-      },
-      {
-        id: 'risk_3',
-        title: 'Conditions météorologiques défavorables',
-        severity: 'low' as const,
-        probability: 0.4,
-        impact: 0.3,
-        status: 'accepted' as const,
-      },
-    ];
+   // Calcul des métriques de gestion des risques
+   const riskManagement: RiskManagementMetrics = useMemo(() => {
+     const identifiedRisks = [
+       {
+         id: 'risk_1',
+         title: 'Retard livraison matériel',
+         severity: 'medium' as const,
+         probability: 0.3,
+         impact: 0.7,
+         status: 'open' as const,
+       },
+       {
+         id: 'risk_2',
+         title: "Pénurie d'électriciens qualifiés",
+         severity: 'high' as const,
+         probability: 0.2,
+         impact: 0.8,
+         status: 'mitigated' as const,
+       },
+       {
+         id: 'risk_3',
+         title: 'Conditions météorologiques défavorables',
+         severity: 'low' as const,
+         probability: 0.4,
+         impact: 0.3,
+         status: 'accepted' as const,
+       },
+     ];
 
-    const mitigationPlans = [
-      {
-        riskId: 'risk_1',
-        plan: 'Diversification fournisseurs + stock de sécurité',
-        owner: 'Logistique',
-        dueDate: new Date(new Date().setDate(new Date().getDate() + 7)),
-      },
-      {
-        riskId: 'risk_2',
-        plan: 'Formation accélérée + recrutement',
-        owner: 'RH',
-        dueDate: new Date(new Date().setDate(new Date().getDate() + 14)),
-      },
-    ];
+     const mitigationPlans = [
+       {
+         riskId: 'risk_1',
+         plan: 'Diversification fournisseurs + stock de sécurité',
+         owner: 'Logistique',
+         dueDate: new Date(new Date().setDate(new Date().getDate() + 7)),
+       },
+       {
+         riskId: 'risk_2',
+         plan: 'Formation accélérée + recrutement',
+         owner: 'RH',
+         dueDate: new Date(new Date().setDate(new Date().getDate() + 14)),
+       },
+     ];
 
-    const contingencyReserves = 15; // 15% de budget
+     const contingencyReserves = 15; // 15% de budget
 
-    return { identifiedRisks, mitigationPlans, contingencyReserves };
-  }, []);
+     return { identifiedRisks, mitigationPlans, contingencyReserves };
+   }, []);
 
-  const scrollToSection = (sectionId: string) => {
-    document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
+   const scrollToSection = (sectionId: string) => {
+     document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+   };
 
-  // Composants de navigation
-  const ViewSelector = () => (
-    <div className="flex gap-2 p-1 bg-white/5 rounded-xl">
-      {[
-        { id: 'overview', label: "Vue d'ensemble", icon: BarChart3 },
-        { id: 'teams', label: 'Équipes', icon: Users },
-        { id: 'risks', label: 'Risques', icon: AlertTriangle },
-        { id: 'reports', label: 'Rapports', icon: FileText },
-      ].map(({ id, label, icon: Icon }) => (
-        <button
-          key={id}
-          onClick={() => setSelectedView(id as any)}
-          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-            selectedView === id
-              ? 'bg-blue-600 text-white'
-              : 'text-slate-400 hover:text-white hover:bg-white/10'
-          }`}
-        >
-          <Icon size={16} />
-          {label}
-        </button>
-      ))}
-    </div>
-  );
-
-  return (
+   return (
     <PageContainer className="min-h-screen bg-slate-950 text-white selection:bg-blue-500/30">
       <div className="absolute top-0 left-0 w-full h-[500px] bg-gradient-to-b from-blue-600/10 via-blue-600/5 to-transparent pointer-events-none" />
 

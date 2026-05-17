@@ -111,9 +111,32 @@ const resolveMapStyle = (
 const resolveFallbackStyle = (): StyleSpecification =>
   withStyleSource(cloneStyle(MAP_STYLE_FALLBACK_RASTER), FALLBACK_STYLE_SOURCE) as StyleSpecification;
 
+const annotateStyleSource = (
+  map: maplibregl.Map,
+  source: TerrainMapStyle | typeof FALLBACK_STYLE_SOURCE
+) => {
+  try {
+    const style = map.getStyle();
+    if (style && typeof style !== 'string') {
+      (style as any).metadata = {
+        ...((style as any).metadata || {}),
+        source,
+      };
+    }
+  } catch {
+    // Ignore failures while the style is not yet fully available
+  }
+};
+
 const getCurrentStyleSource = (map: maplibregl.Map | null): string | null => {
   if (!map || (map as any)._removed) return null;
-  return ((map.getStyle() as unknown as { metadata?: { source?: string } })?.metadata?.source || null);
+  try {
+    const style = map.getStyle();
+    if (!style || typeof style === 'string') return null;
+    return ((style as unknown as { metadata?: { source?: string } })?.metadata?.source || null);
+  } catch {
+    return null;
+  }
 };
 
 const isDomNotFoundError = (error: unknown) =>
@@ -591,6 +614,7 @@ const MapLibreVectorMap: React.FC<any> = ({
             style: resolveFallbackStyle() as any,
           });
           setMapInitError(null);
+          lastTargetSourceRef.current = FALLBACK_STYLE_SOURCE;
           toast.error('Style principal indisponible, carte chargée en mode de secours.');
         } catch (fallbackError: any) {
           logger.error('[Terrain] ❌ Fallback MapLibre init failed:', fallbackError);
@@ -648,6 +672,11 @@ const MapLibreVectorMap: React.FC<any> = ({
 
       const checkAndLoad = async () => {
         if (map.isStyleLoaded()) {
+          const source = getCurrentStyleSource(map) || lastTargetSourceRef.current || mapStyleRef.current;
+          if (source) {
+            annotateStyleSource(map, source as TerrainMapStyle | typeof FALLBACK_STYLE_SOURCE);
+            lastTargetSourceRef.current = source;
+          }
           setStyleIsReady(true);
           await registerIcons(map);
           setIconsReady(true);
@@ -672,6 +701,11 @@ const MapLibreVectorMap: React.FC<any> = ({
 
         if (!isMounted || (map as any)._removed) return;
 
+        const source = getCurrentStyleSource(map) || lastTargetSourceRef.current || mapStyleRef.current;
+        if (source) {
+          annotateStyleSource(map, source as TerrainMapStyle | typeof FALLBACK_STYLE_SOURCE);
+        }
+
         setIconsReady(true);
         setIsMapReady(true);
         lastTargetSourceRef.current = getCurrentStyleSource(map) || mapStyleRef.current;
@@ -688,10 +722,11 @@ const MapLibreVectorMap: React.FC<any> = ({
 
         logger.error('[Terrain] MapLibre runtime error:', event?.error || event);
 
+        const currentSource = getCurrentStyleSource(map) || lastTargetSourceRef.current;
         const shouldFallback =
           !map.isStyleLoaded() &&
           mapStyleRef.current !== 'satellite' &&
-          getCurrentStyleSource(map) !== FALLBACK_STYLE_SOURCE &&
+          currentSource !== FALLBACK_STYLE_SOURCE &&
           /style|glyph|sprite|validation|source|layer|load/i.test(String(message));
 
         if (shouldFallback) {

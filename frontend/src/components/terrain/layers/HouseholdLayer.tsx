@@ -643,6 +643,7 @@ const HouseholdLayer: React.FC<HouseholdLayerProps> = ({
   // ─── Click & Hover interactions ───────────────────────────────
   const setupClickHandlers = useCallback((map: maplibregl.Map) => {
     const INTERACTIVE_LAYERS = ['households-glow-layer', 'households-local-layer'];
+    const cleanupHandlers: Array<() => void> = [];
 
     // Ensure popup instance
     if (!popupRef.current) {
@@ -685,6 +686,7 @@ const HouseholdLayer: React.FC<HouseholdLayerProps> = ({
         }
       };
       map.on('click', layerId, onClick);
+      cleanupHandlers.push(() => map.off('click', layerId, onClick));
     });
 
     // Fallback: map-level click with queryRenderedFeatures (wider hit area)
@@ -700,6 +702,7 @@ const HouseholdLayer: React.FC<HouseholdLayerProps> = ({
       if (features.length > 0) openHousehold(features[0]);
     };
     map.on('click', onMapClick);
+    cleanupHandlers.push(() => map.off('click', onMapClick));
 
     const onZoneClick = (e: any) => {
       const feature = e.features?.[0];
@@ -719,22 +722,40 @@ const HouseholdLayer: React.FC<HouseholdLayerProps> = ({
       'cluster-zone-fill-blocked',
       'cluster-zone-fill-pending',
       'cluster-zone-fill-compliant',
-      'cluster-zone-fill-default'
+      'cluster-zone-fill-default',
     ];
     [...fillLayerIds, 'cluster-zone-badge-shell', 'cluster-zone-name-labels', 'cluster-zone-labels'].forEach((layerId) => {
-      map.on('click', layerId, onZoneClick);
-      map.on('mouseenter', layerId, () => {
+      const onLayerClick = (e: any) => onZoneClick(e);
+      const onEnter = () => {
         map.getCanvas().style.cursor = 'pointer';
-      });
-      map.on('mouseleave', layerId, () => {
+      };
+      const onLeave = () => {
         map.getCanvas().style.cursor = '';
-      });
+      };
+
+      map.on('click', layerId, onLayerClick);
+      map.on('mouseenter', layerId, onEnter);
+      map.on('mouseleave', layerId, onLeave);
+
+      cleanupHandlers.push(() => map.off('click', layerId, onLayerClick));
+      cleanupHandlers.push(() => map.off('mouseenter', layerId, onEnter));
+      cleanupHandlers.push(() => map.off('mouseleave', layerId, onLeave));
     });
 
     // Cursor on hover
     INTERACTIVE_LAYERS.forEach((layerId) => {
-      map.on('mouseenter', layerId, () => { map.getCanvas().style.cursor = 'pointer'; });
-      map.on('mouseleave', layerId, () => { map.getCanvas().style.cursor = ''; });
+      const onEnter = () => {
+        map.getCanvas().style.cursor = 'pointer';
+      };
+      const onLeave = () => {
+        map.getCanvas().style.cursor = '';
+      };
+
+      map.on('mouseenter', layerId, onEnter);
+      map.on('mouseleave', layerId, onLeave);
+
+      cleanupHandlers.push(() => map.off('mouseenter', layerId, onEnter));
+      cleanupHandlers.push(() => map.off('mouseleave', layerId, onLeave));
     });
 
     // Popup detail button listener
@@ -746,12 +767,10 @@ const HouseholdLayer: React.FC<HouseholdLayerProps> = ({
       }
     };
     window.addEventListener('map:select-household', handleDetailEvent);
+    cleanupHandlers.push(() => window.removeEventListener('map:select-household', handleDetailEvent));
 
     return () => {
-      window.removeEventListener('map:select-household', handleDetailEvent);
-      [...fillLayerIds, 'cluster-zone-badge-shell', 'cluster-zone-name-labels', 'cluster-zone-labels'].forEach((layerId) => {
-        map.off('click', layerId, onZoneClick);
-      });
+      cleanupHandlers.forEach((dispose) => dispose());
       popupRef.current?.remove();
     };
   }, [setSelectedHouseholdId]);
