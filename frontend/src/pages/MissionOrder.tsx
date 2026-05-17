@@ -14,6 +14,7 @@ import {
   PanelLeftOpen,
   Maximize2,
   Minimize2,
+  List,
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import logger from '../utils/logger';
