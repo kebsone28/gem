@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 /**
  * useMapClustering.ts
  *
@@ -12,8 +12,6 @@
 import { useCallback, useMemo, useRef } from 'react';
 import maplibregl from 'maplibre-gl';
 import logger from '../../utils/logger';
-import convex from '@turf/convex';
-import { featureCollection, point } from '@turf/helpers';
 
 const ZONE_COLORS = {
   critical: { fill: '#7F1D1D', stroke: '#FCA5A5', halo: '#EF4444' },
@@ -158,16 +156,6 @@ const accumulateZoneMetrics = (acc: Record<string, any>, properties: Record<stri
 };
 
 const buildHullGeometry = (coordinates: [number, number][]) => {
-  if (coordinates.length >= 3) {
-    const points = featureCollection(coordinates.map((coords) => point(coords)));
-    const hull = convex(points);
-    if (hull?.geometry?.type === 'Polygon') {
-      return {
-        type: 'Polygon' as const,
-        coordinates: [simplifyClosedRing((hull.geometry.coordinates?.[0] || []) as number[][])],
-      };
-    }
-  }
 
   const bbox = computeBBox(coordinates);
   if (!bbox) return null;

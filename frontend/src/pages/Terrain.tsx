@@ -393,7 +393,7 @@ const Terrain: React.FC = () => {
 
     const lng = Number(h.location?.coordinates?.[0] ?? h.longitude);
     const lat = Number(h.location?.coordinates?.[1] ?? h.latitude);
-    
+
     if (!Number.isFinite(lng) || !Number.isFinite(lat) || Math.abs(lng) > 180 || Math.abs(lat) > 90) {
       return;
     }
@@ -634,8 +634,8 @@ const Terrain: React.FC = () => {
       const a =
         Math.sin(dLat / 2) ** 2 +
         Math.cos((lat1 * Math.PI) / 180) *
-          Math.cos((lat2 * Math.PI) / 180) *
-          Math.sin(dLon / 2) ** 2;
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLon / 2) ** 2;
       return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     };
 
@@ -693,8 +693,8 @@ const Terrain: React.FC = () => {
       (selectedHousehold.koboSync as any)?.region;
     const pool = hRegion
       ? (allGrappes as any[]).filter(
-          (g: any) => (g.region && g.region.toLowerCase() === hRegion.toLowerCase()) || !g.region
-        )
+        (g: any) => (g.region && g.region.toLowerCase() === hRegion.toLowerCase()) || !g.region
+      )
       : (allGrappes as any[]);
 
     let nearest: GrappeDefinition | null = null;
