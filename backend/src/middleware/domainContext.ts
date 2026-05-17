@@ -65,15 +65,39 @@ export const domainContext = async (
       return;
     }
 
-    // Get organization from auth middleware (assumes auth is done before)
-    const organizationId = req.user?.organizationId || (req.headers['x-org-id'] as string);
+    // Get organization ID from req.user
+    let organizationId = req.user?.organizationId || (req.headers['x-org-id'] as string);
+
+    // If req.user is not yet populated (e.g. global middleware running before authProtect),
+    // try to decode the token directly to extract the organizationId.
+    if (!organizationId) {
+      let token;
+      const authHeader = req.headers.authorization;
+
+      if (authHeader && authHeader.startsWith('Bearer')) {
+        token = authHeader.split(' ')[1];
+      } else if (req.cookies && req.cookies.accessToken) {
+        token = req.cookies.accessToken;
+      }
+
+      if (token && token !== 'undefined' && token !== 'null' && token.length >= 20) {
+        try {
+          const { verifyAccessToken } = await import('../core/utils/jwt.js');
+          const decoded = verifyAccessToken(token);
+          if (decoded && decoded.organizationId) {
+            organizationId = decoded.organizationId;
+          }
+        } catch (err) {
+          // Ignore token decoding errors here; authProtect will handle it later
+        }
+      }
+    }
 
     if (!organizationId) {
-      res.status(401).json({
-        error: 'Unauthorized',
-        message: 'Organization ID not found in request',
-      });
-      return;
+      // If no organizationId is resolved, do not block with 401.
+      // Unauthenticated routes (pings, login) should load freely,
+      // while authenticated routes will be blocked by authProtect later.
+      return next();
     }
 
     // Load domain config
