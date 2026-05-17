@@ -321,7 +321,7 @@ export class ProjectMutationQueue {
 
             const backoff = Math.min(1000 * Math.pow(2, job.retries), 30000);
             await new Promise((resolve) => setTimeout(resolve, backoff));
-            break; 
+            break;
           }
 
           jobs = await db.syncQueue.orderBy('createdAt').toArray();

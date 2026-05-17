@@ -10,6 +10,8 @@ import {
   ShieldCheck,
   Users,
   AlertTriangle,
+  TrendingUp,
+  Sparkles,
 } from 'lucide-react';
 import { getMissionReadiness } from '../../services/missionValidation';
 import { verifyIntegrity } from '../../utils/crypto';
@@ -49,9 +51,9 @@ export const MissionStatusWidget: React.FC<MissionStatusWidgetProps> = ({
 
   React.useEffect(() => {
     if (data.integrityHash) {
-      verifyIntegrity({ formData: data, members, version }, data.integrityHash).then(isValid => {
-        setIsIntegrityValid(isValid);
-      });
+      verifyIntegrity({ formData: data, members, version }, data.integrityHash).then((v) =>
+        setIsIntegrityValid(v)
+      );
     } else {
       setIsIntegrityValid(null);
     }
@@ -64,36 +66,39 @@ export const MissionStatusWidget: React.FC<MissionStatusWidgetProps> = ({
     isSubmitted
   );
 
-  const statusConfig: Record<string, { label: string; color: string; dot: string; glow: string }> = {
-    draft:     { label: 'Brouillon', color: 'text-slate-400',  dot: 'bg-slate-500',   glow: 'bg-slate-500/10' },
-    ready:     { label: 'Prêt',      color: 'text-indigo-400', dot: 'bg-indigo-500',  glow: 'bg-indigo-500/10' },
-    submitted: { label: 'Soumise',   color: 'text-amber-400',  dot: 'bg-amber-500',   glow: 'bg-amber-500/10' },
-    certified: { label: 'Officielle',color: 'text-emerald-400',dot: 'bg-emerald-500', glow: 'bg-emerald-500/10' },
-    executed:  { label: 'Exécutée', color: 'text-emerald-400', dot: 'bg-emerald-400', glow: 'bg-emerald-500/10' },
+  const displayPct = effectiveCertified ? 100 : Math.round(percentage);
+
+  /* ─ Status → visual config ─ */
+  const statusCfg: Record<string, { label: string; color: string; dot: string; bar: string; glow: string }> = {
+    draft:     { label: 'Brouillon',  color: 'text-slate-400',   dot: 'bg-slate-500',   bar: 'bg-slate-500',   glow: 'from-slate-500/0' },
+    ready:     { label: 'Prêt',       color: 'text-indigo-400',  dot: 'bg-indigo-500',  bar: 'bg-indigo-500',  glow: 'from-indigo-500/10' },
+    submitted: { label: 'Soumise',    color: 'text-amber-400',   dot: 'bg-amber-500',   bar: 'bg-amber-400',   glow: 'from-amber-500/10' },
+    certified: { label: 'Officielle', color: 'text-emerald-400', dot: 'bg-emerald-500', bar: 'bg-emerald-500', glow: 'from-emerald-500/10' },
+    executed:  { label: 'Exécutée',  color: 'text-teal-400',    dot: 'bg-teal-400',    bar: 'bg-teal-400',    glow: 'from-teal-500/10' },
   };
 
-  const healthColors = {
-    optimal:  { text: 'text-emerald-400', bar: 'bg-emerald-500', bg: 'bg-emerald-500/10', label: 'Optimal' },
-    warning:  { text: 'text-amber-400',   bar: 'bg-amber-400',   bg: 'bg-amber-500/10',   label: 'Vigilance' },
-    critical: { text: 'text-rose-400',    bar: 'bg-rose-500',    bg: 'bg-rose-500/10',     label: 'Critique' },
+  const healthCfg = {
+    optimal:  { text: 'text-emerald-400', bar: 'bg-emerald-500', bg: 'bg-emerald-500/8 border-emerald-500/15', label: 'Optimal' },
+    warning:  { text: 'text-amber-400',   bar: 'bg-amber-400',   bg: 'bg-amber-500/8 border-amber-500/15',     label: 'Vigilance' },
+    critical: { text: 'text-rose-400',    bar: 'bg-rose-500',    bg: 'bg-rose-500/8 border-rose-500/15',       label: 'Critique' },
   }[healthStatus];
 
-  const cfg = statusConfig[status] || statusConfig.draft;
+  const cfg = statusCfg[status] || statusCfg.draft;
   const totalIndemnites = members.reduce((s, m) => s + (m.dailyIndemnity || 0) * (m.days || 1), 0);
 
   return (
-    <div className="glass-card !p-4 !rounded-2xl space-y-3 relative overflow-hidden">
-      {/* Glow */}
-      <div className={`absolute -top-6 -right-6 w-24 h-24 ${cfg.glow} blur-3xl rounded-full pointer-events-none`} />
+    <div className="relative overflow-hidden rounded-2xl bg-[#0d1117] border border-white/[0.07] p-4 space-y-3.5">
+      {/* Ambient glow */}
+      <div className={`absolute -top-10 -right-10 w-32 h-32 bg-gradient-radial ${cfg.glow} to-transparent blur-3xl pointer-events-none rounded-full`} />
 
-      {/* Header : sync + statut */}
+      {/* ── Header ── */}
       <div className="flex items-center justify-between relative z-10">
         <div className="flex items-center gap-1.5">
           {isSyncing
-            ? <RefreshCw size={10} className="text-indigo-400 animate-spin" />
-            : <span className={`w-1.5 h-1.5 rounded-full ${isDirty ? 'bg-amber-400' : 'bg-emerald-500'}`} />
+            ? <RefreshCw size={9} className="text-indigo-400 animate-spin" />
+            : <span className={`w-1.5 h-1.5 rounded-full ${isDirty ? 'bg-amber-400 shadow-sm shadow-amber-400/50' : 'bg-emerald-500 shadow-sm shadow-emerald-500/50'}`} />
           }
-          <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">
+          <span className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-600">
             {isSyncing ? 'Sync…' : isDirty ? 'Modifié' : 'Synchronisé'}
           </span>
         </div>
@@ -103,79 +108,107 @@ export const MissionStatusWidget: React.FC<MissionStatusWidgetProps> = ({
         </div>
       </div>
 
-      {/* Health Score compact */}
-      <div className={`flex items-center gap-3 px-3 py-2 rounded-xl ${healthColors.bg} relative z-10`}>
-        <div className="flex-1">
-          <div className="flex justify-between items-baseline mb-1">
-            <span className="text-[8px] font-black uppercase tracking-widest text-slate-500">Préparation</span>
-            <span className={`text-sm font-black ${healthColors.text}`}>
-              {effectiveCertified ? 100 : percentage.toFixed(0)}%
-            </span>
+      {/* ── Progress Ring + label ── */}
+      <div className={`flex items-center gap-3 p-3 rounded-xl border ${healthCfg.bg} relative z-10`}>
+        {/* Circular mini-ring */}
+        <div className="relative w-10 h-10 shrink-0">
+          <svg viewBox="0 0 36 36" className="w-10 h-10 -rotate-90">
+            <circle cx="18" cy="18" r="14" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="3" />
+            <circle
+              cx="18" cy="18" r="14"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeDasharray={`${(displayPct / 100) * 87.96} 87.96`}
+              className={healthCfg.text}
+              style={{ transition: 'stroke-dasharray 0.6s ease' }}
+            />
+          </svg>
+          <span className={`absolute inset-0 flex items-center justify-center text-[9px] font-black ${healthCfg.text}`}>
+            {displayPct}%
+          </span>
+        </div>
+
+        <div className="flex-1 min-w-0">
+          <div className="flex justify-between items-baseline mb-1.5">
+            <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Préparation</span>
+            <span className={`text-[9px] font-black ${healthCfg.text}`}>{healthCfg.label}</span>
           </div>
-          <div className="h-1 bg-slate-800/30 dark:bg-white/5 rounded-full overflow-hidden">
+          <div className="h-1 bg-white/5 rounded-full overflow-hidden">
             <div
-              className={`h-full rounded-full transition-all duration-700 ${healthColors.bar} mission-status-bar`}
-              style={{ '--status-width': `${effectiveCertified ? 100 : percentage}%` } as React.CSSProperties}
+              className={`h-full rounded-full transition-all duration-700 ${healthCfg.bar} mission-status-bar`}
+              style={{ '--status-width': `${displayPct}%` } as React.CSSProperties}
             />
           </div>
         </div>
-        <Activity size={14} className={`${healthColors.text} flex-shrink-0`} />
+        <Activity size={12} className={`${healthCfg.text} shrink-0`} />
       </div>
 
-      {/* KPIs inline */}
+      {/* ── KPI Row ── */}
       <div className="grid grid-cols-2 gap-2 relative z-10">
-        <div className="px-3 py-2 bg-slate-50 dark:bg-white/4 rounded-xl">
-          <div className="flex items-center gap-1 mb-0.5">
-            <Users size={9} className="text-slate-400" />
-            <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">Effectif</span>
+        <div className="bg-white/[0.03] border border-white/[0.05] rounded-xl px-3 py-2.5">
+          <div className="flex items-center gap-1 mb-1">
+            <Users size={9} className="text-slate-600" />
+            <span className="text-[8px] font-black uppercase tracking-widest text-slate-600">Effectif</span>
           </div>
-          <span className="text-sm font-black text-slate-900 dark:text-white">{members.length}</span>
-          <span className="text-[8px] text-slate-400 font-bold ml-1">pers.</span>
+          <div className="flex items-baseline gap-1">
+            <span className="text-[18px] font-black text-white leading-none">{members.length}</span>
+            <span className="text-[8px] text-slate-500 font-bold">pers.</span>
+          </div>
         </div>
-        <div className="px-3 py-2 bg-slate-50 dark:bg-white/4 rounded-xl">
-          <div className="flex items-center gap-1 mb-0.5">
-            <Zap size={9} className={budgetVariance > 10 ? 'text-rose-400' : 'text-emerald-400'} />
-            <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">Indem.</span>
+        <div className="bg-white/[0.03] border border-white/[0.05] rounded-xl px-3 py-2.5">
+          <div className="flex items-center gap-1 mb-1">
+            <Zap size={9} className={budgetVariance > 10 ? 'text-rose-500' : 'text-emerald-500'} />
+            <span className="text-[8px] font-black uppercase tracking-widest text-slate-600">Indem.</span>
           </div>
-          <span className="text-[10px] font-black text-slate-900 dark:text-white font-mono">
-            {new Intl.NumberFormat('fr-FR', { notation: 'compact' }).format(totalIndemnites)}
-          </span>
-          <span className="text-[7px] text-slate-400 font-bold ml-1">XOF</span>
+          <div className="flex items-baseline gap-1">
+            <span className="text-[13px] font-black text-white leading-none font-mono">
+              {new Intl.NumberFormat('fr-FR', { notation: 'compact' }).format(totalIndemnites)}
+            </span>
+            <span className="text-[7px] text-slate-500 font-bold">XOF</span>
+          </div>
         </div>
       </div>
 
-      {/* Intégrité */}
+      {/* ── Integrity badge ── */}
       {isIntegrityValid !== null && (
-        <div className={`flex items-center gap-2 px-2.5 py-1.5 rounded-xl border border-dashed relative z-10 ${
-          isIntegrityValid ? 'bg-indigo-500/8 border-indigo-500/20' : 'bg-rose-500/8 border-rose-500/20'
-        }`}>
+        <div
+          className={`flex items-center gap-2 px-2.5 py-2 rounded-xl border relative z-10 ${
+            isIntegrityValid
+              ? 'bg-indigo-500/6 border-indigo-500/15'
+              : 'bg-rose-500/8 border-rose-500/20'
+          }`}
+        >
           <ShieldCheck size={10} className={isIntegrityValid ? 'text-indigo-400' : 'text-rose-400'} />
           <span className={`text-[8px] font-black uppercase tracking-widest ${isIntegrityValid ? 'text-indigo-400' : 'text-rose-400'}`}>
-            {isIntegrityValid ? 'Intégrité OK' : 'Données altérées'}
+            {isIntegrityValid ? 'Intégrité vérifiée' : 'Données altérées'}
           </span>
         </div>
       )}
 
-      {/* Checklist préparation */}
+      {/* ── Next steps checklist ── */}
       {nextSteps.length > 0 && (
-        <div className="pt-2 border-t border-slate-100 dark:border-white/5 space-y-1 relative z-10">
-          <div className="flex items-center gap-1.5 mb-1">
+        <div className="border-t border-white/[0.05] pt-3 space-y-1.5 relative z-10">
+          <div className="flex items-center gap-1.5 mb-2">
             <AlertTriangle size={9} className="text-amber-400" />
-            <span className="text-[8px] font-black uppercase tracking-widest text-slate-500">À compléter</span>
+            <span className="text-[8px] font-black uppercase tracking-widest text-slate-600">À compléter</span>
           </div>
-          {nextSteps.slice(0, 2).map((step: string, i: number) => (
-            <div key={i} className="flex items-start gap-1.5">
-              <Clock size={8} className="text-slate-400 mt-0.5 flex-shrink-0" />
-              <span className="text-[9px] text-slate-500 dark:text-slate-400 font-medium leading-tight">{step}</span>
+          {nextSteps.slice(0, 3).map((step: string, i: number) => (
+            <div key={i} className="flex items-start gap-2">
+              <div className="w-3.5 h-3.5 rounded-full border border-white/10 flex items-center justify-center shrink-0 mt-[1px]">
+                <Clock size={7} className="text-slate-500" />
+              </div>
+              <span className="text-[9px] text-slate-500 font-medium leading-tight">{step}</span>
             </div>
           ))}
         </div>
       )}
 
-      {/* Version + dernière sync */}
-      <div className="flex justify-between items-center pt-1 border-t border-slate-100 dark:border-white/5 relative z-10">
-        <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">v{version}</span>
-        <span className="text-[8px] text-slate-500 truncate max-w-[100px]">{lastSync}</span>
+      {/* ── Footer: version + last sync ── */}
+      <div className="flex justify-between items-center pt-2 border-t border-white/[0.05] relative z-10">
+        <span className="text-[8px] font-black text-slate-700 uppercase tracking-widest">V{version}</span>
+        <span className="text-[8px] text-slate-700 font-medium truncate max-w-[110px]">{lastSync}</span>
       </div>
     </div>
   );

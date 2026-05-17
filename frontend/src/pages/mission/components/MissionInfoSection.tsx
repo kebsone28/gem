@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React from 'react';
-import { ClipboardList, Calculator } from 'lucide-react';
+import { Hash, MapPin, CalendarDays, CalendarCheck, Target, Truck, ArrowRight, ArrowLeft, Calculator, Lock } from 'lucide-react';
 import type { MissionOrderData } from '../core/missionTypes';
 
 interface MissionInfoSectionProps {
@@ -9,197 +9,185 @@ interface MissionInfoSectionProps {
   onUpdateField: (field: keyof MissionOrderData, value: any) => void;
 }
 
+/* ── Reusable labelled field ── */
+const Field = ({
+  label, icon: Icon, children, locked, span = '',
+}: {
+  label: string;
+  icon: React.ElementType;
+  children: React.ReactNode;
+  locked?: boolean;
+  span?: string;
+}) => (
+  <div className={`group flex flex-col gap-1.5 ${span}`}>
+    <label className="flex items-center gap-1.5 text-[8px] font-black uppercase tracking-[0.18em] text-slate-600 ml-0.5">
+      <Icon size={9} className="opacity-60" />
+      {label}
+      {locked && <Lock size={7} className="ml-auto text-slate-700" />}
+    </label>
+    {children}
+  </div>
+);
+
+const inputCls = (locked: boolean) =>
+  `w-full bg-white/[0.03] border ${
+    locked
+      ? 'border-white/[0.05] text-slate-500 cursor-not-allowed'
+      : 'border-white/[0.07] text-white focus:border-indigo-500/50 focus:bg-indigo-500/[0.04] focus:ring-0'
+  } rounded-xl px-3 py-2.5 text-[11px] font-semibold outline-none transition-all placeholder:text-slate-700`;
+
 /**
- * COMPOSANT : Section Informations de Base
- * Gère le numéro d'ordre, la destination et les dates.
+ * COMPOSANT : Section Informations de Base — v2 redesign
  */
 export const MissionInfoSection: React.FC<MissionInfoSectionProps> = ({
   formData,
   isReadOnly = false,
   onUpdateField,
 }) => {
-  const isLocked = isReadOnly || formData.isCertified || formData.isSubmitted;
-  
+  const isLocked = isReadOnly || !!formData.isCertified || !!formData.isSubmitted;
+
   const officialOrderNumber =
     formData.orderNumber && !String(formData.orderNumber).startsWith('TEMP-')
       ? formData.orderNumber
       : (formData as any).officialNumber || '';
 
-  const inputClass = (locked: boolean) =>
-    `w-full ${locked 
-      ? 'bg-slate-900/40 cursor-not-allowed opacity-80 font-black text-slate-400' 
-      : 'bg-slate-950/40 text-white dark:text-indigo-100'
-    } border border-white/10 rounded-xl px-3 py-2.5 text-[11px] font-bold focus:ring-2 ring-indigo-500/20 transition-all outline-none shadow-inner`;
-
   return (
-    <section className="glass-card !p-5 sm:!p-8 !rounded-[2rem] space-y-6">
-      {/* Header Section */}
-      <div className="flex items-center justify-between pb-6 border-b border-white/5 relative z-10">
-        <div className="flex items-center gap-4">
-          <div className="p-3 bg-indigo-500/10 rounded-2xl shadow-inner border border-indigo-500/20">
-            <ClipboardList className="text-indigo-400" size={20} />
+    <section className="relative overflow-hidden rounded-[1.75rem] bg-[#0d1117] border border-white/[0.07] p-5 sm:p-7 space-y-6">
+      {/* Subtle top-left glow */}
+      <div className="absolute -top-10 -left-10 w-36 h-36 bg-indigo-500/5 blur-3xl rounded-full pointer-events-none" />
+
+      {/* ── Header ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-white/[0.06] relative z-10">
+        <div className="flex items-center gap-3.5">
+          <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center shrink-0">
+            <Target size={18} className="text-indigo-400" />
           </div>
           <div>
-            <h2 className="!text-[11px] font-black text-white uppercase tracking-[0.2em] text-clamp-title">
-              Configuration Officielle
-            </h2>
-            <p className="text-[9px] font-bold text-slate-400 uppercase mt-1 tracking-widest">
-              Détails administratifs et logistiques
-            </p>
+            <h2 className="text-[12px] font-black text-white uppercase tracking-[0.15em]">Configuration Officielle</h2>
+            <p className="text-[9px] font-semibold text-slate-600 mt-0.5 tracking-wide">Détails administratifs et logistiques</p>
           </div>
         </div>
 
-        {/* FINANCIAL EXCLUSION TOGGLE */}
-        <div className="flex items-center gap-3 px-4 py-2 bg-white/5 rounded-2xl border border-white/5 hover:bg-white/10 transition-all">
-          <Calculator size={16} className={formData.excludeFromFinance ? 'text-amber-400' : 'text-slate-500'} />
-          <div className="flex flex-col">
-            <span className="text-[9px] font-black text-white uppercase tracking-wider">
-              Exclusion Financière
-            </span>
-            <span className="text-[8px] font-bold text-slate-500 uppercase">
-              Hors budget projet
-            </span>
+        {/* ── Financial exclusion toggle ── */}
+        <button
+          type="button"
+          onClick={() => !isLocked && onUpdateField('excludeFromFinance', !formData.excludeFromFinance)}
+          disabled={isLocked}
+          className={`flex items-center gap-3 px-4 py-2.5 rounded-xl border transition-all ${
+            formData.excludeFromFinance
+              ? 'bg-amber-500/10 border-amber-500/30'
+              : 'bg-white/[0.03] border-white/[0.07] hover:bg-white/[0.05]'
+          } ${isLocked ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+        >
+          <Calculator size={13} className={formData.excludeFromFinance ? 'text-amber-400' : 'text-slate-600'} />
+          <div className="flex flex-col items-start">
+            <span className="text-[9px] font-black uppercase tracking-wider text-white/80">Exclusion Financière</span>
+            <span className="text-[8px] text-slate-600 font-semibold">Hors budget projet</span>
           </div>
-          <button
-            type="button"
-            onClick={() => !isLocked && onUpdateField('excludeFromFinance', !formData.excludeFromFinance)}
-            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-              formData.excludeFromFinance ? 'bg-amber-500' : 'bg-slate-700'
-            } ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
-          >
-            <span
-              className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                formData.excludeFromFinance ? 'translate-x-4' : 'translate-x-0'
-              }`}
-            />
-          </button>
-        </div>
+          {/* pill toggle */}
+          <div className={`w-9 h-5 rounded-full relative transition-all duration-200 ml-2 ${formData.excludeFromFinance ? 'bg-amber-500 shadow-md shadow-amber-500/30' : 'bg-slate-800'}`}>
+            <div className={`absolute top-[3px] w-3.5 h-3.5 rounded-full bg-white shadow transition-all duration-200 ${formData.excludeFromFinance ? 'left-[19px]' : 'left-[3px]'}`} />
+          </div>
+        </button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 relative z-10">
-        {/* N° ORDRE */}
-        <div className="relative group">
-          <label className="block text-[9px] font-black text-slate-300 uppercase tracking-widest mb-2 ml-1 opacity-70">
-            N° Ordre
-          </label>
-          <div className="relative">
-            <input
-              id="mission-number"
-              type="text"
-              readOnly
-              value={officialOrderNumber}
-              placeholder="Auto-généré à la validation"
-              className="w-full bg-slate-950/50 border border-white/10 rounded-xl px-3 py-2.5 text-[11px] font-black text-indigo-400 focus:ring-0 transition-all outline-none cursor-not-allowed group-hover:border-indigo-500/30 shadow-inner"
-            />
-          </div>
-        </div>
+      {/* ── Row 1: N° Ordre, Destination, Début, Fin ── */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 relative z-10">
+        <Field label="N° Ordre" icon={Hash} locked>
+          <input
+            id="mission-number"
+            type="text"
+            readOnly
+            value={officialOrderNumber}
+            placeholder="Auto-généré"
+            className={`${inputCls(true)} font-black text-indigo-400`}
+          />
+        </Field>
 
-        {/* DESTINATION */}
-        <div className="relative group">
-          <label className="block text-[9px] font-black text-slate-300 uppercase tracking-widest mb-2 ml-1 opacity-70">
-            Destination
-          </label>
+        <Field label="Destination" icon={MapPin} locked={isLocked}>
           <input
             id="mission-region"
             type="text"
             value={formData.region || ''}
             onChange={(e) => onUpdateField('region', e.target.value)}
-            readOnly={isReadOnly}
+            readOnly={isLocked}
             placeholder="Région / Ville"
-            className={inputClass(!!isLocked)}
+            className={inputCls(isLocked)}
           />
-        </div>
+        </Field>
 
-        {/* DATES */}
-        <div className="relative group">
-          <label className="block text-[9px] font-black text-slate-300 uppercase tracking-widest mb-2 ml-1 opacity-70">
-            Début
-          </label>
+        <Field label="Début" icon={CalendarDays} locked={isLocked}>
           <input
             type="date"
-            readOnly={isReadOnly}
+            readOnly={isLocked}
             value={formData.startDate || ''}
             onChange={(e) => onUpdateField('startDate', e.target.value)}
-            className={inputClass(!!isLocked)}
+            className={inputCls(isLocked)}
           />
-        </div>
+        </Field>
 
-        <div className="relative group">
-          <label className="block text-[9px] font-black text-slate-300 uppercase tracking-widest mb-2 ml-1 opacity-70">
-            Fin estimée
-          </label>
+        <Field label="Fin estimée" icon={CalendarCheck} locked={isLocked}>
           <input
             type="date"
-            readOnly={isReadOnly}
+            readOnly={isLocked}
             value={formData.endDate || ''}
             onChange={(e) => onUpdateField('endDate', e.target.value)}
-            className={inputClass(!!isLocked)}
+            className={inputCls(isLocked)}
           />
-        </div>
+        </Field>
       </div>
 
-      <div className="space-y-6 pt-4 border-t border-white/5">
-        {/* OBJET DE LA MISSION */}
-        <div className="relative group z-10">
-          <label className="block text-[9px] font-black text-slate-300 uppercase tracking-widest mb-2 ml-1 opacity-70">
-            Objet de la mission
-          </label>
+      {/* ── Divider ── */}
+      <div className="border-t border-white/[0.05]" />
+
+      {/* ── Row 2: Purpose ── */}
+      <div className="relative z-10">
+        <Field label="Objet de la Mission" icon={Target} locked={isLocked}>
           <input
             type="text"
-            readOnly={isReadOnly}
+            readOnly={isLocked}
             value={formData.purpose || ''}
             onChange={(e) => onUpdateField('purpose', e.target.value.toUpperCase())}
-            placeholder="But de la mission..."
-            className="w-full bg-slate-950/40 border border-white/5 rounded-2xl px-4 py-3 text-[12px] font-black text-white placeholder:text-slate-600 focus:border-indigo-500/50 transition-all outline-none shadow-inner"
+            placeholder="But de la mission…"
+            className={`${inputCls(isLocked)} !py-3.5 text-[13px] font-black !rounded-2xl tracking-tight`}
           />
-        </div>
+        </Field>
+      </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* MOYEN DE TRANSPORT */}
-          <div className="relative group z-10">
-            <label className="block text-[9px] font-black text-slate-300 uppercase tracking-widest mb-2 ml-1 opacity-70">
-              Moyen de transport
-            </label>
-            <input
-              type="text"
-              value={formData.transport || ''}
-              onChange={(e) => onUpdateField('transport', e.target.value)}
-              readOnly={isReadOnly}
-              placeholder="Véhicule, avion, etc."
-              className={inputClass(!!isLocked)}
-            />
-          </div>
+      {/* ── Row 3: Transport + Itineraries ── */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 relative z-10">
+        <Field label="Moyen de transport" icon={Truck} locked={isLocked}>
+          <input
+            type="text"
+            value={formData.transport || ''}
+            onChange={(e) => onUpdateField('transport', e.target.value)}
+            readOnly={isLocked}
+            placeholder="Véhicule, avion…"
+            className={inputCls(isLocked)}
+          />
+        </Field>
 
-          {/* ITINÉRAIRE ALLER */}
-          <div className="relative group z-10">
-            <label className="block text-[9px] font-black text-slate-300 uppercase tracking-widest mb-2 ml-1 opacity-70">
-              Itinéraire Aller
-            </label>
-            <input
-              type="text"
-              value={formData.itineraryAller || ''}
-              onChange={(e) => onUpdateField('itineraryAller', e.target.value)}
-              readOnly={isReadOnly}
-              placeholder="Dakar -> Lieu..."
-              className={inputClass(!!isLocked)}
-            />
-          </div>
+        <Field label="Itinéraire Aller" icon={ArrowRight} locked={isLocked}>
+          <input
+            type="text"
+            value={formData.itineraryAller || ''}
+            onChange={(e) => onUpdateField('itineraryAller', e.target.value)}
+            readOnly={isLocked}
+            placeholder="Dakar → Lieu…"
+            className={inputCls(isLocked)}
+          />
+        </Field>
 
-          {/* ITINÉRAIRE RETOUR */}
-          <div className="relative group z-10">
-            <label className="block text-[9px] font-black text-slate-300 uppercase tracking-widest mb-2 ml-1 opacity-70">
-              Itinéraire Retour
-            </label>
-            <input
-              type="text"
-              value={formData.itineraryRetour || ''}
-              onChange={(e) => onUpdateField('itineraryRetour', e.target.value)}
-              readOnly={isReadOnly}
-              placeholder="Lieu -> Dakar..."
-              className={inputClass(!!isLocked)}
-            />
-          </div>
-        </div>
+        <Field label="Itinéraire Retour" icon={ArrowLeft} locked={isLocked}>
+          <input
+            type="text"
+            value={formData.itineraryRetour || ''}
+            onChange={(e) => onUpdateField('itineraryRetour', e.target.value)}
+            readOnly={isLocked}
+            placeholder="Lieu → Dakar…"
+            className={inputCls(isLocked)}
+          />
+        </Field>
       </div>
     </section>
   );
