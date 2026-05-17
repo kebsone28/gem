@@ -10,33 +10,33 @@ datasource db {
 
 model Organization {
   id                         String                     @id @default(uuid())
-  slug                       String?                    @unique
-  // defaultProjectId: first project to use as default when user logs in
-  defaultProjectId           String?
   name                       String
   config                     Json                       @default("{}")
   createdAt                  DateTime                   @default(now())
+  defaultProjectId           String?
+  slug                       String?                    @unique
   auditLogs                  AuditLog[]
-  grappes                    Grappe[]
-  missions                   Mission[]
-  performanceLogs            PerformanceLog[]
-  projects                   Project[]
-  teams                      Team[]
-  users                      User[]
-  conflictLogs               ConflictLog[]
-  syncLogs                   SyncLog[]
-  koboFormMappings           KoboFormMapping[]
-  internalKoboSubmissions    InternalKoboSubmission[]
-  formationModules           FormationModule[]
-  formationSessions          FormationSession[]
-  formationPlanningHistories FormationPlanningHistory[]
-  formationPlannerStates     FormationPlannerState[]
-  documents                  Document[]
   automatedActions           AutomatedAction[]
-  policies                   Policy[]
-  workflows                  Workflow[]
+  conflictLogs               ConflictLog[]
+  documents                  Document[]
   eventLogs                  EventLog[]
   financialCharges           FinancialCharge[]
+  formationModules           FormationModule[]
+  formationPlannerStates     FormationPlannerState?
+  formationPlanningHistories FormationPlanningHistory[]
+  formationSessions          FormationSession[]
+  grappes                    Grappe[]
+  internalKoboSubmissions    InternalKoboSubmission[]
+  koboFormMappings           KoboFormMapping[]
+  missions                   Mission[]
+  performanceLogs            PerformanceLog[]
+  policies                   Policy[]
+  projects                   Project[]
+  syncLogs                   SyncLog[]
+  teams                      Team[]
+  users                      User[]
+  workflows                  Workflow[]
+  domainConfigs              DomainConfig[]
 }
 
 model User {
@@ -53,13 +53,23 @@ model User {
   securityAnswerHash       String?
   recoveryCodeHash         String?
   active                   Boolean                  @default(true)
-  chatStatus               String                   @default("ONLINE")
-  chatStatusText           String?
   permissions              Json?                    @default("[]")
   notificationEmail        String?
   createdAt                DateTime                 @default(now())
+  chatStatus               String                   @default("ONLINE")
+  chatStatusText           String?
   actionApprovals          ActionApproval[]
   auditLogs                AuditLog[]
+  validatedActions         AutomatedAction[]
+  chatCreated              ChatConversation[]       @relation("ChatConversationCreator")
+  chatMessages             ChatMessage[]            @relation("ChatMessageSender")
+  chatParticipations       ChatParticipant[]
+  chatBlocksIssued         ChatUserBlock[]          @relation("ChatBlockIssuer")
+  chatBlocksReceived       ChatUserBlock[]          @relation("ChatBlockedUser")
+  uploadedDocuments        Document[]               @relation("DocumentUploader")
+  uploadedDocumentVersions DocumentVersion[]        @relation("DocumentVersionUploader")
+  eventLogs                EventLog[]
+  internalKoboSubmissions  InternalKoboSubmission[]
   missions                 Mission[]
   performanceLogs          PerformanceLog[]
   projectsUpdated          Project[]                @relation("UpdatedBy")
@@ -68,53 +78,42 @@ model User {
   organization             Organization             @relation(fields: [organizationId], references: [id])
   role                     Role?                    @relation(fields: [roleId], references: [id])
   userMemory               UserMemory?
-  chatParticipations       ChatParticipant[]
-  chatMessages             ChatMessage[]            @relation("ChatMessageSender")
-  chatCreated              ChatConversation[]       @relation("ChatConversationCreator")
-  chatBlocksReceived       ChatUserBlock[]          @relation("ChatBlockedUser")
-  chatBlocksIssued         ChatUserBlock[]          @relation("ChatBlockIssuer")
-  internalKoboSubmissions  InternalKoboSubmission[]
-  uploadedDocuments        Document[]               @relation("DocumentUploader")
-  uploadedDocumentVersions DocumentVersion[]        @relation("DocumentVersionUploader")
-  validatedActions         AutomatedAction[]
-  eventLogs                EventLog[]
 
   @@unique([email, organizationId])
 }
 
 model Project {
-  id              String           @id @default(uuid())
-  organizationId  String
-  templateKey     String?
-  templateVersion Int?
-  name            String
-  status          String
-  budget          Decimal
-  duration        Int
-  totalHouses     Int
-  config          Json
-  version         Int              @default(1)
-  updatedAt       DateTime         @updatedAt
-  updatedById     String?
-  deletedAt       DateTime?
-  missions        Mission[]
-  performanceLogs PerformanceLog[]
-  households      Household[]
-  organization    Organization     @relation(fields: [organizationId], references: [id])
-  updatedBy       User?            @relation("UpdatedBy", fields: [updatedById], references: [id])
-  teams           Team[]
-  zones           Zone[]
-  documents       Document[]
-  projectPages    ProjectPage[]
-  projectModules  ProjectModule[]
-  workflows       Workflow[]
-  eventLogs       EventLog[]
-  policies        Policy[]
+  id               String            @id @default(uuid())
+  organizationId   String
+  name             String
+  status           String
+  budget           Decimal
+  duration         Int
+  totalHouses      Int
+  config           Json
+  version          Int               @default(1)
+  updatedAt        DateTime          @updatedAt
+  updatedById      String?
+  deletedAt        DateTime?
+  templateKey      String?
+  templateVersion  Int?
   automatedActions AutomatedAction[]
+  documents        Document[]
+  eventLogs        EventLog[]
   financialCharges FinancialCharge[]
+  households       Household[]
+  missions         Mission[]
+  performanceLogs  PerformanceLog[]
+  policies         Policy[]
+  organization     Organization      @relation(fields: [organizationId], references: [id])
+  updatedBy        User?             @relation("UpdatedBy", fields: [updatedById], references: [id])
+  projectModules   ProjectModule[]
+  projectPages     ProjectPage[]
+  teams            Team[]
+  workflows        Workflow[]
+  zones            Zone[]
 }
 
-// Templates and per-project pages/modules for runtime configuration
 model ProjectTemplate {
   id          String   @id @default(uuid())
   key         String   @unique
@@ -137,23 +136,21 @@ model ProjectPage {
   enabled   Boolean @default(true)
   order     Int     @default(0)
   config    Json?   @default("{}")
-
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@unique([projectId, key])
   @@index([projectId])
 }
 
 model ProjectModule {
-  id        String  @id @default(uuid())
+  id        String     @id @default(uuid())
   projectId String
   key       String
   name      String
-  enabled   Boolean @default(true)
-  config    Json?   @default("{}")
-  fields    Json?   @default("[]")
-
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  enabled   Boolean    @default(true)
+  config    Json?      @default("{}")
+  fields    Json?      @default("[]")
+  project   Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
   workflows Workflow[]
 
   @@unique([projectId, key])
@@ -177,7 +174,6 @@ model Zone {
 model Household {
   id                      String                   @id @default(uuid())
   zoneId                  String?
-  projectId               String?
   organizationId          String
   name                    String?
   phone                   String?
@@ -203,11 +199,12 @@ model Household {
   grappeId                String?
   updatedAt               DateTime                 @updatedAt
   deletedAt               DateTime?
+  projectId               String?
   grappe                  Grappe?                  @relation(fields: [grappeId], references: [id])
-  zone                    Zone?                    @relation(fields: [zoneId], references: [id])
   project                 Project?                 @relation(fields: [projectId], references: [id])
-  performanceLogs         PerformanceLog[]
+  zone                    Zone?                    @relation(fields: [zoneId], references: [id])
   internalKoboSubmissions InternalKoboSubmission[]
+  performanceLogs         PerformanceLog[]
 
   @@unique([numeroordre, organizationId])
   @@index([region])
@@ -292,9 +289,9 @@ model SyncLog {
   timestamp      DateTime     @default(now())
   action         String
   details        Json
-  user           User         @relation(fields: [userId], references: [id])
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id])
+  user           User         @relation(fields: [userId], references: [id])
 }
 
 model ConflictLog {
@@ -317,18 +314,16 @@ model ConflictLog {
   @@index([timestamp])
 }
 
-// Mapping dynamique des champs Kobo vers GED OS
 model KoboFormMapping {
-  id             String   @id @default(uuid())
+  id             String       @id @default(uuid())
   organizationId String
-  koboAssetId    String // ID du formulaire Kobo (asset uid)
-  mapping        Json // Mapping dynamique des champs
-  version        String // Version du formulaire Kobo
-  lastValidated  DateTime @default(now())
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  organization Organization @relation(fields: [organizationId], references: [id])
+  koboAssetId    String
+  mapping        Json
+  version        String
+  lastValidated  DateTime     @default(now())
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id])
 
   @@unique([organizationId, koboAssetId])
   @@index([organizationId])
@@ -354,8 +349,8 @@ model InternalKoboSubmission {
   savedAt            DateTime     @default(now())
   createdAt          DateTime     @default(now())
   updatedAt          DateTime     @updatedAt
-  organization       Organization @relation(fields: [organizationId], references: [id])
   household          Household?   @relation(fields: [householdId], references: [id])
+  organization       Organization @relation(fields: [organizationId], references: [id])
   submittedBy        User?        @relation(fields: [submittedById], references: [id])
 
   @@unique([organizationId, clientSubmissionId])
@@ -414,26 +409,26 @@ model PerformanceLog {
 }
 
 model Mission {
-  id               String                   @id @default(uuid())
-  organizationId   String
-  projectId        String?
-  orderNumber      String?                  @unique
-  title            String?
-  description      String?
-  status           String                   @default("draft")
-  startDate        DateTime?
-  endDate          DateTime?
-  budget           Decimal?
-  createdBy        String?
-  data             Json?                    @default("{}")
-  createdAt        DateTime                 @default(now())
-  updatedAt        DateTime                 @updatedAt
-  deletedAt        DateTime?
-  excludeFromFinance Boolean                 @default(false)
-  user             User?                    @relation(fields: [createdBy], references: [id])
-  organization     Organization             @relation(fields: [organizationId], references: [id])
-  project          Project?                 @relation(fields: [projectId], references: [id])
-  approvalWorkflow MissionApprovalWorkflow?
+  id                 String                   @id @default(uuid())
+  organizationId     String
+  projectId          String?
+  orderNumber        String?                  @unique
+  title              String?
+  description        String?
+  status             String                   @default("draft")
+  startDate          DateTime?
+  endDate            DateTime?
+  budget             Decimal?
+  createdBy          String?
+  data               Json?                    @default("{}")
+  createdAt          DateTime                 @default(now())
+  updatedAt          DateTime                 @updatedAt
+  deletedAt          DateTime?
+  excludeFromFinance Boolean                  @default(false)
+  user               User?                    @relation(fields: [createdBy], references: [id])
+  organization       Organization             @relation(fields: [organizationId], references: [id])
+  project            Project?                 @relation(fields: [projectId], references: [id])
+  approvalWorkflow   MissionApprovalWorkflow?
 
   @@index([organizationId])
   @@index([projectId])
@@ -709,64 +704,40 @@ model spatial_ref_sys {
   proj4text String? @db.VarChar(2048)
 }
 
-enum TeamRole {
-  PREPARATION
-  INSTALLATION
-  SUPERVISION
-  LOGISTICS
-}
-
-enum SyncStatus {
-  PENDING
-  SYNCED
-  CONFLICT
-}
-
-// ============================================
-// FORMATION MODELS
-// ============================================
-
 model FormationModule {
-  id             String  @id @default(uuid())
-  organizationId String
+  id             String                   @id @default(uuid())
   name           String
   description    String?
   duration       Int
-  order          Int     @default(0)
-  isActive       Boolean @default(true)
-
-  sessionModules FormationSessionModule[]
+  order          Int                      @default(0)
+  isActive       Boolean                  @default(true)
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+  organizationId String
   organization   Organization             @relation(fields: [organizationId], references: [id])
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  sessionModules FormationSessionModule[]
 
   @@index([organizationId])
 }
 
 model FormationSession {
-  id              String @id @default(uuid())
-  organizationId  String
+  id              String                     @id @default(uuid())
   region          String
   salle           String
   maxParticipants Int
-
-  startDate DateTime
-  endDate   DateTime?
-
-  workSaturday Boolean @default(false)
-  workSunday   Boolean @default(false)
-
-  status String  @default("PLANIFIEE")
-  notes  String?
-
-  participants   FormationParticipant[]
-  sessionModules FormationSessionModule[]
-  historyEntries FormationPlanningHistory[]
-  organization   Organization               @relation(fields: [organizationId], references: [id])
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  startDate       DateTime
+  endDate         DateTime?
+  workSaturday    Boolean                    @default(false)
+  workSunday      Boolean                    @default(false)
+  status          String                     @default("PLANIFIEE")
+  notes           String?
+  createdAt       DateTime                   @default(now())
+  updatedAt       DateTime                   @updatedAt
+  organizationId  String
+  participants    FormationParticipant[]
+  historyEntries  FormationPlanningHistory[]
+  organization    Organization               @relation(fields: [organizationId], references: [id])
+  sessionModules  FormationSessionModule[]
 
   @@index([organizationId])
   @@index([region])
@@ -774,55 +745,48 @@ model FormationSession {
   @@index([status])
 }
 
-// Table de liaison session <-> modules (plusieurs modules par session)
 model FormationSessionModule {
-  id         String  @id @default(uuid())
+  id         String           @id @default(uuid())
   sessionId  String
   moduleId   String
-  duration   Int // Durée spécifique pour ce module dans cette session (surécrit la durée par défaut)
-  orderIndex Int     @default(0) // Ordre du module dans la session
-  notes      String? // Notes spécifiques au module
+  duration   Int
+  orderIndex Int              @default(0)
+  notes      String?
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+  module     FormationModule  @relation(fields: [moduleId], references: [id])
+  session    FormationSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
-  session FormationSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  module  FormationModule  @relation(fields: [moduleId], references: [id])
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([sessionId, moduleId]) // Un module ne peut être ajouté qu'une fois par session
+  @@unique([sessionId, moduleId])
   @@index([sessionId])
   @@index([moduleId])
 }
 
 model FormationParticipant {
-  id        String  @id @default(uuid())
-  sessionId String
-  name      String // Nom et prénom
-  email     String?
-  phone     String?
-  role      String? // Role (électricien, chef d'équipe, etc.)
-
-  attendance Boolean @default(false) // Présence
-
-  session FormationSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-
-  createdAt DateTime @default(now())
+  id         String           @id @default(uuid())
+  sessionId  String
+  name       String
+  email      String?
+  phone      String?
+  role       String?
+  attendance Boolean          @default(false)
+  createdAt  DateTime         @default(now())
+  session    FormationSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@index([sessionId])
 }
 
 model FormationPlanningHistory {
-  id             String   @id @default(uuid())
-  organizationId String
+  id             String            @id @default(uuid())
   sessionId      String?
   action         String
   title          String
   details        String?
   metadata       Json?
-  createdAt      DateTime @default(now())
-
-  session      FormationSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
-  organization Organization      @relation(fields: [organizationId], references: [id])
+  createdAt      DateTime          @default(now())
+  organizationId String
+  organization   Organization      @relation(fields: [organizationId], references: [id])
+  session        FormationSession? @relation(fields: [sessionId], references: [id])
 
   @@index([organizationId])
   @@index([sessionId])
@@ -831,37 +795,31 @@ model FormationPlanningHistory {
 }
 
 model FormationPlannerState {
-  id             String   @id @default(uuid())
-  organizationId String   @unique
+  id             String       @id @default(uuid())
   payload        Json
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  organization Organization @relation(fields: [organizationId], references: [id])
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organizationId String       @unique
+  organization   Organization @relation(fields: [organizationId], references: [id])
 
   @@index([organizationId])
   @@index([updatedAt])
 }
 
-// ============================================
-// TEAM CHAT / COMMUNICATION MODELS
-// ============================================
-
 model ChatConversation {
-  id             String    @id @default(uuid())
+  id             String            @id @default(uuid())
   organizationId String
   type           String
   name           String?
   scopeKey       String?
   createdById    String?
   archivedAt     DateTime?
-  retentionDays  Int       @default(0) // 0 = permanent, 7, 30, 90
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-
-  createdBy    User?             @relation("ChatConversationCreator", fields: [createdById], references: [id])
-  participants ChatParticipant[]
-  messages     ChatMessage[]
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  retentionDays  Int               @default(0)
+  createdBy      User?             @relation("ChatConversationCreator", fields: [createdById], references: [id])
+  messages       ChatMessage[]
+  participants   ChatParticipant[]
 
   @@unique([organizationId, scopeKey])
   @@index([organizationId])
@@ -870,17 +828,16 @@ model ChatConversation {
 }
 
 model ChatParticipant {
-  id             String    @id @default(uuid())
+  id             String           @id @default(uuid())
   organizationId String
   conversationId String
   userId         String
-  role           String    @default("MEMBER")
-  joinedAt       DateTime  @default(now())
+  role           String           @default("MEMBER")
+  joinedAt       DateTime         @default(now())
   lastReadAt     DateTime?
-  lastClearedAt  DateTime? // Date avant laquelle les messages sont masqués pour cet utilisateur
-
-  conversation ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lastClearedAt  DateTime?
+  conversation   ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([conversationId, userId])
   @@index([organizationId])
@@ -888,17 +845,16 @@ model ChatParticipant {
 }
 
 model ChatMessage {
-  id             String    @id @default(uuid())
+  id             String           @id @default(uuid())
   organizationId String
   conversationId String
   senderId       String
   content        String
-  deletedFor     String[]  @default([])
-  createdAt      DateTime  @default(now())
+  createdAt      DateTime         @default(now())
   editedAt       DateTime?
-
-  conversation ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  sender       User             @relation("ChatMessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  deletedFor     String[]         @default([])
+  conversation   ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         User             @relation("ChatMessageSender", fields: [senderId], references: [id], onDelete: Cascade)
 
   @@index([organizationId, createdAt])
   @@index([conversationId, createdAt])
@@ -914,9 +870,8 @@ model ChatUserBlock {
   active         Boolean   @default(true)
   blockedAt      DateTime  @default(now())
   unblockedAt    DateTime?
-
-  user      User @relation("ChatBlockedUser", fields: [userId], references: [id], onDelete: Cascade)
-  blockedBy User @relation("ChatBlockIssuer", fields: [blockedById], references: [id], onDelete: Cascade)
+  blockedBy      User      @relation("ChatBlockIssuer", fields: [blockedById], references: [id], onDelete: Cascade)
+  user           User      @relation("ChatBlockedUser", fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([organizationId, userId])
   @@index([organizationId, active])
@@ -924,29 +879,27 @@ model ChatUserBlock {
 }
 
 model Document {
-  id             String    @id @default(uuid())
+  id             String            @id @default(uuid())
   organizationId String
   projectId      String?
-  folderId       String? // Reference to parent folder for hierarchical organization
+  folderId       String?
   uploadedById   String
-  filename       String // Original filename
-  storageKey     String? // Key in storage service (S3/local)
+  filename       String
+  storageKey     String?
   mimeType       String
-  size           Int // File size in bytes
-  description    String? // Optional description
-  isPublic       Boolean   @default(false) // If true, accessible without authentication
-  accessLevel    String    @default("ORG") // ORG, PROJECT, TEAM, PRIVATE, PUBLIC
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-  deletedAt      DateTime? // Soft delete
-
-  // Relations
-  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  project      Project?          @relation(fields: [projectId], references: [id])
-  folder       Document?         @relation("DocumentFolder", fields: [folderId], references: [id])
-  uploadedBy   User              @relation("DocumentUploader", fields: [uploadedById], references: [id])
-  children     Document[]        @relation("DocumentFolder")
-  versions     DocumentVersion[]
+  size           Int
+  description    String?
+  isPublic       Boolean           @default(false)
+  accessLevel    String            @default("ORG")
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  deletedAt      DateTime?
+  folder         Document?         @relation("DocumentFolder", fields: [folderId], references: [id])
+  children       Document[]        @relation("DocumentFolder")
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  project        Project?          @relation(fields: [projectId], references: [id])
+  uploadedBy     User              @relation("DocumentUploader", fields: [uploadedById], references: [id])
+  versions       DocumentVersion[]
 
   @@index([organizationId])
   @@index([projectId])
@@ -958,43 +911,39 @@ model Document {
 model DocumentVersion {
   id           String   @id @default(uuid())
   documentId   String
-  storageKey   String // Key in storage service for this version
+  storageKey   String
   mimeType     String
-  size         Int // File size in bytes
+  size         Int
   uploadedById String
   uploadedAt   DateTime @default(now())
-  changeLog    String? // Description of what changed in this version
-
-  // Relations
-  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  uploadedBy User     @relation("DocumentVersionUploader", fields: [uploadedById], references: [id])
+  changeLog    String?
+  document     Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  uploadedBy   User     @relation("DocumentVersionUploader", fields: [uploadedById], references: [id])
 
   @@index([documentId])
   @@index([uploadedById])
 }
 
-// 🔄 WORKFLOW ENGINE (MOTEUR DE PROCESSUS)
 model Workflow {
-  id              String   @id @default(uuid())
+  id              String               @id @default(uuid())
   organizationId  String
   projectId       String
   projectModuleId String?
   name            String
-  key             String   @unique
+  key             String               @unique
   description     String?
-  entityType      String   // ex: 'MISSION', 'INVOICE', 'HOUSEHOLD'
-  config          Json?    @default("{}") // Règles globales du workflow
-  active          Boolean  @default(true)
-  version         Int      @default(1)
+  entityType      String
+  config          Json?                @default("{}")
+  active          Boolean              @default(true)
+  version         Int                  @default(1)
   deletedAt       DateTime?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  organization  Organization   @relation(fields: [organizationId], references: [id])
-  project       Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  projectModule ProjectModule? @relation(fields: [projectModuleId], references: [id])
-  states        WorkflowState[]
-  transitions   WorkflowTransition[]
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  organization    Organization         @relation(fields: [organizationId], references: [id])
+  project         Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectModule   ProjectModule?       @relation(fields: [projectModuleId], references: [id])
+  states          WorkflowState[]
+  transitions     WorkflowTransition[]
 
   @@index([organizationId])
   @@index([projectId])
@@ -1002,20 +951,19 @@ model Workflow {
 }
 
 model WorkflowState {
-  id          String   @id @default(uuid())
-  workflowId  String
-  key         String
-  label       String
-  color       String?  @default("#cbd5e1")
-  isInitial   Boolean  @default(false)
-  isFinal     Boolean  @default(false)
-  order       Int      @default(0)
-  permissions Json?    @default("[]") // Qui peut voir/agir dans cet état
-  metadata    Json?    @default("{}")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @default(now()) @updatedAt
-
-  workflow    Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  id              String               @id @default(uuid())
+  workflowId      String
+  key             String
+  label           String
+  color           String?              @default("#cbd5e1")
+  isInitial       Boolean              @default(false)
+  isFinal         Boolean              @default(false)
+  order           Int                  @default(0)
+  permissions     Json?                @default("[]")
+  metadata        Json?                @default("{}")
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @default(now()) @updatedAt
+  workflow        Workflow             @relation(fields: [workflowId], references: [id], onDelete: Cascade)
   fromTransitions WorkflowTransition[] @relation("FromState")
   toTransitions   WorkflowTransition[] @relation("ToState")
 
@@ -1024,43 +972,40 @@ model WorkflowState {
 }
 
 model WorkflowTransition {
-  id           String   @id @default(uuid())
+  id           String        @id @default(uuid())
   workflowId   String
   fromStateId  String
   toStateId    String
   name         String
-  actionKey    String   // L'action déclenchant la transition (ex: 'APPROVE')
+  actionKey    String
   requiredRole String?
-  conditions   Json?    @default("{}") // Ex: "montant > 1000000"
-  metadata     Json?    @default("{}")
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @default(now()) @updatedAt
-
-  workflow  Workflow      @relation(fields: [workflowId], references: [id], onDelete: Cascade)
-  fromState WorkflowState @relation("FromState", fields: [fromStateId], references: [id], onDelete: Cascade)
-  toState   WorkflowState @relation("ToState", fields: [toStateId], references: [id], onDelete: Cascade)
+  conditions   Json?         @default("{}")
+  metadata     Json?         @default("{}")
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @default(now()) @updatedAt
+  fromState    WorkflowState @relation("FromState", fields: [fromStateId], references: [id], onDelete: Cascade)
+  toState      WorkflowState @relation("ToState", fields: [toStateId], references: [id], onDelete: Cascade)
+  workflow     Workflow      @relation(fields: [workflowId], references: [id], onDelete: Cascade)
 
   @@index([workflowId])
   @@index([fromStateId])
   @@index([toStateId])
 }
 
-// 📡 EVENT SYSTEM (BUS D'ÉVÉNEMENTS)
 model EventLog {
-  id             String   @id @default(uuid())
+  id             String       @id @default(uuid())
   projectId      String?
   organizationId String
   userId         String?
-  type           String   // ex: 'PROJECT_CREATED', 'MISSION_VALIDATED'
-  resource       String   // ex: 'Project', 'Mission'
+  type           String
+  resource       String
   resourceId     String?
-  data           Json?    // Payload de l'événement
-  metadata       Json?    // IP, UserAgent, etc.
-  createdAt      DateTime @default(now())
-
-  project      Project?      @relation(fields: [projectId], references: [id])
-  organization Organization @relation(fields: [organizationId], references: [id])
-  user         User?         @relation(fields: [userId], references: [id])
+  data           Json?
+  metadata       Json?
+  createdAt      DateTime     @default(now())
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  project        Project?     @relation(fields: [projectId], references: [id])
+  user           User?        @relation(fields: [userId], references: [id])
 
   @@index([projectId])
   @@index([organizationId])
@@ -1068,24 +1013,18 @@ model EventLog {
   @@index([createdAt])
 }
 
-// 🤖 AUTOMATION RUNTIME (HUMAN-IN-THE-LOOP)
 model AutomatedAction {
-  id             String   @id @default(uuid())
+  id             String       @id @default(uuid())
   organizationId String
   projectId      String?
-  type           String   // ex: 'SEND_CLIENT_REPORT', 'NOTIFY_MINISTRY'
-  status         String   @default("PENDING") // PENDING, APPROVED, REJECTED, EXECUTED
-  
-  // Contenu préparé par l'IA ou le moteur métier
-  payload        Json     // ex: { email: "...", content: "...", attachments: [...] }
-  
-  // Traçabilité
-  triggeredBy    String   // ex: 'EVENT:MISSION_COMPLETED'
+  type           String
+  status         String       @default("PENDING")
+  payload        Json
+  triggeredBy    String
   validatedById  String?
   executedAt     DateTime?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
   organization   Organization @relation(fields: [organizationId], references: [id])
   project        Project?     @relation(fields: [projectId], references: [id])
   validatedBy    User?        @relation(fields: [validatedById], references: [id])
@@ -1094,62 +1033,49 @@ model AutomatedAction {
   @@index([status])
 }
 
-// 🛡️ SECURITY & GOVERNANCE ENGINE (RBAC + ABAC)
 model Policy {
-  id              String   @id @default(uuid())
-  projectId       String?
-  organizationId  String
-  name            String
-  description     String?
-  effect          String   @default("ALLOW") // ALLOW or DENY
-  action          String   // ex: 'MISSION_APPROVE', 'HOUSEHOLD_VIEW'
-  resource        String   // ex: 'MISSION', 'FINANCE'
-  
-  // ABAC / Conditions (JSON)
-  // ex: { "region": "user.region", "amount": { "$lt": 1000000 } }
-  conditions      Json?    @default("{}")
-  
-  // Scopes
-  scope           String   @default("ORGANIZATION") // GLOBAL, ORGANIZATION, PROJECT, REGION, OWNER
-  
-  active          Boolean  @default(true)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  project      Project?      @relation(fields: [projectId], references: [id])
-  organization Organization @relation(fields: [organizationId], references: [id])
+  id             String       @id @default(uuid())
+  projectId      String?
+  organizationId String
+  name           String
+  description    String?
+  effect         String       @default("ALLOW")
+  action         String
+  resource       String
+  conditions     Json?        @default("{}")
+  scope          String       @default("ORGANIZATION")
+  active         Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  project        Project?     @relation(fields: [projectId], references: [id])
 
   @@index([organizationId])
   @@index([action])
   @@index([resource])
 }
 
-// 💰 UNIVERSAL FINANCE ENGINE
 model FinancialCharge {
-  id             String   @id @default(uuid())
+  id             String       @id @default(uuid())
   organizationId String
   projectId      String
-  category       String   // ex: 'EQUIPMENT', 'LABOR', 'TRANSPORT', 'FEES'
+  category       String
   description    String
   amount         Decimal
-  currency       String   @default("XOF")
-  quantity       Float    @default(1)
+  currency       String       @default("XOF")
+  quantity       Float        @default(1)
   unitPrice      Decimal?
-  date           DateTime @default(now())
-  status         String   @default("PENDING") // PENDING, VALIDATED, PAID
-  
-  // Relations optionnelles vers d'autres entités
-  resourceType   String?  // ex: 'MISSION', 'TEAM', 'ASSET'
+  date           DateTime     @default(now())
+  status         String       @default("PENDING")
+  resourceType   String?
   resourceId     String?
-  
-  metadata       Json?    @default("{}")
-  version        Int      @default(1)
+  metadata       Json?        @default("{}")
+  version        Int          @default(1)
   deletedAt      DateTime?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  organization Organization @relation(fields: [organizationId], references: [id])
-  project      Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  project        Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@index([organizationId])
   @@index([projectId])
@@ -1158,16 +1084,15 @@ model FinancialCharge {
   @@index([date])
 }
 
-// 🛡️ SYSTEM DIAGNOSTICS & ERROR TRACKING
 model SystemError {
   id             String   @id @default(uuid())
   organizationId String?
   projectId      String?
   userId         String?
-  code           String?  // ex: 'DB_CONNECTION_ERROR'
+  code           String?
   message        String
   stack          String?
-  context        Json?    @default("{}") // Request URL, Method, etc.
+  context        Json?    @default("{}")
   isResolved     Boolean  @default(false)
   createdAt      DateTime @default(now())
 
@@ -1176,11 +1101,60 @@ model SystemError {
   @@index([createdAt])
 }
 
-// ⚙️ GLOBAL SYSTEM CONFIGURATION
 model SystemConfig {
   id        String   @id @default(uuid())
   key       String   @unique
   value     Json
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// 🌍 MULTIDOMAINE CONFIGURATION (GED OS)
+model DomainConfig {
+  id             String @id @default(uuid())
+  organizationId String
+  domainType     String // "electricity" | "agriculture" | "health" | "logistics" | etc.
+
+  // Fields monitored for this domain
+  entityFields Json @default("{}") // {"fields": ["name", "status", "voltage"], ...}
+
+  // Allowed status values for this domain
+  statusEnum String[] @default([]) // ["planning", "connected", "maintenance"]
+
+  // Alert rules specific to this domain
+  priorityRules Json @default("{}") // {"alert_threshold": 0.8, "warning_threshold": 0.6}
+
+  // Validation schemas
+  validationSchemas Json @default("{}") // Domain-specific validation rules
+
+  // Templates for project creation
+  projectTemplates Json @default("[]") // Array of template configs
+
+  // Templates for mission/task creation
+  missionTemplates Json @default("[]") // Array of mission templates
+
+  // Custom metadata
+  metadata Json @default("{}") // Any additional config
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, domainType])
+  @@index([organizationId])
+  @@index([domainType])
+}
+
+enum TeamRole {
+  PREPARATION
+  INSTALLATION
+  SUPERVISION
+  LOGISTICS
+}
+
+enum SyncStatus {
+  PENDING
+  SYNCED
+  CONFLICT
 }

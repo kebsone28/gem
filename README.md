@@ -1,4 +1,52 @@
-# GED OS - Gestionnaire Écosystème Digital (Ex-GEM)
+## Documentation GED OS
+
+GED OS est une plateforme intelligente multidomaine pour piloter des écosystèmes métiers dans les infrastructures, l'énergie, l'agriculture, la santé, la gouvernance, la logistique et le développement territorial.
+
+### 📚 Documentation Référence
+
+- 📖 [**Définition Complète**](./GED_OS_DEFINITION.md) — Vision, architecture, 6 domaines, capacités
+- 📋 [**Version Courte (Institutionnelle)**](./GED_OS_SHORT.md) — Pour décideurs et partenaires
+- 🚀 [**Vision (2026–2030)**](./GED_OS_VISION.md) — Manifeste et feuille de route stratégique
+
+### 🛠️ Documentation Implémentation (Dev-focused)
+
+**🆕 Sprint 1 Foundation Just Completed! 🎉**
+
+- 🎉 [**Sprint 1 Summary**](./SPRINT1_SUMMARY.md) — ⭐ START HERE (5 min overview)
+- 📋 [**Sprint 1 Checklist**](./SPRINT1_CHECKLIST.md) — Complete checklist + next steps
+- 📂 [**Sprint 1 File Manifest**](./SPRINT1_FILE_MANIFEST.md) — All 23 files created today
+- 🎊 [**Sprint 1 Foundation Complete**](./SPRINT1_FOUNDATION_COMPLETE.md) — Detailed deliverables
+- 🔌 [**Integration Guide**](./SPRINT1_INTEGRATION_GUIDE.md) — How to integrate new code
+
+**📍 Feuille de Route & Planning**
+
+- 📍 [**Feuille de Route Multidomaine**](./GED_OS_IMPLEMENTATION_ROADMAP.md) — Stratégie de transformation (5 phases)
+- ✅ [**Plan d'Action Immédiat**](./GED_OS_ACTION_PLAN.md) — Sprints 1–6, métriques, risks
+
+**🏗️ Technical & Architecture**
+
+- 🏗️ [**Architecture Technique**](./ARCHITECTURE_MULTIDOMAINE_TECHNICAL.md) — Patterns, adapters, implémentation détaillée
+- 🚀 [**Quick Reference Dev**](./DEVELOPER_QUICK_REFERENCE.md) — Setup, checklist, API examples
+
+### 🎯 Résumé Exécutif & Status
+
+📍 **Status** : Électrification stable (production) + **Sprint 1 Foundation COMPLETE** ✅  
+� **ACTION**: [PROCHAINES_ETAPES.md](./PROCHAINES_ETAPES.md) ⭐ **LIRE EN PREMIER** (étapes concrètes 24 mai)  
+📖 **Vue d'ensemble** : [SPRINT1_SUMMARY.md](./SPRINT1_SUMMARY.md) (5 min)
+
+**État actuel** (17 mai 2026) : Foundation multidomaine complète (12 fichiers code + 14 documentation).
+
+**État technique** (mai 2026) : Plateforme d'électrification stable (50k+ ménages Sénégal) avec **architecture modulaire multidomaine** désormais prête pour agriculture, santé, logistique.
+
+**Vision** : Plateforme générique supportant agriculture, santé, logistique, gouvernance (2026–2030).
+
+**Stratégie** : Adapter progressivement le code existant sans breaking changes, généraliser via DomainAdapter pattern, ajouter nouveaux domaines tous les 2 semaines.
+
+**Timeline** : Foundation ✅ (17 mai) → **Prisma Migration 24 mai** → Agriculture Pilot (14 juin) → 6 domaines Q4 2026
+
+---
+
+## Quick Start
 
 Ce dépôt contient une version web statique de l'application. Le scaffold Electron permet d'exécuter l'application localement comme application de bureau.
 

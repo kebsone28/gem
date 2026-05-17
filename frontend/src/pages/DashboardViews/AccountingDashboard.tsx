@@ -1,36 +1,35 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
 import { usePermissions } from '../../hooks/usePermissions';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../store/db';
-import { useLabels } from '../../contexts/LabelsContext';
 import { motion } from 'framer-motion';
 import {
-  ShieldCheck,
-  DollarSign,
-  TrendingUp,
-  FileText,
-  Calculator,
-  CreditCard,
-  AlertTriangle,
-  BarChart3,
-  PieChart,
-  Activity,
-  Download,
-  Eye,
-  CheckCircle2,
+   ShieldCheck,
+   DollarSign,
+   TrendingUp,
+   FileText,
+   Calculator,
+   CreditCard,
+   AlertTriangle,
+   BarChart3,
+   PieChart,
+   Activity,
+   Download,
+   Eye,
+   CheckCircle2,
 } from 'lucide-react';
 import { PageContainer, PageHeader, ContentArea } from '../../components';
 import {
-  DASHBOARD_ACTION_TILE_PRIMARY,
-  DASHBOARD_ACTION_TILE_SECONDARY,
-  DASHBOARD_MINI_STAT_CARD,
-  DASHBOARD_STICKY_PANEL,
-  StatusBadge,
-  KPICard,
+   DASHBOARD_ACTION_TILE_PRIMARY,
+   DASHBOARD_ACTION_TILE_SECONDARY,
+   DASHBOARD_MINI_STAT_CARD,
+   DASHBOARD_STICKY_PANEL,
+   StatusBadge,
+   KPICard,
 } from '../../components/dashboards/DashboardComponents';
 import { fmtNum } from '../../utils/format';
+import { useLabels } from '../../contexts/LabelsContext';
 
 interface BudgetMetrics {
   totalBudget: number;
@@ -103,20 +102,14 @@ const ViewSelector = ({ selectedView, setSelectedView }: {
 );
 
 export default function AccountingDashboard() {
-   const { user } = useAuth();
    const { peut, PERMISSIONS } = usePermissions();
    const { getLabel } = useLabels();
    const navigate = useNavigate();
    const households = useLiveQuery(() => db.households.toArray()) || [];
-   const teams = useLiveQuery(() => db.teams.toArray()) || [];
 
    const [selectedView, setSelectedView] = useState<
      'overview' | 'budget' | 'cashflow' | 'reports' | 'compliance'
    >('overview');
-
-   // Vérification des permissions
-   const canViewFinances = peut(PERMISSIONS.FINANCE_READ);
-   const canViewPayments = peut(PERMISSIONS.FINANCE_PAYMENTS);
    const canExportAccounting = peut(PERMISSIONS.FINANCE_EXPORT);
 
    // Calcul des métriques budgétaires
@@ -209,10 +202,6 @@ export default function AccountingDashboard() {
        lastAuditDate,
      };
    }, [households]);
-
-   const scrollToSection = (sectionId: string) => {
-     document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-   };
 
    return (
     <PageContainer className="min-h-screen bg-slate-950 text-white selection:bg-blue-500/30">

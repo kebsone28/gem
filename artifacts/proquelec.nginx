@@ -1,0 +1,88 @@
+server {
+    server_name ged.proquelec.sn www.ged.proquelec.sn;
+
+    root /var/www/proquelec/ged.proquelec.sn/frontend/dist;
+    index index.html;
+
+    # GERE L'API PRINCIPALE ET SIZING
+    location /api {
+        proxy_pass http://127.0.0.1:5005;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+
+    # GERE OSRM (Calcul d'itineraire)
+    location /osrm/ {
+        proxy_pass http://127.0.0.1:5000/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+
+    # GERE LES WEBSOCKETS (Temps reel)
+    location /socket.io/ {
+        proxy_pass http://127.0.0.1:5005/socket.io/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "Upgrade";
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+
+    # Service Worker - JAMAIS en cache navigateur
+    location = /sw.js {
+        add_header Cache-Control "no-cache, no-store, must-revalidate";
+        add_header Pragma "no-cache";
+        add_header Expires "0";
+        try_files $uri =404;
+    }
+
+    # Workbox - JAMAIS en cache navigateur
+    location ~* "workbox.*\.js$" {
+        add_header Cache-Control "no-cache, no-store, must-revalidate";
+        add_header Pragma "no-cache";
+        add_header Expires "0";
+    }
+
+    # index.html et manifest - JAMAIS en cache navigateur
+    location ~* "\.(html|webmanifest)$" {
+        add_header Cache-Control "no-cache, no-store, must-revalidate";
+        add_header Pragma "no-cache";
+        add_header Expires "0";
+    }
+
+    # Assets versiones (hash dans le nom) - cache long
+    location ~* "^/assets/.*\.[a-z0-9]{8}\.(js|css)$" {
+        add_header Cache-Control "public, max-age=31536000, immutable";
+    }
+
+    # GERE LE SITE FRONTEND
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    listen 443 ssl; # managed by Certbot
+    ssl_certificate /etc/letsencrypt/live/ged.proquelec.sn/fullchain.pem; # managed by Certbot
+    ssl_certificate_key /etc/letsencrypt/live/ged.proquelec.sn/privkey.pem; # managed by Certbot
+    include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
+}
+
+server {
+    if ($host = www.ged.proquelec.sn) {
+        return 301 https://$host$request_uri;
+    } # managed by Certbot
+
+    if ($host = ged.proquelec.sn) {
+        return 301 https://$host$request_uri;
+    } # managed by Certbot
+
+    listen 80;
+    server_name ged.proquelec.sn www.ged.proquelec.sn;
+    return 404; # managed by Certbot
+}

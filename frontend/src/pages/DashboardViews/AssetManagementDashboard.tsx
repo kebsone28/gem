@@ -1,37 +1,27 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
 import { usePermissions } from '../../hooks/usePermissions';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../store/db';
 import { motion } from 'framer-motion';
 import {
-  ShieldCheck,
-  Package,
-  Wrench,
-  AlertTriangle,
-  FileText,
-  TrendingUp,
-  Activity,
-  Settings,
-  BarChart3,
-  Clock,
-  MapPin,
-  CheckCircle2,
-  Truck,
-  DollarSign,
-  Calendar,
+   ShieldCheck,
+   Package,
+   Wrench,
+   FileText,
+   CheckCircle2,
+   DollarSign,
+   BarChart3,
 } from 'lucide-react';
 import { PageContainer, PageHeader, ContentArea } from '../../components';
 import {
-  DASHBOARD_ACTION_TILE_PRIMARY,
-  DASHBOARD_ACTION_TILE_SECONDARY,
-  DASHBOARD_MINI_STAT_CARD,
-  DASHBOARD_PRIMARY_BUTTON,
-  DASHBOARD_STICKY_PANEL,
-  StatusBadge,
-  KPICard,
-  ProgressBar,
+   DASHBOARD_ACTION_TILE_PRIMARY,
+   DASHBOARD_ACTION_TILE_SECONDARY,
+   DASHBOARD_MINI_STAT_CARD,
+   DASHBOARD_STICKY_PANEL,
+   StatusBadge,
+   KPICard,
+   ProgressBar,
 } from '../../components/dashboards/DashboardComponents';
 import { fmtNum } from '../../utils/format';
 
@@ -116,20 +106,14 @@ const ViewSelector = ({ selectedView, setSelectedView }: {
 );
 
 export default function AssetManagementDashboard() {
-   const { user } = useAuth();
    const { peut, PERMISSIONS } = usePermissions();
    const navigate = useNavigate();
-   const households = useLiveQuery(() => db.households.toArray()) || [];
-   const zones = useLiveQuery(() => db.zones.toArray()) || [];
 
    const [selectedView, setSelectedView] = useState<
      'overview' | 'assets' | 'maintenance' | 'reports'
    >('overview');
 
    // Vérification des permissions
-   const canViewMissions = peut(PERMISSIONS.MISSIONS_READ);
-   const canViewTeams = peut(PERMISSIONS.UI_TEAMS);
-   const canViewAssets = peut(PERMISSIONS.TERRAIN_MENAGES);
    const canManageLogistics = peut(PERMISSIONS.LOGISTIQUE_MANAGE);
    const canViewReports = peut(PERMISSIONS.TERRAIN_READ);
    const canExportData = peut(PERMISSIONS.SYSTEM_EXPORT);
@@ -239,50 +223,46 @@ export default function AssetManagementDashboard() {
      ];
    }, []);
 
-   // Données de maintenance
-   const maintenanceData: MaintenanceData[] = useMemo(() => {
-     return [
-       {
-         id: '1',
-         assetId: '1',
-         type: 'preventive',
-         date: new Date('2025-01-15'),
-         cout: 250000,
-         duree: 4,
-         technicien: 'Technicien Alpha',
-         statut: 'planifiee',
-         description: 'Maintenance préventive trimestrielle groupe électrogène',
-       },
-       {
-         id: '2',
-         assetId: '2',
-         type: 'corrective',
-         date: new Date('2024-11-15'),
-         cout: 450000,
-         duree: 8,
-         technicien: 'Mécanicien Beta',
-         statut: 'en_cours',
-         description: 'Réparation système freinage camionnette',
-       },
-       {
-         id: '3',
-         assetId: '3',
-         type: 'urgente',
-         date: new Date('2024-11-10'),
-         cout: 120000,
-         duree: 2,
-         technicien: 'Équipe Gamma',
-         statut: 'terminee',
-         description: 'Remplacement pince ampèremétrique défectueuse',
-       },
-     ];
-   }, []);
+    // Données de maintenance
+    const maintenanceData: MaintenanceData[] = useMemo(() => {
+      return [
+        {
+          id: '1',
+          assetId: '1',
+          type: 'preventive',
+          date: new Date('2025-01-15'),
+          cout: 250000,
+          duree: 4,
+          technicien: 'Technicien Alpha',
+          statut: 'planifiee',
+          description: 'Maintenance préventive trimestrielle groupe électrogène',
+        },
+        {
+          id: '2',
+          assetId: '2',
+          type: 'corrective',
+          date: new Date('2024-11-15'),
+          cout: 450000,
+          duree: 8,
+          technicien: 'Mécanicien Beta',
+          statut: 'en_cours',
+          description: 'Réparation système freinage camionnette',
+        },
+        {
+          id: '3',
+          assetId: '3',
+          type: 'urgente',
+          date: new Date('2024-11-10'),
+          cout: 120000,
+          duree: 2,
+          technicien: 'Équipe Gamma',
+          statut: 'terminee',
+          description: 'Remplacement pince ampèremétrique défectueuse',
+        },
+      ];
+    }, []);
 
-   const scrollToSection = (sectionId: string) => {
-     document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-   };
-
-   return (
+    return (
     <PageContainer className="min-h-screen bg-slate-950 text-white selection:bg-blue-500/30">
       <div className="absolute top-0 left-0 w-full h-[500px] bg-gradient-to-b from-blue-600/10 via-blue-600/5 to-transparent pointer-events-none" />
 

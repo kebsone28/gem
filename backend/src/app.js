@@ -95,12 +95,15 @@ import debugRoutes from './api/routes/debug.routes.js';
 import adminPermissionRoutes from './api/routes/admin.permissions.routes.js';
 import { notFoundHandler } from './middleware/errorHandler.js';
 import { tenantResolver } from './middleware/tenantResolver.js';
+import { domainContext } from './middleware/domainContext.js';
 
 setupSwagger(app);
 
 app.use('/api/auth', authRoutes);
 // Tenant resolver: always populate AsyncLocalStorage with org/project when available
 app.use(tenantResolver);
+// Domain context: inject domain adapter and config for multi-domain support
+app.use(domainContext);
 app.use('/api/users', userRoutes);
 app.use('/api/sync', syncRoutes);
 app.use('/api/projects', projectRoutes);
