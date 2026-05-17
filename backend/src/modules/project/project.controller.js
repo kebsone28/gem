@@ -437,6 +437,7 @@ export const deleteProject = async (req, res) => {
     if (
       project.name === 'GEM' ||
       project.name === 'GEM SAAS' ||
+      project.name === 'GEM SAAS - LSE' ||
       project.name === 'Projet LSE - Électrification' ||
       project.name.includes('LSE')
     ) {
