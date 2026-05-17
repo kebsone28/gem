@@ -28,14 +28,6 @@ interface ProjectContextType {
 
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
 
-const getStoredAccessToken = () => {
-  const token = safeStorage.getItem('access_token');
-  if (!token || token === 'undefined' || token === 'null') {
-    return null;
-  }
-  return token;
-};
-
 export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
   const [activeProjectId, setActiveProjectIdState] = useState<string | null>(
@@ -43,16 +35,33 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   );
   const [syncError, setSyncError] = useState<string | null>(null);
   const lastSyncedUserIdRef = useRef<string | null>(null);
+  const syncMutexRef = useRef<Promise<Project[]> | null>(null);
 
-  const projects = useLiveQuery(() => db.projects.toArray()) || [];
+  // 1. ISOLATION TENANT - CHARGEMENT DES PROJETS UNIQUEMENT DU TENANT ACTIF
+  const projects = useLiveQuery(
+    () => {
+      if (!user?.organizationId) return [];
+      return db.projects.where('organizationId').equals(user.organizationId).toArray();
+    },
+    [user?.organizationId]
+  ) || [];
 
-  const activeProject = useLiveQuery(async () => {
-    if (activeProjectId) {
-      return (await db.projects.get(activeProjectId)) ?? null;
-    }
-    const all = await db.projects.toArray();
-    return all[0] ?? null;
-  }, [activeProjectId]);
+  // 2. ISOLATION TENANT - PROJET ACTIF DU TENANT ACTIF SANS UNDEFINED
+  const activeProject = useLiveQuery(
+    async () => {
+      if (!user?.organizationId) return null;
+      if (activeProjectId) {
+        const p = await db.projects.get(activeProjectId);
+        if (p && p.organizationId === user.organizationId) {
+          return p;
+        }
+      }
+      const all = await db.projects.where('organizationId').equals(user.organizationId).toArray();
+      return all[0] ?? null;
+    },
+    [activeProjectId, user?.organizationId],
+    null
+  );
 
   const persistActiveProjectId = (id: string | null) => {
     setActiveProjectIdState(id);
@@ -63,94 +72,126 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
+  // 3. SYNCHRONISATION SYNCHRONE DES PROJETS SANS TIMEOUT
   useEffect(() => {
-    let t: number | null = null;
     if (!activeProjectId && projects.length > 0) {
-      t = window.setTimeout(() => {
-        const firstId = projects[0].id;
-        persistActiveProjectId(firstId);
-      }, 0);
+      persistActiveProjectId(projects[0].id);
     }
-    return () => {
-      if (t) clearTimeout(t);
-    };
-  }, [projects.length, activeProjectId]);
+  }, [projects, activeProjectId]);
 
   useEffect(() => {
     if (!activeProjectId || projects.length === 0) return;
 
     if (!projects.some((project) => project.id === activeProjectId)) {
       logger.warn(
-        `⚠️ [PROJECT] Active project ${activeProjectId} is stale. Falling back to the first valid project.`
+        `⚠️ [PROJECT] Active project ${activeProjectId} is stale. Falling back to first valid project.`
       );
-      const timeoutId = window.setTimeout(() => {
-        persistActiveProjectId(projects[0]?.id || null);
-      }, 0);
-      return () => clearTimeout(timeoutId);
+      persistActiveProjectId(projects[0]?.id || null);
     }
   }, [projects, activeProjectId]);
 
-  const syncProjectsFromServer = async (preferredProjectId?: string | null) => {
-    setSyncError(null);
-    try {
-      // 🔑 Ne pas bloquer sur le token localStorage : l'apiClient utilise
-      // les cookies HttpOnly et gère le refresh automatiquement.
-      // On tente toujours l'appel réseau si l'utilisateur est authentifié.
-      const response = await apiClient.get('/projects');
-      const data = response?.data || {};
-      const serverProjects: Project[] = data.projects || (Array.isArray(data) ? data : []);
+  // 4. SYNC ENGINE ROBUSTE AVEC MUTEX (PREVENTS RACE CONDITIONS) & MERGE INTELLIGENT
+  const syncProjectsFromServer = async (preferredProjectId?: string | null): Promise<Project[]> => {
+    if (syncMutexRef.current) {
+      return syncMutexRef.current;
+    }
 
-      logger.debug(`[PROJECT] Serveur a renvoyé ${serverProjects.length} projet(s)`);
-
-      // Transaction atomique : si bulkPut échoue, clear() est annulé → base jamais vide
-      await (db as any).transaction('rw', db.projects, async () => {
-        await db.projects.clear();
-        if (serverProjects.length > 0) {
-          await (db.projects as any).bulkPut(serverProjects);
+    const syncPromise = (async (): Promise<Project[]> => {
+      setSyncError(null);
+      try {
+        if (!user?.organizationId) {
+          return [];
         }
-      });
 
-      const nextActiveId =
-        preferredProjectId && serverProjects.some((project) => project.id === preferredProjectId)
-          ? preferredProjectId
-          : activeProjectId && serverProjects.some((project) => project.id === activeProjectId)
-            ? activeProjectId
-            : serverProjects[0]?.id || null;
+        const response = await apiClient.get('/projects');
+        const data = response?.data || {};
+        const serverProjects: Project[] = data.projects || (Array.isArray(data) ? data : []);
 
-      persistActiveProjectId(nextActiveId);
+        // Filtrer les projets pour l'organisation de l'utilisateur
+        const filteredServerProjects = serverProjects.filter(
+          (p) => p.organizationId === user.organizationId
+        );
 
-      logger.debug(`♻️ [STORE] ${serverProjects.length} projets synchronisés depuis le serveur`);
-      return serverProjects;
-    } catch (err: any) {
-      // En cas d'erreur réseau, utiliser le cache local sans vider la base
-      logger.warn('⚠️ [PROJECT] Sync réseau échouée, utilisation du cache local', err);
-      const localProjects = await db.projects.toArray();
-      if (localProjects.length > 0) {
-        const nextActiveId = preferredProjectId && localProjects.some(p => p.id === preferredProjectId)
-          ? preferredProjectId
-          : localProjects[0]?.id || null;
+        logger.debug(`[PROJECT] Serveur a renvoyé ${filteredServerProjects.length} projet(s)`);
+
+        // Transaction atomique : MERGE intelligent pour éviter de vider la base locale par erreur
+        await (db as any).transaction('rw', db.projects, async () => {
+          const existing = await db.projects
+            .where('organizationId')
+            .equals(user.organizationId)
+            .toArray();
+
+          const serverIds = new Set(filteredServerProjects.map((p) => p.id));
+          const toDelete = existing.filter((p) => !serverIds.has(p.id)).map((p) => p.id);
+
+          if (filteredServerProjects.length > 0) {
+            await (db.projects as any).bulkPut(filteredServerProjects);
+          }
+
+          if (toDelete.length > 0) {
+            await db.projects.bulkDelete(toDelete);
+          }
+        });
+
+        const nextActiveId =
+          preferredProjectId && filteredServerProjects.some((project) => project.id === preferredProjectId)
+            ? preferredProjectId
+            : activeProjectId && filteredServerProjects.some((project) => project.id === activeProjectId)
+              ? activeProjectId
+              : filteredServerProjects[0]?.id || null;
+
         persistActiveProjectId(nextActiveId);
-        return localProjects;
+
+        logger.debug(`♻️ [STORE] ${filteredServerProjects.length} projets synchronisés`);
+        return filteredServerProjects;
+      } catch (err: any) {
+        logger.warn('⚠️ [PROJECT] Sync réseau échouée, utilisation du cache local', err);
+        if (user?.organizationId) {
+          const localProjects = await db.projects
+            .where('organizationId')
+            .equals(user.organizationId)
+            .toArray();
+
+          if (localProjects.length > 0) {
+            const nextActiveId =
+              preferredProjectId && localProjects.some((p) => p.id === preferredProjectId)
+                ? preferredProjectId
+                : localProjects[0]?.id || null;
+            persistActiveProjectId(nextActiveId);
+            return localProjects;
+          }
+        }
+        const errorMessage =
+          err?.response?.data?.error || err?.message || 'Erreur de synchronisation';
+        setSyncError(errorMessage);
+        logger.error('❌ [PROJECT] Erreur lors de la synchronisation des projets', err);
+        return [];
       }
-      const errorMessage = err?.response?.data?.error || err?.message || 'Erreur de synchronisation des projets';
-      setSyncError(errorMessage);
-      logger.error('❌ [PROJECT] Erreur lors de la synchronisation des projets', err);
-      return [];
+    })();
+
+    syncMutexRef.current = syncPromise;
+
+    try {
+      return await syncPromise;
+    } finally {
+      syncMutexRef.current = null;
     }
   };
 
-  // 🔄 Auto-Sync server-first: synchronise dès que l'utilisateur est authentifié.
-  // La vérification du token est supprimée : apiClient gère l'auth via cookies HttpOnly.
+  // 5. AUTO-SYNC & PURGE COMPLÈTE AU LOGOUT (MULTI-TENANT SAFETY)
   useEffect(() => {
-    const fetchInitialProjects = async () => {
+    const handleUserSession = async () => {
       if (!user?.id) {
         lastSyncedUserIdRef.current = null;
+        logger.debug('🧹 [PROJECT] Déconnexion détectée, purge complète des données locales...');
+        await db.projects.clear();
+        persistActiveProjectId(null);
         return;
       }
-      // Forcer une nouvelle synchro à chaque changement d'utilisateur
-      if (lastSyncedUserIdRef.current === user.id) return;
 
+      if (lastSyncedUserIdRef.current === user.id) return;
       lastSyncedUserIdRef.current = user.id;
+
       try {
         logger.debug(`🔄 [PROJECT] Déclenchement sync initiale pour user ${user.id}`);
         await syncProjectsFromServer();
@@ -159,8 +200,9 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         lastSyncedUserIdRef.current = null;
       }
     };
-    void fetchInitialProjects();
-  }, [user?.id]);
+
+    void handleUserSession();
+  }, [user?.id, user?.organizationId]);
 
   const setActiveProjectId = (id: string | null) => {
     persistActiveProjectId(id);
@@ -173,32 +215,41 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return serverProject;
   };
 
+  // 6. UPDATE AVEC ROLLBACK (OPTIMISTIC UPDATE SECURITY)
   const updateProject = async (updates: Partial<Project>, id?: string) => {
     const currentId = id || activeProjectId;
-    if (currentId) {
-      // 1. Optimistic local update
+    if (!currentId) return;
+
+    // Sauvegarde pour rollback en cas d'échec
+    const oldProject = await db.projects.get(currentId);
+    if (!oldProject) return;
+
+    try {
+      // Étape 1 : Mise à jour optimiste dans Dexie
       await db.projects.update(currentId, updates);
 
-      // 2. Attempt to sync with server if token exists
-      try {
-        if (getStoredAccessToken()) {
-          await apiClient.patch(`/projects/${currentId}`, updates);
-          await syncProjectsFromServer(currentId);
-        }
-      } catch (err) {
-        logger.warn('⚠️ [PROJECT] Local update only (offline or no token).', err);
+      // Étape 2 : Envoi au serveur
+      if (user?.id) {
+        await apiClient.patch(`/projects/${currentId}`, updates);
+        await syncProjectsFromServer(currentId);
       }
+    } catch (err) {
+      logger.warn('⚠️ [PROJECT] Échec de la mise à jour serveur, rollback local...', err);
+      // Étape 3 : Rollback local
+      await db.projects.put(oldProject);
+      throw err;
     }
   };
 
   const deleteProject = async (projectId: string, password: string) => {
     try {
       await apiClient.delete(`/projects/${projectId}`, { data: { password } });
+      await db.projects.delete(projectId); // Optimistic local deletion
       const fallbackProjectId = activeProjectId === projectId ? null : activeProjectId;
       await syncProjectsFromServer(fallbackProjectId);
       return { success: true };
     } catch (err: any) {
-      return { success: false, error: err?.response?.data?.error || 'Erreur' };
+      return { success: false, error: err?.response?.data?.error || 'Erreur lors de la suppression' };
     }
   };
 
@@ -206,13 +257,11 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (!activeProject?.config?.labels) return defaultValue;
     const label = activeProject.config.labels[key];
     if (!label) return defaultValue;
-    
-    // Si c'est un objet (ex: {singular, plural}), on renvoie le pluriel par défaut (pour la Sidebar)
+
     if (typeof label === 'object' && label.plural) {
       return label.plural;
     }
-    
-    // Sinon c'est une chaîne simple
+
     return typeof label === 'string' ? label : defaultValue;
   };
 
@@ -227,7 +276,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         createProject,
         updateProject,
         deleteProject,
-        isLoading: activeProject === undefined,
+        isLoading: activeProject === null && projects.length === 0,
         syncError,
         t,
       }}
