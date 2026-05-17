@@ -41,6 +41,16 @@ tmp/
 *.png
 *.jpg
 *.jpeg
+
+# Allow UI assets in frontend public and src directories
+!frontend/public/**/*.png
+!frontend/public/**/*.jpg
+!frontend/public/**/*.jpeg
+!frontend/src/assets/**/*.png
+!frontend/src/assets/**/*.jpg
+!frontend/src/assets/**/*.jpeg
+!frontend/src/assets/**/*.svg
+
 KOBO/
 !backend/src/modules/kobo/
 !backend/src/modules/kobo/koboEngineMaster.js
