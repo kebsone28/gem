@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React from 'react';
-import { Users, Trash2, Plus, Sparkles } from 'lucide-react';
+import { Users, Trash2, Plus, Sparkles, Lock, DollarSign, CalendarDays } from 'lucide-react';
 import type { MissionMember } from '../core/missionTypes';
 
 interface MissionTeamEditorProps {
@@ -12,6 +12,16 @@ interface MissionTeamEditorProps {
   onSyncDuration: () => void;
 }
 
+/** Colour palette for member avatar initials */
+const AVATAR_COLOURS = [
+  'from-indigo-600 to-violet-600',
+  'from-blue-600 to-cyan-500',
+  'from-emerald-600 to-teal-500',
+  'from-amber-500 to-orange-500',
+  'from-rose-600 to-pink-500',
+  'from-purple-600 to-indigo-500',
+];
+
 export const MissionTeamEditor: React.FC<MissionTeamEditorProps> = ({
   members,
   isReadOnly,
@@ -20,125 +30,168 @@ export const MissionTeamEditor: React.FC<MissionTeamEditorProps> = ({
   onAddMember,
   onSyncDuration,
 }) => {
-  const isLocked = isReadOnly || members.some(() => false); // Placeholder but logically true if isReadOnly
-  return (
-    <section
-      className={`glass-card !p-4 sm:!p-5 !rounded-[1.6rem] sm:!rounded-[2rem] space-y-4 ${isLocked ? 'opacity-90' : ''}`}
-    >
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pb-3 border-b border-slate-200 dark:border-white/5">
-        <h2 className="font-black text-slate-800 dark:text-white uppercase tracking-wider !text-[10px] flex items-center gap-2">
-          <div className="p-1.5 bg-indigo-500/10 rounded-lg">
-            <Users size={14} className="text-indigo-500" />
-          </div>{' '}
-          Ressources Humaines Assignées
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full sm:w-auto">
-          {!isLocked && (
-            <>
-              <button
-                onClick={onSyncDuration}
-                className="flex min-h-10 items-center justify-center gap-2 px-3 py-2 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded-xl text-[9px] font-black uppercase tracking-[0.14em] sm:tracking-widest hover:bg-slate-200 dark:hover:bg-slate-700 transition-all border border-slate-200/50 dark:border-white/5"
-                title="Synchroniser la durée avec le planning"
-              >
-                <Sparkles size={10} className="text-indigo-400" /> Auto-Durée
-              </button>
-              <button
-                onClick={onAddMember}
-                className="flex min-h-10 items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-[9px] font-black uppercase tracking-[0.14em] sm:tracking-widest hover:bg-indigo-500 transition-all shadow-md shadow-indigo-500/20"
-              >
-                <Plus size={10} /> Ajouter
-              </button>
-            </>
-          )}
-        </div>
-      </div>
+  const totalIndemnites = members.reduce((s, m) => s + (m.dailyIndemnity || 0) * (m.days || 1), 0);
 
-      <div className="space-y-4">
-        {members.map((m, i) => (
-          <div
-            key={i}
-            className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center p-3 sm:p-3.5 bg-white dark:bg-slate-900/40 rounded-2xl border border-slate-200 dark:border-white/5 transition-all group hover:shadow-xl hover:shadow-indigo-500/5 hover:-translate-y-0.5"
-          >
-            <div className="sm:col-span-12 md:col-span-3 flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-500/10 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-black text-xs border border-indigo-200/50 dark:border-indigo-500/20">
-                {m.name ? m.name.charAt(0) : '?'}
-              </div>
-              <input
-                type="text"
-                value={m.name}
-                readOnly={isReadOnly}
-                onChange={(e) => onUpdateMember(i, 'name', e.target.value)}
-                className="w-full bg-transparent border-none text-xs font-bold text-slate-800 dark:text-white outline-none px-2 placeholder-slate-400"
-                placeholder="Nom de l'opératif"
-              />
-            </div>
-            <div className="sm:col-span-12 md:col-span-2">
-              <input
-                type="text"
-                value={m.role}
-                readOnly={isReadOnly}
-                onChange={(e) => onUpdateMember(i, 'role', e.target.value)}
-                className="w-full bg-transparent border-none text-xs italic text-slate-600 dark:text-slate-400 outline-none px-2 placeholder-slate-400/50"
-                placeholder="Spécialité/Rôle"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-3 sm:contents">
-            <div className="sm:col-span-6 md:col-span-3">
-              <div className="flex items-center gap-2 bg-slate-900/60 dark:bg-slate-800 p-2 rounded-xl ring-1 ring-white/5 dark:ring-white/10 shadow-inner">
-                <span className="text-[7px] font-black text-slate-400 uppercase tracking-widest leading-none bg-white/5 dark:bg-white/5 py-1 px-1.5 rounded-md">
-                  TAUX
-                </span>
-                <input
-                  type="number"
-                  min="0"
-                  value={m.dailyIndemnity}
-                  readOnly={isReadOnly}
-                  onChange={(e) =>
-                    onUpdateMember(i, 'dailyIndemnity', Math.max(0, Number(e.target.value)))
-                  }
-                  className="w-full bg-transparent border-none text-[11px] font-black text-emerald-700 dark:text-emerald-400 outline-none text-right focus:ring-0 placeholder-slate-400"
-                  placeholder="0"
-                />
-              </div>
-            </div>
-            <div className="sm:col-span-6 md:col-span-3">
-              <div className="flex items-center gap-2 bg-slate-900 dark:bg-slate-800 p-2 rounded-xl ring-1 ring-white/5 dark:ring-white/10 shadow-inner">
-                <span className="text-[7px] font-black text-slate-500 uppercase tracking-widest leading-none bg-white/5 dark:bg-white/5 py-1 px-1.5 rounded-md">
-                  JOURS
-                </span>
-                <input
-                  type="number"
-                  min="1"
-                  value={m.days}
-                  readOnly={isReadOnly}
-                  onChange={(e) => onUpdateMember(i, 'days', Math.max(1, Number(e.target.value)))}
-                  className="w-full bg-transparent border-none text-[11px] font-black text-indigo-700 dark:text-indigo-400 outline-none text-center focus:ring-0 placeholder-slate-400"
-                  placeholder="1"
-                />
-              </div>
-            </div>
-            </div>
-            {!isReadOnly && (
-              <div className="sm:col-span-12 md:col-span-1 flex justify-end pr-0 md:pr-2">
-                <button
-                  onClick={() => onRemoveMember(i)}
-                  className="text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 p-2 rounded-lg transition-colors"
-                  aria-label="Retirer le membre"
-                >
-                  <Trash2 size={16} />
-                </button>
-              </div>
-            )}
+  return (
+    <section className="relative overflow-hidden rounded-[1.75rem] bg-[#0d1117] border border-white/[0.07] p-5 sm:p-7 space-y-5">
+      {/* Ambient glow */}
+      <div className="absolute -top-10 -right-10 w-40 h-40 bg-indigo-500/5 blur-3xl rounded-full pointer-events-none" />
+
+      {/* ── Header ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-5 border-b border-white/[0.06] relative z-10">
+        <div className="flex items-center gap-3.5">
+          <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center shrink-0">
+            <Users size={18} className="text-indigo-400" />
           </div>
-        ))}
-        {members.length === 0 && (
-          <div className="text-center py-10 border-2 border-dashed border-slate-200 dark:border-white/5 rounded-3xl text-slate-400">
-            <Users size={32} className="mx-auto mb-3 opacity-20" />
-            <p className="text-xs font-bold uppercase tracking-widest">Aucun membre assigné</p>
-            <p className="text-[10px] mt-1">Cliquez sur ajouter pour composer l'équipe</p>
+          <div>
+            <h2 className="text-[12px] font-black text-white uppercase tracking-[0.15em]">Ressources Humaines</h2>
+            <p className="text-[9px] font-semibold text-slate-600 mt-0.5">
+              {members.length === 0 ? 'Aucun membre assigné' : `${members.length} membre${members.length > 1 ? 's' : ''} · ${new Intl.NumberFormat('fr-FR', { notation: 'compact' }).format(totalIndemnites)} XOF total`}
+            </p>
+          </div>
+        </div>
+
+        {!isReadOnly ? (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onSyncDuration}
+              className="flex items-center gap-1.5 px-3 py-2 bg-white/[0.04] border border-white/[0.07] text-slate-400 hover:text-indigo-400 hover:border-indigo-500/30 hover:bg-indigo-500/5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all"
+              title="Synchroniser la durée avec le planning"
+            >
+              <Sparkles size={11} className="text-indigo-400" />
+              <span className="hidden sm:inline">Auto-Durée</span>
+            </button>
+            <button
+              onClick={onAddMember}
+              className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-[9px] font-black uppercase tracking-widest shadow-lg shadow-indigo-600/25 transition-all"
+            >
+              <Plus size={11} />
+              Ajouter
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.03] border border-white/[0.05]">
+            <Lock size={9} className="text-slate-700" />
+            <span className="text-[8px] font-black text-slate-700 uppercase tracking-widest">Verrouillé</span>
           </div>
         )}
       </div>
+
+      {/* ── Member list ── */}
+      <div className="space-y-2 relative z-10">
+        {members.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 border-2 border-dashed border-white/[0.06] rounded-2xl">
+            <div className="w-12 h-12 rounded-2xl bg-white/[0.03] flex items-center justify-center mb-3">
+              <Users size={20} className="text-slate-700" />
+            </div>
+            <p className="text-[10px] font-black text-slate-700 uppercase tracking-widest">Aucun membre assigné</p>
+            {!isReadOnly && (
+              <button onClick={onAddMember} className="mt-3 text-[9px] font-black text-indigo-500 hover:text-indigo-400 uppercase tracking-widest transition-colors">
+                + Ajouter le premier membre
+              </button>
+            )}
+          </div>
+        ) : (
+          members.map((m, i) => {
+            const initials = (m.name || '?').substring(0, 2).toUpperCase();
+            const colour   = AVATAR_COLOURS[i % AVATAR_COLOURS.length];
+            const total    = (m.dailyIndemnity || 0) * (m.days || 1);
+
+            return (
+              <div
+                key={i}
+                className="group flex items-center gap-3 p-3 bg-white/[0.025] border border-white/[0.06] rounded-2xl hover:bg-white/[0.04] hover:border-white/10 transition-all"
+              >
+                {/* Avatar */}
+                <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${colour} flex items-center justify-center shrink-0 shadow-md`}>
+                  <span className="text-[11px] font-black text-white">{initials}</span>
+                </div>
+
+                {/* Name + Role */}
+                <div className="flex-1 min-w-0 grid grid-cols-1 sm:grid-cols-2 gap-x-3">
+                  <input
+                    type="text"
+                    value={m.name}
+                    readOnly={isReadOnly}
+                    onChange={(e) => onUpdateMember(i, 'name', e.target.value)}
+                    placeholder="Nom complet"
+                    className="bg-transparent border-none outline-none text-[11px] font-bold text-white placeholder:text-slate-700 focus:ring-0 w-full"
+                  />
+                  <input
+                    type="text"
+                    value={m.role}
+                    readOnly={isReadOnly}
+                    onChange={(e) => onUpdateMember(i, 'role', e.target.value)}
+                    placeholder="Rôle / Spécialité"
+                    className="bg-transparent border-none outline-none text-[10px] font-semibold text-slate-500 italic placeholder:text-slate-700 focus:ring-0 w-full"
+                  />
+                </div>
+
+                {/* Taux + Jours */}
+                <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white/[0.04] border border-white/[0.06] rounded-xl">
+                    <DollarSign size={9} className="text-emerald-500 shrink-0" />
+                    <input
+                      type="number"
+                      min="0"
+                      value={m.dailyIndemnity}
+                      readOnly={isReadOnly}
+                      onChange={(e) => onUpdateMember(i, 'dailyIndemnity', Math.max(0, Number(e.target.value)))}
+                      className="w-14 bg-transparent border-none outline-none text-[11px] font-black text-emerald-400 text-right focus:ring-0"
+                      placeholder="0"
+                    />
+                  </div>
+                  <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white/[0.04] border border-white/[0.06] rounded-xl">
+                    <CalendarDays size={9} className="text-indigo-400 shrink-0" />
+                    <input
+                      type="number"
+                      min="1"
+                      value={m.days}
+                      readOnly={isReadOnly}
+                      onChange={(e) => onUpdateMember(i, 'days', Math.max(1, Number(e.target.value)))}
+                      className="w-8 bg-transparent border-none outline-none text-[11px] font-black text-indigo-400 text-center focus:ring-0"
+                      placeholder="1"
+                    />
+                  </div>
+                </div>
+
+                {/* Total indemnité */}
+                <div className="hidden sm:block text-right shrink-0 min-w-[72px]">
+                  <p className="text-[10px] font-black text-white font-mono">
+                    {new Intl.NumberFormat('fr-FR', { notation: 'compact' }).format(total)}
+                  </p>
+                  <p className="text-[7px] text-slate-700 font-bold uppercase tracking-widest">XOF</p>
+                </div>
+
+                {/* Delete */}
+                {!isReadOnly && (
+                  <button
+                    onClick={() => onRemoveMember(i)}
+                    className="p-2 text-slate-700 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition-all opacity-0 group-hover:opacity-100 shrink-0"
+                    aria-label="Retirer le membre"
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                )}
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* ── Footer total ── */}
+      {members.length > 0 && (
+        <div className="flex items-center justify-between pt-4 border-t border-white/[0.05] relative z-10">
+          <span className="text-[8px] font-black uppercase tracking-widest text-slate-700">{members.length} membre{members.length > 1 ? 's' : ''}</span>
+          <div className="flex items-center gap-2">
+            <span className="text-[9px] text-slate-600 font-bold">Total indemnités :</span>
+            <span className="text-[12px] font-black text-white font-mono">
+              {new Intl.NumberFormat('fr-FR').format(totalIndemnites)}
+            </span>
+            <span className="text-[8px] text-slate-600 font-bold">XOF</span>
+          </div>
+        </div>
+      )}
     </section>
   );
 };
