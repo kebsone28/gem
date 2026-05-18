@@ -4,10 +4,10 @@
  */
 
 import { Router } from 'express';
-import { cacheService } from '../services/cacheService.js';
-import { getSlowQueries } from '../middleware/timing.js';
-import { authProtect, authorize } from './middlewares/auth.js';
-import logger from '../utils/logger.js';
+import { cacheService } from '../../services/cacheService.js';
+import { getSlowQueries } from '../../middleware/timing.js';
+import { authProtect, authorize } from '../middlewares/auth.js';
+import logger from '../../utils/logger.js';
 
 const router = Router();
 

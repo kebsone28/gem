@@ -25,7 +25,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { ActionBar } from '../../../../../components';
 import { getTemplates } from '../../../../../services/missionTemplates';
-import { SelectProjectModal } from '../../components/SelectProjectModal';
+import { SelectProjectModal } from '../../../components/SelectProjectModal';
 
 /* ─── Dropdown helper ───────────────────────────────────────────────────── */
 const Dropdown = ({ icon, label, isOpen, onToggle, children }: any) => (

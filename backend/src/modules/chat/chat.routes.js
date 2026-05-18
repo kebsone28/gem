@@ -1,7 +1,7 @@
 import express from 'express';
 import { authProtect } from '../../api/middlewares/auth.js';
 import { verifierPermission } from '../../middleware/verifierPermission.js';
-import { validateSchema } from '../../api/middleware/validation.js';
+import { validateSchema } from '../../middleware/validation.js';
 import { PERMISSIONS } from '../../core/config/permissions.js';
 import {
   createConversation,

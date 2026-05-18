@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+import { X } from 'lucide-react';
 import { useProjects } from '../hooks/useProjects';
 import logger from '@/utils/logger';
 
@@ -33,17 +32,22 @@ export const SelectProjectModal: React.FC<SelectProjectModalProps> = ({
     }
   };
 
-  return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px] bg-slate-900 border-slate-700">
-        <DialogHeader>
-          <DialogTitle className="text-white">Affecter à un Projet</DialogTitle>
-          <DialogDescription className="text-slate-400">
-            Sélectionnez le projet auquel vous souhaitez affecter cette mission.
-          </DialogDescription>
-        </DialogHeader>
+  if (!isOpen) return null;
 
-        <div className="py-4">
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={onClose}>
+      <div className="bg-slate-900 border border-slate-700 rounded-lg shadow-lg w-full max-w-md mx-4" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between p-6 border-b border-slate-700">
+          <div>
+            <h2 className="text-lg font-bold text-white">Affecter à un Projet</h2>
+            <p className="text-sm text-slate-400 mt-1">Sélectionnez le projet auquel vous souhaitez affecter cette mission.</p>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-white">
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="p-6">
           {projectsLoading ? (
             <div className="text-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500 mx-auto"></div>
@@ -75,23 +79,22 @@ export const SelectProjectModal: React.FC<SelectProjectModalProps> = ({
           )}
         </div>
 
-        <div className="flex justify-end gap-3 pt-4">
-          <Button
-            variant="outline"
+        <div className="flex justify-end gap-3 p-6 border-t border-slate-700">
+          <button
             onClick={onClose}
-            className="bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700"
+            className="px-4 py-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700 transition-colors"
           >
             Annuler
-          </Button>
-          <Button
+          </button>
+          <button
             onClick={handleSelect}
             disabled={!selectedProject || isLoading || projectsLoading}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-50"
+            className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {isLoading ? 'Affectation...' : 'Affecter'}
-          </Button>
+          </button>
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   );
 };
