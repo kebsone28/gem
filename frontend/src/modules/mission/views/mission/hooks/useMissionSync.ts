@@ -319,9 +319,8 @@ export const useMissionSync = (
            */
           if (assignedId !== finalId) {
             await db.missions.delete(finalId);
-            const persistedMission = await db.missions.get(assignedId);
-
-            const missionForUi = persistedMission || { ...missionData, id: assignedId, updatedAt: now };
+            // Reuse normalized data instead of refetching
+            const missionForUi = { ...missionData, id: assignedId, updatedAt: now };
             actions.loadMission(
               assignedId,
               missionForUi as any,

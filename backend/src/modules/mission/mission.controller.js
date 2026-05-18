@@ -12,6 +12,7 @@ import { normalizeRole } from '../../core/utils/roles.js';
 import QRCode from 'qrcode';
 import { buildPublicUrl } from '../../utils/publicUrl.js';
 import { socketService } from '../../services/socket.service.js';
+import { createErrorResponse, formatServerError } from '../../utils/errorFormatter.js';
 
 const isDev = process.env.NODE_ENV !== 'production';
 const SUPER_ADMIN_EMAIL = process.env.SUPER_ADMIN_EMAIL || 'admin_gem';
@@ -1034,18 +1035,18 @@ export const getMissionStats = async (req, res) => {
     };
 
     // Compter par statut
-    const statusCounts = await prisma.mission.groupBy({
+    const statusCountsPromise = prisma.mission.groupBy({
       by: ['status'],
       where: whereClause,
       _count: true,
     });
 
     // Calculer le budget total (uniquement pour les missions non exclues des finances)
-    const budgetAggregation = await prisma.mission.aggregate({
-      where: { 
-        ...whereClause, 
+    const budgetAggregationPromise = prisma.mission.aggregate({
+      where: {
+        ...whereClause,
         budget: { not: null },
-        excludeFromFinance: false 
+        excludeFromFinance: false
       },
       _sum: { budget: true },
       _avg: { budget: true },
@@ -1055,7 +1056,7 @@ export const getMissionStats = async (req, res) => {
     const twelveMonthsAgo = new Date();
     twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
 
-    const monthlyMissions = await prisma.mission.findMany({
+    const monthlyMissionsPromise = prisma.mission.findMany({
       where: {
         ...whereClause,
         createdAt: { gte: twelveMonthsAgo },
@@ -1065,6 +1066,13 @@ export const getMissionStats = async (req, res) => {
         status: true,
       },
     });
+
+    // Execute all queries in parallel
+    const [statusCounts, budgetAggregation, monthlyMissions] = await Promise.all([
+      statusCountsPromise,
+      budgetAggregationPromise,
+      monthlyMissionsPromise,
+    ]);
 
     // Grouper par mois
     const monthlyStats = {};
@@ -1100,10 +1108,12 @@ export const getMissionStats = async (req, res) => {
     res.json(stats);
   } catch (error) {
     logger.error('[MISSION_STATS_ERROR]', error);
-    res.status(500).json({
-      error: 'Erreur serveur lors de la récupération des statistiques missions',
-      ...(isDev && { details: error.message, stack: error.stack }),
-    });
+    const errorResponse = formatServerError(
+      'Erreur serveur lors de la récupération des statistiques missions',
+      'MISSION_STATS_ERROR',
+      error
+    );
+    res.status(500).json(errorResponse);
   }
 };
 
