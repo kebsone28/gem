@@ -461,6 +461,8 @@ model Mission {
   @@index([createdBy])
   @@index([status, deletedAt])
   @@index([organizationId, createdBy])
+  @@index([organizationId, status, createdAt])
+  @@index([projectId, createdBy])
 }
 
 model MissionApprovalWorkflow {
