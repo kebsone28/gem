@@ -1,6 +1,7 @@
 import express from 'express';
 import { authProtect } from '../../api/middlewares/auth.js';
 import { verifierPermission } from '../../middleware/verifierPermission.js';
+import { validateSchema } from '../../api/middleware/validation.js';
 import { PERMISSIONS } from '../../core/config/permissions.js';
 import {
   createConversation,
@@ -22,15 +23,42 @@ import {
 
 const router = express.Router();
 
+// Chat schemas for validation
+const chatCreateConversationSchema = {
+  required: ['participantIds'],
+  fields: {
+    participantIds: {
+      type: 'array',
+      required: true,
+      validate: (value) => Array.isArray(value) && value.length >= 2 ? null : 'Need at least 2 participants'
+    },
+    name: { type: 'string', maxLength: 255 },
+  },
+};
+
+const chatSendMessageSchema = {
+  required: ['content'],
+  fields: {
+    content: { type: 'string', required: true, minLength: 1, maxLength: 5000 },
+  },
+};
+
+const chatEditMessageSchema = {
+  required: ['content'],
+  fields: {
+    content: { type: 'string', required: true, minLength: 1, maxLength: 5000 },
+  },
+};
+
 router.use(authProtect);
 
 router.get('/bootstrap', getChatBootstrap);
 router.put('/status', updateUserStatus);
 router.get('/resolve', resolveEntity);
-router.post('/conversations', createConversation);
+router.post('/conversations', validateSchema(chatCreateConversationSchema), createConversation);
 router.get('/conversations/:conversationId/messages', getConversationMessages);
-router.post('/conversations/:conversationId/messages', sendMessage);
-router.patch('/conversations/:conversationId/messages/:messageId', editMessage);
+router.post('/conversations/:conversationId/messages', validateSchema(chatSendMessageSchema), sendMessage);
+router.patch('/conversations/:conversationId/messages/:messageId', validateSchema(chatEditMessageSchema), editMessage);
 router.delete('/conversations/:conversationId/messages/:messageId/me', deleteMessageForMe);
 router.post('/conversations/:conversationId/read', markAsRead);
 router.delete(

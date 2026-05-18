@@ -13,9 +13,45 @@ import {
 } from '../../modules/household/household.controller.js';
 import { authProtect } from '../middlewares/auth.js';
 import { verifierPermission, verifierAssignation, verifierModule } from '../../middleware/verifierPermission.js';
+import { validateSchema } from '../middleware/validation.js';
 import { PERMISSIONS } from '../../core/config/permissions.js';
 
 const router = express.Router();
+
+// Define household schemas for validation
+const householdCreateSchema = {
+  fields: {
+    name: { type: 'string', maxLength: 255 },
+    phone: { type: 'string', maxLength: 20 },
+    status: { type: 'string', enum: ['active', 'inactive', 'archived'] },
+    region: { type: 'string', maxLength: 100 },
+    departement: { type: 'string', maxLength: 100 },
+    village: { type: 'string', maxLength: 100 },
+    latitude: { type: 'number', minimum: -90, maximum: 90 },
+    longitude: { type: 'number', minimum: -180, maximum: 180 },
+  },
+};
+
+const householdUpdateSchema = {
+  fields: {
+    name: { type: 'string', maxLength: 255 },
+    phone: { type: 'string', maxLength: 20 },
+    status: { type: 'string', enum: ['active', 'inactive', 'archived'] },
+    region: { type: 'string', maxLength: 100 },
+    departement: { type: 'string', maxLength: 100 },
+    village: { type: 'string', maxLength: 100 },
+    latitude: { type: 'number', minimum: -90, maximum: 90 },
+    longitude: { type: 'number', minimum: -180, maximum: 180 },
+  },
+};
+
+const householdApproveSchema = {
+  required: ['status'],
+  fields: {
+    status: { type: 'string', required: true, enum: ['approved', 'rejected'] },
+    comments: { type: 'string', maxLength: 2000 },
+  },
+};
 
 router.use(authProtect);
 router.use(verifierModule('terrain'));
@@ -60,11 +96,11 @@ router.get('/', getHouseholds);
 router.get('/count', getHouseholdsCount);
 router.get('/by-numero/:numeroordre', getHouseholdByNumero);
 router.get('/:id', getHouseholdById);
-router.post('/', verifierPermission(PERMISSIONS.MODIFIER_CARTE), verifierAssignation('menage'), createHousehold);
-router.patch('/:id', verifierPermission(PERMISSIONS.MODIFIER_CARTE), verifierAssignation('menage'), updateHousehold);
+router.post('/', validateSchema(householdCreateSchema), verifierPermission(PERMISSIONS.MODIFIER_CARTE), verifierAssignation('menage'), createHousehold);
+router.patch('/:id', validateSchema(householdUpdateSchema), verifierPermission(PERMISSIONS.MODIFIER_CARTE), verifierAssignation('menage'), updateHousehold);
 // Workflow d'approbation
 router.get('/:householdId/approval-history', getHouseholdApprovalHistory);
-router.post('/:householdId/approve', approveHouseholdStep);
-router.post('/:householdId/reject', rejectHouseholdStep);
+router.post('/:householdId/approve', validateSchema(householdApproveSchema), approveHouseholdStep);
+router.post('/:householdId/reject', validateSchema(householdApproveSchema), rejectHouseholdStep);
 
 export default router;
