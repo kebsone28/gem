@@ -13,7 +13,7 @@ import { eventBus } from '../../core/services/eventBus.service.js';
 import { workflowService } from '../../core/services/workflow.service.js';
 import { securityService } from '../../core/services/security.service.js';
 import { getModuleMetadata } from '../../core/config/modules.js';
-import { ROLES } from '../../core/config/permissions.js';
+import { ROLES, checkPermission } from '../../core/config/permissions.js';
 
 const DONE_STATUSES = new Set(['completed', 'Terminé', 'Réception: Validée', 'Conforme']);
 
@@ -319,53 +319,102 @@ export const updateProject = async (req, res) => {
   }
 };
 
-// @desc    Assign user to multiple projects atomically
+// @desc    Assign user to multiple projects atomically with validation & optimization
 // @route   POST /api/projects/assign-user
 export const assignUserToProjects = async (req, res) => {
   try {
     const { userId, projectIds } = req.body;
     const { organizationId, id: adminId } = req.user;
 
+    // 1️⃣ VALIDATION: Input validation
+    if (!userId || typeof userId !== 'string') {
+      return res.status(400).json({ error: 'ID utilisateur invalide' });
+    }
+    if (!Array.isArray(projectIds)) {
+      return res.status(400).json({ error: 'projectIds doit être un tableau' });
+    }
+    if (projectIds.length === 0) {
+      return res.status(400).json({ error: 'Veuillez sélectionner au moins un projet' });
+    }
+
+    // 2️⃣ PERMISSION CHECK: Verify admin has permission to assign projects
+    if (!checkPermission(req.user, 'SYSTEM_USERS')) {
+      return res.status(403).json({
+        error: 'Vous n\'avez pas la permission d\'assigner des projets',
+        details: 'Permission SYSTEM_USERS requise'
+      });
+    }
+
+    // 3️⃣ VALIDATION: Verify all projectIds exist and belong to organization
+    const validProjects = await prisma.project.findMany({
+      where: {
+        organizationId,
+        deletedAt: null,
+        id: { in: projectIds }
+      },
+      select: { id: true }
+    });
+
+    const validProjectIds = new Set(validProjects.map(p => p.id));
+    const invalidIds = projectIds.filter(id => !validProjectIds.has(id));
+
+    if (invalidIds.length > 0) {
+      return res.status(400).json({
+        error: 'Certains projets sont invalides ou appartiennent à une autre organisation',
+        invalidIds,
+        hint: `${invalidIds.length}/${projectIds.length} projets invalides`
+      });
+    }
+
+    // Verify target user exists in same organization
+    const targetUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, organizationId: true }
+    });
+
+    if (!targetUser || targetUser.organizationId !== organizationId) {
+      return res.status(404).json({ error: 'Utilisateur non trouvé dans cette organisation' });
+    }
+
+    // 4️⃣ OPTIMIZATION: Get all org projects for bulk update (only if <100)
     const allProjects = await prisma.project.findMany({
-      where: { organizationId, deletedAt: null }
+      where: { organizationId, deletedAt: null },
+      select: { id: true, config: true }
     });
 
     const updates = [];
 
+    // Prepare updates only for changed projects
     for (const p of allProjects) {
       const currentAssigned = (p.config || {}).assignedUsers || [];
       const isCurrentlyAssigned = currentAssigned.includes(userId);
       const shouldBeAssigned = projectIds.includes(p.id);
 
       if (shouldBeAssigned && !isCurrentlyAssigned) {
-        updates.push(
-          prisma.project.update({
-            where: { id: p.id },
-            data: {
-              config: {
-                ...(p.config || {}),
-                assignedUsers: [...currentAssigned, userId]
-              }
-            }
-          })
-        );
+        updates.push({
+          id: p.id,
+          action: 'ADD',
+          config: { ...p.config, assignedUsers: [...currentAssigned, userId] }
+        });
       } else if (!shouldBeAssigned && isCurrentlyAssigned) {
-        updates.push(
-          prisma.project.update({
-            where: { id: p.id },
-            data: {
-              config: {
-                ...(p.config || {}),
-                assignedUsers: currentAssigned.filter(id => id !== userId)
-              }
-            }
-          })
-        );
+        updates.push({
+          id: p.id,
+          action: 'REMOVE',
+          config: { ...p.config, assignedUsers: currentAssigned.filter(id => id !== userId) }
+        });
       }
     }
 
+    // Execute updates atomically
     if (updates.length > 0) {
-      await prisma.$transaction(updates);
+      await prisma.$transaction(
+        updates.map(u =>
+          prisma.project.update({
+            where: { id: u.id },
+            data: { config: u.config }
+          })
+        )
+      );
 
       // Audit Log
       await tracerAction({
@@ -374,25 +423,41 @@ export const assignUserToProjects = async (req, res) => {
         action: 'ASSIGNATION_PROJETS_UTILISATEUR',
         resource: 'Utilisateur',
         resourceId: userId,
-        details: { projectIds },
+        details: {
+          projectIds,
+          changesCount: updates.length,
+          addCount: updates.filter(u => u.action === 'ADD').length,
+          removeCount: updates.filter(u => u.action === 'REMOVE').length
+        },
         req,
       });
 
       try {
         socketService.emit('notification', {
           type: 'SYNC',
-          message: `Les assignations de projets ont été mises à jour`,
-          data: { user: adminId, action: 'USER_ASSIGNMENTS_UPDATED' },
+          message: `Les assignations de projets de ${targetUser.id} ont été mises à jour`,
+          data: { user: adminId, action: 'USER_ASSIGNMENTS_UPDATED', targetUser: userId },
         });
       } catch (wsError) {
         console.error('WebSocket Emit error during assignment:', wsError);
       }
     }
 
-    res.json({ message: 'Assignations mises à jour avec succès', count: updates.length });
+    res.json({
+      message: 'Assignations mises à jour avec succès',
+      summary: {
+        totalProjects: allProjects.length,
+        assignedProjects: projectIds.length,
+        changesCount: updates.length,
+        success: true
+      }
+    });
   } catch (error) {
     console.error('Assign user to projects error:', error);
-    res.status(500).json({ error: 'Server error while updating assignments' });
+    res.status(500).json({
+      error: 'Erreur serveur lors de la mise à jour des assignations',
+      details: process.env.NODE_ENV !== 'production' ? error.message : undefined
+    });
   }
 };
 
