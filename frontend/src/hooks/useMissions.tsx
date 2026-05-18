@@ -21,7 +21,7 @@ export default function useMissions(initial: Mission[] | null = null) {
         setLoading(false);
       }
     },
-    [data]
+    [] // Empty dependency - logic handles caching via 'if (data && !opts.force)'
   );
 
   useEffect(() => {

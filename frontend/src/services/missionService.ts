@@ -27,7 +27,7 @@ export const getMissions = async (params?: { projectId?: string; search?: string
     return response.data.missions || [];
   } catch (err) {
     logger.error('Failed to fetch missions:', err);
-    return [];
+    throw err; // Let caller handle error
   }
 };
 
@@ -40,7 +40,7 @@ export const getMission = async (id: string): Promise<Mission | null> => {
     return response.data;
   } catch (err) {
     logger.error(`Failed to fetch mission ${id}:`, err);
-    return null;
+    throw err; // Let caller handle error
   }
 };
 
@@ -55,7 +55,7 @@ export const createMission = async (missionData: Partial<Mission>): Promise<Miss
   } catch (err: any) {
     logger.error('❌ [API] Failed to create mission:', err);
     logger.error('❌ FULL BACKEND ERROR:', err.response?.data);
-    return null;
+    throw err; // Let caller handle error
   }
 };
 
@@ -76,7 +76,7 @@ export const updateMission = async (
     if (err.response?.status === 404) {
       return { error: 404 };
     }
-    return null;
+    throw err; // Let caller handle error
   }
 };
 
@@ -89,7 +89,7 @@ export const deleteMission = async (id: string): Promise<boolean> => {
     return true;
   } catch (err) {
     logger.error(`Failed to delete mission ${id}:`, err);
-    return false;
+    throw err; // Let caller handle error
   }
 };
 
@@ -102,7 +102,7 @@ export const duplicateMission = async (id: string): Promise<Mission | null> => {
     return response.data;
   } catch (err) {
     logger.error(`Failed to duplicate mission ${id}:`, err);
-    return null;
+    throw err; // Let caller handle error
   }
 };
 
@@ -131,7 +131,7 @@ export const verifyMission = async (identifier: string): Promise<Mission | null>
     return response.data;
   } catch (err) {
     logger.error(`Failed to verify mission ${identifier}:`, err);
-    return null;
+    throw err; // Let caller handle error
   }
 };
 
@@ -147,6 +147,6 @@ export const assignMissionToProject = async (missionId: string, projectId: strin
   } catch (err: any) {
     logger.error('❌ Failed to assign mission to project:', err);
     logger.error('❌ FULL ERROR:', err.response?.data);
-    return null;
+    throw err; // Let caller handle error
   }
 };

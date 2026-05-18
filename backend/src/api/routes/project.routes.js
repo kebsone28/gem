@@ -98,7 +98,7 @@ router.get('/:id/bordereau', getProjectBordereau);
  *       200:
  *         description: Grappes recalculées
  */
-router.post('/:id/recalculate-grappes', triggerRecalculateGrappes);
+router.post('/:id/recalculate-grappes', verifierPermission(PERMISSIONS.MODIFIER_CARTE), triggerRecalculateGrappes);
 
 /**
  * @swagger
@@ -194,7 +194,7 @@ router.delete('/:id', verifierPermission(PERMISSIONS.SUPPRIMER_PROJET), verifier
  *       200:
  *         description: Déploiement initié
  */
-router.post('/system/deploy', deployServerUpdate);
+router.post('/system/deploy', verifierPermission(PERMISSIONS.GERER_PARAMETRES), deployServerUpdate);
 
 /**
  * @swagger
@@ -208,7 +208,7 @@ router.post('/system/deploy', deployServerUpdate);
  *       200:
  *         description: Maintenance initiée
  */
-router.post('/system/db-maintenance', dbMaintenance);
+router.post('/system/db-maintenance', verifierPermission(PERMISSIONS.GERER_PARAMETRES), dbMaintenance);
 
 // Project pages & modules (scoped by :id project)
 /**

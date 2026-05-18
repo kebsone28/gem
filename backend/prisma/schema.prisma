@@ -47,6 +47,7 @@ model Organization {
   users                      User[]
   warehouses                 Warehouse[]
   workflows                  Workflow[]
+  mesRecords                 MESRecord[]
 }
 
 model User {
@@ -88,6 +89,9 @@ model User {
   organization             Organization             @relation(fields: [organizationId], references: [id])
   role                     Role?                    @relation(fields: [roleId], references: [id])
   userMemory               UserMemory?
+  mesRecordsControlled     MESRecord[]              @relation("MESController")
+  mesRecordsValidated      MESRecord[]              @relation("MESValidator")
+  mesControls              MESControl[]
 
   @@unique([email, organizationId])
 }
@@ -132,6 +136,7 @@ model Project {
   warehouses            Warehouse[]
   workflows             Workflow[]
   zones                 Zone[]
+  mesRecords            MESRecord[]
 }
 
 model ProjectTemplate {
@@ -453,6 +458,9 @@ model Mission {
   @@index([organizationId])
   @@index([projectId])
   @@index([orderNumber])
+  @@index([createdBy])
+  @@index([status, deletedAt])
+  @@index([organizationId, createdBy])
 }
 
 model MissionApprovalWorkflow {
