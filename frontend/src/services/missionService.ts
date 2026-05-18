@@ -134,3 +134,19 @@ export const verifyMission = async (identifier: string): Promise<Mission | null>
     return null;
   }
 };
+
+/**
+ * Assigne une mission à un projet (liaison indépendante)
+ */
+export const assignMissionToProject = async (missionId: string, projectId: string): Promise<Mission | null> => {
+  try {
+    logger.debug('🚀 [API] ASSIGN MISSION TO PROJECT:', { missionId, projectId });
+    const response = await api.patch(`/missions/${missionId}/assign-project`, { projectId });
+    logger.debug('✅ Mission assigned successfully:', response.data);
+    return response.data.mission || response.data;
+  } catch (err: any) {
+    logger.error('❌ Failed to assign mission to project:', err);
+    logger.error('❌ FULL ERROR:', err.response?.data);
+    return null;
+  }
+};

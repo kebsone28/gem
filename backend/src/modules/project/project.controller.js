@@ -13,7 +13,8 @@ import { eventBus } from '../../core/services/eventBus.service.js';
 import { workflowService } from '../../core/services/workflow.service.js';
 import { securityService } from '../../core/services/security.service.js';
 import { getModuleMetadata } from '../../core/config/modules.js';
-import { ROLES, checkPermission } from '../../core/config/permissions.js';
+import { ROLES } from '../../core/config/permissions.js';
+import { checkPermission } from '../../core/constants/permissions.js';
 
 const DONE_STATUSES = new Set(['completed', 'Terminé', 'Réception: Validée', 'Conforme']);
 

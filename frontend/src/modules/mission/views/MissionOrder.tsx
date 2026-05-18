@@ -873,6 +873,30 @@ export default function MissionOrder() {
     }
   };
 
+  const handleAssignProject = async (projectId: string) => {
+    if (!state.currentMissionId) {
+      toast.error('Aucune mission sélectionnée');
+      return;
+    }
+
+    try {
+      const updated = await missionService.assignMissionToProject(state.currentMissionId, projectId);
+      if (updated) {
+        missionState.updateFormField('projectId', projectId);
+        missionState.addAuditEntry(
+          `Mission affectée au projet`,
+          user?.name || 'Utilisateur'
+        );
+        toast.success('Mission affectée avec succès');
+      } else {
+        toast.error('Erreur lors de l\'affectation de la mission');
+      }
+    } catch (error) {
+      logger.error('Erreur affectation projet:', error);
+      toast.error('Erreur lors de l\'affectation');
+    }
+  };
+
   // Si la mission est signée/certifiée, forcer l'onglet rapport
   useEffect(() => {
     if ((effectiveIsCertified || effectiveIsSubmitted) && activeTab !== 'report') {
@@ -948,6 +972,7 @@ export default function MissionOrder() {
               formData={state.formData}
               currentMissionId={state.currentMissionId}
               role={role || ''}
+              projectId={state.formData.projectId}
               isSyncing={state.isSyncing}
               isSyncingServer={state.isSyncingServer}
               isDirty={missionState.isDirty}
@@ -981,6 +1006,7 @@ export default function MissionOrder() {
               }}
               onValidate={handleMissionCertify}
               onSubmit={handleMissionSubmit}
+              onAssignProject={handleAssignProject}
               isCertified={effectiveIsCertified}
               isSubmitted={effectiveIsSubmitted}
             />

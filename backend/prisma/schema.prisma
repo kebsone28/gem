@@ -1367,3 +1367,103 @@ enum SyncStatus {
   SYNCED
   CONFLICT
 }
+
+// GED OS MES - Mise en Service Électrique
+model MESRecord {
+  id              String       @id @default(uuid())
+  organizationId  String
+  projectId       String?
+  
+  // Informations de l'avis Senelec
+  avisNumber      String       @unique
+  meterNumber     String
+  
+  // Informations techniques
+  poste           String
+  zone            String
+  type            String       // MONO, TRI
+  nature          String       // POSE, BRANCHEMENT_POSE
+  cable           String?
+  ct70            Boolean      @default(false)
+  pa              Boolean      @default(false)
+  
+  // Intervention
+  agent           String
+  date            DateTime
+  observations    String?
+  status          String       @default("RECU") // RECU, PROGRAMME, EN_COURS, REALISE, CONTROLE, VALIDE, FACTURE, PAYE
+  prestataire     String       // PROQUELEC, UMSAT, AUTRE
+  
+  // Géolocalisation
+  gpsLat          Float?
+  gpsLng          Float?
+  
+  // Photos et signature
+  photos          Json?        @default("[]")
+  clientSignature String?
+  
+  // Contrôle qualité
+  controlled      Boolean      @default(false)
+  controllerId    String?
+  controlDate     DateTime?
+  checklist       Json?        @default("{}")
+  
+  // Validation
+  validated       Boolean      @default(false)
+  validatorId     String?
+  validationDate  DateTime?
+  
+  // Facturation
+  factured        Boolean      @default(false)
+  factureNumber   String?
+  factureDate     DateTime?
+  amount          Decimal?
+  
+  // Metadata
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  deletedAt       DateTime?
+  version         Int          @default(1)
+  
+  organization    Organization     @relation(fields: [organizationId], references: [id])
+  project         Project?         @relation(fields: [projectId], references: [id])
+  controller      User?            @relation("MESController", fields: [controllerId], references: [id])
+  validator       User?            @relation("MESValidator", fields: [validatorId], references: [id])
+  controls        MESControl[]
+  
+  @@index([organizationId])
+  @@index([projectId])
+  @@index([status])
+  @@index([prestataire])
+  @@index([date])
+  @@index([avisNumber])
+  @@index([meterNumber])
+}
+
+model MESControl {
+  id              String       @id @default(uuid())
+  mesRecordId     String
+  controllerId    String
+  
+  // Checklist de contrôle
+  compteurFixe    Boolean      @default(false)
+  coupeCircuit    Boolean      @default(false)
+  raccordement    Boolean      @default(false)
+  conformiteZone  Boolean      @default(false)
+  photosValides   Boolean      @default(false)
+  
+  // Résultat
+  conforme        Boolean      @default(false)
+  observations    String?
+  score           Int?
+  
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  
+  mesRecord       MESRecord    @relation(fields: [mesRecordId], references: [id], onDelete: Cascade)
+  controller      User         @relation(fields: [controllerId], references: [id])
+  
+  @@index([mesRecordId])
+  @@index([controllerId])
+  @@index([conforme])
+}

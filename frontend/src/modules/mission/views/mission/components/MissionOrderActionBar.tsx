@@ -20,10 +20,12 @@ import {
   FileText,
   FileSpreadsheet,
   FileDown,
+  Link2,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ActionBar } from '../../../../../components';
 import { getTemplates } from '../../../../../services/missionTemplates';
+import { SelectProjectModal } from '../../components/SelectProjectModal';
 
 /* ─── Dropdown helper ───────────────────────────────────────────────────── */
 const Dropdown = ({ icon, label, isOpen, onToggle, children }: any) => (
@@ -82,6 +84,8 @@ const ToggleRow = ({ icon: Icon, label, color, active, onToggle }: any) => (
 /* ─── Main component ─────────────────────────────────────────────────────── */
 export const MissionOrderActionBar = (props: any) => {
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+  const [showSelectProject, setShowSelectProject] = useState(false);
+  const [isAssigning, setIsAssigning] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -96,14 +100,14 @@ export const MissionOrderActionBar = (props: any) => {
   const toggle = (name: string) => setActiveDropdown(activeDropdown === name ? null : name);
 
   const {
-    formData, currentMissionId, role,
+    formData, currentMissionId, role, projectId,
     isSyncing, isSyncingServer, isDirty, syncStatus,
     showAudit, unreadCount = 0,
     onNewMission, onDuplicate, onTemplateSelect, onConfigToggle,
     onToggleFeature, onToggleSimplifiedMode, onNotificationsToggle,
     onAuditToggle, onSyncFromServer, onUpdateField,
     onExportExcel, onExportWord, onExportPDF,
-    onSave, onValidate, onSubmit,
+    onSave, onValidate, onSubmit, onAssignProject,
     isCertified, isSubmitted, isSimplifiedMode,
   } = props;
 
@@ -206,6 +210,20 @@ export const MissionOrderActionBar = (props: any) => {
             >
               <Fingerprint size={14} />
               <span className="hidden sm:inline">VALIDER</span>
+            </motion.button>
+          )}
+
+          {/* Assign to Project (when not assigned) */}
+          {!projectId && (
+            <motion.button
+              whileHover={{ scale: 1.03, y: -1 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={() => setShowSelectProject(true)}
+              disabled={isAssigning}
+              className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-xl text-[10px] font-black tracking-widest shadow-lg shadow-blue-500/30 transition-all border-t border-white/15 disabled:opacity-50"
+            >
+              {isAssigning ? <Loader2 size={14} className="animate-spin" /> : <Link2 size={14} />}
+              <span className="hidden sm:inline">AFFECTER</span>
             </motion.button>
           )}
         </div>
@@ -325,6 +343,21 @@ export const MissionOrderActionBar = (props: any) => {
           </div>
         </div>
       </div>
+
+      <SelectProjectModal
+        isOpen={showSelectProject}
+        isLoading={isAssigning}
+        onClose={() => setShowSelectProject(false)}
+        onSelect={async (selectedProjectId) => {
+          setIsAssigning(true);
+          try {
+            await onAssignProject?.(selectedProjectId);
+            setShowSelectProject(false);
+          } finally {
+            setIsAssigning(false);
+          }
+        }}
+      />
     </ActionBar>
   );
 };

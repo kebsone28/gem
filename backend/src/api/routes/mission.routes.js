@@ -16,7 +16,8 @@ import {
     downloadMissionCertifiedDocument,
     sendMissionDocumentEmail,
     analyzeMissionIA,
-    purgeMissions
+    purgeMissions,
+    assignMissionToProject
 } from '../../modules/mission/mission.controller.js';
 import { authProtect, authorize } from '../middlewares/auth.js';
 import { verifierPermission, verifierModule } from '../../middleware/verifierPermission.js';
@@ -60,6 +61,7 @@ router.post('/', verifierPermission(PERMISSIONS.CREER_MISSION), async (req, res,
     }
 });
 router.patch('/:id', verifierPermission(PERMISSIONS.MODIFIER_MISSIONS), updateMission);
+router.patch('/:id/assign-project', verifierPermission(PERMISSIONS.MODIFIER_MISSIONS), assignMissionToProject);
 router.put('/:id',   verifierPermission(PERMISSIONS.MODIFIER_MISSIONS), updateMission);
 router.delete('/:id', verifierPermission(PERMISSIONS.SUPPRIMER_MISSIONS), deleteMission);
 router.post('/:id/duplicate', verifierPermission(PERMISSIONS.CREER_MISSION), duplicateMission);

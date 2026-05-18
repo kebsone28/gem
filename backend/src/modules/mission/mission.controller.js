@@ -1204,11 +1204,8 @@ export const createMission = async (req, res) => {
     const budgetError = validateMissionBudget(budget);
     if (budgetError) return res.status(400).json({ error: budgetError });
 
-    // VALIDATION GÉOMÉTRIQUE & TENANTE DU PROJET
+    // VALIDATION: projectId is NOW OPTIONAL - missions can be created independently
     let safeProjectId = activeProjectId || cleanNullable(projectId);
-    if (!safeProjectId) {
-      return res.status(400).json({ error: 'Un projet actif est requis pour créer une mission.' });
-    }
 
     if (safeProjectId && typeof safeProjectId === 'string') {
       const project = await prisma.project.findFirst({
@@ -2706,3 +2703,65 @@ export const getPendingApprovals = async (req, res) => {
     });
   }
 };
+
+/**
+ * Assign a mission to a project (independent mission linking)
+ * @route PATCH /api/missions/:id/assign-project
+ * @param {string} req.params.id - Mission ID
+ * @param {string} req.body.projectId - Project ID to assign
+ */
+export const assignMissionToProject = async (req, res) => {
+  try {
+    const { id: missionId } = req.params;
+    const { projectId } = req.body;
+    const { organizationId, id: userId } = req.user;
+
+    if (!projectId || typeof projectId !== 'string') {
+      return res.status(400).json({ error: 'projectId is required and must be a string' });
+    }
+
+    const mission = await prisma.mission.findFirst({
+      where: { id: missionId, organizationId },
+    });
+
+    if (!mission) {
+      return res.status(404).json({ error: 'Mission not found' });
+    }
+
+    const project = await prisma.project.findFirst({
+      where: { id: projectId, organizationId },
+    });
+
+    if (!project) {
+      return res.status(404).json({ error: 'Project not found or not accessible' });
+    }
+
+    const updatedMission = await prisma.mission.update({
+      where: { id: missionId },
+      data: { projectId },
+    });
+
+    try {
+      await tracerAction(organizationId, userId, 'MISSION_ASSIGNED_TO_PROJECT', 'Mission', missionId, {
+        projectId,
+        projectName: project.name,
+      });
+    } catch (auditError) {
+      logger.warn('[MISSION_ASSIGN] audit failed:', auditError?.message);
+    }
+
+    emitMissionRealtimeEvent('mission:assigned', updatedMission, organizationId, {
+      projectId,
+    });
+
+    res.json({ mission: updatedMission });
+  } catch (error) {
+    logger.error('[MISSION_ASSIGN_ERROR]', error);
+    res.status(500).json({
+      error: 'Server error during mission assignment',
+      code: 'MISSION_ASSIGN_FAILED',
+      ...(isDev && { details: error.message, stack: error.stack }),
+    });
+  }
+};
+
