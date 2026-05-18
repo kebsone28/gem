@@ -98,8 +98,15 @@ import mesRoutes from './api/routes/mes.routes.js';
 import { notFoundHandler } from './middleware/errorHandler.js';
 import { tenantResolver } from './middleware/tenantResolver.js';
 import { domainContext } from './middleware/domainContext.js';
+import { paginationMiddleware } from './utils/paginationHelper.js';
+import { requestTimingMiddleware } from './middleware/timing.js';
+import systemRoutes from './api/routes/system.routes.js';
 
 setupSwagger(app);
+
+// Add global middleware for pagination and timing
+app.use(paginationMiddleware);
+app.use(requestTimingMiddleware);
 
 app.use('/api/auth', authRoutes);
 // Tenant resolver: always populate AsyncLocalStorage with org/project when available
@@ -136,6 +143,7 @@ if (config.env !== 'production') {
   app.use('/api/debug', debugRoutes);
 }
 app.use('/api/admin', adminPermissionRoutes);
+app.use('/api/system', systemRoutes);
 
 app.get('/health', async (req, res) => {
   const health = {

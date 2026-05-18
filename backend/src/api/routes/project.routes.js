@@ -15,6 +15,7 @@ import {
 import { authProtect } from '../middlewares/auth.js';
 import { verifierPermission, verifierAssignation } from '../../middleware/verifierPermission.js';
 import { PERMISSIONS } from '../../core/config/permissions.js';
+import { validateSchema } from '../middleware/validation.js';
 import * as projectConfig from '../../modules/projectConfig/projectConfig.controller.js';
 import { getProjectAnalytics } from '../../modules/project/project_analytics.controller.js';
 
@@ -26,6 +27,54 @@ const router = express.Router();
  *   name: Projects
  *   description: Gestion et configuration des projets
  */
+
+// Define project schemas for validation
+const projectCreateSchema = {
+  required: ['name', 'status'],
+  fields: {
+    name: {
+      type: 'string',
+      required: true,
+      minLength: 3,
+      maxLength: 255,
+    },
+    status: {
+      type: 'string',
+      required: true,
+      enum: ['active', 'paused', 'completed', 'archived'],
+    },
+    budget: {
+      type: 'number',
+      minimum: 0,
+    },
+    description: {
+      type: 'string',
+      maxLength: 5000,
+    },
+  },
+};
+
+const projectUpdateSchema = {
+  fields: {
+    name: {
+      type: 'string',
+      minLength: 3,
+      maxLength: 255,
+    },
+    status: {
+      type: 'string',
+      enum: ['active', 'paused', 'completed', 'archived'],
+    },
+    budget: {
+      type: 'number',
+      minimum: 0,
+    },
+    description: {
+      type: 'string',
+      maxLength: 5000,
+    },
+  },
+};
 
 // Toutes les routes sont protégées par défaut par l'organisation via authProtect
 router.use(authProtect);
@@ -144,7 +193,7 @@ router.post('/assign-user', verifierPermission(PERMISSIONS.CREER_PROJET), assign
  *       201:
  *         description: Projet créé
  */
-router.post('/', verifierPermission(PERMISSIONS.CREER_PROJET), createProject);
+router.post('/', validateSchema(projectCreateSchema), verifierPermission(PERMISSIONS.CREER_PROJET), createProject);
 
 /**
  * @swagger
@@ -162,7 +211,7 @@ router.post('/', verifierPermission(PERMISSIONS.CREER_PROJET), createProject);
  *       200:
  *         description: Projet mis à jour
  */
-router.patch('/:id', verifierPermission(PERMISSIONS.MODIFIER_CARTE), verifierAssignation('projet'), updateProject);
+router.patch('/:id', validateSchema(projectUpdateSchema), verifierPermission(PERMISSIONS.MODIFIER_CARTE), verifierAssignation('projet'), updateProject);
 
 /**
  * @swagger

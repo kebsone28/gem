@@ -22,6 +22,7 @@ import {
 import { authProtect, authorize } from '../middlewares/auth.js';
 import { verifierPermission, verifierModule } from '../../middleware/verifierPermission.js';
 import { PERMISSIONS } from '../../core/config/permissions.js';
+import { validateSchema, schemas } from '../middleware/validation.js';
 import multer from 'multer';
 
 // Internal multer for doc sending
@@ -53,16 +54,79 @@ router.get('/', getMissions); // Filtrage géré dans le contrôleur selon le r�
 router.get('/stats', getMissionStats); // Statistiques KPI
 router.delete('/purge/all', authorize('ADMIN_PROQUELEC'), purgeMissions); // Purge massive (Admin seulement)
 
-router.post('/', verifierPermission(PERMISSIONS.CREER_MISSION), async (req, res, next) => {
+// Define mission schemas
+const missionCreateSchema = {
+  required: ['title'],
+  fields: {
+    title: {
+      type: 'string',
+      required: true,
+      minLength: 3,
+      maxLength: 255,
+    },
+    description: {
+      type: 'string',
+      maxLength: 5000,
+    },
+    budget: {
+      type: 'number',
+      minimum: 0,
+    },
+    projectId: {
+      type: 'string',
+    },
+    status: {
+      type: 'string',
+      enum: ['draft', 'soumise', 'en_attente_validation', 'approuvee', 'rejetee'],
+    },
+  },
+};
+
+const missionUpdateSchema = {
+  fields: {
+    title: {
+      type: 'string',
+      minLength: 3,
+      maxLength: 255,
+    },
+    description: {
+      type: 'string',
+      maxLength: 5000,
+    },
+    budget: {
+      type: 'number',
+      minimum: 0,
+    },
+    projectId: {
+      type: 'string',
+    },
+    status: {
+      type: 'string',
+      enum: ['draft', 'soumise', 'en_attente_validation', 'approuvee', 'rejetee'],
+    },
+  },
+};
+
+const missionAssignSchema = {
+  required: ['projectId'],
+  fields: {
+    projectId: {
+      type: 'string',
+      required: true,
+    },
+  },
+};
+
+router.post('/', validateSchema(missionCreateSchema), verifierPermission(PERMISSIONS.CREER_MISSION), async (req, res, next) => {
     try {
         await createMission(req, res);
     } catch (e) {
         next(e);
     }
 });
-router.patch('/:id', verifierPermission(PERMISSIONS.MODIFIER_MISSIONS), updateMission);
-router.patch('/:id/assign-project', verifierPermission(PERMISSIONS.MODIFIER_MISSIONS), assignMissionToProject);
-router.put('/:id',   verifierPermission(PERMISSIONS.MODIFIER_MISSIONS), updateMission);
+router.patch('/:id', validateSchema(missionUpdateSchema), verifierPermission(PERMISSIONS.MODIFIER_MISSIONS), updateMission);
+router.patch('/:id/assign-project', validateSchema(missionAssignSchema), verifierPermission(PERMISSIONS.MODIFIER_MISSIONS), assignMissionToProject);
+router.put('/:id', validateSchema(missionUpdateSchema), verifierPermission(PERMISSIONS.MODIFIER_MISSIONS), updateMission);
 router.delete('/:id', verifierPermission(PERMISSIONS.SUPPRIMER_MISSIONS), deleteMission);
 router.post('/:id/duplicate', verifierPermission(PERMISSIONS.CREER_MISSION), duplicateMission);
 

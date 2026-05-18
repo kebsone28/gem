@@ -148,3 +148,87 @@ export const invalidateOrgCache = async (organizationId) => {
   await invalidateOrgSettings(organizationId);
   // Could also invalidate all users in org, but more complex
 };
+
+/**
+ * Cache Service Object with stats tracking
+ * Provides a unified interface for cache operations
+ */
+export const cacheService = {
+  stats: { hits: 0, misses: 0, errors: 0 },
+
+  /**
+   * Get a value from cache
+   */
+  get: async (key) => {
+    try {
+      const value = await redis.get(key);
+      if (value) {
+        cacheService.stats.hits++;
+      } else {
+        cacheService.stats.misses++;
+      }
+      return value ? JSON.parse(value) : null;
+    } catch (err) {
+      cacheService.stats.errors++;
+      logger.warn('[CACHE] Get error:', err.message);
+      return null;
+    }
+  },
+
+  /**
+   * Set a value in cache with TTL
+   */
+  set: async (key, value, ttl = 3600) => {
+    try {
+      await redis.setex(key, ttl, JSON.stringify(value));
+    } catch (err) {
+      logger.warn('[CACHE] Set error:', err.message);
+    }
+  },
+
+  /**
+   * Delete a key from cache
+   */
+  delete: async (key) => {
+    try {
+      await redis.del(key);
+    } catch (err) {
+      logger.warn('[CACHE] Delete error:', err.message);
+    }
+  },
+
+  /**
+   * Delete all keys matching a pattern
+   */
+  deletePattern: async (pattern) => {
+    try {
+      const keys = await redis.keys(pattern);
+      if (keys.length > 0) {
+        await redis.del(...keys);
+      }
+    } catch (err) {
+      logger.warn('[CACHE] DeletePattern error:', err.message);
+    }
+  },
+
+  /**
+   * Get cache statistics
+   */
+  getStats: () => ({
+    hits: cacheService.stats.hits,
+    misses: cacheService.stats.misses,
+    errors: cacheService.stats.errors,
+    hitRate: cacheService.stats.hits + cacheService.stats.misses > 0
+      ? (cacheService.stats.hits / (cacheService.stats.hits + cacheService.stats.misses)).toFixed(4)
+      : 0,
+  }),
+
+  /**
+   * Clear all stats
+   */
+  clearStats: () => {
+    cacheService.stats = { hits: 0, misses: 0, errors: 0 };
+  },
+};
+
+};
