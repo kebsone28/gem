@@ -15,7 +15,7 @@ import {
 import { authProtect } from '../middlewares/auth.js';
 import { verifierPermission, verifierAssignation } from '../../middleware/verifierPermission.js';
 import { PERMISSIONS } from '../../core/config/permissions.js';
-import { validateSchema } from '../middleware/validation.js';
+import { validateSchema } from '../../middleware/validation.js';
 import * as projectConfig from '../../modules/projectConfig/projectConfig.controller.js';
 import { getProjectAnalytics } from '../../modules/project/project_analytics.controller.js';
 

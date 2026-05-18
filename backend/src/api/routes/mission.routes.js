@@ -22,7 +22,7 @@ import {
 import { authProtect, authorize } from '../middlewares/auth.js';
 import { verifierPermission, verifierModule } from '../../middleware/verifierPermission.js';
 import { PERMISSIONS } from '../../core/config/permissions.js';
-import { validateSchema, schemas } from '../middleware/validation.js';
+import { validateSchema, schemas } from '../../middleware/validation.js';
 import multer from 'multer';
 
 // Internal multer for doc sending

@@ -3,7 +3,7 @@
  */
 import { Router } from 'express';
 import { authProtect } from '../../api/middlewares/auth.js';
-import { validateSchema } from '../../api/middleware/validation.js';
+import { validateSchema } from '../../middleware/validation.js';
 import formationController from './formation.controller.js';
 
 const router = Router();

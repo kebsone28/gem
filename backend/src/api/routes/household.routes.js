@@ -13,7 +13,7 @@ import {
 } from '../../modules/household/household.controller.js';
 import { authProtect } from '../middlewares/auth.js';
 import { verifierPermission, verifierAssignation, verifierModule } from '../../middleware/verifierPermission.js';
-import { validateSchema } from '../middleware/validation.js';
+import { validateSchema } from '../../middleware/validation.js';
 import { PERMISSIONS } from '../../core/config/permissions.js';
 
 const router = express.Router();

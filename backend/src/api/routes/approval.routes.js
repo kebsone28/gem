@@ -1,6 +1,6 @@
 import express from 'express';
 import { authProtect, authorize } from '../middlewares/auth.js';
-import { validateSchema } from '../middleware/validation.js';
+import { validateSchema } from '../../middleware/validation.js';
 import { verifierModule } from '../../middleware/verifierPermission.js';
 
 const router = express.Router();
