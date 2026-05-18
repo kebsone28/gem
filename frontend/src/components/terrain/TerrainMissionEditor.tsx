@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { uploadFile } from '../../services/uploadService';
-import { KAFFRINE_TEMPLATE } from '../../pages/mission/core/missionTypes';
+import { KAFFRINE_TEMPLATE } from '../../modules/mission/views/mission/core/missionTypes';
 import logger from '../../utils/logger';
 import { useProject } from '../../contexts/ProjectContext';
 import { useTeams } from '../../hooks/useTeams';

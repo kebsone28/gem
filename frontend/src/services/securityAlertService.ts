@@ -1,7 +1,7 @@
 
 import { createNotification } from './notificationService';
 import logger from '../utils/logger';
-import type { AuthUser, PolicyReasonType } from '../utils/security/types';
+import type { AuthUser, PolicyReasonType } from '../core/security/types';
 
 /**
  * 🚨 Security Alert Service

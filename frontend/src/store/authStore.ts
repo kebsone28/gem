@@ -10,7 +10,7 @@ import { persist, subscribeWithSelector } from 'zustand/middleware';
 import type { User, UserRole } from '../utils/types';
 import * as safeStorage from '../utils/safeStorage';
 
-import { normalizeRole as canonicalNormalizeRole } from '../utils/permissions';
+import { normalizeRole as canonicalNormalizeRole } from '../core/security/permissions';
 
 export const normalizeRole = (role: string | undefined): UserRole | undefined => {
   if (!role) return undefined;

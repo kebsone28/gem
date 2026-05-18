@@ -2,7 +2,7 @@ import { db } from '../store/db';
 import { auditService } from './auditService';
 import logger from '../utils/logger';
 import apiClient from '../api/client';
-import { MODULE_REGISTRY, getAllModules } from '../modules/MODULE_REGISTRY';
+import { MODULE_REGISTRY, getAllModules } from '../core/kernel/registry';
 
 // Types pour la gestion des modules
 export interface ModuleConfig {

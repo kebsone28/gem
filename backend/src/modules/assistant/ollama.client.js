@@ -6,7 +6,11 @@ export async function queryOllama(prompt) {
   const payload = {
     model: config.ai.ollamaModel || 'qwen2.5-coder:7b',
     prompt,
-    stream: false
+    stream: false,
+    options: {
+      num_ctx: parseInt(process.env.OLLAMA_CONTEXT_LENGTH || '32768', 10),
+      temperature: parseFloat(process.env.OLLAMA_TEMPERATURE || '0.2'),
+    }
   };
 
   const headers = {
@@ -20,7 +24,8 @@ export async function queryOllama(prompt) {
   const response = await fetch(endpoint, {
     method: 'POST',
     headers,
-    body: JSON.stringify(payload)
+    body: JSON.stringify(payload),
+    signal: AbortSignal.timeout(parseInt(process.env.OLLAMA_TIMEOUT_MS || '180000', 10))
   });
 
   if (!response.ok) {

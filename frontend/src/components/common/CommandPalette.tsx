@@ -13,7 +13,8 @@ import {
   ArrowRight,
   Calculator,
   ShieldCheck,
-  Activity
+  Activity,
+  ServerCog
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTerrainData } from '../../hooks/useTerrainData';
@@ -90,6 +91,7 @@ export const CommandPalette = () => {
       { title: 'Rapports', to: '/reports', type: 'page', id: 'page-rep' },
       { title: 'Équipes', to: '/teams', type: 'page', id: 'page-teams' },
       { title: 'Paramètres', to: '/settings', type: 'page', id: 'page-settings' },
+      { title: 'Agent Local GED OS', to: '/admin/agent-local', type: 'page', id: 'page-admin-agent' },
     ];
 
     setStaticResults(
@@ -165,6 +167,7 @@ export const CommandPalette = () => {
                       {[
                         { icon: MapIcon, label: 'Ouvrir la Carte', to: '/terrain' },
                         { icon: Activity, label: 'Diagnostic Santé', to: '/admin/diagnostic' },
+                        { icon: ServerCog, label: 'Agent Local', to: '/admin/agent-local' },
                         { icon: FileText, label: 'Cahier de Charge', to: '/cahier' },
                         { icon: Settings, label: 'Paramètres', to: '/settings' },
                       ].map((action) => (

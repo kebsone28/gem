@@ -72,6 +72,7 @@ import syncRoutes from './api/routes/sync.routes.js';
 import projectRoutes from './api/routes/project.routes.js';
 import projectTemplateRoutes from './api/routes/projectTemplate.routes.js';
 import householdRoutes from './api/routes/household.routes.js';
+import fieldsRoutes from './api/routes/fields.routes.js';
 import zoneRoutes from './api/routes/zone.routes.js';
 import kpiRoutes from './api/routes/kpi.routes.js';
 import teamRoutes from './api/routes/team.routes.js';
@@ -93,6 +94,7 @@ import pvRoutes from './api/routes/pv.routes.js';
 import internalKoboRoutes from './modules/internalKobo/internalKobo.routes.js';
 import debugRoutes from './api/routes/debug.routes.js';
 import adminPermissionRoutes from './api/routes/admin.permissions.routes.js';
+import mesRoutes from './api/routes/mes.routes.js';
 import { notFoundHandler } from './middleware/errorHandler.js';
 import { tenantResolver } from './middleware/tenantResolver.js';
 import { domainContext } from './middleware/domainContext.js';
@@ -109,6 +111,7 @@ app.use('/api/sync', syncRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/project-templates', projectTemplateRoutes);
 app.use('/api/households', householdRoutes);
+app.use('/api/fields', fieldsRoutes);
 app.use('/api/zones', zoneRoutes);
 app.use('/api/kpi', kpiRoutes);
 app.use('/api/teams', teamRoutes);
@@ -128,6 +131,7 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/pvs', pvRoutes);
 app.use('/api/internal-kobo', internalKoboRoutes);
 app.use('/api/sharedoc', sharedocRoutes);
+app.use('/api/mes', mesRoutes);
 if (config.env !== 'production') {
   app.use('/api/debug', debugRoutes);
 }
@@ -176,7 +180,7 @@ app.use(notFoundHandler);
 app.use((err, req, res, _next) => {
   const status = err.status || 500;
   const message = err.message || 'Internal Server Error';
-  
+
   console.error('🔥 GLOBAL ERROR:', err.stack);
 
   // 🛡️ PERSISTENCE DE L'ERREUR POUR DIAGNOSTIC

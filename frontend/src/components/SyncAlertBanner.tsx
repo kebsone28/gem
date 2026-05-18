@@ -4,8 +4,8 @@ import { db } from '../store/db';
 import { AlertTriangle, X, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { normalizeRole } from '../utils/permissions';
-import { AppRole } from '../utils/security/types';
+import { normalizeRole } from '../core/security/permissions';
+import { AppRole } from '../core/security/types';
 
 /**
  * SyncAlertBanner — Shows a dismissable warning banner when

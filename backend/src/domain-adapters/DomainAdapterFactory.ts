@@ -6,22 +6,29 @@
  * returns the correct adapter for a given domain type.
  */
 
-import { DomainAdapter } from './DomainAdapter';
-import { ElectrificationAdapter } from './adapters/ElectrificationAdapter';
-// import { AgricultureAdapter } from './adapters/AgricultureAdapter';
-// import { HealthAdapter } from './adapters/HealthAdapter';
-// import { LogisticsAdapter } from './adapters/LogisticsAdapter';
+import { DomainAdapter } from './DomainAdapter.js';
+import { ElectrificationAdapter } from './adapters/ElectrificationAdapter.js';
+import { AgricultureAdapter } from './adapters/AgricultureAdapter.js';
+import { HealthAdapter } from './adapters/HealthAdapter.js';
+import { LogisticsAdapter } from './adapters/LogisticsAdapter.js';
+import { HighVoltageAdapter } from './adapters/HighVoltageAdapter.js';
+import { SolarAdapter } from './adapters/SolarAdapter.js';
+import { TargetingAdapter } from './adapters/TargetingAdapter.js';
+import { DataCollectionAdapter } from './adapters/DataCollectionAdapter.js';
 
 export class DomainAdapterFactory {
   private static adapters = new Map<string, DomainAdapter>();
 
   static {
-    // Register adapters at startup
+    // Register all domain adapters at startup
     this.register(new ElectrificationAdapter());
-    // Future domains will be registered here
-    // this.register(new AgricultureAdapter());
-    // this.register(new HealthAdapter());
-    // this.register(new LogisticsAdapter());
+    this.register(new AgricultureAdapter());
+    this.register(new HealthAdapter());
+    this.register(new LogisticsAdapter());
+    this.register(new HighVoltageAdapter());
+    this.register(new SolarAdapter());
+    this.register(new TargetingAdapter());
+    this.register(new DataCollectionAdapter());
   }
 
   /**

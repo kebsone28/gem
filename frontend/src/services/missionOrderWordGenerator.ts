@@ -19,7 +19,7 @@ import {
   ShadingType,
   PageBreak,
 } from 'docx';
-import type { MissionOrderData } from '../pages/mission/core/missionTypes';
+import type { MissionOrderData } from '../modules/mission/views/mission/core/missionTypes';
 import QRCode from 'qrcode';
 import logger from '../utils/logger';
 

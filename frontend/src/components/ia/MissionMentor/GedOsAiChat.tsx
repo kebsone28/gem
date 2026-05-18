@@ -5,7 +5,7 @@
 
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, X, Maximize2, Minimize2, Volume2, VolumeX, Mic, Camera, Send, Bot } from 'lucide-react';
+import { Sparkles, Bot, CircleCheck, CircleDashed } from 'lucide-react';
 import { useGedOsAiChat } from '../../../hooks/useGedOsAiCore';
 import type { AIState } from '../../../services/ai/MissionSageService';
 import type { MissionStats } from '../../../services/missionStatsService';
@@ -13,6 +13,8 @@ import ChatInterface from './ChatInterface';
 import InputBar from './InputBar';
 import VoiceControls from './VoiceControls';
 import type { AuditLog, Household, Team } from '../../../utils/types';
+import logger from '../../../utils/logger';
+import apiClient from '../../../api/client';
 
 interface GedOsAiChatProps {
   stats?: MissionStats | null;
@@ -53,10 +55,11 @@ export default function GedOsAiChat({
   // Utiliser le hook GedOsAiCore pour le chat
   const { sendMessage, sendFeedback, isThinking, lastResponse } = useGedOsAiChat(aiContext);
 
-  const handleSend = async () => {
-    if (!query.trim() || isThinking) return;
+  const handleSend = async (forcedQuery?: string) => {
+    const nextQuery = (forcedQuery ?? query).trim();
+    if (!nextQuery || isThinking) return;
 
-    const userMessage = query;
+    const userMessage = nextQuery;
     setQuery('');
     setHistory((prev) => [...prev, { message: userMessage, type: 'user' }]);
 
@@ -68,7 +71,7 @@ export default function GedOsAiChat({
 
       setHistory((prev) => [...prev, response.response]);
     } catch (err) {
-      console.error('[GedOsAiChat] Failed to send message', err);
+      logger.error('[GedOsAiChat] Failed to send message', err);
       setHistory((prev) => [
         ...prev,
         {
@@ -96,11 +99,51 @@ export default function GedOsAiChat({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Note: L'upload d'image et l'analyse vision nécessitent:
-    // - Conversion de l'image en base64
-    // - Envoi à l'API pour analyse
-    // - Intégration avec un service de vision par ordinateur
     logger.info('Camera upload:', file.name);
+    setHistory((prev) => [...prev, { message: `Photo transmise : ${file.name}`, type: 'user' }]);
+
+    try {
+      const image = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ''));
+        reader.onerror = () => reject(reader.error || new Error('Lecture image impossible'));
+        reader.readAsDataURL(file);
+      });
+
+      const { data } = await apiClient.post('/ai/mentor/query', {
+        message: "Analyse cette photo terrain GED OS. Donne le verdict, les risques et l'action corrective.",
+        context: aiContext,
+        history: history
+          .slice(-6)
+          .map((entry) => ({
+            role: entry.type === 'user' ? 'user' : 'assistant',
+            content: entry.message || '',
+          })),
+        image,
+      });
+
+      setHistory((prev) => [
+        ...prev,
+        {
+          message: data?.message || "Analyse visuelle indisponible.",
+          type: data?.type || 'warning',
+          _engine: data?._engine || 'VISION',
+        },
+      ]);
+    } catch (err) {
+      logger.error('[GedOsAiChat] Vision analysis failed', err);
+      setHistory((prev) => [
+        ...prev,
+        {
+          message:
+            "Analyse visuelle indisponible. Décrivez l'anomalie visible et je lancerai l'analyse texte GED OS.",
+          type: 'error',
+          _engine: 'VISION_ERROR',
+        },
+      ]);
+    } finally {
+      e.target.value = '';
+    }
   };
 
   return (
@@ -144,8 +187,12 @@ export default function GedOsAiChat({
                       GAM <span className="text-blue-400">AI</span>
                     </h3>
                     <p className="text-[9px] text-blue-300 font-black uppercase tracking-[0.2em] opacity-80">
-                      Assistant Intelligent
+                      Assistant GED OS
                     </p>
+                    <div className="mt-1 flex items-center gap-1.5 text-[9px] font-black uppercase tracking-[0.12em] text-emerald-300/80">
+                      {isThinking ? <CircleDashed size={10} className="animate-spin" /> : <CircleCheck size={10} />}
+                      {isThinking ? 'Analyse en cours' : 'Agent local prêt'}
+                    </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-1 sm:gap-2 shrink-0">
@@ -175,8 +222,7 @@ export default function GedOsAiChat({
               isThinking={isThinking}
               isMaximized={isMaximized}
               onSmartReply={(reply) => {
-                setQuery(reply);
-                void handleSend();
+                void handleSend(reply);
               }}
             />
 
@@ -186,22 +232,13 @@ export default function GedOsAiChat({
               onQueryChange={setQuery}
               onSend={handleSend}
               onCameraClick={() => fileInputRef.current?.click()}
+              onFileChange={handleCameraUpload}
               onMicClick={toggleListening}
               isListening={isListening}
               isThinking={isThinking}
               fileInputRef={fileInputRef}
             />
 
-            {/* Input file caché */}
-            <input
-              id="ai-camera-upload"
-              type="file"
-              accept="image/*"
-              capture="environment"
-              className="hidden"
-              ref={fileInputRef}
-              onChange={handleCameraUpload}
-            />
           </motion.div>
         )}
       </AnimatePresence>

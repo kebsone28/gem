@@ -575,6 +575,11 @@ export default function AdminUsers() {
       toast.error('Impossible de modifier un autre Administrateur Système');
       return;
     }
+    // 🔒 PREVENT SELF-MODIFICATION OF ADMIN
+    if (user?.id === u.id && isProtected) {
+      toast.error('Admin: Impossible de modifier votre propre compte. Contactez le Master Admin.');
+      return;
+    }
     setEditId(u.id);
 
     // Compute which projects this user is assigned to

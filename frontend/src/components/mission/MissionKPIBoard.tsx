@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React from 'react';
 import { TrendingUp, AlertTriangle, CheckCircle2 } from 'lucide-react';
-import type { MissionReportDay } from '../../pages/mission/core/missionTypes';
+import type { MissionReportDay } from '../../modules/mission/views/mission/core/missionTypes';
 
 interface MissionKPIBoardProps {
   reportDays: MissionReportDay[] | undefined;

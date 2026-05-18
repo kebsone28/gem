@@ -1,6 +1,6 @@
 
-import type { MissionOrderData, MissionMember } from '../pages/mission/core/missionTypes';
-import { KAFFRINE_TEMPLATE } from '../pages/mission/core/missionTypes';
+import type { MissionOrderData, MissionMember } from '../modules/mission/views/mission/core/missionTypes';
+import { KAFFRINE_TEMPLATE } from '../modules/mission/views/mission/core/missionTypes';
 
 export const MISSION_TEMPLATES = {
   electrification: {

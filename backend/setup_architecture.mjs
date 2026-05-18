@@ -1,7 +1,5 @@
-import { PrismaClient } from '@prisma/client';
+import { basePrisma as prisma } from './src/core/utils/prisma.js';
 import bcrypt from 'bcryptjs';
-
-const prisma = new PrismaClient();
 
 async function main() {
   console.log('🚀 Setting up GEM SAAS Production Architecture...\n');

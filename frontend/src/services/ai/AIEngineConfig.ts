@@ -40,7 +40,7 @@ export interface AIEngineSettings {
 const CONFIG_KEY = 'ged_os_ai_engine_config';
 
 const DEFAULT_CONFIG: AIEngineSettings = {
-  mode: 'HYBRID_RULES_FIRST',
+  mode: 'HYBRID_AI_FIRST',
   provider: 'LOCAL_OLLAMA',
   apiKey: '',
   
@@ -50,11 +50,11 @@ const DEFAULT_CONFIG: AIEngineSettings = {
   enableLearningMetrics: true,
   enableUserFeedback: true,
   maxTrainingSuggestions: 50,
-  confidenceThreshold: 0.7,
+  confidenceThreshold: 0.75,
 
   enableConversationMemory: true,
-  maxHistoryTurns: 15,
-  timeoutMs: 8000,
+  maxHistoryTurns: 20,
+  timeoutMs: 180000,
 };
 
 /** Charger la configuration active (avec valeurs par défaut) */
@@ -65,6 +65,9 @@ export function getAIEngineConfig(): AIEngineSettings {
       const parsed = JSON.parse(raw) as Partial<AIEngineSettings>;
       // Map old modes to new ones if necessary
       if ((parsed as any).mode === 'CLAUDE_ONLY') parsed.mode = 'PRIVATE_AI_ONLY';
+      if ((parsed as any).provider === 'OLLAMA' || (parsed as any).provider === 'OLLAMA_LOCAL') {
+        parsed.provider = 'LOCAL_OLLAMA';
+      }
       return { ...DEFAULT_CONFIG, ...parsed };
     }
   } catch (e) {

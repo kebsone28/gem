@@ -3,7 +3,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import QRCode from 'qrcode';
 import logger from '../utils/logger';
-import type { MissionOrderData } from '../pages/mission/core/missionTypes';
+import type { MissionOrderData } from '../modules/mission/views/mission/core/missionTypes';
 
 let INDIGO = [67, 56, 202] as [number, number, number];
 const DARK = [15, 23, 42] as [number, number, number];

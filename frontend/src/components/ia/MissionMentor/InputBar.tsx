@@ -11,6 +11,7 @@ interface InputBarProps {
   onQueryChange: (value: string) => void;
   onSend: () => void;
   onCameraClick: () => void;
+  onFileChange?: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onMicClick: () => void;
   isListening?: boolean;
   isThinking?: boolean;
@@ -22,6 +23,7 @@ export default function InputBar({
   onQueryChange,
   onSend,
   onCameraClick,
+  onFileChange,
   onMicClick,
   isListening = false,
   isThinking = false,
@@ -39,16 +41,14 @@ export default function InputBar({
           ref={fileInputRef}
           title="Capturer une photo pour analyse IA"
           aria-label="Charger une image ou prendre une photo"
-          onChange={(e) => {
-            // Handle file upload
-          }}
+          onChange={onFileChange}
         />
         <input
           type="text"
           value={query}
           onChange={(e) => onQueryChange(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && onSend()}
-          placeholder="Posez votre question avec respect..."
+          placeholder="Demandez une analyse GED OS, mission, terrain, audit..."
           aria-label="Champ de saisie de question pour le mentor IA"
           className="w-full bg-slate-950 border border-white/10 rounded-2xl pl-4 sm:pl-6 pr-[6.5rem] py-3.5 sm:py-4 text-sm font-bold text-white outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-inner placeholder-slate-600"
         />

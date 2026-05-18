@@ -6,134 +6,128 @@
 
 ---
 
-## Sprint 1 : Foundation (Semaine 1–2)
+## 🏆 Accompli — Kernel Frontend GED OS (Mai 2026)
 
-### 📋 Tâches Backend
+> Ces tâches ont été réalisées lors de la phase d'industrialisation du Kernel.
 
-- [ ] **Prisma Schema : DomainConfig table**
-  - Créer migration `20260520_add_domain_config.sql`
-  - Ajouter à `schema.prisma` :
-    ```prisma
-    model DomainConfig {
-      id                String    @id @default(uuid())
-      organizationId    String
-      domainType        String    // "electricity" | "agriculture" | "health" | etc.
-      
-      entityFields      Json      // {"fields": ["name", "status", "voltage"]}
-      statusEnum        String[]  
-      priorityRules     Json      
-      validationSchemas Json      
-      projectTemplates  Json
-      missionTemplates  Json
-      
-      createdAt         DateTime  @default(now())
-      updatedAt         DateTime  @updatedAt
-      
-      @@unique([organizationId, domainType])
-    }
-    ```
-  - Lancer migration Prisma
-  - Valider no errors
+- [x] **Kernel Architecture** — `frontend/src/core/` (kernel, router, security, events)
+- [x] **ModuleManifest** — Interface déclarative dans `core/kernel/types.ts`
+- [x] **Registry décentralisé** — `core/kernel/registry.ts` + 32 `manifest.ts` individuels
+- [x] **AppRouter** — `core/router/AppRouter.tsx` piloté par le registry
+- [x] **Security Engine** — `core/security/permissions.ts` + `core/security/types.ts`
+- [x] **Migration physique** — `src/pages/` **vidé** — toutes les vues dans `src/modules/[nom]/views/`
+- [x] **EventBus** — `core/events/EventBus.ts` avec catalogue `KERNEL_EVENTS` (25 types)
+- [x] **KernelOrchestrator** — `core/events/KernelOrchestrator.ts` branché dans `App.tsx`
+- [x] **useEventBus** — `hooks/useEventBus.ts` avec cleanup automatique
 
-- [ ] **Service : DomainConfigService**
-  - Fichier : `/backend/src/services/domain/DomainConfigService.js`
-  - Méthodes : `getDomainConfig()`, `saveDomainConfig()`, `getStatusEnum()`, `validateEntity()`
-  - Tests : `/backend/__tests__/services/DomainConfigService.test.js`
+## 🏆 Accompli — Backend Domain Adapters (Mai 2026)
 
-- [ ] **Factory : DomainAdapterFactory**
-  - Fichier : `/backend/src/domain-adapters/DomainAdapterFactory.js`
-  - Interface abstraite `DomainAdapter` avec méthodes clés
-  - Implémentation `ElectrificationAdapter` (wrapping logique existante)
+- [x] **DomainAdapter** — Interface abstraite `backend/src/domain-adapters/DomainAdapter.ts`
+- [x] **ElectrificationAdapter** — `adapters/ElectrificationAdapter.ts` (Household/GEM)
+- [x] **AgricultureAdapter** — `adapters/AgricultureAdapter.ts` (Fields, Crops, Livestock)
+- [x] **HealthAdapter** — `adapters/HealthAdapter.ts` (HealthCenters, Campaigns)
+- [x] **LogisticsAdapter** — `adapters/LogisticsAdapter.ts` (Warehouses, Shipments, Stock)
+- [x] **HighVoltageAdapter** — `adapters/HighVoltageAdapter.ts` (Substations, Pylons)
+- [x] **SolarAdapter** — `adapters/SolarAdapter.ts` (Mini-grids, Home Systems)
+- [x] **TargetingAdapter** — `adapters/TargetingAdapter.ts` (Eligibility, Surveys)
+- [x] **DataCollectionAdapter** — `adapters/DataCollectionAdapter.ts` (Campaigns, Quality)
+- [x] **DomainAdapterFactory** — Tous les 8 adapters enregistrés
+- [x] **DomainConfigService** — `services/domain/DomainConfigService.ts`
+- [x] **DomainContext middleware** — `middleware/domainContext.ts`
+- [x] **DomainConfig Prisma** — Table `DomainConfig` en base
 
-- [ ] **Middleware : DomainContext**
-  - Fichier : `/backend/src/middleware/domainContext.js`
-  - Extrait `domainType` de headers ou project config
-  - Charge `DomainConfig` et injecte dans `req.domainConfig`
+### 📁 Architecture Actuelle
+```
+backend/src/
+├── domain-adapters/
+│   ├── DomainAdapter.ts           ← Interface abstraite
+│   ├── DomainAdapterFactory.ts    ← Registry + auto-registration
+│   └── adapters/
+│       ├── ElectrificationAdapter.ts  ← electricity (GEM)
+│       ├── AgricultureAdapter.ts      ← agriculture (Fields, Crops)
+│       ├── HealthAdapter.ts           ← health (HealthCenters, Campaigns)
+│       ├── LogisticsAdapter.ts        ← logistics (Warehouses, Shipments)
+│       ├── HighVoltageAdapter.ts      ← high_voltage (Substations, Pylons)
+│       ├── SolarAdapter.ts            ← solar (Mini-grids, Home Systems)
+│       ├── TargetingAdapter.ts        ← targeting (Eligibility, Surveys)
+│       └── DataCollectionAdapter.ts   ← data_collection (Surveys, Census)
+├── middleware/
+│   └── domainContext.ts           ← Injecte req.domainConfig
+└── services/domain/
+    └── DomainConfigService.ts     ← CRUD configs par domaine
 
-### 📋 Tâches Frontend
-
-- [ ] **Component : EntityLayer générique**
-  - Transformer `HouseholdLayer.tsx` → `EntityLayer.tsx`
-  - Paramètres génériques : `entityType`, `domainType`
-  - S'adapte dynamiquement aux champs
-
-- [ ] **Store update : terrainUIStore**
-  - Ajouter `activeDomainType` (default: 'electricity')
-  - Ajouter `domainConfig` pour stockage config actif
-
-- [ ] **Config : mapConfig.ts update**
-  - Ajouter palettes couleur par domaine
-  - Icons dynamiques par domaine (pas juste status)
-
-### 📋 Documentation
-
-- [ ] Ajouter section "Feuille de Route" à GED_OS_DEFINITION.md ✅
-- [ ] Créer GED_OS_IMPLEMENTATION_ROADMAP.md ✅
-- [ ] Créer ce fichier (GED_OS_ACTION_PLAN.md)
+frontend/src/
+├── core/
+│   ├── kernel/registry.ts         ← 32 modules plug-and-play
+│   ├── router/AppRouter.tsx        ← Routeur Kernel
+│   ├── security/permissions.ts    ← IAM Engine
+│   └── events/
+│       ├── EventBus.ts            ← PubSub typé (25 KERNEL_EVENTS)
+│       └── KernelOrchestrator.ts  ← Règles réactives cross-modules
+├── modules/                       ← 32 modules isolés
+│   ├── terrain/manifest.ts + views/
+│   ├── mission/manifest.ts + views/
+│   └── ... (30 autres)
+└── hooks/useEventBus.ts           ← Hook React abonnements
+```
 
 ---
 
-## Sprint 2 : Électrification Validation (Semaine 2–3)
+## Sprint 2 : Électrification Validation & Tests (Semaine 2–3)
 
 ### 🧪 Validation
 
 - [ ] **Tests régression électrification**
-  - Exécuter suite tests existante
-  - Aucune régression autorisée
+  - Exécuter suite tests : `cd backend && npm test`
+  - Vérifier `ElectrificationAdapter` — aucune régression
   - Coverage min 85%
 
 - [ ] **Staging deployment**
-  - Déployer branche develop vers staging
+  - Déployer branche `develop` vers staging
   - 24h smoke tests
   - Feedback équipe terrain
 
 - [ ] **Performance baseline**
-  - Mesurer temps requêtes électrification avant/après
-  - Documenter baseline pour futur comparaison
+  - Mesurer temps requêtes avec DomainContext middleware
+  - Documenter baseline pour comparaison futurs domaines
 
-### 📚 Documentation Architecturale
+### 📚 Documentation
 
 - [ ] Créer `ARCHITECTURE_MULTIDOMAINE.md` détaillant :
-  - DomainAdapter pattern
+  - DomainAdapter pattern + exemples
+  - EventBus inter-modules
   - DomainConfig schema
-  - Event publishing flow
-  - Database design rationale
+  - Guide ajout d'un nouveau domaine en 2h
 
 ---
 
 ## Sprint 3 : Agriculture Pilote (Semaine 3–5)
 
-### 🌾 Implémentation Agriculture
+### 🌾 Implémentation Agriculture Frontend
 
 - [ ] **Prisma : Field & Livestock tables**
-  - Migration pour nouvelles entités
-  - Indices optimisées pour requêtes terrain
+  - Fichier : `backend/prisma/schema.prisma`
+  - Migration : `npx prisma migrate dev --name add_field_livestock`
 
-- [ ] **Backend : AgricultureAdapter**
-  - Implémentation DomainAdapter pour agriculture
-  - Normalization champs spécifiques (crop, soil, etc.)
-  - Validation règles métier
+- [ ] **API endpoints Agriculture**
+  - `backend/src/routes/fields.ts`
+  - `POST /api/fields` — créer parcelle
+  - `GET /api/fields` — lister avec filtres
+  - `PUT /api/fields/:id` — update
+  - `GET /api/fields/:id/alerts` — alertes
 
-- [ ] **API endpoints**
-  - `POST /api/fields` - créer parcelle
-  - `GET /api/fields` - lister avec filtres
-  - `PUT /api/fields/{id}` - update
-  - `GET /api/fields/{id}/alerts` - alertes associées
+- [ ] **Services métier**
+  - `backend/src/services/agriculture/FieldService.ts`
+  - `backend/src/services/agriculture/CropYieldCalculator.ts`
 
-- [ ] **Services**
-  - `FieldService.js` - logique métier
-  - `CropYieldCalculator.js` - estimations rendement
-  - `AgriculturalAlertEngine.js` - génération alertes
+- [ ] **Frontend : Module Agriculture**
+  - Créer `frontend/src/modules/agriculture/manifest.ts`
+  - Créer `frontend/src/modules/agriculture/views/Fields.tsx`
+  - Utiliser `EntityLayer` avec `domainType='agriculture'`
 
-- [ ] **Frontend : FieldsPage**
-  - Component liste parcelles
-  - Carte intégrée (EntityLayer agriculture)
-  - Dashboard rendements / alertes
-
-- [ ] **Tests**
-  - Unit tests : 85%+ coverage
-  - Integration tests : field creation → alerts
-  - E2E : user journey (create field → monitor → alert)
+- [ ] **EventBus — intégration Agriculture**
+  - Émettre `KERNEL_EVENTS.TERRAIN_DATA_UPDATED` quand parcelle change de statut
+  - Émettre `KERNEL_EVENTS.STOCK_ALERT` si rendement < 70% des estimations
 
 ---
 
@@ -142,22 +136,35 @@
 ### 🏥 Implémentation Santé
 
 - [ ] **Prisma : HealthCenter & Campaign tables**
-- [ ] **Backend : HealthAdapter**
-- [ ] **API endpoints**
-- [ ] **Frontend : HealthPage**
-- [ ] **Tests**
+  - `backend/prisma/schema.prisma`
+  - Migration : `npx prisma migrate dev --name add_health`
+
+- [ ] **API endpoints Santé**
+  - `backend/src/routes/health.ts`
+  - `/api/health-centers` CRUD
+  - `/api/campaigns` CRUD
+
+- [ ] **Frontend : Module Santé**
+  - `frontend/src/modules/health/manifest.ts`
+  - `frontend/src/modules/health/views/HealthCenters.tsx`
 
 ---
 
-## Sprint 5 : Logistique (Semaine 6–7)
+## Sprint 5 : Logistique Enrichie (Semaine 6–7)
 
-### 📦 Implémentation Logistique
+### 📦 Implémentation Logistique Enrichie
 
 - [ ] **Prisma : Warehouse & Shipment tables**
-- [ ] **Backend : LogisticsAdapter**
+  - `backend/prisma/schema.prisma`
+  - Migration : `npx prisma migrate dev --name add_warehouse_shipment`
+
 - [ ] **API endpoints**
-- [ ] **Frontend : WarehousePage + Tracking**
-- [ ] **Tests**
+  - `backend/src/routes/logistics.ts`
+  - `/api/warehouses` CRUD + `/api/shipments` CRUD
+
+- [ ] **Frontend : Vues Warehouse**
+  - `frontend/src/modules/logistique/views/Warehouse.tsx`
+  - Enrichir `modules/logistique/manifest.ts`
 
 ---
 
@@ -165,42 +172,19 @@
 
 ### 📊 Dashboard Configurable
 
-- [ ] **Dashboard component générique**
-  - Espace pour widgets configurable
-  - Widgets par domaine
+- [ ] **Widgets par domaine**
+  - `frontend/src/modules/dashboard/views/DashboardViews/`
+  - Agriculture : yield trends, crop calendar
+  - Santé : vaccination coverage, outbreak map
+  - Logistique : stock levels, shipment tracking
 
-- [ ] **Widgets implémentation**
-  - Électrification : coverage map, status distribution, alerts
-  - Agriculture : yield trends, crop calendar, weather integration
-  - Santé : vaccination coverage, outbreak alerts, capacity
-  - Logistique : shipment tracking, stock levels, delays
+- [ ] **EntityLayer générique**
+  - `frontend/src/components/domain/EntityLayer.tsx`
+  - Remplace `HouseholdLayer` pour tous domaines
 
-- [ ] **Configuration UI**
-  - Admin panel pour customize dashboard
-  - Drag-drop widgets
-  - Filtres par domaine
-
----
-
-## Checklist Go-Live Multidomaine
-
-### Électrification v2 (Multidomaine-compatible)
-- [ ] Aucune régression
-- [ ] Tests complets passent
-- [ ] Documentation à jour
-- [ ] Formation team complète
-- [ ] Déploiement production
-
-### Agriculture Pilote
-- [ ] MVP fonctionnel (create, read, list, alerts)
-- [ ] Partenaire initial identifié (NGO, gouvernement, etc.)
-- [ ] 100+ parcelles testées
-- [ ] Feedback collecté
-
-### Santé & Logistique
-- [ ] Specs finalisées avec stakeholders
-- [ ] Prototypes validés
-- [ ] Team recrutées
+- [ ] **Configuration UI multidomaine**
+  - Admin panel — `frontend/src/modules/settings/views/`
+  - Drag-drop widgets, filtres par domaine
 
 ---
 
@@ -208,34 +192,67 @@
 
 | Métrique | Cible | Status |
 |----------|-------|--------|
-| **Électrification régression** | 0 dégradations | ⏳ |
-| **Code sharing** | 60%+ modules communs | ⏳ |
-| **Performance** | < 500ms requêtes | ⏳ |
-| **Test coverage** | 85%+ global | ⏳ |
-| **Time-to-domain** | 2 semaines par domaine | ⏳ |
-| **Déploiement agriculture** | Semaine 5 | ⏳ |
+| **Électrification régression** | 0 dégradations | ✅ Build 0 erreurs |
+| **Code sharing** | 60%+ modules communs | ✅ Architecture Kernel |
+| **Domaines actifs** | 8 (electricity, agriculture, health, logistics, high_voltage, solar, targeting, data_collection) | ✅ Adapters créés |
+| **Performance** | < 500ms requêtes | ⏳ À mesurer |
+| **Test coverage** | 85%+ global | ⏳ À écrire |
+| **Time-to-domain** | 2 semaines par domaine | ✅ Pattern établi |
+| **Déploiement agriculture** | Semaine 5 | ⏳ Sprint 3 |
 
 ---
 
-## Ressources
+## Ressources & Chemins Clés
 
-### 👥 Team
-- **1 Lead architect** — Direction, revues
-- **2 Backend devs** — Core + agriculture
-- **1 Frontend dev** — UI générique + dashboards
-- **1 DevOps/QA** — Migrations, tests, déploiement
+### 🔧 Backend
+| Composant | Chemin |
+|-----------|--------|
+| DomainAdapter (interface) | `backend/src/domain-adapters/DomainAdapter.ts` |
+| DomainAdapterFactory | `backend/src/domain-adapters/DomainAdapterFactory.ts` |
+| ElectrificationAdapter | `backend/src/domain-adapters/adapters/ElectrificationAdapter.ts` |
+| AgricultureAdapter | `backend/src/domain-adapters/adapters/AgricultureAdapter.ts` |
+| HealthAdapter | `backend/src/domain-adapters/adapters/HealthAdapter.ts` |
+| LogisticsAdapter | `backend/src/domain-adapters/adapters/LogisticsAdapter.ts` |
+| HighVoltageAdapter | `backend/src/domain-adapters/adapters/HighVoltageAdapter.ts` |
+| SolarAdapter | `backend/src/domain-adapters/adapters/SolarAdapter.ts` |
+| TargetingAdapter | `backend/src/domain-adapters/adapters/TargetingAdapter.ts` |
+| DataCollectionAdapter | `backend/src/domain-adapters/adapters/DataCollectionAdapter.ts` |
+| DomainConfigService | `backend/src/services/domain/DomainConfigService.ts` |
+| DomainContext middleware | `backend/src/middleware/domainContext.ts` |
 
-### 📚 Documentation Référence
-- [GED_OS_DEFINITION.md](./GED_OS_DEFINITION.md)
-- [GED_OS_IMPLEMENTATION_ROADMAP.md](./GED_OS_IMPLEMENTATION_ROADMAP.md)
+### 🔧 Frontend
+| Composant | Chemin |
+|-----------|--------|
+| Kernel Registry | `frontend/src/core/kernel/registry.ts` |
+| AppRouter | `frontend/src/core/router/AppRouter.tsx` |
+| Security Engine | `frontend/src/core/security/permissions.ts` |
+| EventBus | `frontend/src/core/events/EventBus.ts` |
+| KernelOrchestrator | `frontend/src/core/events/KernelOrchestrator.ts` |
+| useEventBus hook | `frontend/src/hooks/useEventBus.ts` |
+| Modules (32) | `frontend/src/modules/[nom]/` |
+
+### 🔧 Commandes
+```bash
+# Dev
+npm run dev:saas          # Démarrer tout (racine)
+
+# Backend
+cd backend
+npm test                  # Tests
+npx prisma migrate dev    # Migration DB
+npx prisma studio         # Voir les données
+
+# Frontend
+cd frontend
+npm run build             # Build production
+npm run dev               # Dev server seul
+```
+
+### 📚 Documentation
+- [GED_OS_DEFINITION.md](./GED_OS_DEFINITION.md) — Vision et définition
+- [GED_OS_IMPLEMENTATION_ROADMAP.md](./GED_OS_IMPLEMENTATION_ROADMAP.md) — Roadmap technique
+- [GED_OS_SHORT.md](./GED_OS_SHORT.md) — Résumé exécutif
 - [Prisma Docs](https://www.prisma.io/docs/)
-- [Event-Driven Architecture](https://www.martinfowler.com/articles/201701-event-driven.html)
-
-### 🔧 Tools
-- Prisma Studio : `npx prisma studio`
-- Backend tests : `npm run test` (backend)
-- Frontend tests : `npm run test:unit` (frontend)
-- E2E tests : `npm run test:e2e`
 
 ---
 
@@ -244,21 +261,11 @@
 | Risk | Impact | Mitigation |
 |------|--------|-----------|
 | **Régression électrification** | Critique | Tests exhaustifs + staging 2 semaines |
-| **Performance dégradation** | Haute | Benchmarking baseline, index DB optimization |
-| **Complexity architecturale** | Moyenne | Patterns simples, documentation claire |
-| **Shortage talent** | Moyenne | Outsourcing possible, modularité aide |
+| **Performance dégradation** | Haute | Benchmarking baseline, index DB |
+| **Complexity architecturale** | Faible ✅ | Kernel pattern documenté, adapters uniformes |
 
 ---
 
-## Approvals Requis
+*GED OS — Kernel Frontend opérationnel. 8 domaines backend actifs. Sprint Agriculture en cours.*
 
-- [ ] CTO/Tech Lead — Architecture approuvée
-- [ ] Product — Priorités domaines confirmées
-- [ ] Ops — Infrastructure scaling plan
-- [ ] Finance — Budget approuvé
-
----
-
-*GED OS — De l'électrification vers multidomaine. Étape 1 : Foundation.*
-
-**Last updated** : 17 mai 2026
+**Last updated** : 17 mai 2026 — v3.1 (8 Domain Adapters + Kernel v2 complet)

@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useAuth } from '../contexts/AuthContext';
-import { PERMISSIONS, hasPermission, normalizeRole } from '../utils/permissions';
-import { AppRole } from '../utils/security/types';
-import { isMasterAdminEmail } from '../utils/roleUtils';
+import { PERMISSIONS, hasPermission, normalizeRole } from '../core/security/permissions';
+import { AppRole } from '../core/security/types';
+import { isMasterAdminEmail } from '../core/security/roleUtils';
 
 /**
  * Hook personnalisé pour gérer les permissions de manière centralisée dans le UI.

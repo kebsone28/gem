@@ -38,7 +38,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import apiClient from '../../api/client';
 
-import { hasPermission, PERMISSIONS } from '../../utils/permissions';
+import { hasPermission, PERMISSIONS } from '../../core/security/permissions';
 
 interface Props {
   user: any; // On utilise any pour plus de souplesse avec le contexte Auth
@@ -87,7 +87,7 @@ export default function AIEngineAdminPanel({ user, onClose, standalone = false }
   };
   const [vpsStatus, setVpsStatus] = useState<Record<string, VpsServiceInfo>>({
     ollama: { status: 'idle' },
-    webui: { status: 'idle' },
+    openhands: { status: 'idle' },
     codeserver: { status: 'idle' },
   });
   const [vpsModels, setVpsModels] = useState<string[]>([]);
@@ -95,7 +95,7 @@ export default function AIEngineAdminPanel({ user, onClose, standalone = false }
   const checkAllVps = useCallback(async () => {
     setVpsStatus({
       ollama: { status: 'checking' },
-      webui: { status: 'checking' },
+      openhands: { status: 'checking' },
       codeserver: { status: 'checking' },
     });
     try {
@@ -107,11 +107,11 @@ export default function AIEngineAdminPanel({ user, onClose, standalone = false }
           command: data.ollama?.command,
           url: data.ollama?.url,
         },
-        webui: {
-          status: data.webui?.status === 'ok' ? 'ok' : 'error',
-          hint: data.webui?.hint,
-          command: data.webui?.command,
-          url: data.webui?.url,
+        openhands: {
+          status: (data.openhands || data.webui)?.status === 'ok' ? 'ok' : 'error',
+          hint: (data.openhands || data.webui)?.hint,
+          command: (data.openhands || data.webui)?.command,
+          url: (data.openhands || data.webui)?.url,
         },
         codeserver: {
           status: data.codeserver?.status === 'ok' ? 'ok' : 'error',
@@ -125,7 +125,7 @@ export default function AIEngineAdminPanel({ user, onClose, standalone = false }
       const errHint = '❌ Impossible de joindre le backend. Vérifiez la connexion au serveur.';
       setVpsStatus({
         ollama: { status: 'error', hint: errHint },
-        webui: { status: 'error', hint: errHint },
+        openhands: { status: 'error', hint: errHint },
         codeserver: { status: 'error', hint: errHint },
       });
     }
@@ -183,6 +183,21 @@ export default function AIEngineAdminPanel({ user, onClose, standalone = false }
     setDirty(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
+  }
+
+  function applyRecommendedLocalAgentConfig() {
+    update({
+      mode: 'HYBRID_AI_FIRST',
+      provider: 'LOCAL_OLLAMA',
+      confidenceThreshold: 0.75,
+      enableConversationMemory: true,
+      maxHistoryTurns: 20,
+      timeoutMs: 180000,
+      enableAutoTraining: true,
+      enableResponseEnrichment: true,
+      enableLearningMetrics: true,
+      enableUserFeedback: true,
+    });
   }
 
   const aiActive = isAIEnabled(config);
@@ -493,13 +508,13 @@ export default function AIEngineAdminPanel({ user, onClose, standalone = false }
                         "Ollama doit être démarré sur le VPS. Sans lui, aucune réponse IA privée n'est possible.",
                     },
                     {
-                      id: 'webui',
-                      label: 'Open WebUI',
+                      id: 'openhands',
+                      label: 'OpenHands Agent',
                       icon: MessageSquare,
                       port: '3000',
-                      role: 'Interface visuelle de gestion des modèles',
+                      role: 'Agent local GED OS et interface de travail',
                       docHint:
-                        'Open WebUI permet de gérer les modèles Ollama via une interface web. Non critique pour le chat GEM.',
+                        "OpenHands pilote le repo GED OS avec le tunnel Ollama. C'est l'agent local principal.",
                     },
                     {
                       id: 'codeserver',
@@ -656,6 +671,20 @@ export default function AIEngineAdminPanel({ user, onClose, standalone = false }
                     className="w-full accent-blue-500 bg-slate-800 rounded-full h-2 appearance-none cursor-pointer hover:accent-blue-400 transition-all"
                   />
                 </div>
+
+                <button
+                  type="button"
+                  onClick={applyRecommendedLocalAgentConfig}
+                  className="w-full rounded-3xl border border-cyan-500/30 bg-cyan-500/10 p-5 text-left transition-all hover:border-cyan-400/60 hover:bg-cyan-500/15"
+                >
+                  <p className="text-[11px] font-black uppercase tracking-[0.16em] text-cyan-300">
+                    Appliquer le profil agent local recommandé
+                  </p>
+                  <p className="mt-2 text-xs font-semibold leading-relaxed text-slate-300">
+                    Active Ollama en priorité, mémoire 20 tours, timeout long pour qwen2.5-coder:7b
+                    et enrichissement des réponses GED OS.
+                  </p>
+                </button>
 
                 <div className="p-6 bg-slate-900/60 border border-slate-800 rounded-3xl shadow-inner group">
                   <div className="flex justify-between items-end mb-5">

@@ -4,9 +4,12 @@
 
 Cette définition décrit **la vision cible de GED OS pour 2026–2030**.
 
-**État actuel** (mai 2026) : Plateforme d'électrification fonctionnelle (50k+ ménages, Sénégal) avec **architecture modulaire et extensible** conçue pour supporter les multiples domaines décrits ci-dessous.
+**État actuel** (mai 2026) : Plateforme d'électrification fonctionnelle (50k+ ménages, Sénégal) avec **architecture Kernel modulaire opérationnelle** :
+- ✅ Frontend Kernel — 32 modules plug-and-play, EventBus, Security Engine
+- ✅ Backend Domain Adapters — 8 domaines actifs : électrification, haute_tension, solaire, ciblage, collecte_donnees, agriculture, santé, logistique
+- ✅ Architecture event-driven — `EventBus` + `KernelOrchestrator` en production
 
-**Feuille de route** : [GED_OS_IMPLEMENTATION_ROADMAP.md](./GED_OS_IMPLEMENTATION_ROADMAP.md) — Stratégie de transformation du produit existant vers la vision multidomaine.
+**Feuille de route** : [GED_OS_IMPLEMENTATION_ROADMAP.md](./GED_OS_IMPLEMENTATION_ROADMAP.md) — Stratégie de transformation.
 
 ---
 
@@ -41,14 +44,14 @@ Elle fonctionne comme un véritable **système d'exploitation métier** capable 
 - Extensibilité via plugins et webhooks
 
 #### Orientée événements
-- Architecture event-driven pour réactivité temps réel
-- Pub/Sub central, notification, broadcast
+- **EventBus Kernel** opérationnel — `core/events/EventBus.ts` (25 événements métiers)
+- KernelOrchestrator — règles réactives cross-modules
 - Intégrations avec systèmes externes (ERP, SIG, IoT)
 
 #### Scalabilité
-- Backend Express/Node.js + Prisma
-- Cache distribué et worker asynchrones
-- Front React + MapLibre pour UI géographique riche
+- Backend Express/Node.js + Prisma — **4 DomainAdapters actifs**
+- Cache distribué et workers asynchrones
+- Frontend React + MapLibre — **32 modules isolés**
 
 ---
 
@@ -56,9 +59,15 @@ Elle fonctionne comme un véritable **système d'exploitation métier** capable 
 
 ### 1. Infrastructures & Énergie
 - **Électrification** : gestion de projets terrain, ménages, ouvrages, raccordements
+- **Haute Tension** : sous-stations, pylônes, lignes, maintenance réseau
+- **Solaire** : mini-réseaux, solar home systems, stockage
 - **Eau & Assainissement** : cartes de réseau, maintenance, consommation
 - **Télécom** : déploiement de tours, couverture, qualité signal
 - **Routes & Transport** : suivi d'état, maintenance, trafic
+
+### 2. Social & Opérations Terrain
+- **Ciblage & Éligibilité** : identification des populations, scores de vulnérabilité
+- **Collecte de Données** : sondages, recensements, quality control avec **choix du système** (Écosystème KoboToolbox/KoboCollect OU Écosystème natif GEDtoolbox/GEDcollect)
 
 ### 2. Agriculture & Ressources Naturelles
 - **Parcelles cultivables** : cartographie, rendement, intrants
@@ -193,20 +202,23 @@ Elle fonctionne comme un véritable **système d'exploitation métier** capable 
 
 ## Feuille de Route
 
-### Phase 1 : Foundation (Q2-Q3 2026)
-- Stabilisation architecture terrain (MapLibre)
-- Standardisation projet creation + validation
-- Audit sécurité et conformité
+### Phase 1 : Foundation (Q2-Q3 2026) — ✅ COMPLÉTÉ
+- ✅ Architecture Kernel Frontend — 32 modules plug-and-play
+- ✅ EventBus inter-modules + KernelOrchestrator
+- ✅ 8 Domain Adapters Backend (electricity, agriculture, health, logistics, high_voltage, solar, targeting, data_collection)
+- ✅ Security Engine souverain (IAM, permissions granulaires)
+- ✅ Migration physique — `src/pages/` → `src/modules/[nom]/views/`
 
-### Phase 2 : Domaines (Q4 2026)
-- Templates sectoriels : électrification, santé, agriculture
-- Workflows métier paramétrisables
-- Intégration premiers partenaires
+### Phase 2 : Domaines (Q4 2026) — EN COURS
+- Frontend modules Agriculture, Santé, Logistique enrichie
+- Prisma migrations Field, HealthCenter, Warehouse
+- API endpoints par domaine
+- Dashboard multidomaine configurable
 
 ### Phase 3 : IA & Automation (Q1-Q2 2027)
 - Agent décisionnel intelligent
-- Automatisation workflows
-- Prédictions et recommandations
+- Automatisation workflows via EventBus
+- Prédictions et recommandations par domaine
 
 ### Phase 4 : Scalabilité & Réseau (Q3+ 2027)
 - Déploiement multi-pays

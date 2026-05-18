@@ -5,10 +5,8 @@
  * Loads, caches, and provides domain-specific settings
  */
 
-import { PrismaClient } from '@prisma/client';
-import { DomainAdapterFactory } from '../domain-adapters/DomainAdapterFactory';
-
-const prisma = new PrismaClient();
+import prisma from '../../core/utils/prisma.js';
+import { DomainAdapterFactory } from '../../domain-adapters/DomainAdapterFactory.js';
 
 export interface DomainConfig {
   id: string;
@@ -83,6 +81,54 @@ const DEFAULT_CONFIGS: Record<string, Partial<DomainConfig>> = {
       delivery_delayed: 'high',
       capacity_exceeded: 'critical',
     },
+  },
+  high_voltage: {
+    statusEnum: ['operational', 'maintenance_overdue', 'overloaded', 'alert'],
+    entityFields: {
+      fields: ['name', 'type', 'voltageCapacity', 'currentLoad', 'maxLoad', 'status'],
+    },
+    priorityRules: {
+      load_critical: 'critical',
+      maintenance_overdue: 'high',
+    },
+  },
+  solar: {
+    statusEnum: ['active', 'degraded', 'faulty'],
+    entityFields: {
+      fields: ['name', 'systemType', 'capacityWp', 'batteryHealth', 'dailyGenerationWh', 'status'],
+    },
+    priorityRules: {
+      battery_critical: 'critical',
+      generation_zero: 'high',
+    },
+  },
+  targeting: {
+    statusEnum: ['identified', 'approved', 'rejected'],
+    entityFields: {
+      fields: ['name', 'score', 'eligibilityStatus', 'vulnerabilityFactors', 'status'],
+    },
+    priorityRules: {
+      high_vulnerability: 'high',
+    },
+  },
+  data_collection: {
+    statusEnum: ['draft', 'in_progress', 'completed', 'flagged'],
+    entityFields: {
+      fields: ['name', 'formId', 'surveyorId', 'platform', 'completeness', 'qualityScore', 'status'],
+    },
+    priorityRules: {
+      quality_critical: 'critical',
+    },
+    metadata: {
+      // Paramétrage explicite du choix de l'écosystème pour le tenant
+      defaultEcosystem: 'ged', // Choix: 'ged' ou 'kobo'
+      // Paramètres de synchronisation si Kobo est choisi
+      koboSync: {
+        formIdReference: null, // ex: 'aEYZwPujJiFBTNb6mxMGCB'
+        kpiReference: null,    // Indicateur KPI lié
+        apiToken: null         // Jeton d'accès (chiffré en production)
+      }
+    }
   },
 };
 

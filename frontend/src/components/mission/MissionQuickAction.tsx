@@ -7,7 +7,7 @@ import {
   exportMissionAsJSON,
   importMissionFromJSON,
 } from '../../services/missionTemplates';
-import type { MissionOrderData, MissionMember } from '../../pages/mission/core/missionTypes';
+import type { MissionOrderData, MissionMember } from '../../modules/mission/views/mission/core/missionTypes';
 import logger from '../../utils/logger';
 
 interface MissionQuickActionProps {

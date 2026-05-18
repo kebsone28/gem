@@ -17,26 +17,36 @@ model Organization {
   slug                       String?                    @unique
   auditLogs                  AuditLog[]
   automatedActions           AutomatedAction[]
+  campaigns                  Campaign[]
   conflictLogs               ConflictLog[]
+  dataCollectionSurveys      DataCollectionSurvey[]
   documents                  Document[]
+  domainConfigs              DomainConfig[]
   eventLogs                  EventLog[]
+  fields                     Field[]
   financialCharges           FinancialCharge[]
   formationModules           FormationModule[]
   formationPlannerStates     FormationPlannerState?
   formationPlanningHistories FormationPlanningHistory[]
   formationSessions          FormationSession[]
   grappes                    Grappe[]
+  healthCenters              HealthCenter[]
+  highVoltageNetworks        HighVoltageNetwork[]
   internalKoboSubmissions    InternalKoboSubmission[]
   koboFormMappings           KoboFormMapping[]
+  livestocks                 Livestock[]
   missions                   Mission[]
   performanceLogs            PerformanceLog[]
   policies                   Policy[]
   projects                   Project[]
+  shipments                  Shipment[]
+  solarInstallations         SolarInstallation[]
   syncLogs                   SyncLog[]
+  targetingCampaigns         TargetingCampaign[]
   teams                      Team[]
   users                      User[]
+  warehouses                 Warehouse[]
   workflows                  Workflow[]
-  domainConfigs              DomainConfig[]
 }
 
 model User {
@@ -83,35 +93,45 @@ model User {
 }
 
 model Project {
-  id               String            @id @default(uuid())
-  organizationId   String
-  name             String
-  status           String
-  budget           Decimal
-  duration         Int
-  totalHouses      Int
-  config           Json
-  version          Int               @default(1)
-  updatedAt        DateTime          @updatedAt
-  updatedById      String?
-  deletedAt        DateTime?
-  templateKey      String?
-  templateVersion  Int?
-  automatedActions AutomatedAction[]
-  documents        Document[]
-  eventLogs        EventLog[]
-  financialCharges FinancialCharge[]
-  households       Household[]
-  missions         Mission[]
-  performanceLogs  PerformanceLog[]
-  policies         Policy[]
-  organization     Organization      @relation(fields: [organizationId], references: [id])
-  updatedBy        User?             @relation("UpdatedBy", fields: [updatedById], references: [id])
-  projectModules   ProjectModule[]
-  projectPages     ProjectPage[]
-  teams            Team[]
-  workflows        Workflow[]
-  zones            Zone[]
+  id                    String                 @id @default(uuid())
+  organizationId        String
+  name                  String
+  status                String
+  budget                Decimal
+  duration              Int
+  totalHouses           Int
+  config                Json
+  version               Int                    @default(1)
+  updatedAt             DateTime               @updatedAt
+  updatedById           String?
+  deletedAt             DateTime?
+  templateKey           String?
+  templateVersion       Int?
+  automatedActions      AutomatedAction[]
+  campaigns             Campaign[]
+  dataCollectionSurveys DataCollectionSurvey[]
+  documents             Document[]
+  eventLogs             EventLog[]
+  fields                Field[]
+  financialCharges      FinancialCharge[]
+  healthCenters         HealthCenter[]
+  highVoltageNetworks   HighVoltageNetwork[]
+  households            Household[]
+  livestocks            Livestock[]
+  missions              Mission[]
+  performanceLogs       PerformanceLog[]
+  policies              Policy[]
+  organization          Organization           @relation(fields: [organizationId], references: [id])
+  updatedBy             User?                  @relation("UpdatedBy", fields: [updatedById], references: [id])
+  projectModules        ProjectModule[]
+  projectPages          ProjectPage[]
+  shipments             Shipment[]
+  solarInstallations    SolarInstallation[]
+  targetingCampaigns    TargetingCampaign[]
+  teams                 Team[]
+  warehouses            Warehouse[]
+  workflows             Workflow[]
+  zones                 Zone[]
 }
 
 model ProjectTemplate {
@@ -1109,41 +1129,230 @@ model SystemConfig {
   updatedAt DateTime @updatedAt
 }
 
-// 🌍 MULTIDOMAINE CONFIGURATION (GED OS)
 model DomainConfig {
-  id             String @id @default(uuid())
-  organizationId String
-  domainType     String // "electricity" | "agriculture" | "health" | "logistics" | etc.
-
-  // Fields monitored for this domain
-  entityFields Json @default("{}") // {"fields": ["name", "status", "voltage"], ...}
-
-  // Allowed status values for this domain
-  statusEnum String[] @default([]) // ["planning", "connected", "maintenance"]
-
-  // Alert rules specific to this domain
-  priorityRules Json @default("{}") // {"alert_threshold": 0.8, "warning_threshold": 0.6}
-
-  // Validation schemas
-  validationSchemas Json @default("{}") // Domain-specific validation rules
-
-  // Templates for project creation
-  projectTemplates Json @default("[]") // Array of template configs
-
-  // Templates for mission/task creation
-  missionTemplates Json @default("[]") // Array of mission templates
-
-  // Custom metadata
-  metadata Json @default("{}") // Any additional config
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  id                String       @id @default(uuid())
+  organizationId    String
+  domainType        String
+  entityFields      Json         @default("{}")
+  statusEnum        String[]     @default([])
+  priorityRules     Json         @default("{}")
+  validationSchemas Json         @default("{}")
+  projectTemplates  Json         @default("[]")
+  missionTemplates  Json         @default("[]")
+  metadata          Json         @default("{}")
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@unique([organizationId, domainType])
   @@index([organizationId])
   @@index([domainType])
+}
+
+model Field {
+  id             String                   @id @default(uuid())
+  organizationId String
+  projectId      String?
+  name           String?
+  status         String                   @default("prepared")
+  location       Json?
+  location_gis   Unsupported("geometry")?
+  domainData     Json?                    @default("{}")
+  alerts         Json?                    @default("[]")
+  version        Int                      @default(1)
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+  deletedAt      DateTime?
+  organization   Organization             @relation(fields: [organizationId], references: [id])
+  project        Project?                 @relation(fields: [projectId], references: [id])
+
+  @@index([organizationId])
+  @@index([projectId])
+  @@index([status])
+}
+
+model Livestock {
+  id             String                   @id @default(uuid())
+  organizationId String
+  projectId      String?
+  name           String?
+  status         String                   @default("healthy")
+  location       Json?
+  location_gis   Unsupported("geometry")?
+  domainData     Json?                    @default("{}")
+  alerts         Json?                    @default("[]")
+  version        Int                      @default(1)
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+  deletedAt      DateTime?
+  organization   Organization             @relation(fields: [organizationId], references: [id])
+  project        Project?                 @relation(fields: [projectId], references: [id])
+
+  @@index([organizationId])
+  @@index([projectId])
+  @@index([status])
+}
+
+model HealthCenter {
+  id             String                   @id @default(uuid())
+  organizationId String
+  projectId      String?
+  name           String?
+  status         String                   @default("operational")
+  location       Json?
+  location_gis   Unsupported("geometry")?
+  domainData     Json?                    @default("{}")
+  alerts         Json?                    @default("[]")
+  version        Int                      @default(1)
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+  deletedAt      DateTime?
+  organization   Organization             @relation(fields: [organizationId], references: [id])
+  project        Project?                 @relation(fields: [projectId], references: [id])
+
+  @@index([organizationId])
+  @@index([projectId])
+  @@index([status])
+}
+
+model Campaign {
+  id             String       @id @default(uuid())
+  organizationId String
+  projectId      String?
+  name           String?
+  status         String       @default("planned")
+  domainData     Json?        @default("{}")
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  deletedAt      DateTime?
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  project        Project?     @relation(fields: [projectId], references: [id])
+
+  @@index([organizationId])
+  @@index([projectId])
+  @@index([status])
+}
+
+model Warehouse {
+  id             String                   @id @default(uuid())
+  organizationId String
+  projectId      String?
+  name           String?
+  status         String                   @default("operational")
+  location       Json?
+  location_gis   Unsupported("geometry")?
+  domainData     Json?                    @default("{}")
+  alerts         Json?                    @default("[]")
+  version        Int                      @default(1)
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+  deletedAt      DateTime?
+  organization   Organization             @relation(fields: [organizationId], references: [id])
+  project        Project?                 @relation(fields: [projectId], references: [id])
+
+  @@index([organizationId])
+  @@index([projectId])
+  @@index([status])
+}
+
+model Shipment {
+  id             String       @id @default(uuid())
+  organizationId String
+  projectId      String?
+  name           String?
+  status         String       @default("pending")
+  domainData     Json?        @default("{}")
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  deletedAt      DateTime?
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  project        Project?     @relation(fields: [projectId], references: [id])
+
+  @@index([organizationId])
+  @@index([projectId])
+  @@index([status])
+}
+
+model HighVoltageNetwork {
+  id             String                   @id @default(uuid())
+  organizationId String
+  projectId      String?
+  name           String?
+  status         String                   @default("operational")
+  location       Json?
+  location_gis   Unsupported("geometry")?
+  domainData     Json?                    @default("{}")
+  alerts         Json?                    @default("[]")
+  version        Int                      @default(1)
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+  deletedAt      DateTime?
+  organization   Organization             @relation(fields: [organizationId], references: [id])
+  project        Project?                 @relation(fields: [projectId], references: [id])
+
+  @@index([organizationId])
+  @@index([projectId])
+  @@index([status])
+}
+
+model SolarInstallation {
+  id             String                   @id @default(uuid())
+  organizationId String
+  projectId      String?
+  name           String?
+  status         String                   @default("operational")
+  location       Json?
+  location_gis   Unsupported("geometry")?
+  domainData     Json?                    @default("{}")
+  alerts         Json?                    @default("[]")
+  version        Int                      @default(1)
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+  deletedAt      DateTime?
+  organization   Organization             @relation(fields: [organizationId], references: [id])
+  project        Project?                 @relation(fields: [projectId], references: [id])
+
+  @@index([organizationId])
+  @@index([projectId])
+  @@index([status])
+}
+
+model TargetingCampaign {
+  id             String       @id @default(uuid())
+  organizationId String
+  projectId      String?
+  name           String?
+  status         String       @default("active")
+  domainData     Json?        @default("{}")
+  alerts         Json?        @default("[]")
+  version        Int          @default(1)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  deletedAt      DateTime?
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  project        Project?     @relation(fields: [projectId], references: [id])
+
+  @@index([organizationId])
+  @@index([projectId])
+  @@index([status])
+}
+
+model DataCollectionSurvey {
+  id             String       @id @default(uuid())
+  organizationId String
+  projectId      String?
+  name           String?
+  status         String       @default("active")
+  domainData     Json?        @default("{}")
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  deletedAt      DateTime?
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  project        Project?     @relation(fields: [projectId], references: [id])
+
+  @@index([organizationId])
+  @@index([projectId])
+  @@index([status])
 }
 
 enum TeamRole {

@@ -7,7 +7,7 @@ import type {
   MissionMember,
   MissionReportDay,
   MissionPhoto,
-} from '../../pages/mission/core/missionTypes';
+} from '../../modules/mission/views/mission/core/missionTypes';
 
 interface MissionSimplifiedModeProps {
   missionData: MissionOrderData;

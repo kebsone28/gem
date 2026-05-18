@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import * as XLSX from 'xlsx';
 import { db } from '../store/db';
-import type { MissionOrderData, MissionMember } from '../pages/mission/core/missionTypes';
+import type { MissionOrderData, MissionMember } from '../modules/mission/views/mission/core/missionTypes';
 
 export interface MissionStats {
   totalMissions: number;

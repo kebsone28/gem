@@ -3,7 +3,21 @@ import logger from '../../utils/logger.js';
 import { queryOllama } from './ollama.client.js';
 import { buildSystemPrompt, AI_REGISTRY } from '../../core/config/ai_registry.js';
 
-const DEFAULT_PROVIDER = config.ai.provider || 'PUBLIC_POLLINATIONS';
+function normalizeProvider(provider) {
+  const normalized = String(provider || '').trim().toUpperCase();
+  if (normalized === 'OLLAMA' || normalized === 'LOCAL_OLLAMA' || normalized === 'OLLAMA_LOCAL') {
+    return 'LOCAL_OLLAMA';
+  }
+  if (normalized === 'ANTHROPIC' || normalized === 'CLAUDE' || normalized === 'CLAUDE_ANTHROPIC') {
+    return 'CLAUDE_ANTHROPIC';
+  }
+  if (normalized === 'POLLINATIONS' || normalized === 'PUBLIC_POLLINATIONS') {
+    return 'PUBLIC_POLLINATIONS';
+  }
+  return 'LOCAL_OLLAMA';
+}
+
+const DEFAULT_PROVIDER = normalizeProvider(config.ai.provider);
 const MAX_HISTORY_TURNS = 12;
 
 function trimText(value, maxLength = 300) {
@@ -240,7 +254,7 @@ export async function processMentorAI({ query, user, state = {}, history = [], i
     return {
       message: text || "Je n'ai pas pu produire une réponse exploitable.",
       type: 'info',
-      _engine: DEFAULT_PROVIDER === 'LOCAL_OLLAMA' ? 'CLAUDE_FALLBACK' : 'CLAUDE',
+      _engine: DEFAULT_PROVIDER === 'LOCAL_OLLAMA' ? 'LOCAL_OLLAMA' : DEFAULT_PROVIDER,
     };
   } catch (error) {
     logger.error('[mentor.service] AI provider call failed', {

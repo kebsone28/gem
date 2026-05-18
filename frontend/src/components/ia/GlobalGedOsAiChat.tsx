@@ -1,6 +1,6 @@
 import React from 'react';
 import GedOsAiChat from './MissionMentor/GedOsAiChat';
-import { useServerAIContext } from '../../pages/DashboardViews/admin/hooks/useServerAIContext';
+import { useServerAIContext } from '../../modules/dashboard/views/DashboardViews/admin/hooks/useServerAIContext';
 
 /**
  * GlobalGedOsAiChat - Wrapper global pour l'assistant IA

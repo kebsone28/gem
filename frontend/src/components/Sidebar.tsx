@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, react-hooks/exhaustive-deps */
 import { useEffect, useMemo, useState } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, Link } from 'react-router-dom';
 import {
   LayoutDashboard,
   LayoutGrid,
@@ -31,15 +31,16 @@ import {
   Brain,
   Folder,
   Home,
-  ServerCog
+  ServerCog,
+  Sprout
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSync } from '../hooks/useSync';
 import { usePermissions } from '../hooks/usePermissions';
 import { motion } from 'framer-motion';
-import { normalizeRole, ROLES } from '../utils/permissions';
-import { AppRole } from '../utils/security/types';
-import type { UserRole } from '../utils/security/types';
+import { normalizeRole, ROLES } from '../core/security/permissions';
+import { AppRole } from '../core/security/types';
+import type { UserRole } from '../core/security/types';
 import { useProject } from '../contexts/ProjectContext';
 import { NotificationCenter } from './layout';
 import { ConsoleSettings } from './admin/ConsoleSettings';
@@ -48,7 +49,7 @@ import { organizationService } from '../services/organizationService';
 import { modulesManagementService } from '../services/modulesManagementService';
 import { PROJECT_CONFIG } from '../config/projectConfig';
 
-import { MODULE_REGISTRY, getAllModules } from '../modules/MODULE_REGISTRY';
+import { MODULE_REGISTRY, getAllModules } from '../core/kernel/registry';
 
 const LUCIDE_ICONS: Record<string, any> = {
   Home,
@@ -74,6 +75,7 @@ const LUCIDE_ICONS: Record<string, any> = {
   Settings,
   Brain,
   HelpCircle,
+  Sprout,
 };
 
 /**
@@ -141,6 +143,7 @@ export default function Sidebar() {
       '/admin/security',
       '/admin/project-creation',
       '/admin/ai-config',
+      '/admin/agent-local',
       '/admin/permissions',
       '/settings'
     ];
@@ -306,7 +309,7 @@ export default function Sidebar() {
           if (enabledModules) {
             const isSystemPage = [
               'modules', 'diagnostic', 'kobo_terminal', 'gem_toolbox', 'gem_collect',
-              'organization', 'settings', 'security', 'help', 'users', 'ai_config'
+              'organization', 'settings', 'security', 'help', 'users', 'ai_config', 'admin_agent', 'agriculture'
             ].includes(item.id);
 
             const bypassModuleCheck = isSystemPage && isMaster;
@@ -315,7 +318,7 @@ export default function Sidebar() {
             // Sans projet chargé : les pages système passent toujours pour les admins
             const isSystemPage = [
               'modules', 'diagnostic', 'kobo_terminal', 'gem_toolbox', 'gem_collect',
-              'organization', 'settings', 'security', 'help', 'users', 'ai_config'
+              'organization', 'settings', 'security', 'help', 'users', 'ai_config', 'admin_agent', 'agriculture'
             ].includes(item.id);
             if (!isSystemPage && !PROJECT_CONFIG.isModuleEnabled(item.id)) return acc;
           }
@@ -441,10 +444,12 @@ export default function Sidebar() {
           <div
             className={`flex items-start gap-3 ${isRailDesktop ? 'justify-center' : 'justify-between'}`}
           >
-            <div
-              className={`flex min-w-0 items-center gap-3 ${isRailDesktop ? 'justify-center' : 'flex-1'}`}
+            <Link
+              to="/home"
+              title="Retour à la sélection des projets"
+              className={`flex min-w-0 items-center gap-3 ${isRailDesktop ? 'justify-center' : 'flex-1'} group cursor-pointer transition-all duration-200 hover:opacity-85`}
             >
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/5 p-1 shadow-[0_10px_24px_rgba(2,6,23,0.28)] lg:h-12 lg:w-12">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/5 p-1 shadow-[0_10px_24px_rgba(2,6,23,0.28)] transition-transform duration-300 group-hover:scale-105 lg:h-12 lg:w-12">
                 {(user?.organizationConfig as any)?.branding?.logo ? (
                   <img
                     src={(user.organizationConfig as any).branding.logo}
@@ -457,7 +462,7 @@ export default function Sidebar() {
               </div>
               {!isRailDesktop && (
                 <div className="min-w-0 flex-1">
-                  <h1 className="line-clamp-2 text-[18px] font-black leading-[0.98] tracking-[-0.04em] text-white/95 lg:text-[20px]">
+                  <h1 className="line-clamp-2 text-[18px] font-black leading-[0.98] tracking-[-0.04em] text-white/95 group-hover:text-blue-300 transition-colors lg:text-[20px]">
                     {organizationName}
                   </h1>
                   <div className="mt-1 flex flex-col gap-0.5 lg:mt-1.5">
@@ -470,7 +475,7 @@ export default function Sidebar() {
                   </div>
                 </div>
               )}
-            </div>
+            </Link>
 
             {/* Notification Center Integration (Axe 4 - Amélioration Continue) */}
             {!isRailDesktop && <NotificationCenter />}

@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../store/db';
-import { PERMISSIONS, hasPermission } from '../utils/permissions';
+import { PERMISSIONS, hasPermission } from '../core/security/permissions';
 import logger from '../utils/logger';
 import toast from 'react-hot-toast';
 

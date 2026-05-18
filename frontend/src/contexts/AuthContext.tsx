@@ -4,7 +4,7 @@ import logger from '../utils/logger';
 import * as safeStorage from '../utils/safeStorage';
 import { useAuthStore, normalizeRole } from '../store/authStore';
 import apiClient from '../api/client';
-import { isMasterAdminEmail, isAdminRole } from '../utils/roleUtils';
+import { isMasterAdminEmail, isAdminRole } from '../core/security/roleUtils';
 
 interface RawUser {
   id?: string;

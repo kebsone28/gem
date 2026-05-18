@@ -482,7 +482,7 @@ interface ProjectContextType {
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
 
 export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const [activeProjectId, setActiveProjectIdState] = useState<string | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
@@ -524,13 +524,21 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // Charger le projet actif du tenant
   useEffect(() => {
+    if (authLoading) return;
+
     if (user?.organizationId) {
       const storedId = safeStorage.getItem(`active_project_${user.organizationId}`);
       setActiveProjectIdState(storedId);
+      if (storedId) {
+        safeStorage.setItem('active_project_id', storedId);
+      } else {
+        safeStorage.removeItem('active_project_id');
+      }
     } else {
       setActiveProjectIdState(null);
+      safeStorage.removeItem('active_project_id');
     }
-  }, [user?.organizationId]);
+  }, [user?.organizationId, authLoading]);
 
   // 1. QUERY PERSISTÉE SELECTIVE (HAUTE PERFORMANCE)
   const projects = useLiveQuery(
@@ -565,8 +573,10 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const key = `active_project_${currentUser.organizationId}`;
       if (id) {
         safeStorage.setItem(key, id);
+        safeStorage.setItem('active_project_id', id);
       } else {
         safeStorage.removeItem(key);
+        safeStorage.removeItem('active_project_id');
       }
     }
   };
@@ -621,6 +631,8 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // 3. AUTO-SYNC & PURGE CIBLÉE DU TENANT AU LOGOUT
   useEffect(() => {
     const handleUserSession = async () => {
+      if (authLoading) return;
+
       if (!user?.id) {
         const prevOrgId = lastSyncedOrgIdRef.current;
         lastSyncedUserIdRef.current = null;
@@ -645,7 +657,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
 
     void handleUserSession();
-  }, [user?.id, user?.organizationId]);
+  }, [user?.id, user?.organizationId, authLoading]);
 
   const setActiveProjectId = (id: string | null) => {
     persistActiveProjectId(id);

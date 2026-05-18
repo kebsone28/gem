@@ -13,7 +13,7 @@ import {
   ImageRun,
 } from 'docx';
 import { saveAs } from 'file-saver';
-import type { MissionOrderData } from '../../pages/mission/core/missionTypes';
+import type { MissionOrderData } from '../../modules/mission/views/mission/core/missionTypes';
 
 /**
  * SERVICE : CahierChargesGenerator (V.1.0 PREMIUM) 🛡️✍️🏛️

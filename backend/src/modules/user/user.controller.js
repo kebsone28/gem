@@ -62,6 +62,16 @@ export const createUser = async (req, res) => {
     } = req.body;
     const { organizationId } = req.user;
 
+    // 🛡️ SECURITY: Prevent creation of ADMIN users (except by Master Admin)
+    const { isSuperAdminEmail } = await import('../../core/config/permissions.js');
+    const isMasterAdmin = isSuperAdminEmail(req.user.email);
+
+    if ((role === 'ADMIN_PROQUELEC' || role === 'ADMIN') && !isMasterAdmin) {
+      return res.status(403).json({
+        error: 'Seul le Master Admin peut créer des comptes Administrateur'
+      });
+    }
+
     const userExists = await prisma.user.findFirst({
       where: {
         email: email.toLowerCase(),
@@ -70,6 +80,13 @@ export const createUser = async (req, res) => {
     });
     if (userExists) {
       return res.status(400).json({ error: 'Cet email est déjà utilisé dans cette organisation' });
+    }
+
+    // 🛡️ SECURITY: Force Admin permissions to always be complete
+    let finalPermissions = permissions || [];
+    if (role === 'ADMIN_PROQUELEC' || role === 'ADMIN') {
+      const { PERMISSIONS: ALL_PERMISSIONS } = await import('../../core/constants/permissions.js');
+      finalPermissions = Object.values(ALL_PERMISSIONS);
     }
 
 
@@ -91,7 +108,7 @@ export const createUser = async (req, res) => {
         roleLegacy: role || 'CHEF_EQUIPE',
         roleId: finalRoleId,
         requires2FA: !!requires2FA,
-        permissions: permissions || [],
+        permissions: finalPermissions,
         organizationId,
       },
       include: { role: true },
@@ -150,6 +167,25 @@ export const updateUser = async (req, res) => {
     const user = await prisma.user.findFirst({ where: { id, organizationId } });
     if (!user) {
       return res.status(404).json({ error: 'Utilisateur non trouvé ou accès refusé' });
+    }
+
+    // 🛡️ SECURITY: Prevent modification of ADMIN users (except by Master Admin)
+    const { isSuperAdminEmail } = await import('../../core/config/permissions.js');
+    const targetUserRole = role || user.roleLegacy;
+    const isMasterAdmin = isSuperAdminEmail(req.user.email);
+
+    if ((targetUserRole === 'ADMIN_PROQUELEC' || targetUserRole === 'ADMIN') && !isMasterAdmin) {
+      return res.status(403).json({
+        error: 'Seul le Master Admin peut modifier les comptes Administrateur'
+      });
+    }
+
+    // 🛡️ SECURITY: Force Admin permissions to always be complete
+    if (targetUserRole === 'ADMIN_PROQUELEC' || targetUserRole === 'ADMIN') {
+      const { PERMISSIONS: ALL_PERMISSIONS } = await import('../../core/constants/permissions.js');
+      // Forcibly set permissions to all values
+      const adminPermissions = Object.values(ALL_PERMISSIONS);
+      req.body.permissions = adminPermissions;
     }
 
     const before = { name: user.name, email: user.email, role: user.roleLegacy };

@@ -30,7 +30,7 @@ import AIEngineAdminPanel from './AIEngineAdminPanel';
 import AIPremiumMessage from './AIPremiumMessage';
 import AITrainingStudio from './AITrainingStudio';
 
-import { hasPermission, PERMISSIONS } from '../../utils/permissions';
+import { hasPermission, PERMISSIONS } from '../../core/security/permissions';
 import ChatInterface from './MissionMentor/ChatInterface';
 import InputBar from './MissionMentor/InputBar';
 import VoiceControls from './MissionMentor/VoiceControls';

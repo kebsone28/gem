@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { getMissionReadiness } from '../../services/missionValidation';
 import { verifyIntegrity } from '../../utils/crypto';
-import type { MissionOrderData, MissionMember } from '../../pages/mission/core/missionTypes';
+import type { MissionOrderData, MissionMember } from '../../modules/mission/views/mission/core/missionTypes';
 
 interface MissionStatusWidgetProps {
   data?: Partial<MissionOrderData>;

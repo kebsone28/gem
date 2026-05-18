@@ -65,33 +65,36 @@ export const getVpsStatus = async (req, res) => {
             };
         }
 
-        // 3. Test Open WebUI (Port 3000)
-        const webUiUrl = process.env.OPENWEBUI_URL || `http://localhost:3000`;
+        // 3. Test OpenHands agent UI (Port 3000)
+        const openHandsUrl = process.env.OPENHANDS_URL || process.env.OPENWEBUI_URL || `http://localhost:3000`;
         try {
             const controller = new AbortController();
             const timeout = setTimeout(() => controller.abort(), 3000);
-            const r = await fetch(webUiUrl, { method: 'HEAD', signal: controller.signal });
+            const r = await fetch(openHandsUrl, { method: 'HEAD', signal: controller.signal });
             clearTimeout(timeout);
-            results.webui = {
+            results.openhands = {
                 status: (r.ok || r.status === 401) ? 'ok' : 'error',
-                url: webUiUrl,
+                url: openHandsUrl,
                 hint: (r.ok || r.status === 401)
-                    ? `✅ Open WebUI opérationnel sur le port 3000.`
-                    : `⚠️ Open WebUI répond avec le code ${r.status}.`
+                    ? `✅ OpenHands opérationnel sur le port 3000. Agent local GED OS disponible.`
+                    : `⚠️ OpenHands répond avec le code ${r.status}.`
             };
         } catch (err) {
             const isTimeout = err.name === 'AbortError';
             const isRefused = err.message?.includes('ECONNREFUSED');
-            results.webui = {
-                status: 'error', url: webUiUrl, error: err.message,
+            results.openhands = {
+                status: 'error', url: openHandsUrl, error: err.message,
                 hint: isTimeout
-                    ? `⏱ Timeout (3s) : Open WebUI (port 3000) ne répond pas. Conteneur Docker peut-être arrêté.`
+                    ? `⏱ Timeout (3s) : OpenHands (port 3000) ne répond pas. Conteneur Docker peut-être arrêté.`
                     : isRefused
-                    ? `🐳 Connexion refusée : Le conteneur Open WebUI est arrêté. Relancez avec : docker start open-webui`
+                    ? `🐳 Connexion refusée : le conteneur OpenHands est arrêté. Relancez scripts/start-ged-agent.ps1.`
                     : `❓ Erreur : ${err.message}`,
-                command: 'docker start open-webui'
+                command: 'powershell.exe -ExecutionPolicy Bypass -File .\\scripts\\start-ged-agent.ps1'
             };
         }
+
+        // Backward compatibility for older frontend builds.
+        results.webui = results.openhands;
 
         return res.json(results);
     } catch (error) {

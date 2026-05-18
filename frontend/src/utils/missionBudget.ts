@@ -1,5 +1,5 @@
 ﻿ 
-import type { MissionMember } from '../pages/mission/core/missionTypes';
+import type { MissionMember } from '../modules/mission/views/mission/core/missionTypes';
 
 /**
  * Calcule tous les totaux financiers de la mission en une seule passe.
