@@ -26,6 +26,8 @@ export const validate = (schema) => {
         message: details.message,
       }));
 
+      console.error('[DIAGNOSTIC] Joi Validation Error:', JSON.stringify(errorDetails, null, 2), 'Body was:', req.body);
+
       return res.status(400).json({
         error: 'Validation Error',
         message: 'Invalid request data',
