@@ -15,6 +15,8 @@ interface RawUser {
   organizationName?: string;
   organizationConfig?: Record<string, unknown>;
   permissions?: string[];
+  impersonatedBy?: string;
+  isSimulation?: boolean;
 }
 
 interface AuthContextType {
@@ -45,6 +47,8 @@ const normalizeSessionUser = (rawUser: RawUser): User => ({
   organization: rawUser.organization || rawUser.organizationName,
   organizationConfig: rawUser.organizationConfig || {},
   permissions: Array.isArray(rawUser.permissions) ? rawUser.permissions : [],
+  impersonatedBy: rawUser.impersonatedBy,
+  isSimulation: rawUser.isSimulation || !!rawUser.impersonatedBy,
 });
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {

@@ -224,7 +224,7 @@ export const updateUser = async (req, res) => {
         notificationEmail: cleanNullable(notificationEmail),
       }),
       ...(role !== undefined && { roleLegacy: role }),
-      ...(roleId !== undefined && { roleId: cleanNullable(roleId) }),
+      ...(finalRoleId !== undefined && { roleId: finalRoleId }),
       ...(active !== undefined && { active }),
       ...(requires2FA !== undefined && { requires2FA }),
       ...(passwordHash !== undefined && { passwordHash }),

@@ -5,8 +5,13 @@ export const createUserSchema = {
     name: Joi.string().required(),
     email: Joi.string().email().required(),
     password: Joi.string().min(8).required(),
+    role: Joi.string().optional(),
     roleLegacy: Joi.string().optional(),
-    roleId: Joi.string().uuid().optional(),
+    roleId: Joi.string().uuid().optional().allow(null),
+    active: Joi.boolean().optional(),
+    requires2FA: Joi.boolean().optional(),
+    teamId: Joi.string().uuid().optional().allow(null),
+    notificationEmail: Joi.string().email().optional().allow(null, ''),
     permissions: Joi.array().items(Joi.string()).optional().allow(null)
   })
 };
@@ -19,8 +24,13 @@ export const updateUserSchema = {
     name: Joi.string().optional(),
     email: Joi.string().email().optional(),
     password: Joi.string().min(8).optional(),
+    role: Joi.string().optional(),
     roleLegacy: Joi.string().optional(),
     roleId: Joi.string().uuid().optional().allow(null),
+    active: Joi.boolean().optional(),
+    requires2FA: Joi.boolean().optional(),
+    teamId: Joi.string().uuid().optional().allow(null),
+    notificationEmail: Joi.string().email().optional().allow(null, ''),
     permissions: Joi.array().items(Joi.string()).optional().allow(null)
   }).min(1)
 };

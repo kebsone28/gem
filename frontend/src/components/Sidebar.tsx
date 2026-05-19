@@ -670,9 +670,17 @@ export default function Sidebar() {
           {!isRailDesktop && (
             <div className="rounded-[1.5rem] border border-white/6 bg-white/[0.025] px-4 py-3 text-[11px] text-slate-400">
               <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-white">{user.name}</p>
-                  <p className="truncate uppercase tracking-[0.16em] text-slate-500">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <p className="truncate text-sm font-semibold text-white">{user.name}</p>
+                    {(user.impersonatedBy || (user as any).isSimulation) && (
+                      <span className="shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-rose-500/20 border border-rose-500/30 text-[9px] font-black uppercase text-rose-300 tracking-wider animate-pulse">
+                        <span className="h-1 w-1 rounded-full bg-rose-400" />
+                        Simulé
+                      </span>
+                    )}
+                  </div>
+                  <p className="truncate uppercase tracking-[0.16em] text-slate-500 mt-0.5">
                     {roleDisplay}
                   </p>
                 </div>
