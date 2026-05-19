@@ -5,6 +5,7 @@ import SyncAlertBanner from '../components/SyncAlertBanner';
 import { useWebSockets } from '../hooks/useWebSockets';
 import { CommandPalette } from '../components/common/CommandPalette';
 import { useBackgroundSync } from '../hooks/useBackgroundSync';
+import { HybridChatbot } from '../components/ChatbotWidget/HybridChatbot';
 
 /**
  * Layout – Shell principal de l'application GED OS.
@@ -136,6 +137,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </div>
         )}
       </main>
+
+      {/* Hybrid Chatbot Widget - Floating bubble (bottom-right) */}
+      <HybridChatbot />
     </div>
   );
 }

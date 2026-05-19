@@ -12,6 +12,7 @@ import {
   findMentorTrainingMatch
 } from './assistant.controller.js';
 import { analyzeQuery, executeAction } from './AgenticController.js';
+import { queryChatbotAgent } from './chatbotAgent.controller.js';
 import { getVpsStatus } from './vpsStatus.controller.js';
 
 
@@ -21,6 +22,7 @@ router.use(authProtect);
 
 router.post('/query', handleQuery);
 router.post('/agent/query', analyzeQuery);
+router.post('/agent/chat', queryChatbotAgent);
 router.post('/agent/execute', executeAction);
 router.get('/vps/status', getVpsStatus);
 
