@@ -391,7 +391,7 @@ const AdminUsersTable = ({
                 </td>
 
                 <td className="px-6 py-4 rounded-r-2xl border-y border-r border-slate-800/50 text-right">
-                  <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex items-center justify-end gap-2 opacity-90 group-hover:opacity-100 transition-all">
                     <button
                       onClick={() => onImpersonate(u)}
                       className="p-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/20 transition-all active:scale-90"
