@@ -1,4 +1,4 @@
-﻿ 
+ 
 import React, { useState, useRef, useEffect } from 'react';
 import { ChevronDown, Check } from 'lucide-react';
 import { withAnalytics } from '../../utils/designSystemAnalytics';
@@ -377,40 +377,32 @@ export const Modal: React.FC<ModalProps> = withAnalytics(
     if (!isOpen) return null;
 
     return (
-      <div className="fixed inset-0 z-50">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        {/* Backdrop glass blur */}
         <div
-          className="absolute inset-0 bg-black/50 dark:bg-black/70"
+          className="absolute inset-0 bg-slate-950/60 backdrop-blur-md transition-opacity duration-300"
           onClick={onClose}
           role="presentation"
         />
-        <div className="relative flex items-center justify-center min-h-screen p-4">
-          <Card
-            className="w-full max-w-md"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby={ariaLabelledBy || 'modal-title'}
-            aria-describedby={ariaDescribedBy}
-            {...props}
+        {/* Modal Dialog Card */}
+        <div
+          className="relative w-full max-w-md bg-slate-900/95 border border-white/10 rounded-[2rem] shadow-2xl shadow-indigo-950/40 backdrop-blur-xl p-6 md:p-8 animate-in fade-in zoom-in-95 duration-200"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={ariaLabelledBy || 'modal-title'}
+          aria-describedby={ariaDescribedBy}
+          {...props}
+        >
+          <h2
+            id={ariaLabelledBy || 'modal-title'}
+            className="text-xl md:text-2xl font-black tracking-tight text-white mb-4 bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent"
           >
-            <div className="p-6">
-              <h2
-                id={ariaLabelledBy || 'modal-title'}
-                className="text-xl font-bold text-gray-900 dark:text-gray-50 mb-4"
-              >
-                {title}
-              </h2>
-              <div
-                className={
-                  ariaDescribedBy
-                    ? `text-gray-700 dark:text-gray-300 mb-6`
-                    : 'text-gray-700 dark:text-gray-300 mb-6'
-                }
-              >
-                {children}
-              </div>
-              {actions && <div className="flex gap-2 justify-end">{actions}</div>}
-            </div>
-          </Card>
+            {title}
+          </h2>
+          <div className="text-slate-300 text-sm md:text-base mb-6 leading-relaxed">
+            {children}
+          </div>
+          {actions && <div className="flex gap-2 justify-end pt-2">{actions}</div>}
         </div>
       </div>
     );

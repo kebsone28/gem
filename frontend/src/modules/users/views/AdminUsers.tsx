@@ -1132,7 +1132,7 @@ export default function AdminUsers() {
             <button
               type="button"
               onClick={() => setConfirmApplyOpen(false)}
-              className="px-4 py-2 rounded-lg bg-gray-200 text-gray-800 mr-2"
+              className="px-4 py-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all font-bold mr-2"
             >
               Annuler
             </button>
@@ -1160,7 +1160,7 @@ export default function AdminUsers() {
                   setPendingApplyRole(null);
                 }
               }}
-              className="px-4 py-2 rounded-lg bg-emerald-600 text-white"
+              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition-all shadow-lg shadow-emerald-500/20"
             >
               Confirmer
             </button>
