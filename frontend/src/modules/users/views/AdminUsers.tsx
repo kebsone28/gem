@@ -2163,7 +2163,11 @@ export default function AdminUsers() {
 
         {/* ── Impersonate Gateway Modal ── */}
         {impersonateTarget && (
-          <Modal title="Passerelle God Mode" onClose={() => setImpersonateTarget(null)}>
+          <Modal
+            isOpen={true}
+            title="Passerelle God Mode"
+            onClose={() => setImpersonateTarget(null)}
+          >
             <div className="space-y-6">
               <div className="p-4 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-100 text-sm font-medium">
                 Vous êtes sur le point de prendre le contrôle de <strong>{impersonateTarget.name || impersonateTarget.email}</strong>.
