@@ -2,6 +2,8 @@ import prisma from '../../core/utils/prisma.js';
 import { DomainConfigService } from './DomainConfigService.js';
 import { DomainAdapterFactory } from '../../domain-adapters/DomainAdapterFactory.js';
 import eventBus from '../../core/utils/eventBus.js';
+import EventPublisher from '../../core/utils/EventPublisher.js';
+
 export class AgricultureService {
     /**
      * Complex Yield Prediction Logic
@@ -171,6 +173,7 @@ export class AgricultureService {
             'coffee': { N: 80, P: 30, K: 100 },
             'plantain': { N: 150, P: 50, K: 200 }, // Plantain très gourmand en K
             'papaya': { N: 130, P: 50, K: 160 },
+            'watermelon_cash': { N: 80, P: 40, K: 120 }
         };
         const cropReq = npkRequirements[d.cropType.toLowerCase()] || { N: 100, P: 50, K: 50 };
         // Ajustement selon le type de sol
@@ -273,7 +276,16 @@ export class AgricultureService {
                 alerts: alerts,
             }
         });
-        eventBus.emit('agriculture:field_created', field);
+        
+        await EventPublisher.publish({
+            organizationId,
+            projectId,
+            type: 'agriculture:field_created',
+            resource: 'field',
+            resourceId: field.id,
+            data: { field }
+        });
+
         // Lancer les calculs asynchrones post-création si la culture est définie
         if (normalized.domainData.cropType && normalized.domainData.area) {
             setTimeout(() => {

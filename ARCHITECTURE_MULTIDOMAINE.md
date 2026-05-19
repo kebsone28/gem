@@ -1,114 +1,230 @@
 # Architecture Multidomaine GED OS
 
-Ce document détaille la nouvelle architecture multidomaine (Kernel v2) de GED OS. Il sert de référence pour comprendre comment le système est architecturé pour passer d'un simple produit d'électrification à une plateforme globale (Agriculture, Santé, Logistique, etc.).
+Ce document présente l'architecture technique unifiée de **GED OS**, conçue pour faire évoluer le produit historique électrification (GEM) vers une plateforme universelle capable d'orchestrer n'importe quel domaine d'impact (Santé, Agriculture, Logistique, Réseaux Haute Tension, Solaire Mini-grids, Ciblage Éligibilité, Collecte de Données, etc.).
 
-## 1. Philosophie & Principes
+---
 
-GED OS fonctionne désormais comme un "Système d'Exploitation" métier :
-- **Kernel Frontend** : Un noyau dur minimal, responsable du routage, de la sécurité (IAM) et de la communication inter-modules.
-- **Domain Adapters Backend** : Un modèle abstrait (Adapter Pattern) permettant d'unifier le traitement des données provenant de multiples domaines métiers très hétérogènes.
-- **Modules Plug-and-Play** : Chaque domaine est un module indépendant qui s'enregistre auprès du Kernel.
+## 1. Vue d'Ensemble & Principes Fondamentaux
 
-## 2. Architecture Frontend : Le Kernel & EventBus
+L'architecture repose sur trois piliers d'abstraction :
+1. **DomainConfig (Base de données / Configuration)** : Configuration descriptive stockée en base par domaine.
+2. **DomainAdapter (Logique métier / Normalisation)** : Abstraction normalisée garantissant des interfaces uniformes.
+3. **EventPublisher & EventBus (Événementiel / Asynchronisme)** : Messagerie découplée en temps réel et persistence d'audit.
 
-Le monolithe historique a été décomposé. L'intelligence ne réside plus dans les vues, mais dans le Kernel et le bus d'événements.
+```mermaid
+graph TD
+    subgraph Clients Frontend
+        A[Dashboard Multidomaine] --> B[EntityLayer MapLibre]
+        A --> C[Formulaires Génériques]
+    end
 
-### 2.1 L'EventBus (`core/events/EventBus.ts`)
+    subgraph API Gateway / Middleware
+        B & C --> D[DomainContext Middleware]
+    end
 
-L'EventBus est le système nerveux central de GED OS. Il implémente le pattern Publisher/Subscriber de manière fortement typée.
+    subgraph Adapters & Services
+        D --> E[DomainAdapterFactory]
+        E --> F1[ElectrificationAdapter]
+        E --> F2[AgricultureAdapter]
+        E --> F3[HealthAdapter]
+        E --> F4[LogisticsAdapter]
+    end
 
-**Pourquoi un EventBus ?**
-Pour découpler les modules. Si le module "Terrain" se met à jour, il n'a pas besoin de connaître l'existence du module "Logistique". Il se contente de crier `TERRAIN_DATA_UPDATED`. Le module Logistique, s'il est intéressé, écoute ce signal pour rafraîchir ses stocks.
-
-**Exemple d'utilisation :**
-```tsx
-import { useEventBus } from '../hooks/useEventBus';
-
-// Abonnement (dans un composant React)
-useEventBus('MISSION_CREATED', (event) => {
-  console.log('Nouvelle mission :', event.payload.missionId);
-});
-
-// Émission
-const { emit } = useEventBus();
-emit('STOCK_ALERT', { item: 'Câble ABC', qty: 0 }, 'logistique');
+    subgraph Persistance & Event Bus
+        F1 & F2 & F3 & F4 --> G[Prisma ORM]
+        G --> H[(PostgreSQL)]
+        F1 & F2 & F3 & F4 --> I[EventPublisher]
+        I --> J[EventBus InMemory]
+        I --> K[(EventLog DB Table)]
+    end
 ```
 
-### 2.2 Le Kernel Orchestrator (`core/events/KernelOrchestrator.ts`)
+---
 
-Le KernelOrchestrator est le "cerveau" réactif. C'est ici que sont définies les règles métier transversales.
-Par exemple : *Règle : Quand une `MISSION_CREATED` est émise, vérifier si une alerte de type `STOCK_ALERT` doit être générée*.
+## 2. Modèle de Données Dynamique : `DomainConfig`
 
-## 3. Architecture Backend : Domain Adapters
-
-En base de données, nous gérons désormais de multiples entités (Ménages/Infrastructures, Parcelles agricoles, Centres de santé). Pour éviter d'écrire des dizaines de `if (domain === 'agriculture')` partout dans nos contrôleurs, nous utilisons le pattern **DomainAdapter**.
-
-### 3.1 L'Interface `DomainAdapter`
-
-Chaque domaine doit implémenter cette interface (`backend/src/domain-adapters/DomainAdapter.ts`) :
-
-```typescript
-export interface DomainAdapter {
-  domainType: string;
-  normalizeEntity(rawData: any): Promise<NormalizedEntity>;
-  validateEntity(entity: any): ValidationError[];
-  deriveStatus(entity: any): string;
-  generateAlerts(entity: any): Alert[];
-  getEntityFields(): string[];
-  getOptimalQueryShape(): Record<string, any>;
-}
-```
-
-### 3.2 Le Factory Pattern (`DomainAdapterFactory.ts`)
-
-Le Factory enregistre tous les adapters au démarrage. Le contrôleur (ou le service) demande l'adapter approprié en fonction du contexte de la requête.
-
-```typescript
-const adapter = DomainAdapterFactory.getAdapter(req.domainConfig.domainType);
-
-// Peu importe le domaine, la logique métier reste la même :
-const validationErrors = adapter.validateEntity(data);
-const alerts = adapter.generateAlerts(data);
-```
-
-## 4. Configuration par Domaine : `DomainConfig`
-
-Chaque organisation (tenant) peut configurer la manière dont un domaine se comporte via la table Prisma `DomainConfig`.
+La table `DomainConfig` stocke les configurations sémantiques, les schémas de validation et les modèles spécifiques à chaque domaine. Cela évite le codage en dur et permet d'ajouter des champs personnalisés dynamiquement par organisation.
 
 ```prisma
 model DomainConfig {
-  id                String    @id @default(uuid())
-  organizationId    String
-  domainType        String    // "electricity" | "high_voltage" | "solar" | "agriculture" | "health" | "logistics" | "targeting" | "data_collection"
-  entityFields      Json      // Champs personnalisés à afficher/requêter
-  statusEnum        String[]  // Cycle de vie (ex: ['prepared', 'planted', 'harvested'])
-  // ...
+  id                    String   @id @default(uuid())
+  organizationId        String
+  domainType            String   // "electricity", "agriculture", "health", "logistics", etc.
+  
+  // Configuration des entités
+  entityFields          Json     // Champs monitorés (ex: ["beds", "staff", "weeklyPatients"])
+  statusEnum            String[] // États possibles (ex: ["operational", "understaffed", "critical_shortage"])
+  priorityRules         Json     // Règles d'alerte et de gravité
+  validationSchemas     Json     // Schémas JSON Schema de validation
+  
+  // Templates de processus
+  projectTemplates      Json     @default("[]")
+  missionTemplates      Json     @default("[]")
+  metadata              Json     @default("{}")
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  organization          Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, domainType])
+  @@index([organizationId])
+  @@index([domainType])
 }
 ```
-Cette configuration est injectée automatiquement dans chaque requête API via le middleware `domainContext.ts`.
-
-## 5. Guide : Ajouter un Nouveau Domaine (en 2h)
-
-Imaginons que nous voulions ajouter un domaine "Éducation" (suivi des écoles).
-
-### Étape 1 : Base de données (Backend)
-1. Créer le modèle Prisma (`School` par exemple).
-2. Lancer `npx prisma migrate dev`.
-
-### Étape 2 : Adapter (Backend)
-1. Créer `backend/src/domain-adapters/adapters/EducationAdapter.ts` implémentant `DomainAdapter`.
-2. Définir `deriveStatus()` (ex: 'open', 'closed', 'understaffed').
-3. Définir `generateAlerts()` (ex: alerte si nb d'élèves par classe > 60).
-4. L'enregistrer dans `DomainAdapterFactory.ts`.
-
-### Étape 3 : Module (Frontend)
-1. Créer un dossier `frontend/src/modules/education/`.
-2. Créer le `manifest.ts` (déclaration de la route `/education`, icône "Book").
-3. Créer la vue principale (`views/EducationDashboard.tsx`).
-4. Utiliser le composant générique `<EntityLayer domainType="education" />` pour la cartographie.
-
-### Étape 4 : Événements (Optionnel)
-S'il y a des intéractions, ajouter un type d'événement dans `EventBus.ts` (ex: `SCHOOL_INCIDENT`) et l'émettre depuis le module.
 
 ---
-**GED OS v2.0 - Plateforme Intelligente Multidomaine**
+
+## 3. Le Pattern `DomainAdapter`
+
+Le `DomainAdapter` est l'interface abstraite unifiant la validation, la normalisation, le calcul d'état et le déclenchement d'alertes pour toutes les entités de l'écosystème.
+
+```javascript
+export abstract class DomainAdapter {
+  abstract domainType: string;
+  
+  // Normalisation des payloads bruts en entités typées
+  abstract normalizeEntity(rawData: any): Promise<any>;
+  
+  // Validation stricte du modèle d'entité
+  abstract validateEntity(entity: any): ValidationError[];
+  
+  // Détermination de l'état fonctionnel de l'entité
+  abstract deriveStatus(entity: any): string;
+  
+  // Analyse de données et génération automatique d'alertes
+  abstract generateAlerts(entity: any): Alert[];
+  
+  // Récupération des attributs de l'entité
+  abstract getEntityFields(): string[];
+}
+```
+
+### Exemple : `HealthAdapter`
+L'adaptateur Santé calcule l'état opérationnel et lève des alertes critiques en cas de manque d'effectif médical ou de rupture de stock de médicaments :
+
+```javascript
+export class HealthAdapter {
+    constructor() {
+        this.domainType = 'health';
+    }
+    // ... normalisation ...
+    
+    deriveStatus(entity) {
+        const { beds, staff, medications } = entity.domainData || {};
+        if (!staff || staff.length === 0) return 'unstaffed';
+        
+        const meds = medications || {};
+        const criticalShortage = Object.values(meds).some((qty) => qty === 0);
+        if (criticalShortage) return 'critical_shortage';
+        if (!beds || beds < 2) return 'understaffed';
+        
+        return 'operational';
+    }
+
+    generateAlerts(entity) {
+        const alerts = [];
+        const d = entity.domainData || {};
+        if (!d.staff || d.staff.length === 0) {
+            alerts.push({
+                type: 'no_staff',
+                severity: 'critical',
+                message: 'Le centre de santé n\'a pas de personnel médical enregistré.',
+            });
+        }
+        return alerts;
+    }
+}
+```
+
+---
+
+## 4. Messagerie Événementielle : `EventPublisher` & `EventBus`
+
+Tous les modules GED OS publient des événements standardisés via la classe `EventPublisher`. Cela assure :
+1. Une réactivité en temps réel via un bus mémoire Node (`EventEmitter`).
+2. Une traçabilité durable par persistance synchrone ou asynchrone dans la table `EventLog`.
+
+### Modèle `EventLog`
+```prisma
+model EventLog {
+  id             String       @id @default(uuid())
+  projectId      String?
+  organizationId String
+  userId         String?
+  type           String       // ex: "health:center_created"
+  resource       String       // ex: "healthCenter"
+  resourceId     String?
+  data           Json?
+  metadata       Json?
+  createdAt      DateTime     @default(now())
+}
+```
+
+### Publication d'un Événement
+```javascript
+import EventPublisher from './EventPublisher.js';
+
+await EventPublisher.publish({
+  organizationId: req.user.organizationId,
+  projectId: req.projectId,
+  userId: req.user.id,
+  type: 'agriculture:field_created',
+  resource: 'field',
+  resourceId: field.id,
+  data: { field }
+});
+```
+
+---
+
+## 5. Guide d'Ajout d'un Nouveau Domaine en 2 Heures
+
+Pour ajouter un nouveau domaine d'impact, par exemple l'Éducation (`education`), suivez cette procédure standardisée :
+
+### Étape 1 : Définir les tables Prisma (optionnel si données purement dynamiques)
+Si vous avez besoin de structures physiques spécifiques comme `School` :
+```prisma
+model School {
+  id             String                   @id @default(uuid())
+  organizationId String
+  projectId      String?
+  name           String?
+  status         String                   @default("operational")
+  location       Json?
+  domainData     Json?                    @default("{}")
+  alerts         Json?                    @default("[]")
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+}
+```
+*Exécuter `npm run prisma:generate && npm run prisma:push` pour synchroniser la base.*
+
+### Étape 2 : Créer l'Adaptateur
+Créez `backend/src/domain-adapters/adapters/EducationAdapter.js` :
+```javascript
+export class EducationAdapter {
+  constructor() {
+    this.domainType = 'education';
+  }
+  async normalizeEntity(rawData) { ... }
+  validateEntity(entity) { ... }
+  deriveStatus(entity) { ... }
+  generateAlerts(entity) { ... }
+  getEntityFields() { return ['classrooms', 'teachers', 'students']; }
+  getOptimalQueryShape() { ... }
+}
+```
+*Enregistrez l'adaptateur dans `backend/src/domain-adapters/DomainAdapterFactory.js`.*
+
+### Étape 3 : Créer le Service, Contrôleur et Routes
+1. **Service (`EducationService.js`)** : Gère la logique de création et publie l'événement `education:school_created`.
+2. **Contrôleur (`schools.controller.js`)** : Expose le CRUD.
+3. **Routes (`schools.routes.js`)** : Montez les endpoints en utilisant le middleware `verifierModule('education')`.
+
+### Étape 4 : Déclarer le Module Frontend
+1. Créez `frontend/src/modules/education/manifest.ts` et configurez les routes de navigation, l'icône, le rôle requis et la catégorie (`'OPÉRATIONS'`).
+2. Créez la vue principale `Schools.tsx` en utilisant le composant générique `EntityLayer` avec la propriété `domainType="custom"` (ou configurez une nouvelle couleur de domaine).
+3. Enregistrez le manifest dans `frontend/src/core/kernel/registry.ts`.
+
+---
+
+Grâce à ce socle d'abstraction robuste, GED OS offre une flexibilité totale, permettant d'adopter de nouveaux secteurs d'activité avec un coût technique minimal et une robustesse de niveau production.

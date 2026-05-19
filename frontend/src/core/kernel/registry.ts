@@ -35,6 +35,7 @@ import { manifest as helpManifest } from '../../modules/help/manifest';
 import { manifest as loginManifest } from '../../modules/login/manifest';
 import { manifest as mission_verificationManifest } from '../../modules/mission_verification/manifest';
 import { manifest as agricultureManifest } from '../../modules/agriculture/manifest';
+import { manifest as healthManifest } from '../../modules/health/manifest';
 import { manifest as mesManifest } from '../../modules/mes/manifest';
 
 export const MODULE_REGISTRY: Record<string, ModuleManifest> = {
@@ -72,6 +73,7 @@ export const MODULE_REGISTRY: Record<string, ModuleManifest> = {
   login: loginManifest,
   mission_verification: mission_verificationManifest,
   agriculture: agricultureManifest,
+  health: healthManifest,
   mes: mesManifest,
 };
 

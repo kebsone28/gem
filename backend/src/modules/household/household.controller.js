@@ -1,5 +1,6 @@
 import prisma from '../../core/utils/prisma.js';
 import eventBus from '../../core/utils/eventBus.js';
+import EventPublisher from '../../core/utils/EventPublisher.js';
 import { tracerAction } from '../../services/audit.service.js';
 import { logPerformance } from '../../services/performance.service.js';
 import {
@@ -218,6 +219,15 @@ export const createHousehold = async (req, res) => {
         try {
             const payload = sanitizeBigIntForJson(household);
             eventBus.emit('household:upsert', { action: 'upsert', household: payload });
+            await EventPublisher.publish({
+                organizationId,
+                projectId: req.projectId || null,
+                userId: req.user?.id,
+                type: 'household.created',
+                resource: 'household',
+                resourceId: household.id,
+                data: { household: payload }
+            });
         } catch (e) {
             console.error('EventBus emit createHousehold error:', e.message);
         }
@@ -339,6 +349,18 @@ export const updateHousehold = async (req, res) => {
         try {
             const payload = sanitizeBigIntForJson(updated);
             eventBus.emit('household:upsert', { action: 'update', household: payload });
+            await EventPublisher.publish({
+                organizationId,
+                projectId: req.projectId || household.projectId || null,
+                userId: req.user?.id,
+                type: 'household.updated',
+                resource: 'household',
+                resourceId: id,
+                data: {
+                    previousState: { status: household.status },
+                    newState: { status: updated.status }
+                }
+            });
         } catch (e) {
             console.error('EventBus emit updateHousehold error:', e.message);
         }

@@ -309,7 +309,7 @@ export default function Sidebar() {
           if (enabledModules) {
             const isSystemPage = [
               'modules', 'diagnostic', 'kobo_terminal', 'gem_toolbox', 'gem_collect',
-              'organization', 'settings', 'security', 'help', 'users', 'ai_config', 'admin_agent', 'agriculture'
+              'organization', 'settings', 'security', 'help', 'users', 'ai_config', 'admin_agent', 'agriculture', 'health'
             ].includes(item.id);
 
             const bypassModuleCheck = isSystemPage && isMaster;
@@ -318,7 +318,7 @@ export default function Sidebar() {
             // Sans projet chargé : les pages système passent toujours pour les admins
             const isSystemPage = [
               'modules', 'diagnostic', 'kobo_terminal', 'gem_toolbox', 'gem_collect',
-              'organization', 'settings', 'security', 'help', 'users', 'ai_config', 'admin_agent', 'agriculture'
+              'organization', 'settings', 'security', 'help', 'users', 'ai_config', 'admin_agent', 'agriculture', 'health'
             ].includes(item.id);
             if (!isSystemPage && !PROJECT_CONFIG.isModuleEnabled(item.id)) return acc;
           }

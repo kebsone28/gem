@@ -3,8 +3,28 @@
  * Reduces database queries by caching frequently accessed data
  */
 
-import redis from '../core/utils/redis.js';
+import { redisConnection } from '../core/utils/queueManager.js';
 import logger from '../utils/logger.js';
+
+// Safe Redis wrapper to handle disabled/offline Redis state gracefully without throwing
+const redis = {
+  get: async (key) => {
+    if (!redisConnection || typeof redisConnection.get !== 'function') return null;
+    return redisConnection.get(key);
+  },
+  setex: async (key, ttl, value) => {
+    if (!redisConnection || typeof redisConnection.setex !== 'function') return null;
+    return redisConnection.setex(key, ttl, value);
+  },
+  del: async (...keys) => {
+    if (!redisConnection || typeof redisConnection.del !== 'function') return null;
+    return redisConnection.del(...keys);
+  },
+  keys: async (pattern) => {
+    if (!redisConnection || typeof redisConnection.keys !== 'function') return [];
+    return redisConnection.keys(pattern);
+  }
+};
 
 const CACHE_TTL = {
   USER_PERMISSIONS: 5 * 60, // 5 minutes
@@ -231,4 +251,3 @@ export const cacheService = {
   },
 };
 
-};

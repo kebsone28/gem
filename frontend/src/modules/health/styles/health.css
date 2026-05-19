@@ -1,0 +1,367 @@
+/* =============================================
+   GED OS — Module Santé
+   health.css
+   ============================================= */
+
+.health-dashboard {
+  padding: var(--spacing-6);
+  background: var(--surface-primary);
+  min-height: 100vh;
+  font-family: var(--font-family, 'Inter', sans-serif);
+}
+
+/* Header */
+.health-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-8);
+  flex-wrap: wrap;
+  gap: var(--spacing-4);
+}
+
+.health-header-title {
+  font-size: var(--font-size-3xl);
+  font-weight: 800;
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: -0.02em;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+}
+
+.health-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+}
+
+/* Project Active Badge */
+.health-project-active-badge {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  padding: var(--spacing-3) var(--spacing-5);
+  background: rgba(59, 130, 246, 0.06);
+  border: 1px solid rgba(59, 130, 246, 0.15);
+  border-radius: var(--radius-xl);
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  margin-bottom: var(--spacing-6);
+  width: fit-content;
+}
+
+.health-project-active-badge strong {
+  color: #3b82f6;
+}
+
+/* KPI Stats Grid */
+.health-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--spacing-5);
+  margin-bottom: var(--spacing-10);
+}
+
+.health-stat-card {
+  background: var(--surface-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-6);
+  position: relative;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease;
+}
+
+.health-stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-md);
+}
+
+.health-stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 4px;
+  background: linear-gradient(90deg, #3b82f6, #60a5fa);
+}
+
+.health-stat-card.alert::before {
+  background: linear-gradient(90deg, #ef4444, #f87171);
+}
+
+.health-stat-card.success::before {
+  background: linear-gradient(90deg, #10b981, #34d399);
+}
+
+.health-stat-card.warning::before {
+  background: linear-gradient(90deg, #f59e0b, #fbbf24);
+}
+
+.health-stat-label {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  margin-bottom: var(--spacing-2);
+}
+
+.health-stat-value {
+  font-size: var(--font-size-4xl);
+  font-weight: 800;
+  color: var(--text-primary);
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing-2);
+}
+
+.health-stat-unit {
+  font-size: var(--font-size-lg);
+  color: var(--text-tertiary);
+  font-weight: 500;
+}
+
+/* Health Center Cards Grid */
+.health-centers-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: var(--spacing-5);
+  margin-bottom: var(--spacing-10);
+}
+
+.health-center-card {
+  background: rgba(var(--surface-secondary-rgb, 30, 41, 59), 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(59, 130, 246, 0.1);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+  transition: all 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.health-center-card:hover {
+  transform: scale(1.02);
+  border-color: rgba(59, 130, 246, 0.35);
+  box-shadow: 0 10px 30px -10px rgba(59, 130, 246, 0.2);
+}
+
+.hcc-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.hcc-title-group {
+  display: flex;
+  gap: var(--spacing-3);
+  align-items: center;
+}
+
+.hcc-icon {
+  font-size: 2rem;
+  background: var(--surface-tertiary);
+  padding: var(--spacing-2);
+  border-radius: var(--radius-lg);
+}
+
+.hcc-title {
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.hcc-subtitle {
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+}
+
+.hcc-status {
+  padding: var(--spacing-1) var(--spacing-3);
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.hcc-status.operational { background: rgba(16, 185, 129, 0.15); color: #059669; }
+.hcc-status.understaffed { background: rgba(245, 158, 11, 0.15); color: #d97706; }
+.hcc-status.closed { background: rgba(239, 68, 68, 0.15); color: #dc2626; }
+
+/* Metrics rows */
+.hcc-metrics {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  background: var(--surface-primary);
+  padding: var(--spacing-4);
+  border-radius: var(--radius-lg);
+  border: 1px dashed var(--border-color);
+}
+
+.hcc-metric-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: var(--font-size-sm);
+}
+
+.hcc-metric-label {
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+
+.hcc-metric-value {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* Campaign Section */
+.health-campaigns-section {
+  margin-top: var(--spacing-8);
+}
+
+.health-campaigns-title {
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-5);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+}
+
+.health-campaigns-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--spacing-4);
+}
+
+.health-campaign-card {
+  background: var(--surface-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-5);
+  transition: all 0.3s ease;
+}
+
+.health-campaign-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+}
+
+.hccamp-name {
+  font-size: var(--font-size-md);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-1);
+}
+
+.hccamp-type {
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: var(--spacing-4);
+}
+
+.hccamp-progress-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  margin-bottom: var(--spacing-2);
+}
+
+.hccamp-progress-bar-bg {
+  height: 8px;
+  background: var(--surface-tertiary);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.hccamp-progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #60a5fa);
+  border-radius: var(--radius-full);
+}
+
+/* Project Selection Required */
+.health-project-selection-required {
+  background: rgba(59, 130, 246, 0.03);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  border-radius: var(--radius-2xl);
+  padding: var(--spacing-8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--spacing-6);
+  max-width: 680px;
+  margin: var(--spacing-12) auto;
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.25);
+}
+
+.health-required-icon-box {
+  width: 64px; height: 64px;
+  border-radius: var(--radius-xl);
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px dashed rgba(59, 130, 246, 0.3);
+  display: flex; align-items: center; justify-content: center;
+  color: #3b82f6;
+}
+
+.health-required-title {
+  font-size: var(--font-size-2xl);
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.health-required-desc {
+  font-size: var(--font-size-md);
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin: 0;
+  max-width: 520px;
+}
+
+.health-required-select {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  color: var(--text-primary);
+  padding: var(--spacing-4) var(--spacing-6);
+  border-radius: var(--radius-xl);
+  font-size: var(--font-size-md);
+  font-weight: 700;
+  cursor: pointer;
+  outline: none;
+  min-width: 320px;
+  transition: all 0.3s ease;
+}
+
+.health-required-select:hover,
+.health-required-select:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 15px rgba(59, 130, 246, 0.15);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .health-centers-grid,
+  .health-campaigns-grid {
+    grid-template-columns: 1fr;
+  }
+}

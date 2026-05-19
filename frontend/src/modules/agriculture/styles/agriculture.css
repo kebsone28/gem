@@ -383,3 +383,89 @@
   color: var(--text-primary);
   padding: var(--spacing-2);
 }
+
+/* ── Loading State ────────────────────────────────── */
+.agri-loading-overlay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-4);
+  padding: var(--spacing-16) 0;
+}
+
+.agri-loading-spinner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.agri-loading-label {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+
+.agri-stat-loading {
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+  font-weight: 400;
+  margin-left: var(--spacing-2);
+  animation: agri-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes agri-pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+/* ── Header Actions ───────────────────────────────── */
+.agri-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+}
+
+.agri-refresh-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-lg);
+  background: var(--surface-secondary);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.agri-refresh-btn:hover {
+  border-color: #10b981;
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.05);
+}
+
+/* ── Mock / Error Badges ──────────────────────────── */
+.agri-mock-badge,
+.agri-error-badge {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  padding: var(--spacing-2) var(--spacing-3);
+  border-radius: var(--radius-full);
+}
+
+.agri-mock-badge {
+  color: #6366f1;
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+}
+
+.agri-error-badge {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.05);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
