@@ -22,20 +22,20 @@ import {
   getFilteredRolesToDisplay,
   buildContractTemplateFromText,
   buildStrategyTemplateFromText,
-} from './cahier/utils/cahierUtils';
+} from './Cahier/utils/cahierUtils';
 import {
   exportContractToWord,
   exportStrategyToWord,
-} from './cahier/utils/cahierExportUtils';
+} from './Cahier/utils/cahierExportUtils';
 
-import { useCahierState } from './cahier/hooks/useCahierState';
-import { useCahierForm } from './cahier/hooks/useCahierForm';
+import { useCahierState } from './Cahier/hooks/useCahierState';
+import { useCahierForm } from './Cahier/hooks/useCahierForm';
 
-import { CahierHeader } from './cahier/components/CahierHeader';
-import { CahierNavigation } from './cahier/components/CahierNavigation';
-import { CahierTechnicalView } from './cahier/components/CahierTechnicalView';
-import { CahierContractView } from './cahier/components/CahierContractView';
-import { CahierStrategyView } from './cahier/components/CahierStrategyView';
+import { CahierHeader } from './Cahier/components/CahierHeader';
+import { CahierNavigation } from './Cahier/components/CahierNavigation';
+import { CahierTechnicalView } from './Cahier/components/CahierTechnicalView';
+import { CahierContractView } from './Cahier/components/CahierContractView';
+import { CahierStrategyView } from './Cahier/components/CahierStrategyView';
 
 import { PageContainer, PageHeader, ContentArea } from '@components';
 import { TableRowSkeleton, CardSkeleton } from '@components/common/Skeleton';
