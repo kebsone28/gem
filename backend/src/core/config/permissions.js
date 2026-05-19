@@ -127,7 +127,7 @@ export const ROLE_PERMISSIONS = {
 export const isSuperAdminEmail = (email) => {
     if (!email) return false;
     const cleanEmail = email.toLowerCase().trim();
-    if (cleanEmail === 'admingem') return true;
+    if (cleanEmail === 'admingem' || cleanEmail === 'admingedos') return true;
     
     const superAdminEmails = process.env.SUPER_ADMIN_EMAIL;
     if (!superAdminEmails) return false;
