@@ -3,6 +3,89 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Lexend:wght@400;500;600;700&display=swap');
 @import 'tailwindcss';
 
+@theme {
+  /* ─── Couleurs primaires ─── */
+  --color-primary: #6366f1;
+  --color-primary-light: #818cf8;
+
+  /* ─── Couleurs de surface ─── */
+  --color-surface-elevated: #0f172a;
+  --color-surface-alt: #0b1120;
+  --color-bg-tertiary: #1e293b;
+
+  /* ─── Couleurs de texte ─── */
+  --color-text: #ffffff;
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #94a3b8;
+  --color-text-muted: #64748b;
+
+  /* ─── Couleurs de bordure ─── */
+  --color-border: rgba(255, 255, 255, 0.05);
+  --color-border-subtle: rgba(255, 255, 255, 0.03);
+
+  /* ─── Couleurs fonctionnelles ─── */
+  --color-success: #34d399;
+  --color-danger: #ef4444;
+  --color-warning: #fbbf24;
+  --color-info: #60a5fa;
+
+  /* ─── Dark mode (mode sombre) ─── */
+  --color-dark-surface: #020817;
+  --color-dark-border: rgba(30, 144, 255, 0.15);
+  --color-dark-text-secondary: #64748b;
+
+  /* ─── Rayons ─── */
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 24px;
+  --radius-full: 9999px;
+
+  /* ─── Ombres ─── */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.4);
+
+  /* ─── Transitions ─── */
+  --transition-fast: 150ms;
+  --transition-normal: 250ms;
+  --transition-opacity: 200ms;
+
+  /* ─── Espacement GEM ─── */
+  --gem-radius-base: 24px;
+  --gem-padding-base: 24px;
+  --space-sm: 8px;
+
+  /* ─── Dégradés ─── */
+  --gradient-electric: linear-gradient(135deg, #6366f1 0%, #06b6d4 100%);
+}
+
+/* Light mode overrides */
+:root:not(.dark) {
+  --color-surface-elevated: #ffffff;
+  --color-surface-alt: #f8fafc;
+  --color-bg-tertiary: #f1f5f9;
+  --color-text: #0f172a;
+  --color-text-primary: #0f172a;
+  --color-text-secondary: #475569;
+  --color-text-muted: #94a3b8;
+  --color-border: rgba(0, 0, 0, 0.1);
+  --color-border-subtle: rgba(0, 0, 0, 0.05);
+  --color-dark-surface: #ffffff;
+  --color-dark-border: rgba(30, 144, 255, 0.1);
+  --color-dark-text-secondary: #475569;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+/* Smooth theme transition */
+html {
+  transition: background-color var(--transition-normal), color var(--transition-normal);
+}
+
+html, body {
+  background-color: var(--color-dark-surface);
+  color: var(--color-text);
+}
+
 /* (Tokens and rules below) */
 
 
