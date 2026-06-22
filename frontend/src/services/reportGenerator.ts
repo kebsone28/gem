@@ -371,7 +371,7 @@ export function generateRapportFinancier(data: {
       { label: 'Budget Plafond', value: fmtFCFA(ceiling), color: INDIGO },
       { label: 'Total Prévu', value: fmtFCFA(totalPlanned), color: INDIGO },
       { label: 'Total Réel', value: fmtFCFA(totalReal), color: totalReal > totalPlanned ? RED : GREEN },
-      { label: 'Marge Globale', value: fmtFCFA(globalMargin), color: globalMargin >= 0 ? GREEN : RED },
+      { label: 'Marge Globale Brute', value: fmtFCFA(globalMargin), color: globalMargin >= 0 ? GREEN : RED },
       { label: 'Taux Marge (%)', value: pct(marginPct), color: marginPct >= 0 ? GREEN : RED },
     ],
     y

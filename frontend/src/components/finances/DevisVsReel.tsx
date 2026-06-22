@@ -94,7 +94,7 @@ export default function DevisVsReel() {
       const kpiData = [
         { Indicateur: 'Total Estime', Valeur: devis.totalPlanned },
         { Indicateur: 'Total Realise', Valeur: devis.totalReal },
-        { Indicateur: 'Marge Globale', Valeur: devis.globalMargin },
+        { Indicateur: 'Marge Globale Brute', Valeur: devis.globalMargin },
         { Indicateur: 'Marge (%)', Valeur: parseFloat(devis.marginPct?.toFixed(2) || '0') },
         { Indicateur: 'Plafond Devis', Valeur: devis.ceiling },
         { Indicateur: 'Usage Budget (%)', Valeur: budgetUsagePct },
@@ -336,7 +336,7 @@ export default function DevisVsReel() {
               <span
                 className={`text-xs font-black uppercase tracking-widest mb-0.5 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}
               >
-                Marge Globale
+                Marge Globale Brute
               </span>
               <div className="flex items-center gap-1.5">
                 <span

@@ -155,7 +155,7 @@ export default function FinancialKpis({ stats, devis }: { stats: any; devis: any
               <span
                 className={`text-xs font-black uppercase tracking-widest block mb-1 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}
               >
-                Marge Globale
+                Marge Globale Brute
               </span>
               <span
                 className={`text-base font-bold tracking-tight ${devis.globalMargin >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}
