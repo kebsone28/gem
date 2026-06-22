@@ -114,8 +114,37 @@ export default function Login() {
   const [error, setError] = useState('');
   const [info, setInfo] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [emailError, setEmailError] = useState('');
   const { login } = useAuth();
   const navigate = useNavigate();
+
+  const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  const handleEmailChange = (value: string) => {
+    setUsername(value);
+    if (value && !EMAIL_REGEX.test(value)) {
+      setEmailError('Format d\'email invalide');
+    } else {
+      setEmailError('');
+    }
+  };
+
+  const getPasswordStrength = (pw: string): { label: string; color: string; width: string } => {
+    let score = 0;
+    if (pw.length >= 8) score++;
+    if (pw.length >= 12) score++;
+    if (/[a-z]/.test(pw) && /[A-Z]/.test(pw)) score++;
+    if (/\d/.test(pw)) score++;
+    if (/[^a-zA-Z0-9]/.test(pw)) score++;
+    const levels = [
+      { label: 'Très faible', color: 'bg-red-500', width: 'w-1/5' },
+      { label: 'Faible', color: 'bg-orange-500', width: 'w-2/5' },
+      { label: 'Moyen', color: 'bg-yellow-500', width: 'w-3/5' },
+      { label: 'Fort', color: 'bg-lime-500', width: 'w-4/5' },
+      { label: 'Très fort', color: 'bg-emerald-500', width: 'w-full' },
+    ];
+    return levels[Math.min(score, 4)];
+  };
 
   // -- Advanced Animation Logic (Framer Motion) --
   const mouseX = useMotionValue(window.innerWidth / 2);
@@ -204,7 +233,7 @@ export default function Login() {
         userPayload?.permissions,
         userPayload?.organizationId,  // ✅ Pass org UUID so ProjectContext can load projects
       );
-      navigate(selectedSector ? `/projects?domainType=${selectedSector.key}` : '/projects');
+      navigate('/projects');
     } catch (err: any) {
       setError(getApiErrorMessage(err, 'Identifiant ou mot de passe incorrect.'));
     } finally {
@@ -248,7 +277,7 @@ export default function Login() {
         user.permissions,
         user.organizationId,  // ✅ Pass org UUID from 2FA response
       );
-      navigate(selectedSector ? `/projects?domainType=${selectedSector.key}` : '/projects');
+      navigate('/projects');
     } catch {
       setError('Réponse de sécurité incorrecte.');
     } finally {
@@ -562,13 +591,17 @@ export default function Login() {
                       <input
                         id="login-username"
                         aria-label="Identifiant"
-                        type="text"
+                        type="email"
                         required
                         value={username}
-                        onChange={(e) => setUsername(e.target.value)}
+                        onChange={(e) => handleEmailChange(e.target.value)}
                         className="w-full bg-white/[0.03] border border-white/5 rounded-2xl pl-11 pr-4 py-4 text-[13px] font-bold text-white placeholder:text-slate-700 focus:border-indigo-500/40 focus:ring-4 focus:ring-indigo-500/5 transition-all outline-none"
-                        placeholder="admin@proquelec.com"
+                        placeholder="oumarkebe@proquelec.sn"
+                        autoComplete="email"
                       />
+                      {emailError && (
+                        <p className="text-[10px] text-red-400 font-bold mt-1 ml-1">{emailError}</p>
+                      )}
                     </div>
                   </div>
 
@@ -687,8 +720,12 @@ export default function Login() {
                       value={twoFAAnswer}
                       onChange={(e) => setTwoFAAnswer(e.target.value)}
                       autoFocus
-                      className="w-full bg-white/[0.03] border border-white/5 rounded-2xl px-5 py-4 text-[13px] font-bold text-white outline-none focus:border-indigo-500/40 focus:ring-4 focus:ring-indigo-500/5 transition-all"
+                      placeholder="Saisissez votre réponse secrète"
+                      className="w-full bg-white/[0.03] border border-white/5 rounded-2xl px-5 py-4 text-[13px] font-bold text-white placeholder:text-slate-700 outline-none focus:border-indigo-500/40 focus:ring-4 focus:ring-indigo-500/5 transition-all"
                     />
+                    <p className="text-[10px] text-slate-500 font-medium mt-1 ml-1">
+                      Répondez à la question de sécurité que vous avez définie lors de votre inscription.
+                    </p>
                   </div>
                   <motion.button
                     whileHover={{ scale: 1.02 }}
@@ -759,8 +796,21 @@ export default function Login() {
                           onChange={(e) => setRecNewPw(e.target.value)}
                           id="recovery-new-password"
                           aria-label="Nouveau mot de passe"
-                          className="w-full bg-white/[0.03] border border-white/5 rounded-2xl px-5 py-4 text-[13px] font-bold text-white outline-none focus:border-indigo-500/40 transition-all"
+                          placeholder="••••••••"
+                          className="w-full bg-white/[0.03] border border-white/5 rounded-2xl px-5 py-4 text-[13px] font-bold text-white placeholder:text-slate-700 outline-none focus:border-indigo-500/40 transition-all"
                         />
+                        {recNewPw.length > 0 && (
+                          <div className="mt-2 space-y-1">
+                            <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
+                              <div
+                                className={`h-full rounded-full transition-all duration-300 ${getPasswordStrength(recNewPw).color} ${getPasswordStrength(recNewPw).width}`}
+                              />
+                            </div>
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                              {getPasswordStrength(recNewPw).label}
+                            </p>
+                          </div>
+                        )}
                       </div>
                       <motion.button
                         whileHover={{ scale: 1.02 }}

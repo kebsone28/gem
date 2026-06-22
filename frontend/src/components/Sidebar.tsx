@@ -32,9 +32,12 @@ import {
   Folder,
   Home,
   ServerCog,
-  Sprout
+  Sprout,
+  Moon,
+  Sun
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { useSync } from '../hooks/useSync';
 import { usePermissions } from '../hooks/usePermissions';
 import { motion } from 'framer-motion';
@@ -86,6 +89,7 @@ const LUCIDE_ICONS: Record<string, any> = {
  */
 export default function Sidebar() {
   const { user, logout, stopImpersonation } = useAuth();
+  const { isDarkMode, toggleTheme } = useTheme();
   const { project, t } = useProject();
   const { forceSync } = useSync();
   const [showAIPanel, setShowAIPanel] = useState(false);
@@ -687,6 +691,14 @@ export default function Sidebar() {
               >
                 <Settings size={18} />
                 {!isRailDesktop && <span className="text-[11px] font-bold uppercase tracking-wider">Interface</span>}
+              </button>
+              <button
+                onClick={toggleTheme}
+                className={`flex items-center gap-3 p-3 rounded-2xl bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:bg-white/10 transition-all ${isRailDesktop ? 'justify-center' : ''}`}
+                title={isDarkMode ? 'Mode clair' : 'Mode sombre'}
+              >
+                {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
+                {!isRailDesktop && <span className="text-[11px] font-bold uppercase tracking-wider">{isDarkMode ? 'Clair' : 'Sombre'}</span>}
               </button>
             </div>
           )}

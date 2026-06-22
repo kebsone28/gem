@@ -38,7 +38,6 @@ const ALL_MODULES: Omit<ProjectModule, 'enabled'>[] = [
   { key: 'communication',    label: 'Communication',       description: 'Messagerie et chat d\'équipe intégré',                  icon: MessageSquare,   color: 'text-pink-400'    },
   { key: 'logistique',       label: 'Logistique',          description: 'Gestion des stocks et déploiements matériels',          icon: Truck,           color: 'text-orange-400'  },
   { key: 'atelier',          label: 'Atelier',             description: 'Saisie et journalisation de la préparation des kits',   icon: LayoutGrid,      color: 'text-cyan-400'    },
-  { key: 'analytics',        label: 'Analytique',          description: 'Rapports avancés et tableaux croisés',                  icon: BarChart3,       color: 'text-cyan-400'    },
   { key: 'documents',        label: 'Documents',           description: 'Cahier des charges, PV et rapports de mission',         icon: FileText,        color: 'text-amber-400'   },
   { key: 'sharedoc',         label: 'Documents Partagés',  description: 'Gérez les documents, dossiers et versions partagés',    icon: Folder,          color: 'text-slate-400'  },
   { key: 'cahier',           label: 'Cahier de Charge',    description: 'Spécifications techniques et rapports détaillés',       icon: FileText,        color: 'text-amber-400'   },
@@ -48,13 +47,11 @@ const ALL_MODULES: Omit<ProjectModule, 'enabled'>[] = [
   { key: 'kobo_mapping',     label: 'Mapping Kobo',        description: 'Configuration des correspondances de champs KoboToolbox', icon: RefreshCw,       color: 'text-blue-400'    },
   { key: 'kobo_terminal',    label: 'Terminal KoboCollect', description: 'API officielle KoboCollect pour la synchronisation',     icon: Terminal,        color: 'text-emerald-400' },
   { key: 'users',            label: 'Utilisateurs',        description: 'Gestion des comptes et accès',                          icon: Users,           color: 'text-teal-400'    },
-  { key: 'approbation',      label: 'Approbations',        description: 'Workflow de validation et de signature',                icon: Shield,          color: 'text-purple-400'  },
-  { key: 'maintenance',      label: 'Maintenance',         description: 'Suivi de la maintenance préventive et corrective',      icon: Wrench,          color: 'text-rose-400'    },
-  { key: 'alerts',           label: 'Alertes',             description: 'Notifications automatiques et gestion des risques',     icon: Bell,            color: 'text-red-400'     },
-  { key: 'ia',               label: 'Intelligence IA',     description: 'Assistant terrain et recommandations intelligentes',    icon: Zap,             color: 'text-fuchsia-400' },
+  { key: 'approval',         label: 'Approbations',        description: 'Workflow de validation et de signature',                icon: Shield,          color: 'text-purple-400'  },
   { key: 'formation',        label: 'Formation',           description: 'Planning de formation et suivi des compétences',        icon: GraduationCap,   color: 'text-green-400'   },
-  { key: 'ged_os_toolbox',   label: 'GED Sync',            description: 'Soumission directe VPS et synchronisation terrain',        icon: ClipboardCheck,  color: 'text-yellow-400'  },
-  { key: 'ged_os_collect',   label: 'GED Terminal',        description: 'Terminal de saisie terrain universel sans Kobo',           icon: Activity,        color: 'text-cyan-400'    },
+  { key: 'diagnostic',       label: 'Diagnostic',          description: 'Diagnostic et analyse des données terrain',             icon: Activity,        color: 'text-rose-400'    },
+  { key: 'ged_os_toolbox',   label: 'GED Sync',            description: 'Soumission directe VPS et synchronisation terrain',     icon: ClipboardCheck,  color: 'text-yellow-400'  },
+  { key: 'ged_os_collect',   label: 'GED Terminal',        description: 'Terminal de saisie terrain universel sans Kobo',        icon: Activity,        color: 'text-cyan-400'    },
 ];
 
 export default function AdminProjectEdit() {

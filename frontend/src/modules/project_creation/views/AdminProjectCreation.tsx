@@ -10,6 +10,7 @@ import { db } from '@/store/db';
 import logger from '@services/logger';
 import toast from 'react-hot-toast';
 import { PageContainer, PageHeader, ContentArea } from '@components';
+import { LoadingSkeleton } from '@components/LoadingSkeleton';
 import * as LucideIcons from 'lucide-react';
 import {
   Building2,

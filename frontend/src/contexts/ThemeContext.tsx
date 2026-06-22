@@ -1,8 +1,7 @@
-﻿ 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+﻿import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import logger from '../utils/logger';
 
-type Theme = 'dark';
+type Theme = 'dark' | 'light';
 
 interface ThemeContextType {
   theme: Theme;
@@ -13,33 +12,31 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-/**
- * ThemeProvider – Force le mode 'dark' (Wanekoo Deep Navy) comme standard unique.
- * Supprime la logique de toggle pour maintenir une identité de marque cohérente.
- */
+const getInitialTheme = (): Theme => {
+  const saved = localStorage.getItem('theme');
+  if (saved === 'light' || saved === 'dark') return saved;
+  return 'dark';
+};
+
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [theme] = useState<Theme>('dark');
+  const [theme, setThemeState] = useState<Theme>(getInitialTheme);
 
   useEffect(() => {
     const root = document.documentElement;
-    root.setAttribute('data-theme', 'dark');
-    root.classList.add('dark');
+    root.setAttribute('data-theme', theme);
+    root.classList.toggle('dark', theme === 'dark');
+    localStorage.setItem('theme', theme);
+  }, [theme]);
 
-    // Override any saved 'light' preference
-    localStorage.setItem('theme', 'dark');
+  const setTheme = useCallback((t: Theme) => {
+    setThemeState(t);
   }, []);
 
-  const setTheme = () => {
-    // No-op to prevent changes to 'light'
-    logger.debug('Theme is unified to Wanekoo (Dark). setTheme is disabled.');
-  };
+  const toggleTheme = useCallback(() => {
+    setThemeState(prev => prev === 'dark' ? 'light' : 'dark');
+  }, []);
 
-  const toggleTheme = () => {
-    // No-op
-    logger.debug('Theme toggle is disabled (Unified Wanekoo Design).');
-  };
-
-  const isDarkMode = true;
+  const isDarkMode = theme === 'dark';
 
   return (
     <ThemeContext.Provider value={{ theme, isDarkMode, toggleTheme, setTheme }}>

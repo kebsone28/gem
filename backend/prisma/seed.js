@@ -24,7 +24,7 @@ async function main() {
 
     const users = [
         {
-            email: 'admingedos',
+            email: 'oumarkebe@proquelec.sn',
             password: adminPassword,
             name: 'Admin PROQUELEC',
             role: 'ADMIN_PROQUELEC',

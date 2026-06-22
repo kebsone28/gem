@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { extractApiError } from '@utils/format';
+import { Modal, Button, Pagination } from '@components/UI';
 
 const getProjectDomain = (p: any): string => {
   const sector = p.config?.sector || '';
@@ -72,6 +73,21 @@ export default function Home() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showNotifications, setShowNotifications] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 9;
+  const [deleteModal, setDeleteModal] = useState<{ projectId: string; projectName: string } | null>(null);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  const totalPages = Math.max(1, Math.ceil(availableProjects.length / ITEMS_PER_PAGE));
+  const paginatedProjects = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return availableProjects.slice(start, start + ITEMS_PER_PAGE);
+  }, [availableProjects, currentPage]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(1);
+  }, [currentPage, totalPages]);
 
   useEffect(() => {
     if (!user) {
@@ -140,27 +156,30 @@ export default function Home() {
 
   const handleProjectDelete = async (e: React.MouseEvent, projectId: string, projectName: string) => {
     e.stopPropagation();
+    setDeleteModal({ projectId, projectName });
+    setDeletePassword('');
+  };
 
-    // Étape 1 : Confirmation
-    if (!window.confirm(`Êtes-vous sûr de vouloir supprimer le projet "${projectName}" ?\nCette action est irréversible.`)) {
-      return;
-    }
+  const confirmDelete = async () => {
+    if (!deleteModal) return;
+    const { projectId, projectName } = deleteModal;
 
-    // Étape 2 : Saisie du mot de passe (requis par le backend)
-    const password = window.prompt(`Confirmez votre mot de passe pour supprimer "${projectName}" :`);
-    if (password === null) return; // annulé
-    if (!password.trim()) {
+    if (!deletePassword.trim()) {
       toast.error('Mot de passe requis pour confirmer la suppression.');
       return;
     }
 
+    setDeleteLoading(true);
     try {
-      // Appel API direct (pas via la queue offline) pour obtenir le retour immédiat
-      await projectService.deleteProject(projectId, password.trim());
+      await projectService.deleteProject(projectId, deletePassword.trim());
       toast.success(`Projet "${projectName}" supprimé avec succès.`);
+      setDeleteModal(null);
+      setDeletePassword('');
       await refreshProjects();
     } catch (err: any) {
       toast.error(extractApiError(err, 'Erreur lors de la suppression'));
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -500,6 +519,7 @@ export default function Home() {
                   onChange={(e) => {
                     setSearchQuery(e.target.value);
                     setSearchTerm(e.target.value);
+                    setCurrentPage(1);
                   }}
                   className="w-full pl-12 pr-4 py-4 bg-white/5 border border-white/10 rounded-2xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:bg-white/10 transition-all font-medium"
                 />
@@ -513,7 +533,7 @@ export default function Home() {
                 ].map(f => (
                   <button
                     key={f.id}
-                    onClick={() => setProjectFilter(f.id as any)}
+                    onClick={() => { setProjectFilter(f.id as any); setCurrentPage(1); }}
                     className={`px-5 py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all shrink-0 border ${
                       projectFilter === f.id
                         ? 'bg-blue-600 text-white border-blue-500 shadow-lg shadow-blue-600/20'
@@ -596,7 +616,7 @@ export default function Home() {
                   : 'space-y-4'
               }
             >
-              {availableProjects.map((project, index) => (
+              {paginatedProjects.map((project, index) => (
                 <motion.div
                   key={project.id}
                   layout
@@ -709,6 +729,16 @@ export default function Home() {
             </div>
           )}
 
+          {!loading && availableProjects.length > 0 && totalPages > 1 && (
+            <div className="mt-10">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+              />
+            </div>
+          )}
+
           {/* Quick Actions Global Area */}
           {(normalizedRole === ROLES.ADMIN || normalizedRole === ROLES.DIRECTEUR) && (
             <motion.div
@@ -772,6 +802,47 @@ export default function Home() {
           )}
         </div>
       </main>
+
+      {/* Delete confirmation modal */}
+      <Modal
+        isOpen={!!deleteModal}
+        onClose={() => { setDeleteModal(null); setDeletePassword(''); }}
+        title="Confirmer la suppression"
+      >
+        <p className="text-slate-300 mb-4">
+          Êtes-vous sûr de vouloir supprimer le projet <strong className="text-white">{deleteModal?.projectName}</strong>&nbsp;? Cette action est irréversible.
+        </p>
+        <div className="space-y-2">
+          <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">
+            Confirmez votre mot de passe
+          </label>
+          <input
+            type="password"
+            autoFocus
+            value={deletePassword}
+            onChange={(e) => setDeletePassword(e.target.value)}
+            placeholder="••••••••"
+            className="w-full bg-white/[0.03] border border-white/5 rounded-2xl px-5 py-4 text-[13px] font-bold text-white placeholder:text-slate-700 outline-none focus:border-red-500/40 focus:ring-4 focus:ring-red-500/5 transition-all"
+            onKeyDown={(e) => { if (e.key === 'Enter') confirmDelete(); }}
+          />
+        </div>
+        <div className="flex gap-2 justify-end pt-4">
+          <Button
+            variant="ghost"
+            onClick={() => { setDeleteModal(null); setDeletePassword(''); }}
+            disabled={deleteLoading}
+          >
+            Annuler
+          </Button>
+          <Button
+            variant="danger"
+            onClick={confirmDelete}
+            isLoading={deleteLoading}
+          >
+            Supprimer
+          </Button>
+        </div>
+      </Modal>
 
       {/* Mobile Sticky CTA for Global Admin */}
       {isGlobalAdmin && (

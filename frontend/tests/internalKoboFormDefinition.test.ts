@@ -6,7 +6,7 @@ import {
   getVisibleInternalKoboFields,
   validateInternalKoboFields,
   validateInternalKoboRequiredFields,
-} from '../src/components/terrain/internalKoboFormDefinition';
+} from '../src/modules/terrain/components/internalKoboFormDefinition';
 
 const XLS_REQUIRED_FIELD_NAMES = [
   'Numero_ordre',

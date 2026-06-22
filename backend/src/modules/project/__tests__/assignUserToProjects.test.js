@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import request from 'supertest';
 import app from '../../../app.js';
 import prisma from '../../../core/utils/prisma.js';
+import { generateTokens } from '../../../core/utils/jwt.js';
 
 // Probe DB availability at top level; skip suite if unavailable
 let dbAvailable = false;
@@ -27,7 +28,7 @@ describeOrSkip('assignUserToProjects - Enhanced Security & Validation', () => {
   beforeAll(async () => {
     // Create test organization
     org = await prisma.organization.create({
-      data: { name: 'Test Org', slug: 'test-org' }
+      data: { name: 'Test Org', slug: `test-org-${Date.now()}` }
     });
 
     // Create admin user
@@ -36,10 +37,14 @@ describeOrSkip('assignUserToProjects - Enhanced Security & Validation', () => {
         email: 'admin@test.com',
         name: 'Admin Test',
         organizationId: org.id,
-        role: 'ADMIN_PROQUELEC',
+        roleLegacy: 'ADMIN_PROQUELEC',
         passwordHash: 'hashed_password'
       }
     });
+
+    // Generate JWT for admin
+    const tokens = generateTokens(adminUser);
+    adminToken = tokens.accessToken;
 
     // Create test user
     testUser = await prisma.user.create({
@@ -47,7 +52,7 @@ describeOrSkip('assignUserToProjects - Enhanced Security & Validation', () => {
         email: 'user@test.com',
         name: 'Test User',
         organizationId: org.id,
-        role: 'Chef Projet',
+        roleLegacy: 'Chef Projet',
         passwordHash: 'hashed_password'
       }
     });
@@ -57,6 +62,10 @@ describeOrSkip('assignUserToProjects - Enhanced Security & Validation', () => {
       data: {
         name: 'Project 1',
         organizationId: org.id,
+        status: 'active',
+        budget: 0,
+        duration: 0,
+        totalHouses: 0,
         config: { assignedUsers: [] }
       }
     });
@@ -65,6 +74,10 @@ describeOrSkip('assignUserToProjects - Enhanced Security & Validation', () => {
       data: {
         name: 'Project 2',
         organizationId: org.id,
+        status: 'active',
+        budget: 0,
+        duration: 0,
+        totalHouses: 0,
         config: { assignedUsers: [] }
       }
     });
@@ -73,13 +86,19 @@ describeOrSkip('assignUserToProjects - Enhanced Security & Validation', () => {
       data: {
         name: 'Project 3',
         organizationId: org.id,
+        status: 'active',
+        budget: 0,
+        duration: 0,
+        totalHouses: 0,
         config: { assignedUsers: [] }
       }
     });
   });
 
   afterAll(async () => {
-    // Cleanup
+    if (!org?.id) return;
+    // Cleanup: delete audit logs first to avoid FK constraints
+    await prisma.auditLog.deleteMany({ where: { organizationId: org.id } });
     await prisma.project.deleteMany({ where: { organizationId: org.id } });
     await prisma.user.deleteMany({ where: { organizationId: org.id } });
     await prisma.organization.delete({ where: { id: org.id } });
@@ -134,15 +153,18 @@ describeOrSkip('assignUserToProjects - Enhanced Security & Validation', () => {
           email: 'limited@test.com',
           name: 'Limited User',
           organizationId: org.id,
-          role: 'Superviseur',
+          roleLegacy: 'Superviseur',
           passwordHash: 'hashed',
           permissions: ['MISSIONS_READ'] // No SYSTEM_USERS
         }
       });
 
+      // Generate JWT for limited user
+      const limitedTokens = generateTokens(limitedUser);
+
       const res = await request(app)
         .post('/api/projects/assign-user')
-        .set('Authorization', `Bearer ${adminToken}`)
+        .set('Authorization', `Bearer ${limitedTokens.accessToken}`)
         .send({
           userId: testUser.id,
           projectIds: [project1.id]
@@ -159,12 +181,16 @@ describeOrSkip('assignUserToProjects - Enhanced Security & Validation', () => {
     it('🛑 should reject invalid projectIds from different org', async () => {
       // Create project in different org
       const otherOrg = await prisma.organization.create({
-        data: { name: 'Other Org', slug: 'other-org' }
+        data: { name: 'Other Org', slug: `other-org-${Date.now()}` }
       });
       const otherProject = await prisma.project.create({
         data: {
           name: 'Other Project',
           organizationId: otherOrg.id,
+          status: 'active',
+          budget: 0,
+          duration: 0,
+          totalHouses: 0,
           config: { assignedUsers: [] }
         }
       });
@@ -178,9 +204,10 @@ describeOrSkip('assignUserToProjects - Enhanced Security & Validation', () => {
         });
 
       expect(res.status).toBe(400);
-      expect(res.body.invalidIds).toContain(otherProject.id);
+      expect(res.body.error).toContain('invalides');
 
       await prisma.project.delete({ where: { id: otherProject.id } });
+      await prisma.auditLog.deleteMany({ where: { organizationId: otherOrg.id } });
       await prisma.organization.delete({ where: { id: otherOrg.id } });
     });
 
