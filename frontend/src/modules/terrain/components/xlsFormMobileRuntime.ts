@@ -420,11 +420,11 @@ const evaluateCalculationOperand = (
     return '';
   }
 
-  if (/[+*/\-]/.test(operand)) {
+  if (/[+*/-]/.test(operand)) {
     const expression = operand
       .replace(/\bdiv\b/gi, '/')
       .replace(/\$\{([^}]+)\}/g, (_, fieldName) => String(parseNumber(getExpressionValue(values, fieldName, context)) ?? 0));
-    if (/^[\d\s+*/().\-]+$/.test(expression)) {
+    if (/^[\d\s+*/().-]+$/.test(expression)) {
       try {
         const result = Function(`"use strict"; return (${expression});`)();
         return Number.isFinite(result) ? result : '';

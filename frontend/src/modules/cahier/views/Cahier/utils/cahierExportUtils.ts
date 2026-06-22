@@ -15,7 +15,7 @@ function isBulletItem(line: string): boolean {
   const t = line.trim();
   if (t.length < 10 || t.length > 250) return false;
   if (isContractHeading(t)) return false;
-  if (/^[A-ZÀÂÄÇÉÈÊËÎÏÔÖÙÛÜ\s\d\-]+$/.test(t) && t.length > 5) return false;
+  if (/^[A-ZÀÂÄÇÉÈÊËÎÏÔÖÙÛÜ\s\d-]+$/.test(t) && t.length > 5) return false;
   if (/^(Entre les|Il a été|Pour Proquelec|Pour le Prestataire|Fait à|LE PRESTATAIRE|PROQUELEC)/i.test(t)) return false;
   return (
     /^[A-Z][a-zéèêëàâäùûüôöîïç]{2,} : /.test(t) ||
@@ -86,7 +86,7 @@ function buildContractSection(lotName: string, lines: string[]) {
     const isTitle = i <= 2;
     const isArticleHeading = /^Article\s+\d+/i.test(trimmed);
     const isSubHeading = /^\d+\.\d/.test(trimmed);
-    const isAllCaps = /^[A-ZÀÂÄÇÉÈÊËÎÏÔÖÙÛÜ\s\d\-]+$/.test(trimmed) && trimmed.length > 5;
+    const isAllCaps = /^[A-ZÀÂÄÇÉÈÊËÎÏÔÖÙÛÜ\s\d-]+$/.test(trimmed) && trimmed.length > 5;
     const isBullet = isBulletItem(trimmed);
     const isIntro = isIntroLine(trimmed);
     const isSignature = isSignatureLine(trimmed);
