@@ -3,9 +3,26 @@ import apiClient from '../api/client';
 import type { Project } from '../utils/types';
 
 export const projectService = {
-  getProjects: async (): Promise<Project[]> => {
-    const res = await apiClient.get('/projects');
+  getProjects: async (limit?: number): Promise<Project[]> => {
+    const params = limit ? { limit } : {};
+    const res = await apiClient.get('/projects', { params });
     return res.data.projects || res.data;
+  },
+
+  getAllProjects: async (): Promise<Project[]> => {
+    const res = await apiClient.get('/projects', { params: { limit: 100 } });
+    const data = res.data.projects || res.data;
+    if (Array.isArray(data)) return data;
+    if (data?.pagination?.totalPages > 1) {
+      const all: Project[] = [...(data.projects || [])];
+      for (let page = 2; page <= data.pagination.totalPages; page++) {
+        const res2 = await apiClient.get('/projects', { params: { limit: 100, page } });
+        const pageData = res2.data.projects || [];
+        if (Array.isArray(pageData)) all.push(...pageData);
+      }
+      return all;
+    }
+    return Array.isArray(data) ? data : [];
   },
 
   getProject: async (id: string): Promise<Project> => {

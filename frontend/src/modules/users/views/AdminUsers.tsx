@@ -476,7 +476,7 @@ export default function AdminUsers() {
       const results = await Promise.allSettled([
         userService.getUsers(),
         db.teams.toArray(),
-        projectService.getProjects(),
+        projectService.getAllProjects(),
       ]);
 
       if (results[0].status === 'fulfilled') {
@@ -721,8 +721,11 @@ export default function AdminUsers() {
         } catch (assignError) {
           const errMessage =
             assignError instanceof Error ? assignError.message : String(assignError);
+          const serverMsg =
+            (assignError as any)?.response?.data?.error ||
+            (assignError as any)?.response?.data?.message;
           logger.warn('[AdminUsers] Project assignment failed', errMessage);
-          toast.error("Certaines assignations de projets n'ont pas pu être finalisées");
+          toast.error(`Certaines assignations de projets n'ont pas pu être finalisées${serverMsg ? ` — ${serverMsg}` : ''}`);
         }
       }
 
