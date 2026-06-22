@@ -486,7 +486,7 @@ export default function ProjectManagerDashboard() {
                       <div className="flex items-baseline gap-2">
                         <p className="text-2xl font-black text-white">
                           {/* Simulation de valeur basée sur la progression globale */}
-                          {Math.round(projectMetrics.overallProgress * (0.8 + Math.random() * 0.4))}
+                          {Math.round(projectMetrics.overallProgress)}
                         </p>
                         <span className="text-xs font-bold text-slate-400 uppercase">{kpi.unit}</span>
                       </div>

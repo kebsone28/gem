@@ -6,18 +6,19 @@ import {
   ArrowLeft, Save, Loader2, CheckCircle2, Trash2,
   LayoutDashboard, MapPin, ClipboardList, Calculator,
   Calendar, MessageSquare, Truck, BarChart3, FileText,
-  BookOpen, Users, Shield, Wrench, Bell, Zap, GraduationCap,
+  BookOpen, Users, Shield, Zap, GraduationCap,
   AlertTriangle, Settings, ClipboardCheck, Activity,
-  LayoutGrid, Folder, ShieldCheck, Search, Terminal, RefreshCw
+  LayoutGrid, Folder, ShieldCheck, Terminal, RefreshCw
 } from 'lucide-react';
 import { useAuth } from '@contexts/AuthContext';
 import { normalizeRole, ROLES } from '@core/security/permissions';
+import { MODULE_REGISTRY } from '@core/kernel/registry';
 import projectService from '@services/projectService';
 import toast from 'react-hot-toast';
 import { extractApiError } from '@utils/format';
 import { PageContainer, PageHeader, ContentArea } from '@components';
 
-// ─── Module definition (identical to Projet Kobo Global) ──────────────────
+// ─── Module definition ──────────────────────────────────
 interface ProjectModule {
   key: string;
   label: string;
@@ -28,31 +29,52 @@ interface ProjectModule {
   required?: boolean;
 }
 
-const ALL_MODULES: Omit<ProjectModule, 'enabled'>[] = [
-  { key: 'dashboard',        label: 'Tableau de Bord',    description: 'KPIs, statistiques et vue synthétique du projet',       icon: LayoutDashboard, color: 'text-blue-400',    required: true },
-  { key: 'terrain',          label: 'Terrain (Carte)',     description: 'Suivi cartographique et spatial des ménages / abonnés', icon: MapPin,           color: 'text-emerald-400' },
-  { key: 'mission',          label: 'Missions',            description: 'Planification et suivi des ordres de mission',          icon: ClipboardList,   color: 'text-indigo-400'  },
-  { key: 'simulation',       label: 'Simulation IA',       description: 'Calculs de budgets et prévisions intelligents',         icon: Calculator,      color: 'text-violet-400'  },
-  { key: 'charges',          label: 'Charges',             description: 'Budgets prévus, coûts réels et écarts financiers',       icon: BarChart3,       color: 'text-green-400'  },
-  { key: 'planning',         label: 'Planning',            description: 'Gantt et planification temporelle des équipes',         icon: Calendar,        color: 'text-sky-400'     },
-  { key: 'communication',    label: 'Communication',       description: 'Messagerie et chat d\'équipe intégré',                  icon: MessageSquare,   color: 'text-pink-400'    },
-  { key: 'logistique',       label: 'Logistique',          description: 'Gestion des stocks et déploiements matériels',          icon: Truck,           color: 'text-orange-400'  },
-  { key: 'atelier',          label: 'Atelier',             description: 'Saisie et journalisation de la préparation des kits',   icon: LayoutGrid,      color: 'text-cyan-400'    },
-  { key: 'documents',        label: 'Documents',           description: 'Cahier des charges, PV et rapports de mission',         icon: FileText,        color: 'text-amber-400'   },
-  { key: 'sharedoc',         label: 'Documents Partagés',  description: 'Gérez les documents, dossiers et versions partagés',    icon: Folder,          color: 'text-slate-400'  },
-  { key: 'cahier',           label: 'Cahier de Charge',    description: 'Spécifications techniques et rapports détaillés',       icon: FileText,        color: 'text-amber-400'   },
-  { key: 'bordereau',        label: 'Bordereau',           description: 'Suivi des livraisons et bons de sortie',                icon: BookOpen,        color: 'text-lime-400'    },
-  { key: 'pv_automation',    label: 'Automatisation PV',   description: 'Générez et gérez les procès-verbaux automatiquement',    icon: ShieldCheck,     color: 'text-purple-400' },
-  { key: 'mes',              label: 'GED OS MES',          description: 'Système de gestion des mises en service électriques',   icon: Zap,             color: 'text-yellow-400'  },
-  { key: 'kobo_mapping',     label: 'Mapping Kobo',        description: 'Configuration des correspondances de champs KoboToolbox', icon: RefreshCw,       color: 'text-blue-400'    },
-  { key: 'kobo_terminal',    label: 'Terminal KoboCollect', description: 'API officielle KoboCollect pour la synchronisation',     icon: Terminal,        color: 'text-emerald-400' },
-  { key: 'users',            label: 'Utilisateurs',        description: 'Gestion des comptes et accès',                          icon: Users,           color: 'text-teal-400'    },
-  { key: 'approval',         label: 'Approbations',        description: 'Workflow de validation et de signature',                icon: Shield,          color: 'text-purple-400'  },
-  { key: 'formation',        label: 'Formation',           description: 'Planning de formation et suivi des compétences',        icon: GraduationCap,   color: 'text-green-400'   },
-  { key: 'diagnostic',       label: 'Diagnostic',          description: 'Diagnostic et analyse des données terrain',             icon: Activity,        color: 'text-rose-400'    },
-  { key: 'ged_os_toolbox',   label: 'GED Sync',            description: 'Soumission directe VPS et synchronisation terrain',     icon: ClipboardCheck,  color: 'text-yellow-400'  },
-  { key: 'ged_os_collect',   label: 'GED Terminal',        description: 'Terminal de saisie terrain universel sans Kobo',        icon: Activity,        color: 'text-cyan-400'    },
+// Icon lookup map (module key → Lucide component)
+const MODULE_ICONS: Record<string, any> = {
+  dashboard: LayoutDashboard, terrain: MapPin, mission: ClipboardList,
+  simulation: Calculator, charges: BarChart3, planning: Calendar,
+  communication: MessageSquare, logistique: Truck, atelier: LayoutGrid,
+  sharedoc: Folder, cahier: FileText, bordereau: BookOpen,
+  pv_automation: ShieldCheck, mes: Zap, kobo_mapping: RefreshCw,
+  kobo_terminal: Terminal, users: Users, approval: Shield,
+  formation: GraduationCap, diagnostic: Activity,
+  ged_os_toolbox: ClipboardCheck, ged_os_collect: Activity,
+};
+
+// Color map (module key → Tailwind text color)
+const MODULE_COLORS: Record<string, string> = {
+  dashboard: 'text-blue-400', terrain: 'text-emerald-400', mission: 'text-indigo-400',
+  simulation: 'text-violet-400', charges: 'text-green-400', planning: 'text-sky-400',
+  communication: 'text-pink-400', logistique: 'text-orange-400', atelier: 'text-cyan-400',
+  sharedoc: 'text-slate-400', cahier: 'text-amber-400', bordereau: 'text-lime-400',
+  pv_automation: 'text-purple-400', mes: 'text-yellow-400', kobo_mapping: 'text-blue-400',
+  kobo_terminal: 'text-emerald-400', users: 'text-teal-400', approval: 'text-purple-400',
+  formation: 'text-green-400', diagnostic: 'text-rose-400',
+  ged_os_toolbox: 'text-yellow-400', ged_os_collect: 'text-cyan-400',
+};
+
+// Build ALL_MODULES dynamically from MODULE_REGISTRY
+const PROJECT_MODULE_KEYS = [
+  'dashboard', 'terrain', 'mission', 'simulation', 'charges', 'planning',
+  'communication', 'logistique', 'atelier', 'sharedoc', 'cahier', 'bordereau',
+  'pv_automation', 'mes', 'kobo_mapping', 'kobo_terminal', 'users', 'approval',
+  'formation', 'diagnostic', 'ged_os_toolbox', 'ged_os_collect',
 ];
+
+const ALL_MODULES: Omit<ProjectModule, 'enabled'>[] = PROJECT_MODULE_KEYS
+  .map((key) => {
+    const manifest = MODULE_REGISTRY[key];
+    if (!manifest) return null;
+    return {
+      key: manifest.key,
+      label: manifest.name,
+      description: manifest.description,
+      icon: MODULE_ICONS[key] || Activity,
+      color: MODULE_COLORS[key] || 'text-slate-400',
+      required: key === 'dashboard',
+    };
+  })
+  .filter(Boolean) as Omit<ProjectModule, 'enabled'>[];
 
 export default function AdminProjectEdit() {
   const { id } = useParams<{ id: string }>();

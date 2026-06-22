@@ -116,12 +116,6 @@ export const ConsoleSettings: React.FC<ConsoleSettingsProps> = ({ onSettingsChan
     red: 'bg-rose-500',
   };
 
-  const SectionTitle = ({ icon: Icon, children, color }: any) => (
-    <h3 className={`text-[10px] font-black uppercase tracking-[0.2em] mb-4 flex items-center gap-2 ${color}`}>
-      <Icon size={14} /> {children}
-    </h3>
-  );
-
   return (
     <>
       <AnimatePresence>
@@ -260,3 +254,9 @@ export const ConsoleSettings: React.FC<ConsoleSettingsProps> = ({ onSettingsChan
     </>
   );
 };
+
+const SectionTitle = ({ icon: Icon, children, color }: { icon: React.ComponentType<{ size?: number }>; children: React.ReactNode; color: string }) => (
+  <h3 className={`text-[10px] font-black uppercase tracking-[0.2em] mb-4 flex items-center gap-2 ${color}`}>
+    <Icon size={14} /> {children}
+  </h3>
+);

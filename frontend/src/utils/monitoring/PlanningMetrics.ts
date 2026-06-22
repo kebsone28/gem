@@ -138,7 +138,7 @@ class PlanningMetricsCollector {
 
   // Utilitaires pour les calculs
   private getMemoryUsage(): number {
-    // @ts-ignore - performance.memory est une extension Chrome non-standard
+    // @ts-expect-error - performance.memory est une extension Chrome non-standard
     if (performance.memory) {
       return Math.round((performance as any).memory.usedJSHeapSize / 1024 / 1024); // MB
     }

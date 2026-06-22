@@ -270,7 +270,7 @@ export default function AdminProjectCreation() {
       await refreshProjects(newProject.id);
       setActiveProjectId(newProject.id);
 
-      let targetRoute = '/dashboard';
+      const targetRoute = '/dashboard';
       if (selectedTemplate) {
         const sector = selectedTemplate.id.startsWith('mes_') ? 'mes' : 'gem';
         localStorage.setItem('selectedSector', sector);

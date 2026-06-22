@@ -47,7 +47,7 @@ export const shouldRouteToOllama = (message: string): boolean => {
   // Normalisation : retrait de la ponctuation et passage en minuscules
   const normalizedMessage = message
     .toLowerCase()
-    .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g, ' ')
+    .replace(/[.,/#!$%^&*;:{}=\-_`~()?]/g, ' ')
     .trim();
 
   // Découpage par mots pour éviter les faux positifs (ex: "solide" ne doit pas matcher "solde")

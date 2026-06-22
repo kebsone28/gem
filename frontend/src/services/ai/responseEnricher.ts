@@ -162,7 +162,7 @@ function extractProcedureSteps(message: string): EtapeProcedure[] {
   
   let stepNumber = 0;
   for (const line of lines) {
-    const match = line.match(/^(\d+)[\.\)]\s*(.+)/);
+    const match = line.match(/^(\d+)[.)]\s*(.+)/);
     if (match) {
       stepNumber++;
       steps.push({

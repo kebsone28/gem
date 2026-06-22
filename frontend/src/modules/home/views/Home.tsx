@@ -280,6 +280,7 @@ export default function Home() {
                 className="relative p-2.5 bg-white/5 hover:bg-white/10 border border-white/5 rounded-2xl transition-all group"
                 title="Notifications"
                 aria-label="Afficher les notifications"
+                aria-expanded={showNotifications}
               >
                 <Bell size={18} className="text-slate-300 group-hover:text-white transition-colors" />
                 <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-blue-500 rounded-full border-2 border-slate-900"></span>
@@ -808,8 +809,9 @@ export default function Home() {
         isOpen={!!deleteModal}
         onClose={() => { setDeleteModal(null); setDeletePassword(''); }}
         title="Confirmer la suppression"
+        aria-describedby="delete-desc"
       >
-        <p className="text-slate-300 mb-4">
+        <p id="delete-desc" className="text-slate-300 mb-4">
           Êtes-vous sûr de vouloir supprimer le projet <strong className="text-white">{deleteModal?.projectName}</strong>&nbsp;? Cette action est irréversible.
         </p>
         <div className="space-y-2">
