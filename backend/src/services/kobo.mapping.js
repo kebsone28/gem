@@ -12,6 +12,7 @@
  */
 
 import { koboEngine } from '../modules/kobo/koboEngineMaster.js';
+import logger from '../utils/logger.js';
 
 /**
  * Helper to extract a value from a row using dynamic mapping (Kobo Engine Master)
@@ -54,7 +55,7 @@ export async function getDynamicMapping(organizationId, koboAssetId, koboServerU
         // Check if form has changed and needs migration
         const changes = await koboEngine.detectFormChanges(organizationId, koboAssetId, koboServerUrl);
         if (changes.changed) {
-            console.log(`[KOBO-MAPPING] Form changed: ${changes.reason}`);
+            logger.info(`[KOBO-MAPPING] Form changed: ${changes.reason}`);
             await koboEngine.migrateMapping(organizationId, koboAssetId, koboServerUrl);
             // Reload the new mapping
             return await koboEngine.getMapping(organizationId, koboAssetId, koboServerUrl);
@@ -62,7 +63,7 @@ export async function getDynamicMapping(organizationId, koboAssetId, koboServerU
         
         return mapping;
     } catch (error) {
-        console.warn('[KOBO-MAPPING] Dynamic mapping unavailable, using fallbacks:', error.message);
+        logger.warn('[KOBO-MAPPING] Dynamic mapping unavailable, using fallbacks:', error.message);
         return null; // Will use hardcoded fallbacks
     }
 }
@@ -407,7 +408,7 @@ export async function transformRowToHousehold(row, organizationId, defaultZoneId
         try {
             dynamicMapping = await getDynamicMapping(organizationId, koboAssetId, koboServerUrl);
         } catch (e) {
-            console.warn('[KOBO-MAPPING] Could not load dynamic mapping:', e.message);
+            logger.warn('[KOBO-MAPPING] Could not load dynamic mapping:', e.message);
         }
     }
 

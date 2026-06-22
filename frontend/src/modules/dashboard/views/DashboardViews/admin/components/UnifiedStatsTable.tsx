@@ -1,4 +1,4 @@
-
+﻿
 import React from 'react';
 import { 
   ShieldCheck, 
@@ -12,7 +12,7 @@ import {
   TrendingUp,
   AlertTriangle
 } from 'lucide-react';
-import { fmtNum } from '../../../../../../utils/format';
+import { fmtNum } from '@utils/format';
 import type { DashboardMetrics, MissionStats } from '../types';
 
 interface UnifiedStatsTableProps {

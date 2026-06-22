@@ -1,8 +1,8 @@
-import type { CahierTask, TaskLibrary, CahierGuideBlock } from '@utils/types';
-import type { ContractTemplate, ContractTemplateLibrary } from '../../../../../data/contractTemplates';
-import type { OperationalStrategyTemplate } from '../../../../../data/operationalStrategyTemplates';
-import { DEFAULT_TASK_LIBRARY } from '../../../../../data/cahierTaskLibrary';
-import { DEFAULT_CONTRACT_TEMPLATES } from '../../../../../data/contractTemplates';
+﻿import type { CahierTask, TaskLibrary, CahierGuideBlock } from '@utils/types';
+import type { ContractTemplate, ContractTemplateLibrary } from '@/data/contractTemplates';
+import type { OperationalStrategyTemplate } from '@/data/operationalStrategyTemplates';
+import { DEFAULT_TASK_LIBRARY } from '@/data/cahierTaskLibrary';
+import { DEFAULT_CONTRACT_TEMPLATES } from '@/data/contractTemplates';
 
 const CONTRACTUAL_TEXT_PATTERN =
   /p[eé]nalit|paiement|caution|factur|r[eé]siliation|juridiction|contract|sous-trait|honoraire|montant du lot|retenue|faute grave|responsabilit[eé] civile|poursuite|blocage des paiements|exclusion du march[eé]/i;

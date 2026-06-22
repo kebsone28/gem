@@ -43,15 +43,25 @@ export const PERMISSIONS = {
     SUPPRIMER_MISSIONS: "supprimer_missions",
     ARCHIVER_MISSIONS: "archiver_missions",
     VALIDATION_OPERATIONNELLE: "validation_operationnelle",
-    APPROBATION_FINALE_DG: "approbation_finale_dg"
+    APPROBATION_FINALE_DG: "approbation_finale_dg",
+    // [FIX C-2] Permissions MES granulaires
+    MES_CREATE: "mes.create",
+    MES_UPDATE: "mes.update",
+    MES_DELETE: "mes.delete",
+    MES_VALIDATE: "mes.validate",
+    MES_CONTROL: "mes.control",
+    MES_IMPORT: "mes.import",
+    MES_EXPORT: "mes.export",
 };
 
 export const ROLE_PERMISSIONS = {
     // 👑 ADMIN: Accès absolu
     [ROLES.ADMIN]: Object.values(PERMISSIONS),
     [ROLES.ADMIN_ALT]: Object.values(PERMISSIONS),
-    // DIRECTEUR also has full access
-    [ROLES.DIRECTEUR]: Object.values(PERMISSIONS),
+    // DIRECTEUR: accès complet sauf gestion des utilisateurs et paramètres
+    [ROLES.DIRECTEUR]: Object.values(PERMISSIONS).filter(
+      p => p !== PERMISSIONS.GERER_UTILISATEURS && p !== PERMISSIONS.GERER_PARAMETRES
+    ),
 
     // 🚀 OPÉRATIONNELS: Tout sauf suppression de projet (peuvent créer)
     [ROLES.CHEF_PROJET]: [
@@ -77,7 +87,9 @@ export const ROLE_PERMISSIONS = {
         PERMISSIONS.VOIR_RAPPORTS,
         PERMISSIONS.CREER_MISSION,
         PERMISSIONS.GERER_LOGISTIQUE,
-        PERMISSIONS.VOIR_MISSIONS
+        PERMISSIONS.VOIR_MISSIONS,
+        // MES — le comptable peut exporter
+        PERMISSIONS.MES_EXPORT,
     ],
 
     // 🗺️ CLIENTS & SUPERVISION EXTERNE
@@ -90,12 +102,19 @@ export const ROLE_PERMISSIONS = {
         PERMISSIONS.VOIR_CARTE,
         PERMISSIONS.VOIR_RAPPORTS,
         PERMISSIONS.VOIR_MISSIONS,
-        PERMISSIONS.VALIDER_MISSION
+        PERMISSIONS.VALIDER_MISSION,
+        // [FIX C-2] Superviseur peut valider et contrôler les MES
+        PERMISSIONS.MES_VALIDATE,
+        PERMISSIONS.MES_CONTROL,
+        PERMISSIONS.MES_EXPORT,
     ],
     [ROLES.CONTROLEUR]: [
         PERMISSIONS.VOIR_CARTE,
         PERMISSIONS.VOIR_RAPPORTS,
-        PERMISSIONS.VOIR_MISSIONS
+        PERMISSIONS.VOIR_MISSIONS,
+        // [FIX C-2] Contrôleur peut contrôler les MES
+        PERMISSIONS.MES_CONTROL,
+        PERMISSIONS.MES_EXPORT,
     ],
 
     // 🔨 TERRAIN
@@ -104,7 +123,10 @@ export const ROLE_PERMISSIONS = {
         PERMISSIONS.VOIR_CARTE,
         PERMISSIONS.VOIR_RAPPORTS,
         PERMISSIONS.VOIR_MISSIONS,
-        PERMISSIONS.VOIR_REGISTRE_MISSIONS
+        PERMISSIONS.VOIR_REGISTRE_MISSIONS,
+        // [FIX C-2] Chef d'équipe peut créer et modifier des MES
+        PERMISSIONS.MES_CREATE,
+        PERMISSIONS.MES_UPDATE,
     ],
     [ROLES.EMPLOYE]: [
         PERMISSIONS.VOIR_CARTE,
@@ -126,9 +148,6 @@ export const ROLE_PERMISSIONS = {
  */
 export const isSuperAdminEmail = (email) => {
     if (!email) return false;
-    const cleanEmail = email.toLowerCase().trim();
-    if (cleanEmail === 'admingem' || cleanEmail === 'admingedos') return true;
-    
     const superAdminEmails = process.env.SUPER_ADMIN_EMAIL;
     if (!superAdminEmails) return false;
     

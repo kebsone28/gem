@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Users, MapPin, Layers, Zap, Trash2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import { useTeams } from '../../../../hooks/useTeams';
-import { useProject } from '../../../../contexts/ProjectContext';
-import { getAvailablePlanningRegions } from '../../../../services/planningDomain';
-import logger from '../../../../utils/logger';
-import apiClient from '../../../../api/client';
+import { useTeams } from '@hooks/useTeams';
+import { useProject } from '@contexts/ProjectContext';
+import { getAvailablePlanningRegions } from '@services/planningDomain';
+import logger from '@utils/logger';
+import apiClient from '@/api/client';
 
 const normalizeGeoKey = (value: unknown) => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
 
@@ -268,10 +268,14 @@ export default function TeamsTab({
       );
     } catch (err: any) {
       logger.error('❌ Génération automatique des équipes impossible:', err);
-      toast.error(
-        err?.response?.data?.error || err?.message || 'Erreur lors de la génération automatique des équipes.',
-        { id: toastId }
-      );
+      const errorObj = err?.response?.data?.error;
+      const msg = typeof errorObj === 'string'
+        ? errorObj
+        : errorObj?.message
+        || (Array.isArray(errorObj?.errors) ? errorObj.errors.join(', ') : '')
+        || err?.message
+        || 'Erreur lors de la génération automatique des équipes.';
+      toast.error(msg, { id: toastId });
     } finally {
       setIsAutoGenerating(false);
     }

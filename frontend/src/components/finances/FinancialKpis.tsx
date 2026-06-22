@@ -1,8 +1,8 @@
-
+﻿
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { DollarSign, Users, Truck, Package, TrendingUp, Target, ArrowUpRight, Wrench } from 'lucide-react';
-import { useTheme } from '../../contexts/ThemeContext';
-import { fmtFCFA } from '../../utils/format';
+import { useTheme } from '@contexts/ThemeContext';
+import { fmtFCFA } from '@utils/format';
 import './FinancialKpis.css';
 
 export default function FinancialKpis({ stats, devis }: { stats: any; devis: any }) {

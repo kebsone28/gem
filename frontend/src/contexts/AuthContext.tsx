@@ -11,7 +11,8 @@ interface RawUser {
   email: string;
   role: string;
   name: string;
-  organization?: string;
+  organization?: string;      // Org name sent by backend
+  organizationId?: string;    // Org UUID sent by backend (critical for ProjectContext)
   organizationName?: string;
   organizationConfig?: Record<string, unknown>;
   permissions?: string[];
@@ -29,7 +30,8 @@ interface AuthContextType {
     organization?: string,
     id?: string,
     organizationConfig?: Record<string, unknown>,
-    permissions?: string[]
+    permissions?: string[],
+    organizationId?: string,
   ) => void;
   logout: () => void;
   impersonate: (targetUser: User) => void;
@@ -45,6 +47,7 @@ const normalizeSessionUser = (rawUser: RawUser): User => ({
   role: (normalizeRole(rawUser.role) as UserRole) || (rawUser.role as UserRole),
   name: rawUser.name,
   organization: rawUser.organization || rawUser.organizationName,
+  organizationId: rawUser.organizationId,  // ✅ Critical: enables ProjectContext Dexie queries
   organizationConfig: rawUser.organizationConfig || {},
   permissions: Array.isArray(rawUser.permissions) ? rawUser.permissions : [],
   impersonatedBy: rawUser.impersonatedBy,
@@ -52,11 +55,17 @@ const normalizeSessionUser = (rawUser: RawUser): User => ({
 });
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // ✅ Optimistic rehydration: use cached user immediately so UI never freezes
+  const cachedUser = useAuthStore.getState().user;
+  const [user, setUser] = useState<User | null>(cachedUser);
+  // Only show PageLoader when there is NO cached session at all (first visit / logged out)
+  const [isLoading, setIsLoading] = useState(!cachedUser);
 
 
   const isRefreshingRef = useRef(false);
+  // Track user in a ref so verifySession doesn't recreate itself on every user change
+  const userRef = useRef(user);
+  useEffect(() => { userRef.current = user; }, [user]);
 
   const applySessionUser = useCallback((nextUser: User) => {
     setUser(nextUser);
@@ -65,7 +74,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const verifySession = useCallback(async () => {
-    setIsLoading(true);
+    // Only block render if we have no cached user at all
+    if (!userRef.current) setIsLoading(true);
     try {
       const { data } = await apiClient.get('auth/me');
       if (data) {
@@ -73,7 +83,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } catch (err) {
       logger.debug('[AUTH] No active session found on startup');
-      setUser(null);
+      // Only clear the user if there was no previously cached session
+      if (!useAuthStore.getState().user) setUser(null);
     } finally {
       setIsLoading(false);
     }
@@ -160,7 +171,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     organization?: string,
     id?: string,
     organizationConfig?: any,
-    permissions?: string[]
+    permissions?: string[],
+    organizationId?: string,  // ✅ Added: org UUID for ProjectContext
   ) => {
     logger.info(`[AUTH-CONTEXT] Login successful for ${email}.`);
 
@@ -170,6 +182,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       role: (normalizeRole(role) as UserRole) || (role as UserRole),
       name,
       organization,
+      organizationId,  // ✅ Forwarded so ProjectContext can query Dexie
       organizationConfig: organizationConfig || {},
       permissions: Array.isArray(permissions) ? permissions : [],
     };

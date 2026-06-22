@@ -51,7 +51,8 @@ export const isDirecteurRole = (rawRole?: string | null): boolean => {
  * Utilise la variable d'environnement VITE_SUPER_ADMIN_EMAIL si disponible.
  */
 export const isMasterAdminEmail = (email?: string | null): boolean => {
-  const masterEmail = (import.meta.env.VITE_SUPER_ADMIN_EMAIL || 'admin_gedos').toLowerCase().trim();
-  const currentEmail = (email || '').toLowerCase().trim();
-  return currentEmail === masterEmail || currentEmail === 'admin_gedos' || currentEmail === 'admingedos';
+  if (!email) return false;
+  const masterEmail = (import.meta.env.VITE_SUPER_ADMIN_EMAIL || '').toLowerCase().trim();
+  const currentEmail = email.toLowerCase().trim();
+  return currentEmail === masterEmail && masterEmail !== '';
 };

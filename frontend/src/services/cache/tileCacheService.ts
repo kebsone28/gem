@@ -1,4 +1,5 @@
 import maplibregl from 'maplibre-gl';
+import logger from '../logger';
 import { db } from './db';
 
 const TTL = 1000 * 60 * 60 * 24 * 7; // 7 days
@@ -29,6 +30,6 @@ export async function registerTileCacheProtocol() {
       return { cancel: () => {} };
     });
   } catch (e) {
-    console.warn('addProtocol not available', e);
+    logger.warn('addProtocol not available', e);
   }
 }

@@ -1,3 +1,4 @@
+import logger from '../../utils/logger.js';
 import prisma, { basePrisma } from '../../core/utils/prisma.js';
 import { tracerAction } from '../../services/audit.service.js';
 
@@ -43,7 +44,7 @@ export const listPVs = async (req, res) => {
 
     res.json({ pvs, total, page, limit, totalPages: Math.ceil(total / limit) });
   } catch (error) {
-    console.error('[PV] list error:', error);
+    logger.error('[PV] list error:', error);
     res.status(500).json({ error: 'Erreur serveur lors du chargement des PV.' });
   }
 };
@@ -129,7 +130,7 @@ export const upsertPV = async (req, res) => {
 
     res.status(201).json({ data: pv });
   } catch (error) {
-    console.error('[PV] upsert error:', error);
+    logger.error('[PV] upsert error:', error);
     res.status(500).json({ error: 'Erreur serveur lors de la sauvegarde du PV.' });
   }
 };
@@ -164,7 +165,7 @@ export const deletePV = async (req, res) => {
 
     res.json({ success: true });
   } catch (error) {
-    console.error('[PV] delete error:', error);
+    logger.error('[PV] delete error:', error);
     res.status(500).json({ error: 'Erreur serveur lors de la suppression du PV.' });
   }
 };
@@ -199,7 +200,7 @@ export const resetHouseholdPVs = async (req, res) => {
 
     res.json({ success: true, deletedCount: result.count });
   } catch (error) {
-    console.error('[PV] reset household error:', error);
+    logger.error('[PV] reset household error:', error);
     res.status(500).json({ error: 'Erreur serveur lors de la remise à zéro des PV.' });
   }
 };
@@ -241,7 +242,7 @@ export const clearPVs = async (req, res) => {
 
     res.json({ success: true, deletedCount: result.count });
   } catch (error) {
-    console.error('[PV] clear error:', error);
+    logger.error('[PV] clear error:', error);
     res.status(500).json({ error: 'Erreur serveur lors du vidage des PV.' });
   }
 };

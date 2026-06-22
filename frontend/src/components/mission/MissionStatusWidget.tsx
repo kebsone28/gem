@@ -1,4 +1,4 @@
-
+﻿
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import React from 'react';
 import {
@@ -10,8 +10,8 @@ import {
   Users,
   AlertTriangle,
 } from 'lucide-react';
-import { getMissionReadiness } from '../../services/missionValidation';
-import { verifyIntegrity } from '../../utils/crypto';
+import { getMissionReadiness } from '@services/missionValidation';
+import { verifyIntegrity } from '@utils/crypto';
 import type { MissionOrderData, MissionMember } from '../../modules/mission/views/mission/core/missionTypes';
 
 interface MissionStatusWidgetProps {

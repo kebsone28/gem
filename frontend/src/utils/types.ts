@@ -9,7 +9,8 @@ export interface User {
   name: string;
   role: UserRole;
   password?: string;
-  organization?: string;
+  organization?: string;       // Org display name (e.g. "PROQUELEC")
+  organizationId?: string;     // Org UUID used for multi-tenant queries
   organizationConfig?: Record<string, unknown>;
   teamId?: string; // If CHEF_EQUIPE
   active?: boolean;
@@ -21,6 +22,7 @@ export interface User {
   securityAnswerHash?: string;
   // 🎭 Impersonation (God Mode Simulation)
   impersonatedBy?: string; // ID of the admin who is simulating
+  isSimulation?: boolean;  // True when this session is impersonated
   originalRole?: UserRole; // Original role to return to
 }
 

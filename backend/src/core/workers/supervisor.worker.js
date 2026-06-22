@@ -2,6 +2,7 @@
 import prisma from '../utils/prisma.js';
 import { sendMail } from '../../services/mail.service.js';
 import { buildPublicUrl } from '../../utils/publicUrl.js';
+import logger from '../../utils/logger.js';
 
 /**
  * Le Superviseur Silencieux
@@ -10,7 +11,7 @@ import { buildPublicUrl } from '../../utils/publicUrl.js';
  * dépasse une limite, on envoie une alerte.
  */
 export const startSilentSupervisor = () => {
-    console.log('🤖 [SUPERVISOR] Silent Supervisor Initialized. Monitoring delays...');
+    logger.info('🤖 [SUPERVISOR] Silent Supervisor Initialized. Monitoring delays...');
     
     // Intervalle de vérification : toutes les 12 heures (43200000 ms)
     // En DEV, on peut tester plus court si on veut, mais 12h est idéal en prod
@@ -45,7 +46,7 @@ export const startSilentSupervisor = () => {
     };
 
     const checkDelays = async () => {
-        console.log('🤖 [SUPERVISOR] Checking for team delays...');
+        logger.info('🤖 [SUPERVISOR] Checking for team delays...');
         try {
             // ✅ IMPROVED: Détection basée sur le dernier timestamp Kobo réel
             // Équipes sans soumission Kobo depuis 5 jours = inactives
@@ -107,14 +108,14 @@ export const startSilentSupervisor = () => {
                     msg += `\nVeuillez vérifier vos équipes terrain — aucune soumission Kobo détectée depuis plus de 5 jours.\n\nCordialement,\nLe Superviseur GEM.`;
                     
                     await notifyProjectManagers('🚨 [GEM] Alerte de Retard : Équipes Inactives', msg, orgId);
-                    console.log(`🤖 [SUPERVISOR] Alert sent to org ${orgId} for ${teamsList.length} inactive teams.`);
+                    logger.info(`🤖 [SUPERVISOR] Alert sent to org ${orgId} for ${teamsList.length} inactive teams.`);
                 }
             } else {
-                console.log('🤖 [SUPERVISOR] All teams are optimal.');
+                logger.info('🤖 [SUPERVISOR] All teams are optimal.');
             }
 
         } catch (e) {
-            console.error('🤖 [SUPERVISOR] Execution error:', e.message);
+            logger.error('🤖 [SUPERVISOR] Execution error:', e.message);
         }
     };
 
@@ -126,7 +127,7 @@ export const startSilentSupervisor = () => {
 
     // Return cleanup function
     return () => {
-        console.log('🤖 [SUPERVISOR] Arrêt du Superviseur Silencieux...');
+        logger.info('🤖 [SUPERVISOR] Arrêt du Superviseur Silencieux...');
         if (supervisorTimeout) {
             clearTimeout(supervisorTimeout);
             supervisorTimeout = null;

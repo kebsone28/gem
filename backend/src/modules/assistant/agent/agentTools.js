@@ -11,7 +11,7 @@ export const agentTools = {
     return `Maisons récupérées: ${households.length}. Exemple: ${households.slice(0, 3).map((h) => h.name || h.id).join(', ')}`;
   },
 
-  analyzeConsumption: async (input, context = {}) => {
+  analyzeConsumption: async (input, _context = {}) => {
     const anomalies = [];
     const inspections = Array.isArray(input.data) ? input.data : [];
     for (const item of inspections) {

@@ -1,6 +1,6 @@
 ﻿ 
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../../../../store/db';
+import { db } from '@/store/db';
 import { useNavigate } from 'react-router-dom';
 import {
   Users,
@@ -14,8 +14,8 @@ import {
   Clock3,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { fmtNum } from '../../../../utils/format';
-import { PageContainer, PageHeader, ContentArea } from '../../../../components';
+import { fmtNum } from '@utils/format';
+import { PageContainer, PageHeader, ContentArea } from '@components';
 import {
   DASHBOARD_ACTION_TILE_PRIMARY,
   DASHBOARD_ACTION_TILE_SECONDARY,
@@ -25,7 +25,7 @@ import {
   StatusBadge,
   KPICard,
   ProgressBar,
-} from '../../../../components/dashboards/DashboardComponents';
+} from '@components/dashboards/DashboardComponents';
 
 export default function ClientDashboard() {
   const navigate = useNavigate();
@@ -148,7 +148,7 @@ export default function ClientDashboard() {
 
               <div className="grid grid-cols-2 gap-3">
                 <button
-                  onClick={() => navigate('/terrain')}
+                  onClick={() => navigate('/operations/map')}
                   className={DASHBOARD_ACTION_TILE_SECONDARY}
                 >
                   <div className="flex items-center gap-3">

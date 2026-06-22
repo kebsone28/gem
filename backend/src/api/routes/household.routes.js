@@ -6,6 +6,7 @@ import {
     getHouseholdByNumero,
     createHousehold,
     updateHousehold,
+    deleteHousehold,
     getHouseholdsCount,
     getHouseholdApprovalHistory,
     approveHouseholdStep,
@@ -15,15 +16,18 @@ import { authProtect } from '../middlewares/auth.js';
 import { verifierPermission, verifierAssignation, verifierModule } from '../../middleware/verifierPermission.js';
 import { validateSchema } from '../../middleware/validation.js';
 import { PERMISSIONS } from '../../core/config/permissions.js';
+import { getValidHouseholdStatuses } from '../../core/config/businessRules.js';
+import { domainContext } from '../../middleware/domainContext.js';
 
 const router = express.Router();
 
-// Define household schemas for validation
+const VALID_HOUSEHOLD_STATUSES = getValidHouseholdStatuses();
+
 const householdCreateSchema = {
   fields: {
     name: { type: 'string', maxLength: 255 },
     phone: { type: 'string', maxLength: 20 },
-    status: { type: 'string', enum: ['active', 'inactive', 'archived'] },
+    status: { type: 'string', enum: VALID_HOUSEHOLD_STATUSES },
     region: { type: 'string', maxLength: 100 },
     departement: { type: 'string', maxLength: 100 },
     village: { type: 'string', maxLength: 100 },
@@ -36,7 +40,7 @@ const householdUpdateSchema = {
   fields: {
     name: { type: 'string', maxLength: 255 },
     phone: { type: 'string', maxLength: 20 },
-    status: { type: 'string', enum: ['active', 'inactive', 'archived'] },
+    status: { type: 'string', enum: VALID_HOUSEHOLD_STATUSES },
     region: { type: 'string', maxLength: 100 },
     departement: { type: 'string', maxLength: 100 },
     village: { type: 'string', maxLength: 100 },
@@ -55,9 +59,10 @@ const householdApproveSchema = {
 
 router.use(authProtect);
 router.use(verifierModule('terrain'));
+router.use(domainContext);
 
-// Server-Sent Events stream for households updates
-router.get('/stream', authProtect, (req, res) => {
+// Server-Sent Events stream for households updates — [FIX m-2] authProtect déjà actif via router.use()
+router.get('/stream', (req, res) => {
     res.set({
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
@@ -82,7 +87,7 @@ router.get('/stream', authProtect, (req, res) => {
 
     // keep-alive comment every 20s
     const keepAlive = setInterval(() => {
-        try { res.write(': ping\n\n'); } catch (e) { }
+        try { res.write(': ping\n\n'); } catch { /* SSE keep-alive — ignore */ }
     }, 20000);
 
     req.on('close', () => {
@@ -98,6 +103,8 @@ router.get('/by-numero/:numeroordre', getHouseholdByNumero);
 router.get('/:id', getHouseholdById);
 router.post('/', validateSchema(householdCreateSchema), verifierPermission(PERMISSIONS.MODIFIER_CARTE), verifierAssignation('menage'), createHousehold);
 router.patch('/:id', validateSchema(householdUpdateSchema), verifierPermission(PERMISSIONS.MODIFIER_CARTE), verifierAssignation('menage'), updateHousehold);
+// [FIX C-3] Suppression (soft-delete) d'un ménage
+router.delete('/:id', verifierPermission(PERMISSIONS.MODIFIER_CARTE), verifierAssignation('menage'), deleteHousehold);
 // Workflow d'approbation
 router.get('/:householdId/approval-history', getHouseholdApprovalHistory);
 router.post('/:householdId/approve', validateSchema(householdApproveSchema), approveHouseholdStep);

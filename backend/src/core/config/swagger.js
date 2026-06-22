@@ -1,3 +1,4 @@
+import logger from '../../utils/logger.js';
 import swaggerJsDoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
 import { config } from './config.js';
@@ -50,6 +51,6 @@ export const setupSwagger = (app) => {
       customCss: '.swagger-ui .topbar { display: none }',
       customSiteTitle: "PROQUELEC API Docs",
     }));
-    console.log('📚 Swagger API Docs available at /api-docs');
+    logger.info('📚 Swagger API Docs available at /api-docs');
   }
 };

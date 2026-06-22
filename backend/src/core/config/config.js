@@ -1,4 +1,5 @@
 import dotenv from 'dotenv';
+import logger from '../../utils/logger.js';
 
 dotenv.config();
 
@@ -8,16 +9,13 @@ const parsePort = (val, fallback) => {
 };
 
 if (process.env.DATABASE_URL) {
-    // eslint-disable-next-line no-console
-    console.log('🔍 Loaded DB_URL from env: PRESENT');
+    logger.info('🔍 Loaded DB_URL from env: PRESENT');
 } else {
-    // eslint-disable-next-line no-console
-    console.log('🔍 Loaded DB_URL from env: MISSING');
+    logger.info('🔍 Loaded DB_URL from env: MISSING');
 }
-console.log('🔍 Loaded REDIS_URL from env:', process.env.REDIS_URL ? 'PRESENT' : 'MISSING (Defaults to localhost)');
-console.log('🔍 JWT Secrets from env:', process.env.JWT_SECRET ? 'PRESENT' : 'MISSING', '| Refresh:', process.env.REFRESH_TOKEN_SECRET ? 'PRESENT' : 'MISSING');
-// eslint-disable-next-line no-console
-console.log('🔍 Current Working Directory:', process.cwd());
+logger.info('🔍 Loaded REDIS_URL from env:', process.env.REDIS_URL ? 'PRESENT' : 'MISSING (Defaults to localhost)');
+logger.info('🔍 JWT Secrets from env:', process.env.JWT_SECRET ? 'PRESENT' : 'MISSING', '| Refresh:', process.env.REFRESH_TOKEN_SECRET ? 'PRESENT' : 'MISSING');
+logger.info('🔍 Current Working Directory:', process.cwd());
 
 const isProduction = process.env.NODE_ENV === 'production';
 const jwtSecret = process.env.JWT_SECRET || (isProduction ? '' : 'secret');
@@ -79,7 +77,7 @@ export const config = {
                 allowedOrigins.push(...localCorsOrigins);
             }
             
-            if (isDev || isLoopbackOrigin(origin) || allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+            if (isDev || isLoopbackOrigin(origin) || allowedOrigins.includes(origin)) {
                 callback(null, true);
             } else {
                 callback(new Error('CORS blocked by PROQUELEC Policy for ' + origin));
@@ -94,8 +92,7 @@ export const config = {
           'Accept',
           'Origin',
           'x-project-id',
-          'x-organization-id',
-          'x-impersonate-user-id'
+          'x-organization-id'
         ]
     },
     sentry: {

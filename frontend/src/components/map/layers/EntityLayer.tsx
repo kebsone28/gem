@@ -1,4 +1,4 @@
-/**
+﻿/**
  * EntityLayer — Couche MapLibre générique pour tous les domaines GED OS.
  *
  * Remplace le couplage fort de HouseholdLayer (électrification uniquement)
@@ -6,23 +6,17 @@
  * sont définis dans DOMAIN_STYLES et surchargés via la prop `styleOverride`.
  *
  * Usage :
- *   <EntityLayer domainType="electricity" features={geojsonFeatures} />
- *   <EntityLayer domainType="agriculture" features={geojsonFeatures} styleOverride={{ color: '#10b981' }} />
- *   <EntityLayer domainType="health"      features={geojsonFeatures} />
+ *   <EntityLayer domainType="gem" features={geojsonFeatures} />
  */
 import React, { useContext, useEffect, useRef, useState } from 'react';
 import { Map, Popup } from 'maplibre-gl';
 import { MapContext } from '../MapLibreVectorMap';
-import { useCluster } from '../../../services/cluster/useCluster';
+import { useCluster } from '@services/cluster/useCluster';
 
 // ── Domain Style Registry ──────────────────────────────────────────────────
 export type DomainType =
-  | 'electricity'
-  | 'agriculture'
-  | 'health'
-  | 'logistics'
-  | 'highvoltage'
-  | 'solar'
+  | 'gem'
+  | 'mes'
   | 'targeting'
   | 'custom';
 
@@ -40,47 +34,19 @@ interface DomainStyle {
 }
 
 export const DOMAIN_STYLES: Record<DomainType, DomainStyle> = {
-  electricity: {
+  gem: {
     color: '#22c55e',
     clusterColor: '#ff7a59',
     radius: 6,
     emoji: '⚡',
-    label: 'Électrification',
+    label: 'GEM',
   },
-  agriculture: {
-    color: '#10b981',
-    clusterColor: '#059669',
-    radius: 7,
-    emoji: '🌱',
-    label: 'Agriculture',
-  },
-  health: {
+  mes: {
     color: '#3b82f6',
     clusterColor: '#1d4ed8',
-    radius: 7,
-    emoji: '🏥',
-    label: 'Santé',
-  },
-  logistics: {
-    color: '#f59e0b',
-    clusterColor: '#d97706',
-    radius: 7,
-    emoji: '🚛',
-    label: 'Logistique',
-  },
-  highvoltage: {
-    color: '#ef4444',
-    clusterColor: '#b91c1c',
-    radius: 8,
-    emoji: '🔌',
-    label: 'Haute Tension',
-  },
-  solar: {
-    color: '#eab308',
-    clusterColor: '#ca8a04',
     radius: 6,
-    emoji: '☀️',
-    label: 'Solaire',
+    emoji: '🔧',
+    label: 'MES',
   },
   targeting: {
     color: '#8b5cf6',

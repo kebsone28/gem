@@ -7,9 +7,9 @@
  * - req.domainAdapter: The domain adapter instance
  *
  * Domain is determined by:
- * 1. Query parameter: ?domainType=electricity
- * 2. Header: X-Domain-Type: electricity
- * 3. Default: 'electricity'
+ * 1. Query parameter: ?domainType=gem
+ * 2. Header: X-Domain-Type: gem
+ * 3. Default: 'gem'
  */
 
 import { Request, Response, NextFunction } from 'express';
@@ -43,7 +43,7 @@ export const domainContext = async (
       (req.query.domainType as string) ||
       req.headers['x-domain-type'] ||
       req.headers['x-domain'] ||
-      'electricity'; // Default
+      'gem'; // Default
 
     // Validate domain type format
     if (typeof domainType !== 'string' || domainType.length === 0) {
@@ -131,7 +131,7 @@ export const domainContextOptional = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const domainType = (req.query.domainType as string) || 'electricity';
+    const domainType = (req.query.domainType as string) || 'gem';
 
     if (DomainAdapterFactory.hasAdapter(domainType)) {
       const organizationId = req.user?.organizationId || (req.headers['x-org-id'] as string);
@@ -160,7 +160,7 @@ export const domainContextOptional = async (
  * Helper: Get domain from request
  */
 export function getDomainType(req: Request): string {
-  return req.domainType || 'electricity';
+  return req.domainType || 'gem';
 }
 
 /**

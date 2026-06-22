@@ -1,4 +1,4 @@
-/* eslint-disable no-console */
+import logger from '../../utils/logger.js';
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import pg from 'pg';
@@ -7,7 +7,7 @@ import { getOrganizationId, getUserId, getProjectId } from '../context/storage.j
 import { isPrismaSchemaDriftError } from './prismaCompat.js';
 
 if (process.env.NODE_ENV !== 'production') {
-  console.log('🔧 Initializing Prisma for DB:', config.dbUrl);
+  logger.info('🔧 Initializing Prisma for DB:', config.dbUrl);
 }
 
 const pool = new pg.Pool({ connectionString: config.dbUrl });
@@ -31,6 +31,13 @@ const EXCLUDED_MODELS = [
   'UserMemory',
   'FormationSessionModule', // junction table — no direct org column
   'FormationParticipant', // junction table — no direct org column
+  'ProjectModule', // accessed via Project relation, no direct org column
+  'ProjectTemplate', // no org column, accessed via template relation
+  'ProjectPage', // no org column
+  'WorkflowState', // no org column, scoped via Workflow.organizationId
+  'WorkflowTransition', // no org column, scoped via Workflow.organizationId
+  'MESControl', // no org column
+  'DocumentVersion', // no org column
   'spatial_ref_sys',
   'WorkflowAction', // if it exists
   'SystemConfig', // Global configuration table
@@ -48,10 +55,6 @@ const PROJECT_LEVEL_MODELS = [
   'PVRecord',
   'FinancialCharge',
   'Budget',
-  'ProjectModule',
-  'ProjectPage',
-  'WorkflowState',
-  'WorkflowTransition',
 ];
 
 /**
@@ -95,7 +98,7 @@ export const prisma = basePrisma.$extends({
             args.where = { ...(args.where || {}), ...filter };
             const modelName = model.charAt(0).toLowerCase() + model.slice(1);
             if (!basePrisma[modelName]) {
-              console.error(`[PRISMA-CRITICAL] Model ${modelName} not found on basePrisma! model=${model}`);
+              logger.error(`[PRISMA-CRITICAL] Model ${modelName} not found on basePrisma! model=${model}`);
               throw new Error(`Model ${modelName} not found on Prisma client`);
             }
             return basePrisma[modelName][newOp](args);
@@ -128,7 +131,7 @@ export const prisma = basePrisma.$extends({
           result = await query(args);
         } catch (queryError) {
           if (process.env.NODE_ENV !== 'production') {
-            console.error(`[PRISMA-ERROR] Failed op=${operation} on model=${model}:`, queryError.message);
+            logger.error(`[PRISMA-ERROR] Failed op=${operation} on model=${model}:`, queryError.message);
           }
           throw queryError;
         }
@@ -141,8 +144,8 @@ export const prisma = basePrisma.$extends({
           model !== 'AuditLog'
         ) {
           if (orgId && userId) {
-            basePrisma.auditLog
-              .create({
+            try {
+              await basePrisma.auditLog.create({
                 data: {
                   userId,
                   organizationId: orgId,
@@ -158,12 +161,12 @@ export const prisma = basePrisma.$extends({
                         : [],
                   },
                 },
-              })
-              .catch((e) => {
-                if (!isPrismaSchemaDriftError(e)) {
-                  console.warn(`[PRISMA_AUDIT] Fail: ${e.message}`);
-                }
               });
+            } catch (e) {
+              if (!isPrismaSchemaDriftError(e)) {
+                logger.warn(`[PRISMA_AUDIT] Fail: ${e.message}`);
+              }
+            }
           }
         }
 

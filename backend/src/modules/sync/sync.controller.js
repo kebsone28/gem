@@ -12,14 +12,10 @@ import {
     normalizeLegacyHousehold
 } from '../household/household.compat.js';
 import { isPrismaSchemaDriftError } from '../../core/utils/prismaCompat.js';
+import { jsonBigIntReplacer } from '../../utils/commonUtils.js';
+import logger from '../../utils/logger.js';
 
-// Force relative path for reliable debugging across OS
 const DEBUG_LOG = path.join(process.cwd(), 'sync_debug.log');
-
-// 🛠️ BIGINT SERIALIZATION FIX
-// JSON.stringify doesn't support BigInt by default, which causes 500 errors
-// when sending households from Kobo that have a numeric submission ID.
-BigInt.prototype.toJSON = function() { return this.toString(); };
 
 // @desc    Pull changes from server
 // @route   GET /api/sync/pull
@@ -28,10 +24,10 @@ export const pullChanges = async (req, res) => {
         const { since } = req.query; // timestamp ISO string
         const { organizationId } = req.user;
 
-        console.log(`[SYNC PULL] sync endpoint called - since: ${since}, organizationId: ${organizationId}`);
+        logger.info(`[SYNC PULL] sync endpoint called - since: ${since}, organizationId: ${organizationId}`);
 
         if (!organizationId) {
-            console.error('[SYNC PULL] ERROR: organizationId missing in authenticated context');
+            logger.error('[SYNC PULL] ERROR: organizationId missing in authenticated context');
             return res.status(400).json({ error: 'organizationId missing' });
         }
 
@@ -120,7 +116,7 @@ const { email, id: userId, role: userRole } = req.user;
         });
 
     } catch (error) {
-        console.error('Sync pull error:', error);
+        logger.error('Sync pull error:', error);
         res.status(500).json({ error: 'Failed to pull changes' });
     }
 };
@@ -134,8 +130,8 @@ export const pushChanges = async (req, res) => {
             return res.status(400).json({ error: 'Invalid payload: "changes" must be an object' });
         }
 
-        console.log(`[SYNC-DEBUG] 🔄 Start Push for Organization: ${organizationId} (User: ${userId})`);
-        console.log(`[SYNC-DEBUG] Changes received:`, {
+        logger.info(`[SYNC-DEBUG] 🔄 Start Push for Organization: ${organizationId} (User: ${userId})`);
+        logger.info(`[SYNC-DEBUG] Changes received:`, {
             projects: changes?.projects?.length || 0,
             zones: changes?.zones?.length || 0,
             households: changes?.households?.length || 0
@@ -143,7 +139,7 @@ export const pushChanges = async (req, res) => {
 
         // Log payload summary for diagnostic
         const payloadSize = JSON.stringify(req.body || {}).length;
-        console.log(`[SYNC-DEBUG] Payload Size: ${(payloadSize / 1024).toFixed(2)} KB`);
+        logger.info(`[SYNC-DEBUG] Payload Size: ${(payloadSize / 1024).toFixed(2)} KB`);
 
         const results = {
             success: [],
@@ -168,12 +164,12 @@ export const pushChanges = async (req, res) => {
 
         // 0. Sync Projects
         if (changes.projects?.length > 0) {
-            console.log(`[SYNC-DEBUG] ✅ Starting project sync (${changes.projects.length} projects)...`);
+            logger.info(`[SYNC-DEBUG] ✅ Starting project sync (${changes.projects.length} projects)...`);
             for (const p of changes.projects) {
                 if (!p || !p.id) continue;
                 const { id, name, status, budget, duration, totalHouses, config: pConfig, version } = p;
                 try {
-                    console.log(`[SYNC-DEBUG] Processing project: ${id}`);
+                    logger.info(`[SYNC-DEBUG] Processing project: ${id}`);
                     const serverProject = await prisma.project.findUnique({ where: { id } });
 
                     await prisma.project.upsert({
@@ -209,7 +205,7 @@ export const pushChanges = async (req, res) => {
                     });
                     results.success.push({ id, type: 'project' });
                 } catch (e) {
-                    console.error(`[SYNC-ERROR] Project [${id}]:`, e.message);
+                    logger.error(`[SYNC-ERROR] Project [${id}]:`, e.message);
                     results.errors.push({ id, type: 'project', error: e.message });
                 }
             }
@@ -217,16 +213,16 @@ export const pushChanges = async (req, res) => {
 
         // 1. Sync Zones
         if (changes.zones?.length > 0) {
-            console.log(`[SYNC-DEBUG] ✅ Starting zone sync (${changes.zones.length} zones)...`);
+            logger.info(`[SYNC-DEBUG] ✅ Starting zone sync (${changes.zones.length} zones)...`);
             for (const z of changes.zones) {
                 if (!z || !z.id || !z.projectId) {
-                    console.log(`[SYNC-DEBUG] Skipping zone - missing ID or ProjectID`);
+                    logger.info(`[SYNC-DEBUG] Skipping zone - missing ID or ProjectID`);
                     results.errors.push({ id: z?.id, type: 'zone', error: 'Missing ID or ProjectID' });
                     continue;
                 }
                 const { id, name, projectId, metadata } = z;
                 try {
-                    console.log(`[SYNC-DEBUG] Processing zone: ${id}`);
+                    logger.info(`[SYNC-DEBUG] Processing zone: ${id}`);
                     await prisma.zone.upsert({
                         where: { id },
                         update: { name, metadata: metadata || {}, updatedAt: new Date() },
@@ -234,7 +230,7 @@ export const pushChanges = async (req, res) => {
                     });
                     results.success.push({ id, type: 'zone' });
                 } catch (e) {
-                    console.error(`[SYNC-ERROR] Zone [${id}]:`, e.message);
+                    logger.error(`[SYNC-ERROR] Zone [${id}]:`, e.message);
                     results.errors.push({ id, type: 'zone', error: e.message });
                 }
             }
@@ -242,14 +238,14 @@ export const pushChanges = async (req, res) => {
 
         // 2. Sync Households
         if (changes.households?.length > 0) {
-            console.log(`[SYNC-DEBUG] Processing ${changes.households.length} households...`);
+            logger.info(`[SYNC-DEBUG] Processing ${changes.households.length} households...`);
 
             for (const h of changes.households) {
                 // SAFETY FALLBACKS (as per diagnostic)
                 if (h && !h.id) {
                     const { v4: uuidv4 } = await import('uuid');
                     h.id = uuidv4();
-                    console.log(`[SYNC-DEBUG] 🛡️ Generated fallback ID for household: ${h.id}`);
+                    logger.info(`[SYNC-DEBUG] 🛡️ Generated fallback ID for household: ${h.id}`);
                 }
                 if (h && (h.zoneId === undefined || h.zoneId === null || h.zoneId === '')) {
                     // Try to find a default zone for the organization/project
@@ -257,7 +253,7 @@ export const pushChanges = async (req, res) => {
                         where: { organizationId, deletedAt: null } 
                     });
                     h.zoneId = defaultZone?.id || 'default_zone_not_found';
-                    console.log(`[SYNC-DEBUG] 🛡️ Assigned fallback ZoneID for household ${h.id}: ${h.zoneId}`);
+                    logger.info(`[SYNC-DEBUG] 🛡️ Assigned fallback ZoneID for household ${h.id}: ${h.zoneId}`);
                 }
 
                 if (!h || !h.id || !h.zoneId || h.zoneId === 'default_zone_not_found') {
@@ -319,7 +315,7 @@ export const pushChanges = async (req, res) => {
                                 serverData: serverH,
                                 strategy: 'pending-client-review'
                             }
-                        }).catch(e => console.error('[SYNC-CONFLICT-LOG] Failed to create ConflictLog:', e.message));
+                        }).catch(e => logger.error('[SYNC-CONFLICT-LOG] Failed to create ConflictLog:', e.message));
 
                         continue;
                     }
@@ -328,7 +324,7 @@ export const pushChanges = async (req, res) => {
                     let zoneExists = await prisma.zone.findUnique({ where: { id: zoneId } });
                     
                     if (!zoneExists) {
-                        console.log(`[SYNC-HEAL] 🏗️ Zone ${zoneId} not found for household ${id}. Attempting to heal...`);
+                        logger.info(`[SYNC-HEAL] 🏗️ Zone ${zoneId} not found for household ${id}. Attempting to heal...`);
                         
                         // Try to find ANY zone in the same organization to avoid foreign key failure
                         const fallbackZone = await prisma.zone.findFirst({ 
@@ -336,12 +332,12 @@ export const pushChanges = async (req, res) => {
                         });
 
                         if (fallbackZone) {
-                            console.log(`[SYNC-HEAL] 🩹 Reassigning household ${id} to existing zone ${fallbackZone.id}`);
+                            logger.info(`[SYNC-HEAL] 🩹 Reassigning household ${id} to existing zone ${fallbackZone.id}`);
                             h.zoneId = fallbackZone.id;
                             zoneExists = fallbackZone;
                         } else {
                             // Last resort: Create a default zone
-                            console.log(`[SYNC-HEAL] 🏗️ Creating emergency default zone for org ${organizationId}`);
+                            logger.info(`[SYNC-HEAL] 🏗️ Creating emergency default zone for org ${organizationId}`);
                             const project = await prisma.project.findFirst({ where: { organizationId } });
                             if (project) {
                                 zoneExists = await prisma.zone.create({
@@ -377,7 +373,7 @@ export const pushChanges = async (req, res) => {
                             }
                         });
                         if (duplicate) {
-                            console.log(`[SYNC-PUSH] 🛡️ AUTO-MERGE: Client ID ${id} linked to existing Server ID ${duplicate.id} (N° ${numeroordre})`);
+                            logger.info(`[SYNC-PUSH] 🛡️ AUTO-MERGE: Client ID ${id} linked to existing Server ID ${duplicate.id} (N° ${numeroordre})`);
                             finalId = duplicate.id;
                             serverH = duplicate; 
                         }
@@ -467,7 +463,7 @@ export const pushChanges = async (req, res) => {
                 } catch (e) {
                     const errorDetails = `[${new Date().toISOString()}] [SYNC-ERROR] Household [${id}] Org [${organizationId}]: ${e.message} (Code: ${e.code}, Target: ${JSON.stringify(e.meta?.target)})\n`;
                     fs.appendFileSync(DEBUG_LOG, errorDetails);
-                    console.error(errorDetails);
+                    logger.error(errorDetails);
                     
                     results.errors.push({ 
                         id, 
@@ -481,7 +477,7 @@ export const pushChanges = async (req, res) => {
 
         // 3. Sync Teams
         if (changes.teams?.length > 0) {
-            console.log(`[SYNC-DEBUG] Processing ${changes.teams.length} teams...`);
+            logger.info(`[SYNC-DEBUG] Processing ${changes.teams.length} teams...`);
             for (const t of changes.teams) {
                 if (!t || !t.id) continue;
                 const { id, name, type, status } = t;
@@ -504,13 +500,13 @@ export const pushChanges = async (req, res) => {
                     });
                     results.success.push({ id, type: 'team' });
                 } catch (e) {
-                    console.error(`[SYNC-ERROR] Team [${id}]:`, e.message);
+                    logger.error(`[SYNC-ERROR] Team [${id}]:`, e.message);
                     results.errors.push({ id, type: 'team', error: e.message });
                 }
             }
         }
 
-        console.log(`[SYNC-DEBUG] ✅ Push complete. Success: ${results.success.length}, Errors: ${results.errors.length}`);
+        logger.info(`[SYNC-DEBUG] ✅ Push complete. Success: ${results.success.length}, Errors: ${results.errors.length}`);
 
         // Broadcast real-time notification
         if (results.success.length > 0) {
@@ -543,7 +539,7 @@ export const pushChanges = async (req, res) => {
                     req
                 });
             } catch (broadcastError) {
-                console.error('[SYNC-BROADCAST-ERROR] Error during post-sync notification/audit:', broadcastError.message);
+                logger.error('[SYNC-BROADCAST-ERROR] Error during post-sync notification/audit:', broadcastError.message);
                 // We DON'T fail the request if audit/socket fails, as the DB data is already saved.
             }
         }
@@ -579,12 +575,12 @@ export const pushChanges = async (req, res) => {
                     }
                 }
             } catch (recalcError) {
-                console.error('[SYNC-PROJECT-CONFIG-ERROR] Error during post-sync grappe recalculation:', recalcError.message);
+                logger.error('[SYNC-PROJECT-CONFIG-ERROR] Error during post-sync grappe recalculation:', recalcError.message);
             }
         }
 
         if (results.errors.length > 0) {
-            console.log(`[SYNC-DEBUG-DUMP] Top 5 errors passed to frontend:\n`, JSON.stringify(results.errors.slice(0, 5), null, 2));
+            logger.info(`[SYNC-DEBUG-DUMP] Top 5 errors passed to frontend:\n`, JSON.stringify(results.errors.slice(0, 5), null, 2));
         }
 
         res.json({
@@ -597,7 +593,7 @@ export const pushChanges = async (req, res) => {
             results
         });
     } catch (globalError) {
-        console.error('[SYNC-GLOBAL-FATAL] Uncaught error in pushChanges:', globalError);
+        logger.error('[SYNC-GLOBAL-FATAL] Uncaught error in pushChanges:', globalError);
         fs.appendFileSync(DEBUG_LOG, `\n[${new Date().toISOString()}] [SYNC-GLOBAL-FATAL] ${globalError.message}\n${globalError.stack}\n`);
         res.status(500).json({
             error: 'Internal Server Error during sync push',
@@ -615,26 +611,26 @@ export const syncKobo = async (req, res) => {
         const { organizationId } = req.user;
 
         if (activeKoboSyncs.has(organizationId)) {
-            console.warn(`[SYNC-KOBO] ⚠️ Sync already in progress for Org: ${organizationId}`);
+            logger.warn(`[SYNC-KOBO] ⚠️ Sync already in progress for Org: ${organizationId}`);
             return res.status(429).json({ error: 'Une synchronisation Kobo est déjà en cours. Veuillez patienter.' });
         }
         activeKoboSyncs.add(organizationId);
 
         try {
-        console.log(`[SYNC-KOBO] 🚀 Triggered by User: ${req.user.id} for Org: ${organizationId}`);
-        console.log(`[SYNC-KOBO] Request body:`, req.body);
+        logger.info(`[SYNC-KOBO] 🚀 Triggered by User: ${req.user.id} for Org: ${organizationId}`);
+        logger.info(`[SYNC-KOBO] Request body:`, req.body);
 
         // --- RESOLVE TARGET PROJECT & ZONE ---
         let defaultZoneId = req.body.zoneId || null;
         const targetProjectId = req.body.projectId;
-        console.log(`[SYNC-KOBO] targetProjectId: ${targetProjectId}`);
+        logger.info(`[SYNC-KOBO] targetProjectId: ${targetProjectId}`);
         let targetProject = null;
 
         if (targetProjectId) {
             targetProject = await prisma.project.findUnique({ where: { id: targetProjectId } });
             if (!targetProject) {
                 const msg = `Project ${targetProjectId} not found for organization ${organizationId}. Please refresh your project selection and retry.`;
-                console.error(`[SYNC-KOBO] ${msg}`);
+                logger.error(`[SYNC-KOBO] ${msg}`);
                 return res.status(400).json({ error: msg, message: msg });
             }
         }
@@ -664,17 +660,17 @@ export const syncKobo = async (req, res) => {
         }
 
         // Use the proper kobo.service (has KOBO_TOKEN from .env)
-        console.log(`[SYNC-KOBO] Importing kobo.service...`);
+        logger.info(`[SYNC-KOBO] Importing kobo.service...`);
         const { syncKoboToDatabase } = await import('../../services/kobo.service.js');
-        console.log(`[SYNC-KOBO] kobo.service imported successfully.`);
+        logger.info(`[SYNC-KOBO] kobo.service imported successfully.`);
         
         // --- FORCE FULL SYNC IF REQUESTED ---
         const force = req.body.force === true;
         const lastSyncDate = force ? new Date(0) : null; // Date(0) = 1970, force tout reprendre
 
-        console.log(`[SYNC-KOBO] Calling syncKoboToDatabase with:`, { organizationId, defaultZoneId, lastSyncDate, projectId: targetProject.id, userId: req.user.id });
+        logger.info(`[SYNC-KOBO] Calling syncKoboToDatabase with:`, { organizationId, defaultZoneId, lastSyncDate, projectId: targetProject.id, userId: req.user.id });
         const results = await syncKoboToDatabase(organizationId, defaultZoneId, lastSyncDate, targetProject.id, req.user.id);
-        console.log(`[SYNC-KOBO] syncKoboToDatabase results:`, results);
+        logger.info(`[SYNC-KOBO] syncKoboToDatabase results:`, results);
 
         // Sync Log
         try {
@@ -695,7 +691,7 @@ export const syncKobo = async (req, res) => {
             });
         } catch (e) {
             if (!isPrismaSchemaDriftError(e)) {
-                console.warn('[SYNC-KOBO] SyncLog not available:', e.message);
+                logger.warn('[SYNC-KOBO] SyncLog not available:', e.message);
             }
         }
 
@@ -708,7 +704,7 @@ export const syncKobo = async (req, res) => {
             activeKoboSyncs.delete(organizationId);
         }
     } catch (error) {
-        console.error('[SYNC-KOBO-ERROR]:', error.message);
+        logger.error('[SYNC-KOBO-ERROR]:', error.message);
         const statusCode = error.statusCode || 500;
         
         let errorType = 'Kobo synchronization failed';
@@ -771,10 +767,10 @@ export const clearEntityData = async (req, res) => {
              return res.status(400).json({ error: 'Entité inconnue' });
         }
 
-        console.log(`[SYNC-CLEAR] Cleared ${entity} for Org ${organizationId}`);
+        logger.info(`[SYNC-CLEAR] Cleared ${entity} for Org ${organizationId}`);
         res.json({ success: true, deletedCount: result?.count || 0, entity });
     } catch (e) {
-        console.error('[SYNC-CLEAR] Error:', e.message);
+        logger.error('[SYNC-CLEAR] Error:', e.message);
         res.status(500).json({ error: 'Failed to clear data' });
     }
 };
@@ -790,7 +786,7 @@ export const bulkImportHouseholds = async (req, res) => {
         return res.status(400).json({ error: 'Format invalide : "households" doit être un tableau.' });
     }
 
-    console.log(`[SYNC-BULK] Starting bulk import of ${households.length} households for Org: ${organizationId}`);
+    logger.info(`[SYNC-BULK] Starting bulk import of ${households.length} households for Org: ${organizationId}`);
     
     try {
         // 1. Validation de la Zone (on prend la zone du premier ménage ou une zone par défaut)
@@ -901,7 +897,7 @@ export const bulkImportHouseholds = async (req, res) => {
                 if (!processedBatch.has(normalizedNum)) {
                     processedBatch.set(normalizedNum, item);
                 } else {
-                    console.log(`⚠️ [Dedup-File] Duplicate numeroordre ${normalizedNum} found in file, skipping secondary entry.`);
+                    logger.info(`⚠️ [Dedup-File] Duplicate numeroordre ${normalizedNum} found in file, skipping secondary entry.`);
                 }
             } else {
                 processedBatch.set(item.id, item);
@@ -911,7 +907,7 @@ export const bulkImportHouseholds = async (req, res) => {
         const dataToInsert = Array.from(processedBatch.values());
 
         // 3. SECURE MATCHING: Resolve existing records by numeroordre to prevent duplicates
-        console.log(`[SYNC-BULK] 🔍 Scanning for existing business keys (numeroordre)...`);
+        logger.info(`[SYNC-BULK] 🔍 Scanning for existing business keys (numeroordre)...`);
         const incomingNums = dataToInsert.map(d => d.numeroordre).filter(Boolean);
         const existingRecords = await prisma.household.findMany({
             where: {
@@ -955,7 +951,7 @@ export const bulkImportHouseholds = async (req, res) => {
                 
                 importedCount++;
             } catch (e) {
-                console.error(`[SYNC-BULK-ITEM-ERROR] Failed to import household ${item.id}:`, e.message);
+                logger.error(`[SYNC-BULK-ITEM-ERROR] Failed to import household ${item.id}:`, e.message);
             }
         }
 
@@ -969,13 +965,13 @@ export const bulkImportHouseholds = async (req, res) => {
             AND longitude IS NOT NULL
         `;
 
-        console.log(`[SYNC-BULK] Success: ${importedCount} households processed.`);
+        logger.info(`[SYNC-BULK] Success: ${importedCount} households processed.`);
         
         // 5. Trigger Grappe Recalculation after bulk import
         const firstProject = await prisma.project.findFirst({ where: { organizationId } });
         if (firstProject) {
             await recalculateProjectGrappes(firstProject.id, organizationId, true).catch(err => {
-                console.error('[SYNC-BULK-RECALC] Failed to trigger grappe recalculation:', err.message);
+                logger.error('[SYNC-BULK-RECALC] Failed to trigger grappe recalculation:', err.message);
             });
         }
 
@@ -986,7 +982,7 @@ export const bulkImportHouseholds = async (req, res) => {
         });
 
     } catch (error) {
-        console.error('[SYNC-BULK-FATAL]:', error);
+        logger.error('[SYNC-BULK-FATAL]:', error);
         res.status(500).json({ error: 'Bulk import failed' });
     }
 };

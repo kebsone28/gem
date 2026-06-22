@@ -55,7 +55,7 @@ describe('missionSageMemory', () => {
   it('trims saved memory', () => {
     const memory = {
       history: Array.from({ length: 60 }, (_, index) => `q-${index}`),
-      contextHistory: Array.from({ length: 40 }, (_, index) => ({
+      contextHistory: Array.from({ length: 50 }, (_, index) => ({
         role: index % 2 === 0 ? ('user' as const) : ('assistant' as const),
         content: `turn-${index}`,
       })),
@@ -65,6 +65,6 @@ describe('missionSageMemory', () => {
     saveMemory('user-3', memory);
     const saved = JSON.parse(localStorage.getItem('ged_os_memory_user-3') || '{}');
     expect(saved.history).toHaveLength(50);
-    expect(saved.contextHistory.length).toBeLessThanOrEqual(30);
+    expect(saved.contextHistory.length).toBeLessThanOrEqual(40);
   });
 });

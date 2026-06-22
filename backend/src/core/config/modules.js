@@ -92,7 +92,7 @@ export const BACKEND_MODULE_REGISTRY = {
     global: true
   },
   kobo_terminal: {
-    name: 'Terminal Kobo',
+    name: 'Terminal KoboCollect',
     description: 'Synchronisation directe KoboToolbox',
     isPackage: true,
     packageCategory: 'ADMIN',

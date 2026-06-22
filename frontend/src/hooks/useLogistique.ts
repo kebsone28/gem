@@ -6,6 +6,7 @@ import type { Household, Project, SubGrappe, Team, Warehouse } from '../utils/ty
 import apiClient from '../api/client';
 import * as safeStorage from '../utils/safeStorage';
 import logger from '../utils/logger';
+import appLogger from '../services/logger';
 import { useProject } from '../contexts/ProjectContext';
 
 interface TeamApiResponse {
@@ -282,7 +283,7 @@ export function useLogistique(serverHouseholds?: Household[]) {
   const deleteMovement = async (movementId: string) => {
     try {
       if (!project) {
-        console.warn('deleteMovement: no project');
+        appLogger.warn('deleteMovement: no project');
         return;
       }
       const newConfig = { ...project.config };
@@ -291,11 +292,11 @@ export function useLogistique(serverHouseholds?: Household[]) {
       const entry = history.find(m => m.id === movementId);
       
       if (!entry) {
-        console.warn(`deleteMovement: entry ${movementId} not found`);
+        appLogger.warn(`deleteMovement: entry ${movementId} not found`);
         return;
       }
 
-      console.log('deleteMovement: deleting entry', entry);
+      appLogger.log('deleteMovement: deleting entry', entry);
 
       // Filter history
       newConfig.logistique = {
@@ -325,20 +326,20 @@ export function useLogistique(serverHouseholds?: Household[]) {
              wh.preparatorTeams = teams;
              whs[whIdx] = wh;
              newConfig.warehouses = whs;
-             console.log('deleteMovement: warehouse stock reverted');
+             appLogger.log('deleteMovement: warehouse stock reverted');
            } else {
-             console.warn('deleteMovement: team not found in warehouse');
+             appLogger.warn('deleteMovement: team not found in warehouse');
            }
          } else {
-           console.warn(`deleteMovement: warehouse ${entry.warehouseId} not found`);
+           appLogger.warn(`deleteMovement: warehouse ${entry.warehouseId} not found`);
          }
       }
 
-      console.log('deleteMovement: calling updateProject with new config');
+      appLogger.log('deleteMovement: calling updateProject with new config');
       await updateProject({ config: newConfig }, project.id);
-      console.log('deleteMovement: updateProject successful');
+      appLogger.log('deleteMovement: updateProject successful');
     } catch (err) {
-      console.error('deleteMovement: error', err);
+      appLogger.error('deleteMovement: error', err);
     }
   };
 
@@ -387,7 +388,7 @@ export function useLogistique(serverHouseholds?: Household[]) {
 
       await updateProject({ config: newConfig }, project.id);
     } catch (err) {
-      console.error('updateMovement: error', err);
+      appLogger.error('updateMovement: error', err);
     }
   };
 

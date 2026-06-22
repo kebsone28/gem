@@ -1,5 +1,4 @@
 import logger from '../../utils/logger.js';
-import prisma from '../../core/utils/prisma.js';
 
 
 /**

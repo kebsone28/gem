@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import type { FeatureCollection } from 'geojson'
 import { householdDb } from './db'
 import type { HouseholdEntry } from './db'
+import logger from '../logger'
 
 type SyncStatus = 'idle'|'syncing'|'connected'|'error'|'offline'
 
@@ -44,11 +45,11 @@ export function useHouseholdSync(opts?: {
         await householdDb.households.put(entry)
         notify()
       }
-    }catch(e){ console.warn('household upsert failed', e) }
+    }catch(e){ logger.warn('household upsert failed', e) }
   }, [notify])
 
   const remove = useCallback(async (id: string)=>{
-    try{ await householdDb.households.delete(id); notify() }catch(e){ console.warn('household delete failed', e) }
+    try{ await householdDb.households.delete(id); notify() }catch(e){ logger.warn('household delete failed', e) }
   }, [notify])
 
   // simple paginated bootstrap using page param; backend should support limit&page
@@ -91,18 +92,18 @@ export function useHouseholdSync(opts?: {
           socketRef.current = ws
           ws.onopen = ()=>{ retryRef.current.attempts = 0; setStatus('connected') }
           ws.onmessage = async (ev)=>{
-            try{ const msg = JSON.parse(ev.data); handleRealtime(msg) }catch(e){ console.warn('ws parse', e) }
+            try{ const msg = JSON.parse(ev.data); handleRealtime(msg) }catch(e){ logger.warn('ws parse', e) }
           }
           ws.onclose = ()=>{ attemptReconnect() }
-          ws.onerror = (e)=>{ console.warn('ws err', e); ws.close() }
+          ws.onerror = (e)=>{ logger.warn('ws err', e); ws.close() }
         }else{
           const s = new EventSource(`${apiBase}/households/stream`)
           socketRef.current = s
           s.onopen = ()=>{ retryRef.current.attempts = 0; setStatus('connected') }
-          s.onmessage = async (ev:any)=>{ try{ const msg = JSON.parse(ev.data); handleRealtime(msg) }catch(e){ console.warn('sse parse', e) } }
-          s.onerror = (e:any)=>{ console.warn('sse err', e); attemptReconnect() }
+          s.onmessage = async (ev:any)=>{ try{ const msg = JSON.parse(ev.data); handleRealtime(msg) }catch(e){ logger.warn('sse parse', e) } }
+          s.onerror = (e:any)=>{ logger.warn('sse err', e); attemptReconnect() }
         }
-      }catch(e){ console.warn('realtime connect failed', e); attemptReconnect() }
+      }catch(e){ logger.warn('realtime connect failed', e); attemptReconnect() }
     }
 
     const attemptReconnect = ()=>{

@@ -2,8 +2,8 @@
 import React, { useState } from 'react';
 import { Bell, Trash2, CheckCircle2, XCircle, Clock, Archive, X, Search } from 'lucide-react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import type { MissionNotification } from '../../../../../store/db';
-import * as notificationService from '../../../../../services/notificationService';
+import type { MissionNotification } from '@/store/db';
+import * as notificationService from '@services/notificationService';
 
 interface MissionNotificationCenterProps {
   onClose: () => void;

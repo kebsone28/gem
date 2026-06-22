@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../../contexts/AuthContext';
-import { useProject } from '../../../contexts/ProjectContext';
-import { normalizeRole, ROLES, isPlatformAdmin } from '../../../core/security/permissions';
-import { useProjectSelector } from '../../../hooks/useProjectSelector';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useAuth } from '@contexts/AuthContext';
+import { useProject } from '@contexts/ProjectContext';
+import { normalizeRole, ROLES, isPlatformAdmin } from '@core/security/permissions';
+import { useProjectSelector } from '@hooks/useProjectSelector';
+import { projectService } from '@services/projectService';
 import styles from './Home.module.css';
 import {
   Plus,
@@ -29,10 +30,20 @@ import {
   LogOut,
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { extractApiError } from '@utils/format';
+
+const getProjectDomain = (p: any): string => {
+  const sector = p.config?.sector || '';
+  if (sector.startsWith('mes_')) return 'mes';
+  if (sector.startsWith('gem_') || sector.startsWith('elec_')) return 'gem';
+  return '';
+};
 
 export default function Home() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const domainTypeParam = searchParams.get('domainType') || '';
   const projectSelectorData = useProjectSelector();
   const {
     projects,
@@ -44,7 +55,7 @@ export default function Home() {
     projectFilter,
   } = projectSelectorData;
 
-  const { refreshProjects, deleteProject, setActiveProjectId } = useProject();
+  const { refreshProjects, setActiveProjectId } = useProject();
 
   const normalizedRole = normalizeRole(user?.role || '');
 
@@ -53,7 +64,10 @@ export default function Home() {
     normalizedRole === ROLES.ADMIN ||
     normalizedRole === ROLES.DIRECTEUR;
 
-  const availableProjects = filteredProjects;
+  const availableProjects = useMemo(() => {
+    if (!domainTypeParam) return filteredProjects;
+    return filteredProjects.filter(p => getProjectDomain(p) === domainTypeParam);
+  }, [filteredProjects, domainTypeParam]);
 
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showNotifications, setShowNotifications] = useState(false);
@@ -121,23 +135,32 @@ export default function Home() {
   const handleProjectSelect = (projectId: string) => {
     setActiveProjectId(projectId);
     switchProject(projectId);
-    navigate('/dashboard');
+    navigate('/executive/dashboard');
   };
 
   const handleProjectDelete = async (e: React.MouseEvent, projectId: string, projectName: string) => {
     e.stopPropagation();
-    if (window.confirm(`Êtes-vous sûr de vouloir supprimer le projet "${projectName}" ?`)) {
-      try {
-        const result = await deleteProject(projectId, '');
-        if (result.success) {
-          toast.success('Projet supprimé');
-          refreshProjects();
-        } else {
-          toast.error(result.error || 'Erreur lors de la suppression');
-        }
-      } catch (err) {
-        toast.error('Erreur lors de la suppression');
-      }
+
+    // Étape 1 : Confirmation
+    if (!window.confirm(`Êtes-vous sûr de vouloir supprimer le projet "${projectName}" ?\nCette action est irréversible.`)) {
+      return;
+    }
+
+    // Étape 2 : Saisie du mot de passe (requis par le backend)
+    const password = window.prompt(`Confirmez votre mot de passe pour supprimer "${projectName}" :`);
+    if (password === null) return; // annulé
+    if (!password.trim()) {
+      toast.error('Mot de passe requis pour confirmer la suppression.');
+      return;
+    }
+
+    try {
+      // Appel API direct (pas via la queue offline) pour obtenir le retour immédiat
+      await projectService.deleteProject(projectId, password.trim());
+      toast.success(`Projet "${projectName}" supprimé avec succès.`);
+      await refreshProjects();
+    } catch (err: any) {
+      toast.error(extractApiError(err, 'Erreur lors de la suppression'));
     }
   };
 
@@ -349,7 +372,7 @@ export default function Home() {
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    onClick={() => navigate('/admin/project-creation')}
+                    onClick={() => navigate('/projects/create')}
                     className="px-6 py-3.5 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-xl shadow-blue-600/20 flex items-center gap-2"
                   >
                     <Plus size={18} />
@@ -357,7 +380,7 @@ export default function Home() {
                   </motion.button>
                 )}
                 <button 
-                  onClick={() => navigate('/dashboard')}
+                  onClick={() => navigate('/executive/dashboard')}
                   className="px-6 py-3.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-2xl font-black text-sm uppercase tracking-widest transition-all"
                 >
                   Dashboard Global
@@ -421,17 +444,17 @@ export default function Home() {
                 border: 'border-blue-500/20',
                 text: 'text-blue-400'
               },
-              { 
+              {
                 label: 'Projets Actifs', 
-                value: (isGlobalAdmin ? projects : availableProjects).filter(p => p.status === 'active').length,
+                value: (domainTypeParam && !isGlobalAdmin ? availableProjects : isGlobalAdmin ? projects : availableProjects).filter(p => p.status === 'active').length,
                 icon: Activity,
                 color: 'from-emerald-500/20 to-emerald-600/5',
                 border: 'border-emerald-500/20',
                 text: 'text-emerald-400'
               },
-              { 
+              {
                 label: 'Accès Ouverts', 
-                value: (isGlobalAdmin ? projects : availableProjects).filter(p => !p.isArchived).length,
+                value: (domainTypeParam && !isGlobalAdmin ? availableProjects : isGlobalAdmin ? projects : availableProjects).filter(p => !p.isArchived).length,
                 icon: Users,
                 color: 'from-purple-500/20 to-purple-600/5',
                 border: 'border-purple-500/20',
@@ -553,7 +576,7 @@ export default function Home() {
               </p>
               {isGlobalAdmin ? (
                 <button
-                  onClick={() => navigate('/admin/project-creation')}
+                  onClick={() => navigate('/projects/create')}
                   className="inline-flex items-center gap-3 px-8 py-4 bg-white text-slate-950 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-blue-500 hover:text-white transition-all shadow-xl"
                 >
                   <Plus size={20} />
@@ -708,7 +731,7 @@ export default function Home() {
                     icon: Building,
                     color: 'text-blue-400',
                     bg: 'from-blue-500/10 to-transparent',
-                    path: '/admin/project-creation'
+                    path: '/projects/create'
                   },
                   {
                     title: 'Utilisateurs',
@@ -756,7 +779,7 @@ export default function Home() {
           <motion.button
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
-            onClick={() => navigate('/admin/project-creation')}
+            onClick={() => navigate('/projects/create')}
             className="w-16 h-16 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-2xl shadow-blue-600/40 border-4 border-slate-950"
           >
             <Plus size={32} />

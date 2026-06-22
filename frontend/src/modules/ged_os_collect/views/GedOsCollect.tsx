@@ -9,14 +9,22 @@ import {
   RefreshCcw,
   LayoutGrid,
   List as ListIcon,
+  Loader2,
+  Trash2,
 } from 'lucide-react';
-import { InternalKoboForm } from '../../../components/terrain/InternalKoboForm';
-import { PageContainer, PageHeader, ContentArea } from '../../../components/layout';
+import { InternalKoboForm } from '@modules/terrain/components/InternalKoboForm';
+import { PageContainer, PageHeader, ContentArea } from '@components/layout';
 import {
+  clearInternalKoboLocalDraft,
+  deleteInternalKoboFormDefinition,
   fetchInternalKoboFormDefinitions,
+  loadInternalKoboLocalDraft,
   queueInternalKoboSubmission,
   type InternalKoboImportedFormSummary,
-} from '../../../services/internalKoboSubmissionService';
+  type InternalKoboLocalDraft,
+} from '@services/internalKoboSubmissionService';
+// Import service to fetch households for auto‑remplissage
+import { householdService } from '@services/householdService';
 import toast from 'react-hot-toast';
 
 const GedOsCollectPage: React.FC = () => {
@@ -28,9 +36,13 @@ const GedOsCollectPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [households, setHouseholds] = useState<any[]>([]);
+  const [deletingFormKey, setDeletingFormKey] = useState('');
+  const [drafts, setDrafts] = useState<InternalKoboLocalDraft[]>([]);
 
   useEffect(() => {
     loadForms();
+    loadDrafts();
   }, []);
 
   useEffect(() => {
@@ -46,6 +58,20 @@ const GedOsCollectPage: React.FC = () => {
     };
   }, []);
 
+  // Charger les ménages pour l'auto‑remplissage par numéro d'ordre
+  useEffect(() => {
+    if (!isOnline) return;
+    const loadHouseholds = async () => {
+      try {
+        const data = await householdService.getHouseholds();
+        setHouseholds(data || []);
+      } catch (error) {
+        console.warn('Erreur chargement ménages pour auto‑remplissage:', error);
+      }
+    };
+    loadHouseholds();
+  }, [isOnline]);
+
   const loadForms = async () => {
     setIsLoading(true);
     try {
@@ -58,6 +84,45 @@ const GedOsCollectPage: React.FC = () => {
     }
   };
 
+  const loadDrafts = () => {
+    const allDrafts: InternalKoboLocalDraft[] = [];
+    for (let i = 0; i < window.localStorage.length; i++) {
+      const key = window.localStorage.key(i);
+      if (key && key.startsWith('ged-os-draft:')) {
+        try {
+          const draft = JSON.parse(window.localStorage.getItem(key) || '') as InternalKoboLocalDraft;
+          if (draft?.values && typeof draft.values === 'object') {
+            allDrafts.push(draft);
+          }
+        } catch {
+          // Ignore invalid drafts
+        }
+      }
+    }
+    setDrafts(allDrafts.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()));
+  };
+
+  const handleRestoreDraft = (draft: InternalKoboLocalDraft) => {
+    if (draft.formKey) {
+      setSelectedFormKey(draft.formKey);
+      setValues(draft.values);
+      toast.success('Brouillon restauré');
+    }
+  };
+
+  const handleDeleteDraft = (draft: InternalKoboLocalDraft) => {
+    if (window.confirm('Supprimer ce brouillon ?')) {
+      clearInternalKoboLocalDraft({
+        householdId: draft.householdId,
+        numeroOrdre: draft.numeroOrdre,
+        formKey: draft.formKey,
+        role: draft.role,
+      });
+      loadDrafts();
+      toast.success('Brouillon supprimé');
+    }
+  };
+
   const handleChange = useCallback((name: string, value: unknown) => {
     setValues((prev) => ({ ...prev, [name]: value }));
   }, []);
@@ -65,19 +130,29 @@ const GedOsCollectPage: React.FC = () => {
   const handleSave = useCallback(async () => {
     setIsSaving(true);
     try {
+      const selectedForm = availableForms.find((f) => f.formKey === selectedFormKey);
       await queueInternalKoboSubmission({
+        clientSubmissionId: `${selectedFormKey}-${Date.now()}`,
         formKey: selectedFormKey,
-        ...values,
-      } as any);
+        formVersion: (selectedForm?.formVersion || '1.0') as string,
+        status: 'submitted',
+        values,
+        requiredMissing: [],
+        metadata: {
+          deviceId: 'ged-os-collect',
+          submittedAt: new Date().toISOString(),
+        },
+      });
       toast.success('Formulaire mis en attente de synchronisation');
       setValues({});
       setSelectedFormKey(null); // Return to list after successful save
+      loadDrafts(); // Reload drafts after saving
     } catch {
       toast.error("Erreur lors de l'enregistrement");
     } finally {
       setIsSaving(false);
     }
-  }, [selectedFormKey, values]);
+  }, [selectedFormKey, values, availableForms]);
 
   const handleClose = () => {
     if (Object.keys(values).length > 0) {
@@ -92,6 +167,33 @@ const GedOsCollectPage: React.FC = () => {
     } else {
       setValues({});
       setSelectedFormKey(null);
+    }
+  };
+
+  const handleDeleteForm = async (
+    event: React.MouseEvent<HTMLButtonElement>,
+    form: InternalKoboImportedFormSummary
+  ) => {
+    event.stopPropagation();
+    const label = form.title || form.formKey;
+    const confirmed = window.confirm(
+      `Supprimer le formulaire "${label}" du catalogue ? Les anciennes soumissions resteront conservees.`
+    );
+    if (!confirmed) return;
+
+    setDeletingFormKey(form.formKey);
+    try {
+      await deleteInternalKoboFormDefinition(form.formKey);
+      setAvailableForms((current) => current.filter((entry) => entry.formKey !== form.formKey));
+      if (selectedFormKey === form.formKey) {
+        setSelectedFormKey(null);
+        setValues({});
+      }
+      toast.success(`Formulaire "${label}" supprime du catalogue`);
+    } catch {
+      toast.error('Suppression du formulaire impossible');
+    } finally {
+      setDeletingFormKey('');
     }
   };
 
@@ -128,6 +230,13 @@ const GedOsCollectPage: React.FC = () => {
               isSaving={isSaving}
               isOnline={isOnline}
               inline={true}
+              resolveHouseholdByNumero={(numeroOrdre: string) => {
+                const found = households.find((h) => {
+                  const num = String(h.numeroordre || '').trim();
+                  return num.toLowerCase() === numeroOrdre.toLowerCase();
+                });
+                return found || null;
+              }}
             />
           </div>
         </div>
@@ -189,6 +298,76 @@ const GedOsCollectPage: React.FC = () => {
           </div>
         </div>
 
+        {/* Drafts Section */}
+        {drafts.length > 0 && (
+          <div className="mb-10">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-400">
+                  <FileText size={20} />
+                </div>
+                <div>
+                  <h2 className="text-lg font-black text-white">Brouillons enregistrés</h2>
+                  <p className="text-xs font-semibold text-slate-400">{drafts.length} brouillon(s) disponible(s)</p>
+                </div>
+              </div>
+              <button
+                onClick={loadDrafts}
+                aria-label="Rafraîchir les brouillons"
+                title="Rafraîchir les brouillons"
+                className="p-2.5 rounded-xl text-slate-400 hover:text-white transition-all hover:bg-white/5"
+              >
+                <RefreshCcw size={18} />
+              </button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {drafts.map((draft) => (
+                <div
+                  key={draft.key}
+                  className="bg-gradient-to-br from-amber-900/20 to-slate-900/40 border border-amber-500/20 rounded-2xl p-5 hover:border-amber-500/40 transition-all"
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-black text-white truncate">
+                        {draft.formKey || 'Formulaire inconnu'}
+                      </p>
+                      <p className="text-xs font-semibold text-slate-400 mt-1">
+                        {draft.numeroOrdre ? `Numéro: ${draft.numeroOrdre}` : draft.householdId ? `ID: ${draft.householdId}` : 'Sans référence'}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1 ml-2">
+                      <button
+                        onClick={() => handleRestoreDraft(draft)}
+                        aria-label="Restaurer ce brouillon"
+                        title="Restaurer"
+                        className="p-2 rounded-xl bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-all"
+                      >
+                        <RefreshCcw size={16} />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteDraft(draft)}
+                        aria-label="Supprimer ce brouillon"
+                        title="Supprimer"
+                        className="p-2 rounded-xl bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 transition-all"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </div>
+                  <p className="text-[10px] font-semibold text-slate-500">
+                    Dernière modification: {new Date(draft.updatedAt).toLocaleString('fr-FR')}
+                  </p>
+                  {draft.role && (
+                    <span className="inline-block mt-2 px-2 py-1 bg-white/5 rounded-full text-[9px] font-black uppercase tracking-wider text-slate-400 border border-white/5">
+                      Rôle: {draft.role}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-4">
             <div className="w-12 h-12 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
@@ -216,15 +395,39 @@ const GedOsCollectPage: React.FC = () => {
             }
           >
             {filteredForms.map((form) => (
-              <button
+              <div
                 key={form.formKey}
+                role="button"
+                tabIndex={0}
+                aria-label={`Ouvrir ${form.title || form.formKey}`}
                 onClick={() => setSelectedFormKey(form.formKey)}
-                className={`group text-left transition-all active:scale-[0.98] ${
+                onKeyDown={(event) => {
+                  if (event.target !== event.currentTarget) return;
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    setSelectedFormKey(form.formKey);
+                  }
+                }}
+                className={`group relative cursor-pointer text-left transition-all active:scale-[0.98] ${
                   viewMode === 'grid'
                     ? 'bg-gradient-to-br from-slate-900/80 to-slate-900/40 border border-white/10 rounded-[2.5rem] p-8 hover:border-blue-500/40 hover:from-slate-900/90 hover:to-blue-900/10 shadow-xl'
-                    : 'bg-slate-900/50 border border-white/10 rounded-3xl p-5 flex items-center gap-6 hover:border-blue-500/40'
+                    : 'bg-slate-900/50 border border-white/10 rounded-3xl p-5 pr-16 flex items-center gap-6 hover:border-blue-500/40'
                 }`}
               >
+                <button
+                  type="button"
+                  onClick={(event) => handleDeleteForm(event, form)}
+                  disabled={deletingFormKey === form.formKey}
+                  aria-label={`Supprimer ${form.title || form.formKey}`}
+                  title="Supprimer le formulaire"
+                  className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-2xl border border-rose-400/20 bg-rose-500/10 text-rose-300 transition-all hover:border-rose-300/40 hover:bg-rose-500/20 disabled:cursor-wait disabled:opacity-60"
+                >
+                  {deletingFormKey === form.formKey ? (
+                    <Loader2 size={18} className="animate-spin" />
+                  ) : (
+                    <Trash2 size={18} />
+                  )}
+                </button>
                 <div
                   className={`shrink-0 flex items-center justify-center rounded-3xl transition-transform group-hover:scale-110 ${
                     viewMode === 'grid'
@@ -256,7 +459,7 @@ const GedOsCollectPage: React.FC = () => {
                     </div>
                   </div>
                 </div>
-              </button>
+              </div>
             ))}
           </div>
         )}

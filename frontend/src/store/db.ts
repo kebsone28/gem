@@ -1,3 +1,4 @@
+import logger from '../services/logger';
 import Dexie, { type Table } from 'dexie';
 import type { Project, Household, AuditLog, Team } from '../utils/types';
 
@@ -180,7 +181,7 @@ export class ProquelecDatabase extends Dexie {
     });
 
     // Version 6 — missions
-    this.version(8).stores({
+    this.version(6).stores({
       missions: 'id, projectId, orderNumber, startDate, endDate',
       inventory: 'id, projectId, category, name',
       expenses: 'id, projectId, category, date',
@@ -412,7 +413,7 @@ export class ProquelecDatabase extends Dexie {
     }).upgrade(async tx => {
       // 🛡️ [MIGRATION v16] Sécurisation de la persistance multi-tenant
       // On s'assure que les données existantes ne sont pas corrompues par l'ajout des index de tenant
-      console.log('🚀 [DEXIE MIGRATION] Début de la mise à jour vers v16 (Multi-Tenant)...');
+      logger.log('🚀 [DEXIE MIGRATION] Début de la mise à jour vers v16 (Multi-Tenant)...');
       
       return tx.table('syncOutbox').toCollection().modify(item => {
           if (!item.organizationId) {

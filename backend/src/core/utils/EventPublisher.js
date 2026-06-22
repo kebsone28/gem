@@ -1,3 +1,4 @@
+import logger from '../../utils/logger.js';
 import eventBus from './eventBus.js';
 import prisma from './prisma.js';
 
@@ -55,7 +56,7 @@ export class EventPublisher {
         },
       });
     } catch (err) {
-      console.error(`[EventPublisher] Failed to persist event log for ${type}:`, err.message);
+      logger.error(`[EventPublisher] Failed to persist event log for ${type}:`, err.message);
     }
   }
 }

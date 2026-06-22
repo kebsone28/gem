@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 💬 MessageBubble - Composant de bulle de message pour le chat IA
  * Affiche un message utilisateur ou IA avec styling approprié et métadonnées enrichies
  */
@@ -7,8 +7,8 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Info, ShieldAlert, X, BookOpen, AlertTriangle, ListOrdered, ThumbsUp, ThumbsDown, Zap, RefreshCw, Sparkles, CheckCircle2 } from 'lucide-react';
 import AIPremiumMessage from '../AIPremiumMessage';
-import type { AIResponse } from '../../../services/ai/MissionSageService';
-import { formatReferences, formatRisks, formatProcedureSteps } from '../../../services/ai/responseEnricher';
+import type { AIResponse } from '@services/ai/MissionSageService';
+import { formatReferences, formatRisks, formatProcedureSteps } from '@services/ai/responseEnricher';
 
 interface MessageBubbleProps {
   response: AIResponse;

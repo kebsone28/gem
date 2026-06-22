@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React from 'react';
 import { Wifi } from 'lucide-react';
-import GisHealthWidget from '../../../../components/terrain/GisHealthWidget';
+import GisHealthWidget from '../../components/GisHealthWidget';
 
 interface BottomBarProps {
   filteredCount: number;

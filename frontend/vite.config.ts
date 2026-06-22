@@ -12,10 +12,41 @@ import { fileURLToPath } from 'node:url';
 const dirname =
   typeof __dirname !== 'undefined' ? __dirname : path.dirname(fileURLToPath(import.meta.url));
 
+// Robust env file loader to ensure the correct ports are loaded in vite.config.ts
+import fs from 'node:fs';
+const loadEnvFile = (filePath: string) => {
+  if (!fs.existsSync(filePath)) return;
+  try {
+    const content = fs.readFileSync(filePath, 'utf-8');
+    content.split(/\r?\n/).forEach((line) => {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) return;
+      const index = trimmed.indexOf('=');
+      if (index === -1) return;
+      const key = trimmed.substring(0, index).trim();
+      let val = trimmed.substring(index + 1).trim();
+      if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+        val = val.substring(1, val.length - 1);
+      }
+      if (key && !process.env[key]) {
+        process.env[key] = val;
+      }
+    });
+  } catch (e) {
+    console.error(`Error loading env file ${filePath}:`, e);
+  }
+};
+
+// Load env files in order of priority (local configs override parent configs)
+loadEnvFile(path.resolve(dirname, '.env.local'));
+loadEnvFile(path.resolve(dirname, '.env'));
+loadEnvFile(path.resolve(dirname, '../backend/.env'));
+loadEnvFile(path.resolve(dirname, '../.env'));
+
 const apiProxyTarget = (
   process.env.VITE_API_PROXY_TARGET ||
   process.env.GEM_API_PROXY_TARGET ||
-  `http://localhost:${process.env.GEM_API_PORT || process.env.PORT || '8888'}`
+  `http://localhost:${process.env.GEM_API_PORT || process.env.PORT || '5009'}`
 ).replace(/\/$/, '');
 
 // More info at: https://storybook.js.org/docs/next/writing-tests/integrations/vitest-addon
@@ -247,6 +278,9 @@ export default defineConfig({
     alias: {
       '@': path.resolve(dirname, './src'),
       xlsx: path.resolve(dirname, './src/utils/safeExcel.ts'),
+      '@core': path.resolve(dirname, './src/core'),
+      '@shared': path.resolve(dirname, './src/shared'),
+      '@modules': path.resolve(dirname, './src/modules'),
       '@components': path.resolve(dirname, './src/components'),
       '@lib': path.resolve(dirname, './src/lib'),
       '@hooks': path.resolve(dirname, './src/hooks'),

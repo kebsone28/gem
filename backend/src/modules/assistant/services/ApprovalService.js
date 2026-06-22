@@ -9,8 +9,6 @@ import {
   getActionConfig,
   canAgentExecuteAction,
   determineExecutionFlow,
-  approvalSettings,
-  confidenceThresholds
 } from './actionConfig.js';
 
 export class ApprovalService {

@@ -8,7 +8,7 @@ import { MissionSageService } from './MissionSageService.js';
 import { queryOllama } from './ollama.client.js';
 import { createAgent } from './agent/agentFactory.js';
 import { vectorMemoryService } from './VectorMemoryService.js';
-import { initializeAIRouter, getAIRouter } from './services/AIRouterService.js';
+import { initializeAIRouter } from './services/AIRouterService.js';
 import { buildSystemPrompt } from '../../core/config/ai_registry.js';
 
 const missionSage = new MissionSageService();

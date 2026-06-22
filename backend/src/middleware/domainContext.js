@@ -7,11 +7,12 @@
  * - req.domainAdapter: The domain adapter instance
  *
  * Domain is determined by:
- * 1. Query parameter: ?domainType=electricity
- * 2. Header: X-Domain-Type: electricity
- * 3. Default: 'electricity'
+ * 1. Query parameter: ?domainType=gem
+ * 2. Header: X-Domain-Type: gem
+ * 3. Default: 'gem'
  */
 
+import logger from '../utils/logger.js';
 import { DomainConfigService } from '../services/domain/DomainConfigService.js';
 import { DomainAdapterFactory } from '../domain-adapters/DomainAdapterFactory.js';
 
@@ -25,7 +26,7 @@ export const domainContext = async (req, res, next) => {
       req.query.domainType ||
       req.headers['x-domain-type'] ||
       req.headers['x-domain'] ||
-      'electricity'; // Default
+      'gem'; // Default
 
     // Validate domain type format
     if (typeof domainType !== 'string' || domainType.length === 0) {
@@ -95,7 +96,7 @@ export const domainContext = async (req, res, next) => {
 
     next();
   } catch (error) {
-    console.error('[DomainContext] Error:', error);
+    logger.error('[DomainContext] Error:', error);
     res.status(500).json({
       error: 'Domain context error',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -109,7 +110,7 @@ export const domainContext = async (req, res, next) => {
  */
 export const domainContextOptional = async (req, res, next) => {
   try {
-    const domainType = req.query.domainType || 'electricity';
+    const domainType = req.query.domainType || 'gem';
 
     if (DomainAdapterFactory.hasAdapter(domainType)) {
       const organizationId = req.user?.organizationId || req.headers['x-org-id'];
@@ -126,7 +127,7 @@ export const domainContextOptional = async (req, res, next) => {
     next();
   } catch (error) {
     // Silently continue on error for optional context
-    console.warn(
+    logger.warn(
       '[DomainContextOptional] Warning:',
       error instanceof Error ? error.message : error
     );
@@ -138,7 +139,7 @@ export const domainContextOptional = async (req, res, next) => {
  * Helper: Get domain from request
  */
 export function getDomainType(req) {
-  return req.domainType || 'electricity';
+  return req.domainType || 'gem';
 }
 
 /**

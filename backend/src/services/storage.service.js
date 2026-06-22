@@ -3,6 +3,7 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { config } from '../core/config/config.js';
 import fs from 'fs/promises';
 import path from 'path';
+import logger from '../utils/logger.js';
 
 /**
  * Service de Stockage Hybride (S3 / Local Fallback)
@@ -50,7 +51,7 @@ export const uploadFile = async (key, body, contentType) => {
             return key;
         }
     } catch (error) {
-        console.error('[STORAGE SERVICE] Upload error:', error);
+        logger.error('[STORAGE SERVICE] Upload error:', error);
         throw new Error('Échec de l\'envoi du fichier au stockage.');
     }
 };
@@ -72,7 +73,7 @@ export const getFileUrl = async (key, expiresIn = 3600) => {
             return `/api/uploads/${key}`;
         }
     } catch (error) {
-        console.error('[STORAGE SERVICE] Sign URL error:', error);
+        logger.error('[STORAGE SERVICE] Sign URL error:', error);
         return null;
     }
 };
@@ -95,7 +96,7 @@ export const deleteFile = async (key) => {
             });
         }
     } catch (error) {
-        console.error('[STORAGE SERVICE] Delete error:', error);
+        logger.error('[STORAGE SERVICE] Delete error:', error);
         throw new Error('Échec de la suppression du fichier.');
     }
 };
@@ -118,7 +119,7 @@ export const getFileStream = async (key) => {
             return createReadStream(filePath);
         }
     } catch (error) {
-        console.error('[STORAGE SERVICE] Stream error:', error);
+        logger.error('[STORAGE SERVICE] Stream error:', error);
         return null;
     }
 };

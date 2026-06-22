@@ -1,9 +1,9 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+﻿/* eslint-disable @typescript-eslint/no-explicit-any */
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronLeft } from 'lucide-react';
-import { COMMON_CLASSES } from '../../styles/tokens';
-import { withAnalytics } from '../../utils/designSystemAnalytics';
+import { COMMON_CLASSES } from '@/styles/tokens';
+import { withAnalytics } from '@utils/designSystemAnalytics';
 
 /* ═══════════════════════════════════════════════════════════════════════════
    LAYOUT COMPONENTS – GEM SAAS
@@ -205,14 +205,28 @@ export const PageContainer: React.FC<PageContainerProps> = React.memo(withAnalyt
     return (
       <div
         className={[
-          'w-full mx-auto',
+          'w-full mx-auto relative',
           maxWidthClasses[maxWidth],
           paddingClasses[padding],
           'px-2 sm:px-4 lg:px-8', // Added responsive safe padding
           className,
         ].join(' ')}
       >
-        {children}
+        {/* 🌟 Premium Background Glow & Grid (Globally applied to all PageContainers) */}
+        <div
+          className="absolute inset-0 pointer-events-none z-0"
+          style={{ backgroundImage: 'radial-gradient(circle at top right, rgba(99,102,241,0.12), transparent 40%)' }}
+        />
+        <div
+          className="absolute inset-0 pointer-events-none z-0"
+          style={{
+            backgroundImage: 'linear-gradient(to right, #80808012 1px, transparent 1px), linear-gradient(to bottom, #80808012 1px, transparent 1px)',
+            backgroundSize: '24px 24px'
+          }}
+        />
+        <div className="relative z-10 w-full">
+          {children}
+        </div>
       </div>
     );
   },

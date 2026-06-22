@@ -1,11 +1,11 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, react-hooks/exhaustive-deps */
+﻿/* eslint-disable @typescript-eslint/no-explicit-any, react-hooks/exhaustive-deps */
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../../../../../../store/db';
-import apiClient from '../../../../../../api/client';
-import logger from '../../../../../../utils/logger';
+import { db } from '@/store/db';
+import apiClient from '@/api/client';
+import logger from '@utils/logger';
 import type { DashboardMetrics } from '../types';
-import { getHouseholdDerivedStatus } from '../../../../../../utils/statusUtils';
+import { getHouseholdDerivedStatus } from '@utils/statusUtils';
 
 export function useDashboardData(projectId: string, canViewReports: boolean) {
   const [remoteMetrics, setRemoteMetrics] = useState<DashboardMetrics | null>(null);

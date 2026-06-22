@@ -126,12 +126,6 @@ export const ROLE_PERMISSION_MAP = {
     'team.edit',
     'team.delete',
 
-    // Users
-    'user.view',
-    'user.create',
-    'user.edit',
-    'user.manage.roles',
-
     // Reports
     'report.view',
     'report.create',

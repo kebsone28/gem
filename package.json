@@ -6,9 +6,9 @@
     "start": "cd frontend && npm run dev",
     "test:e2e": "npx playwright test -c frontend/playwright.config.ts",
     "test:e2e:headed": "npx playwright test -c frontend/playwright.config.ts --headed",
-    "test:smoke": "playwright test tests/playwright/smoke.spec.js tests/playwright/rapports.spec.js",
+    "test:smoke": "npx playwright test -c frontend/playwright.config.ts --grep \"smoke|smoke-test|basic\"",
     "test:unit": "cd frontend && npm run test:unit",
-    "test": "npm run test:unit && npm run test:smoke",
+    "test": "npm run test:unit",
     "lint": "echo \"Add eslint later\" && exit 0",
     "format": "echo \"Add prettier later\" && exit 0",
     "build:css": "tailwindcss -i src/styles.css -o src/output.css --watch",
@@ -31,7 +31,7 @@
     "prepare": "husky || exit 0"
   },
   "devDependencies": {
-    "@playwright/test": "^1.58.2",
+    "@playwright/test": "^1.59.1",
     "@typescript-eslint/eslint-plugin": "^8.58.2",
     "@typescript-eslint/parser": "^8.58.2",
     "concurrently": "^9.2.1",

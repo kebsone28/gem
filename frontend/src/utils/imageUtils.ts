@@ -5,6 +5,8 @@
  * before uploading, saving 80% mobile data on EDGE/3G networks.
  */
 
+import logger from '../services/logger';
+
 const MAX_WIDTH = 1280;
 const MAX_HEIGHT = 1280;
 const QUALITY = 0.72; // JPEG quality (0.7-0.8 = good balance)
@@ -69,7 +71,7 @@ export async function compressImage(
 
   const compressedName = file.name.replace(/\.[^.]+$/, '.jpg');
 
-  console.debug(
+  logger.debug(
     `[ImageUtils] Compressed: ${(file.size / 1024).toFixed(0)}KB → ${(blob.size / 1024).toFixed(0)}KB ` +
     `(${Math.round((1 - blob.size / file.size) * 100)}% reduction, quality=${quality.toFixed(2)}, ${targetW}×${targetH})`
   );

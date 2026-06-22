@@ -2,11 +2,11 @@
 import React from 'react';
 import { ChevronRight, RefreshCw, X, ChevronDown, ChevronUp } from 'lucide-react';
 
-import { MapToolbar } from '../../../../components/terrain/MapToolbar';
-import { useTerrainUIStore } from '../../../../store/terrainUIStore';
+import { MapToolbar } from '../../components/MapToolbar';
+import { useTerrainUIStore } from '@/store/terrainUIStore';
 
-import type { SearchResult } from '../../../../hooks/useMapFilters';
-import type { Project } from '../../../../utils/types';
+import type { SearchResult } from '@hooks/useMapFilters';
+import type { Project } from '@utils/types';
 
 // Sub-components
 import ProjectHeader from './components/ProjectHeader';

@@ -1,11 +1,11 @@
-/**
+﻿/**
  * 💬 ChatInterface - Composant d'interface de chat pour le mentor IA
  * Zone de conversation avec historique des messages
  */
 
 import React, { useRef, useEffect, useMemo } from 'react';
 import { Bot, ClipboardCheck, Map, ShieldCheck, Wrench } from 'lucide-react';
-import type { AIResponse } from '../../../services/ai/MissionSageService';
+import type { AIResponse } from '@services/ai/MissionSageService';
 import MessageBubble from './MessageBubble';
 
 interface ChatInterfaceProps {

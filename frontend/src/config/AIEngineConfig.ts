@@ -12,14 +12,23 @@ export class AIEngineConfig {
     this.provider = provider;
   }
 
+  static setApiKey(provider: AIProvider, key: string): void {
+    sessionStorage.setItem(`${provider}_API_KEY`, key);
+  }
+
+  static clearApiKey(provider: AIProvider): void {
+    sessionStorage.removeItem(`${provider}_API_KEY`);
+  }
+
   static getApiKey(): string | null {
     // Pour l'IA publique, pas de clé API nécessaire
     if (this.provider === 'PUBLIC_POLLINATIONS') {
       return null;
     }
 
-    // Pour les autres providers, récupérer depuis localStorage ou config
-    return localStorage.getItem(`${this.provider}_API_KEY`);
+    // Utiliser sessionStorage (non persistant) plutôt que localStorage
+    // pour éviter la persistance des clés API sensibles dans le navigateur
+    return sessionStorage.getItem(`${this.provider}_API_KEY`);
   }
 
   static isConfigured(): boolean {

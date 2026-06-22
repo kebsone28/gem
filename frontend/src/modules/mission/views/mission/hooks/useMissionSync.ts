@@ -1,16 +1,16 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, react-hooks/exhaustive-deps */
+﻿/* eslint-disable @typescript-eslint/no-explicit-any, react-hooks/exhaustive-deps */
 import { useCallback } from 'react';
-import { db } from '../../../../../store/db';
-import * as missionService from '../../../../../services/missionService';
-import { useAuth } from '../../../../../contexts/AuthContext';
+import { db } from '@/store/db';
+import * as missionService from '@services/missionService';
+import { useAuth } from '@contexts/AuthContext';
 import { getMissionValidationMessages, validateMission } from '../core/missionValidation';
-import { calculateMissionTotals } from '../../../../../utils/missionBudget';
-import { syncEventBus, SYNC_EVENTS } from '../../../../../utils/syncEventBus';
-import logger from '../../../../../utils/logger';
+import { calculateMissionTotals } from '@utils/missionBudget';
+import { syncEventBus, SYNC_EVENTS } from '@utils/syncEventBus';
+import logger from '@utils/logger';
 import toast from 'react-hot-toast';
 import type { MissionState, AuditEntry } from '../core/missionTypes';
-import { generateIntegrityHash } from '../../../../../utils/crypto';
-import type { Mission } from '../../../../../services/missionService';
+import { generateIntegrityHash } from '@utils/crypto';
+import type { Mission } from '@services/missionService';
 
 const HIDDEN_MISSION_IDS_KEY = 'gem_hidden_mission_ids';
 

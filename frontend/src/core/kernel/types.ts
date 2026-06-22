@@ -1,5 +1,18 @@
 import { ComponentType } from 'react';
 
+export type ModuleCategory =
+  | 'EXECUTIVE'
+  | 'PROJECTS'
+  | 'OPERATIONS'
+  | 'RESOURCES'
+  | 'QUALITY'
+  | 'FINANCE'
+  | 'DOCUMENTS'
+  | 'SECTORS'
+  | 'GOVERNANCE'
+  | 'ADMIN'
+  | 'UTILITAIRE';
+
 /**
  * ModuleManifest - Architecture "GED OS Kernel"
  * Chaque module métier déclare ses capacités, ses dépendances et son comportement au Kernel.
@@ -8,7 +21,7 @@ export interface ModuleManifest {
   key: string; // ex: 'terrain'
   name: string; // Nom d'affichage
   icon: string; // Nom de l'icône Lucide
-  category: 'PILOTAGE' | 'OPÉRATIONS' | 'SYSTÈME' | 'UTILITAIRE';
+  category: ModuleCategory;
   description: string;
   tags?: string[];
   

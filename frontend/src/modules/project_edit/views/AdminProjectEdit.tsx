@@ -7,13 +7,15 @@ import {
   LayoutDashboard, MapPin, ClipboardList, Calculator,
   Calendar, MessageSquare, Truck, BarChart3, FileText,
   BookOpen, Users, Shield, Wrench, Bell, Zap, GraduationCap,
-  AlertTriangle, Settings
+  AlertTriangle, Settings, ClipboardCheck, Activity,
+  LayoutGrid, Folder, ShieldCheck, Search, Terminal, RefreshCw
 } from 'lucide-react';
-import { useAuth } from '../../../contexts/AuthContext';
-import { normalizeRole, ROLES } from '../../../core/security/permissions';
-import projectService from '../../../services/projectService';
+import { useAuth } from '@contexts/AuthContext';
+import { normalizeRole, ROLES } from '@core/security/permissions';
+import projectService from '@services/projectService';
 import toast from 'react-hot-toast';
-import { PageContainer, PageHeader, ContentArea } from '../../../components';
+import { extractApiError } from '@utils/format';
+import { PageContainer, PageHeader, ContentArea } from '@components';
 
 // ─── Module definition (identical to Projet Kobo Global) ──────────────────
 interface ProjectModule {
@@ -31,18 +33,28 @@ const ALL_MODULES: Omit<ProjectModule, 'enabled'>[] = [
   { key: 'terrain',          label: 'Terrain (Carte)',     description: 'Suivi cartographique et spatial des ménages / abonnés', icon: MapPin,           color: 'text-emerald-400' },
   { key: 'mission',          label: 'Missions',            description: 'Planification et suivi des ordres de mission',          icon: ClipboardList,   color: 'text-indigo-400'  },
   { key: 'simulation',       label: 'Simulation IA',       description: 'Calculs de budgets et prévisions intelligents',         icon: Calculator,      color: 'text-violet-400'  },
+  { key: 'charges',          label: 'Charges',             description: 'Budgets prévus, coûts réels et écarts financiers',       icon: BarChart3,       color: 'text-green-400'  },
   { key: 'planning',         label: 'Planning',            description: 'Gantt et planification temporelle des équipes',         icon: Calendar,        color: 'text-sky-400'     },
   { key: 'communication',    label: 'Communication',       description: 'Messagerie et chat d\'équipe intégré',                  icon: MessageSquare,   color: 'text-pink-400'    },
   { key: 'logistique',       label: 'Logistique',          description: 'Gestion des stocks et déploiements matériels',          icon: Truck,           color: 'text-orange-400'  },
+  { key: 'atelier',          label: 'Atelier',             description: 'Saisie et journalisation de la préparation des kits',   icon: LayoutGrid,      color: 'text-cyan-400'    },
   { key: 'analytics',        label: 'Analytique',          description: 'Rapports avancés et tableaux croisés',                  icon: BarChart3,       color: 'text-cyan-400'    },
   { key: 'documents',        label: 'Documents',           description: 'Cahier des charges, PV et rapports de mission',         icon: FileText,        color: 'text-amber-400'   },
+  { key: 'sharedoc',         label: 'Documents Partagés',  description: 'Gérez les documents, dossiers et versions partagés',    icon: Folder,          color: 'text-slate-400'  },
+  { key: 'cahier',           label: 'Cahier de Charge',    description: 'Spécifications techniques et rapports détaillés',       icon: FileText,        color: 'text-amber-400'   },
   { key: 'bordereau',        label: 'Bordereau',           description: 'Suivi des livraisons et bons de sortie',                icon: BookOpen,        color: 'text-lime-400'    },
-  { key: 'users',            label: 'Équipes',             description: 'Gestion des membres et organigramme',                   icon: Users,           color: 'text-teal-400'    },
+  { key: 'pv_automation',    label: 'Automatisation PV',   description: 'Générez et gérez les procès-verbaux automatiquement',    icon: ShieldCheck,     color: 'text-purple-400' },
+  { key: 'mes',              label: 'GED OS MES',          description: 'Système de gestion des mises en service électriques',   icon: Zap,             color: 'text-yellow-400'  },
+  { key: 'kobo_mapping',     label: 'Mapping Kobo',        description: 'Configuration des correspondances de champs KoboToolbox', icon: RefreshCw,       color: 'text-blue-400'    },
+  { key: 'kobo_terminal',    label: 'Terminal KoboCollect', description: 'API officielle KoboCollect pour la synchronisation',     icon: Terminal,        color: 'text-emerald-400' },
+  { key: 'users',            label: 'Utilisateurs',        description: 'Gestion des comptes et accès',                          icon: Users,           color: 'text-teal-400'    },
   { key: 'approbation',      label: 'Approbations',        description: 'Workflow de validation et de signature',                icon: Shield,          color: 'text-purple-400'  },
   { key: 'maintenance',      label: 'Maintenance',         description: 'Suivi de la maintenance préventive et corrective',      icon: Wrench,          color: 'text-rose-400'    },
   { key: 'alerts',           label: 'Alertes',             description: 'Notifications automatiques et gestion des risques',     icon: Bell,            color: 'text-red-400'     },
   { key: 'ia',               label: 'Intelligence IA',     description: 'Assistant terrain et recommandations intelligentes',    icon: Zap,             color: 'text-fuchsia-400' },
   { key: 'formation',        label: 'Formation',           description: 'Planning de formation et suivi des compétences',        icon: GraduationCap,   color: 'text-green-400'   },
+  { key: 'ged_os_toolbox',   label: 'GED Sync',            description: 'Soumission directe VPS et synchronisation terrain',        icon: ClipboardCheck,  color: 'text-yellow-400'  },
+  { key: 'ged_os_collect',   label: 'GED Terminal',        description: 'Terminal de saisie terrain universel sans Kobo',           icon: Activity,        color: 'text-cyan-400'    },
 ];
 
 export default function AdminProjectEdit() {
@@ -65,7 +77,7 @@ export default function AdminProjectEdit() {
   useEffect(() => {
     if (!canEdit) {
       toast.error('Accès refusé');
-      navigate('/home');
+      navigate('/projects');
       return;
     }
     if (!id) return;
@@ -88,7 +100,7 @@ export default function AdminProjectEdit() {
         );
       } catch {
         toast.error('Impossible de charger le projet');
-        navigate('/home');
+        navigate('/projects');
       } finally {
         setLoading(false);
       }
@@ -118,9 +130,9 @@ export default function AdminProjectEdit() {
         },
       } as any);
       toast.success(`✅ Projet "${name.trim()}" mis à jour`);
-      navigate('/home');
+      navigate('/projects');
     } catch (err: any) {
-      toast.error(err?.response?.data?.error || 'Erreur lors de la sauvegarde');
+      toast.error(extractApiError(err, 'Erreur lors de la sauvegarde'));
     } finally {
       setSaving(false);
     }
@@ -149,9 +161,9 @@ export default function AdminProjectEdit() {
     try {
       await projectService.deleteProject(id!, password);
       toast.success(`✅ Projet supprimé avec succès`);
-      navigate('/home');
+      navigate('/projects');
     } catch (err: any) {
-      toast.error(err?.response?.data?.error || 'Erreur lors de la suppression');
+      toast.error(extractApiError(err, 'Erreur lors de la suppression'));
     } finally {
       setDeleting(false);
     }
@@ -170,7 +182,7 @@ export default function AdminProjectEdit() {
   return (
     <PageContainer className="min-h-screen bg-slate-950 py-8">
       <PageHeader
-        backLink={{ to: '/home', label: 'Retour aux Projets' }}
+        backLink={{ to: '/projects', label: 'Retour aux Projets' }}
         title="Modifier le Projet"
         subtitle="Paramètres et modules actifs"
         icon={<Settings size={28} className="text-white" />}
@@ -321,7 +333,7 @@ export default function AdminProjectEdit() {
           {/* ── Action bar ────────────────────────────────────────────── */}
           <div className="flex items-center justify-between pb-8">
             <button
-              onClick={() => navigate('/home')}
+              onClick={() => navigate('/projects')}
               className="px-6 py-3 bg-slate-800 text-slate-300 rounded-xl hover:bg-slate-700 font-bold transition-all"
             >
               Annuler

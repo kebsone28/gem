@@ -2,6 +2,7 @@ import { getRecentActions } from '../../services/audit.service.js';
 import prisma from '../../core/utils/prisma.js';
 import { redisConnection } from '../../core/utils/queueManager.js';
 import os from 'os';
+import logger from '../../utils/logger.js';
 
 // @desc    Get recent activity for the organization
 // @route   GET /api/monitoring/activity
@@ -13,7 +14,7 @@ export const getActivityFeed = async (req, res) => {
         const activities = await getRecentActions(organizationId, 1500); 
         res.json({ activities });
     } catch (error) {
-        console.error('Error fetching activity feed:', error.message);
+        logger.error('Error fetching activity feed:', error.message);
         res.status(500).json({ error: 'Server error', details: error.message });
     }
 };
@@ -59,12 +60,12 @@ export const getPerformanceStats = async (req, res) => {
                 }
             });
         } catch (auditErr) {
-            console.warn('[MONITORING] Impossible de lire auditLog:', auditErr.message);
+            logger.warn('[MONITORING] Impossible de lire auditLog:', auditErr.message);
         }
 
         res.json({ stats, dailyStats, dailyYield });
     } catch (error) {
-        console.error('Error fetching performance stats:', error.message);
+        logger.error('Error fetching performance stats:', error.message);
         res.status(500).json({ error: 'Server error', details: error.message });
     }
 };
@@ -119,7 +120,7 @@ export const getSystemHealth = async (req, res) => {
 
         res.json(health);
     } catch (error) {
-        console.error('Critical Diagnostic Error:', error);
+        logger.error('Critical Diagnostic Error:', error);
         res.status(500).json({ error: 'Failed to generate diagnostic report', details: error.message });
     }
 };
@@ -141,7 +142,7 @@ export const getSystemErrors = async (req, res) => {
         });
         res.json({ errors });
     } catch (error) {
-        console.error('Failed to fetch system errors:', error.message);
+        logger.error('Failed to fetch system errors:', error.message);
         res.status(500).json({ error: 'Server error' });
     }
 };
@@ -166,7 +167,7 @@ export const resolveSystemError = async (req, res) => {
         });
         res.json({ success: true });
     } catch (error) {
-        console.error('Failed to resolve system error:', error.message);
+        logger.error('Failed to resolve system error:', error.message);
         res.status(500).json({ error: 'Server error' });
     }
 };
@@ -216,7 +217,7 @@ export const logClientError = async (req, res) => {
 
         res.status(201).json({ success: true });
     } catch (error) {
-        console.error('Failed to log client error:', error.message);
+        logger.error('Failed to log client error:', error.message);
         res.status(500).json({ error: 'Server error' });
     }
 };

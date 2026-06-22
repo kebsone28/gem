@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { Search, X } from 'lucide-react';
-import type { SearchResult } from '../../../../../hooks/useMapFilters';
+import type { SearchResult } from '@hooks/useMapFilters';
 
 interface SearchInputProps {
   searchQuery: string;

@@ -1,8 +1,8 @@
 ﻿ 
 import React from 'react';
 import { Users, Zap, CheckCircle2, LayoutGrid } from 'lucide-react';
-import { KPICard } from '../../../../../../components/dashboards/DashboardComponents';
-import { fmtNum } from '../../../../../../utils/format';
+import { KPICard } from '@components/dashboards/DashboardComponents';
+import { fmtNum } from '@utils/format';
 import type { DashboardMetrics, MissionStats } from '../types';
 
 interface KPISectionProps {

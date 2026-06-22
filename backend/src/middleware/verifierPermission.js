@@ -1,3 +1,4 @@
+import logger from '../utils/logger.js';
 import { ROLE_PERMISSIONS } from '../core/config/permissions.js';
 import { routePermissionSatisfied } from '../core/config/permissionNormalization.js';
 import prisma from '../core/utils/prisma.js';
@@ -25,7 +26,7 @@ export const verifierPermission = (permission) => {
 
         if (!ok) {
             const permissionsAutorisees = ROLE_PERMISSIONS[roleUtilisateur] || [];
-            console.warn(`[SECURITE] Accès refusé : ${req.user.email} (${roleUtilisateur}) | Requiert: ${permission} | Perms du rôle: ${JSON.stringify(permissionsAutorisees)} | Perms de l'user: ${JSON.stringify(userPerms)}`);
+            logger.warn(`[SECURITE] Accès refusé : ${req.user.email} (${roleUtilisateur}) | Requiert: ${permission} | Perms du rôle: ${JSON.stringify(permissionsAutorisees)} | Perms de l'user: ${JSON.stringify(userPerms)}`);
             return res.status(403).json({
                 error: 'Accès interdit : Vous ne possédez pas les permissions nécessaires pour cette action.',
                 debug: { role: roleUtilisateur, required: permission }
@@ -57,7 +58,8 @@ export const verifierOrganisation = (req, res, next) => {
 };
 
 /**
- * Middleware ABAC : Vérifie si un Chef d'Équipe est assigné au projet
+ * Middleware ABAC : Vérifie si un Chef d'Équipe ou Chef de Projet est assigné au projet
+ * [FIX M-3] Étendu aux CHEF_PROJET pour éviter les fuites de données cross-projet
  * @param {string} typeRessource - 'projet', 'zone', 'menage'
  */
 export const verifierAssignation = (typeRessource) => {
@@ -70,24 +72,14 @@ export const verifierAssignation = (typeRessource) => {
             return next();
         }
 
-        // Seuls les Chefs d'Équipe sont soumis à cette vérification d'assignation
-        if (user.role !== 'CHEF_EQUIPE') {
+        // Seuls les CHEF_EQUIPE et CHEF_PROJET sont soumis à cette vérification
+        const restrictedRoles = ['CHEF_EQUIPE', 'CHEF_PROJET'];
+        if (!restrictedRoles.includes(user.role)) {
             return next();
         }
 
         try {
-            // 1. Récupérer l'équipe menée par cet utilisateur
-            const equipe = await prisma.team.findUnique({
-                where: { leaderId: user.id }
-            });
-
-            if (!equipe || !equipe.projectId) {
-                return res.status(403).json({
-                    error: 'Accès interdit : Vous n\'êtes assigné à aucun projet actif.'
-                });
-            }
-
-            // 2. Extraire l'ID du projet selon le contexte de la requête
+            // 1. Extraire l'ID du projet selon le contexte de la requête
             let projectIdCible = null;
 
             if (typeRessource === 'projet') {
@@ -96,22 +88,63 @@ export const verifierAssignation = (typeRessource) => {
                 projectIdCible = req.body.projectId;
             } else if (req.query.projectId) {
                 projectIdCible = req.query.projectId;
+            } else if (req.projectId) {
+                projectIdCible = req.projectId;
             }
 
-            // 3. Validation
-            if (projectIdCible && equipe.projectId !== projectIdCible) {
-                console.warn(`[ABAC] Refus : Chef Equipe ${user.email} tente d'agir sur le projet ${projectIdCible} alors qu'il est assigné à ${equipe.projectId}`);
-                return res.status(403).json({
-                    error: 'Accès interdit : Vous ne pouvez modifier que les ressources de votre projet assigné.'
+            // Sans ID projet cible, pas de restriction possible — laisser passer
+            if (!projectIdCible) {
+                return next();
+            }
+
+            if (user.role === 'CHEF_EQUIPE') {
+                // 2a. Pour CHEF_EQUIPE : vérifier via l'équipe assignée
+                const equipe = await prisma.team.findUnique({
+                    where: { leaderId: user.id }
                 });
-            }
 
-            // On injecte l'ID du projet de l'équipe dans la requête pour filtrage automatique éventuel
-            req.assignedProjectId = equipe.projectId;
+                if (!equipe || !equipe.projectId) {
+                    return res.status(403).json({
+                        error: 'Accès interdit : Vous n\'êtes assigné à aucun projet actif.'
+                    });
+                }
+
+                if (equipe.projectId !== projectIdCible) {
+                    logger.warn(`[ABAC] Refus : Chef Equipe ${user.email} tente d'agir sur le projet ${projectIdCible} (assigné à ${equipe.projectId})`);
+                    return res.status(403).json({
+                        error: 'Accès interdit : Vous ne pouvez modifier que les ressources de votre projet assigné.'
+                    });
+                }
+
+                req.assignedProjectId = equipe.projectId;
+
+            } else if (user.role === 'CHEF_PROJET') {
+                // 2b. Pour CHEF_PROJET : vérifier via la config du projet (assignedUsers)
+                const project = await prisma.project.findFirst({
+                    where: { id: projectIdCible, organizationId: user.organizationId, deletedAt: null },
+                    select: { id: true, config: true }
+                });
+
+                if (!project) {
+                    return res.status(404).json({ error: 'Projet introuvable.' });
+                }
+
+                const assignedUsers = (project.config || {}).assignedUsers || [];
+                const isAssigned = assignedUsers.includes(user.id) || assignedUsers.includes(user.email);
+
+                if (!isAssigned) {
+                    logger.warn(`[ABAC] Refus : Chef Projet ${user.email} tente d'agir sur le projet ${projectIdCible} (non assigné)`);
+                    return res.status(403).json({
+                        error: 'Accès interdit : Vous ne pouvez modifier que les projets auxquels vous êtes assigné.'
+                    });
+                }
+
+                req.assignedProjectId = project.id;
+            }
 
             next();
         } catch (error) {
-            console.error('[ABAC ERROR]', error);
+            logger.error('[ABAC ERROR]', error);
             res.status(500).json({ error: 'Erreur lors de la vérification des assignations.' });
         }
     };
@@ -168,7 +201,7 @@ export const verifierProjet = async (req, res, next) => {
         req.project = project; // Injecte l'objet projet complet (utile pour la config/modules)
         next();
     } catch (error) {
-        console.error('[PROJECT ISOLATION ERROR]', error);
+        logger.error('[PROJECT ISOLATION ERROR]', error);
         res.status(500).json({ 
             error: 'Erreur lors de la vérification du contexte projet.',
             details: error.message,
@@ -234,7 +267,7 @@ export const verifierModule = (moduleName) => {
 
             next();
         } catch (error) {
-            console.error('[verifierModule] Erreur critique lors de la vérification du module:', error);
+            logger.error('[verifierModule] Erreur critique lors de la vérification du module:', error);
             // 🛡️ FAIL-CLOSED : En cas d'erreur DB, on bloque l'accès par sécurité (503 Service Unavailable)
             return res.status(503).json({ 
                 error: 'Service temporairement indisponible (Vérification de module)',

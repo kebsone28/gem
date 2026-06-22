@@ -76,6 +76,12 @@ beforeEach(() => {
   } as Storage;
 
   vi.stubGlobal('localStorage', memoryStorage);
+  vi.stubGlobal('sessionStorage', {
+    getItem: () => null,
+    setItem: () => {},
+    removeItem: () => {},
+    clear: () => {},
+  });
   vi.stubGlobal('window', {
     ...globalThis,
     localStorage: memoryStorage,

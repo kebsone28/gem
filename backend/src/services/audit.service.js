@@ -1,6 +1,7 @@
 import { basePrisma as prisma } from '../core/utils/prisma.js';
 import { sendMail } from './mail.service.js';
 import { isPrismaSchemaDriftError } from '../core/utils/prismaCompat.js';
+import logger from '../utils/logger.js';
 
 /**
  * Service d'Audit - PROQUELEC SaaS
@@ -52,18 +53,17 @@ export const tracerAction = async (dataOrOrgId, userId, action, resource, resour
             auditData.userId = uId;
         }
 
-        prisma.auditLog.create({
-            data: auditData
-        })
-        .then(() => console.log(`[AUDIT] Action enregistrée en base : ${act}`))
-        .catch(err => {
+        try {
+            await prisma.auditLog.create({
+                data: auditData
+            });
+        } catch (err) {
             if (isPrismaSchemaDriftError(err)) {
-                console.warn(`[AUDIT] Journalisation ignorée (schéma legacy) pour ${act}`);
+                logger.warn(`[AUDIT] Journalisation ignorée (schéma legacy) pour ${act}`);
                 return;
             }
-            console.error(`[ERREUR AUDIT DB] Échec pour ${act}:`, err.message);
-            // On ne crash pas le process, mais on log l'erreur critique
-        });
+            logger.error(`[ERREUR AUDIT DB] Échec pour ${act}:`, err.message);
+        }
 
         // 2. Notification Email pour les actions CRITIQUES
         const criticalActions = ['SUPPRESSION_PROJET', 'MODIFICATION_SECURITE', 'RESET_DATA', 'CREATION_MISSION'];
@@ -82,12 +82,12 @@ export const tracerAction = async (dataOrOrgId, userId, action, resource, resour
                     <br/>
                     <b>Date :</b> ${new Date().toLocaleString()}
                 `
-            }).catch(err => console.error('[ERREUR NOTIF EMAIL] :', err.message));
+            }).catch(err => logger.error('[ERREUR NOTIF EMAIL] :', err.message));
         }
 
-        console.log(`[AUDIT] Action tracée : ${act}`);
+        logger.info(`[AUDIT] Action tracée : ${act}`);
     } catch (error) {
-        console.error('[ERREUR AUDIT] Échec :', error);
+        logger.error('[ERREUR AUDIT] Échec :', error);
     }
 };
 
@@ -114,7 +114,7 @@ export const getRecentActions = async (organizationId, limit = 10) => {
         if (isPrismaSchemaDriftError(error)) {
             return [];
         }
-        console.error('[ERREUR AUDIT] Impossible de récupérer les logs :', error);
+        logger.error('[ERREUR AUDIT] Impossible de récupérer les logs :', error);
         return [];
     }
 };

@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps */
+﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps */
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -33,7 +33,7 @@ import { organizationService } from '@services/organizationService';
 import projectService from '@services/projectService';
 import { auditService } from '@services/auditService';
 import toast from 'react-hot-toast';
-import logger from '../../../utils/logger';
+import logger from '@utils/logger';
 
 /**
  * 🎯 KOBO MASTER ENGINE v2.0 (Multi-Project & Dynamic Field Mapping)

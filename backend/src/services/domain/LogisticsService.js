@@ -7,7 +7,7 @@ export class LogisticsService {
    * Créer un entrepôt via l'Adapter (Uniformité)
    */
   static async createWarehouse(organizationId, projectId, rawData) {
-    const adapter = DomainAdapterFactory.getAdapter('logistics');
+    const adapter = DomainAdapterFactory.getAdapter('gem');
     const normalized = await adapter.normalizeEntity(rawData);
     const validationErrors = adapter.validateEntity(normalized);
     if (validationErrors.length > 0) {

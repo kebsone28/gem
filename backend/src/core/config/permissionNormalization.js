@@ -70,6 +70,16 @@ export const ALL_FRONTEND_ATOMS = Object.freeze([
   'docs.confidential',
   'docs.pv',
   'modules.manage',
+  'sector.gem',
+  'sector.mes',
+  // [FIX C-2] Atomes MES granulaires pour le moteur d'autorisation
+  'sector.mes.create',
+  'sector.mes.update',
+  'sector.mes.delete',
+  'sector.mes.validate',
+  'sector.mes.control',
+  'sector.mes.import',
+  'sector.mes.export',
 ]);
 
 const FRONTEND_ATOM_SET = new Set(ALL_FRONTEND_ATOMS);
@@ -124,6 +134,15 @@ export const PERMISSION_KEY_TO_ATOM = Object.freeze({
   'project.template.update': 'modules.manage',
   'project.template.delete': 'modules.manage',
   'project.template.manage': 'modules.manage',
+
+  // ── Routes MES (mes.routes.js) — [FIX C-2] ──
+  'mes.create': 'sector.mes.create',
+  'mes.update': 'sector.mes.update',
+  'mes.delete': 'sector.mes.delete',
+  'mes.validate': 'sector.mes.validate',
+  'mes.control': 'sector.mes.control',
+  'mes.import': 'sector.mes.import',
+  'mes.export': 'sector.mes.export',
 });
 
 /**

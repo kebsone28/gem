@@ -1,9 +1,10 @@
 import React, { Suspense } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
-import Layout from '../../layouts/Layout';
-import { hasPermission, normalizeRole } from '../../core/security/permissions';
-import { getAllModules } from '../../core/kernel/registry';
+import { Routes, Route, Navigate, useParams, useLocation } from 'react-router-dom';
+import { useAuth } from '@contexts/AuthContext';
+import Layout from '@/layouts/Layout';
+import { hasPermission, normalizeRole } from '@core/security/permissions';
+import { getAllModules } from '@core/kernel/registry';
+import { LEGACY_ROUTES_MAP } from './legacyRoutes';
 
 export const PageLoader = () => (
   <div className="min-h-screen flex items-center justify-center bg-[#0D1E35]">
@@ -27,7 +28,7 @@ const PermissionRoute = ({
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
   if (!hasPermission(user, permission)) {
-    return <Navigate to="/home" replace />;
+    return <Navigate to="/projects" replace />;
   }
   return <>{children}</>;
 };
@@ -43,9 +44,24 @@ const RoleRoute = ({
   if (!user) return <Navigate to="/login" replace />;
   const role = normalizeRole(user.role);
   if (!role || !allowedRoles.includes(role)) {
-    return <Navigate to="/home" replace />;
+    return <Navigate to="/projects" replace />;
   }
   return <>{children}</>;
+};
+
+const RedirectWithParams = ({ to }: { to: string }) => {
+  const params = useParams();
+  const location = useLocation();
+  let target = to;
+  Object.entries(params).forEach(([key, val]) => {
+    if (val) {
+      target = target.replace(`:${key}`, val);
+    }
+  });
+  if (location.search) {
+    target += location.search;
+  }
+  return <Navigate to={target} replace />;
 };
 
 export const AppRouter = () => {
@@ -53,7 +69,7 @@ export const AppRouter = () => {
     <Suspense fallback={<PageLoader />}>
       <Routes>
         {/* 1. Static Public/Utility Routes */}
-        <Route path="/" element={<Navigate to="/home" replace />} />
+        <Route path="/" element={<Navigate to="/projects" replace />} />
         
         {/* 2. Dynamic Modules from Registry */}
         {getAllModules().map((module) => {
@@ -90,8 +106,14 @@ export const AppRouter = () => {
         })}
 
         {/* 3. Legacy Redirects & Fallbacks */}
-        <Route path="/finances" element={<Navigate to="/charges" replace />} />
-        <Route path="*" element={<Navigate to="/home" replace />} />
+        {Object.entries(LEGACY_ROUTES_MAP).map(([oldPath, newPath]) => (
+          <Route
+            key={oldPath}
+            path={oldPath}
+            element={<RedirectWithParams to={newPath} />}
+          />
+        ))}
+        <Route path="*" element={<Navigate to="/projects" replace />} />
       </Routes>
     </Suspense>
   );

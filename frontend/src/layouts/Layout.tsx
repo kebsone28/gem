@@ -6,6 +6,7 @@ import { useWebSockets } from '../hooks/useWebSockets';
 import { CommandPalette } from '../components/common/CommandPalette';
 import { useBackgroundSync } from '../hooks/useBackgroundSync';
 import { HybridChatbot } from '../components/ChatbotWidget/HybridChatbot';
+import { TopBar } from '../components/layout/TopBar';
 
 /**
  * Layout – Shell principal de l'application GED OS.
@@ -28,10 +29,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   useBackgroundSync();
   const location = useLocation();
   const isTerrainImmersive =
-    location.pathname === '/terrain' || location.pathname === '/communication';
-  // Sur /communication et /home on cache entièrement la sidebar pour que le chat
+    location.pathname === '/operations/map' || location.pathname === '/communication';
+  // Sur /communication et /projects on cache entièrement la sidebar pour que le chat
   // occupe tout l'écran sans décalage ni barre latérale de navigation.
-  const hideSidebar = location.pathname === '/communication' || location.pathname === '/home';
+  const hideSidebar = location.pathname === '/communication' || location.pathname === '/projects';
   const [sidebarMode, setSidebarMode] = useState<'wide' | 'compact' | 'rail'>(() => {
     if (typeof window === 'undefined') return 'wide';
     const storedMode = window.localStorage.getItem('ged-os-sidebar-mode');
@@ -105,6 +106,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         className="relative flex min-w-0 flex-1 flex-col overflow-hidden bg-[radial-gradient(circle_at_top,#17305f_0%,#0a1630_18%,#060c1c_58%,#030712_100%)]"
         role="main"
       >
+        {!hideSidebar && <TopBar />}
         <div className="pointer-events-none absolute inset-0">
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(96,165,250,0.08),transparent_18%,transparent_72%,rgba(15,23,42,0.45))]" />
           <div className="absolute left-[-12%] top-[-10%] h-72 w-72 rounded-full bg-blue-500/12 blur-3xl" />

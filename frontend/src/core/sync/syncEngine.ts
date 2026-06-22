@@ -10,7 +10,7 @@
  *  - Queue volatile en mémoire uniquement
  */
 
-import { logger } from '../../services/logger';
+import { logger } from '@services/logger';
 
 const QUEUE_BACKUP_KEY = 'sync_engine_queue_backup'; // clé legacy à purger
 const DEDUP_WINDOW_MS = 2000; // 2 secondes

@@ -43,7 +43,7 @@ export function DataSection({
       toast.success('✅ Recalcul spatial terminé avec succès !');
     } catch (err: any) {
       logger.error(err);
-      toast.error('Erreur lors du recalcul : ' + (err.response?.data?.error || err.message));
+      toast.error('Erreur lors du recalcul : ' + String(err.response?.data?.error || err.message));
     } finally {
       setIsProcessing(false);
     }

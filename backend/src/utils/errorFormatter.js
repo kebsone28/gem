@@ -77,7 +77,7 @@ export const formatServerError = (message, code = 'SERVER_ERROR', error = null) 
 /**
  * Express middleware for consistent error responses
  */
-export const errorFormatter = (err, req, res, next) => {
+export const errorFormatter = (err, req, res, _next) => {
   const statusCode = err.statusCode || 500;
   const code = err.code || 'SERVER_ERROR';
   const message = err.message || 'Internal server error';

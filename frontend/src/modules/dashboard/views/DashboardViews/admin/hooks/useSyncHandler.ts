@@ -1,8 +1,8 @@
 ﻿ 
 import { useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
-import { useSync } from '../../../../../../hooks/useSync';
-import logger from '../../../../../../utils/logger';
+import { useSync } from '@hooks/useSync';
+import logger from '@utils/logger';
 
 export function useSyncHandler(onSyncComplete?: () => Promise<void>) {
   const [isSyncing, setIsSyncing] = useState(false);

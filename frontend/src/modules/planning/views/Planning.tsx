@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+﻿import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Calendar,
@@ -56,15 +56,15 @@ import {
 import {
   DASHBOARD_STICKY_PANEL,
   MODULE_ACCENTS,
-} from '../../../components/dashboards/DashboardComponents';
-import { missionSageService } from '../../../services/ai/MissionSageService';
-import type { AIResponse, AIState, RegionalSummary } from '../../../services/ai/MissionSageService';
-import { useProject } from '../../../contexts/ProjectContext';
-import { usePlanningData } from '../../../hooks/usePlanningData';
-import { usePlanningAuditHistory } from '../../../hooks/usePlanningAuditHistory';
-import { usePlanningDelayAlerts } from '../../../hooks/usePlanningDelayAlerts';
-import { useLabels } from '../../../contexts/LabelsContext';
-import logger from '../../../utils/logger';
+} from '@components/dashboards/DashboardComponents';
+import { missionSageService } from '@services/ai/MissionSageService';
+import type { AIResponse, AIState, RegionalSummary } from '@services/ai/MissionSageService';
+import { useProject } from '@contexts/ProjectContext';
+import { usePlanningData } from '@hooks/usePlanningData';
+import { usePlanningAuditHistory } from '@hooks/usePlanningAuditHistory';
+import { usePlanningDelayAlerts } from '@hooks/usePlanningDelayAlerts';
+import { useLabels } from '@contexts/LabelsContext';
+import logger from '@utils/logger';
 import {
   PHASE_COLORS,
   PHASE_LABELS,
@@ -81,16 +81,16 @@ import {
   getPlanningWorkDaysPerWeek,
   type PhaseFilter,
   type PlanningTask,
-} from '../../../services/planningDomain';
+} from '@services/planningDomain';
 import {
   isLogisticsPlanningTeam,
   isPreparationPlanningTeam,
   teamMatchesPlanningRegion,
-} from '../../../services/planningAllocation';
-import { TRADE_FILTER_OPTIONS, GANTT_PHASE_METADATA } from '../../../services/planningCalculations';
-import type { AuditLog } from '../../../utils/types';
+} from '@services/planningAllocation';
+import { TRADE_FILTER_OPTIONS, GANTT_PHASE_METADATA, REGIONAL_CAPACITY_METRICS } from '@services/planningCalculations';
+import type { AuditLog } from '@utils/types';
 
-type ViewMode = 'calendar' | 'timeline' | 'kanban' | 'gantt';
+type PlanningTab = 'gantt' | 'productivite' | 'avancement' | 'optimisation' | 'formation' | 'zones' | 'regions';
 
 const GANTT_WINDOW_DAYS = 21;
 
@@ -246,7 +246,7 @@ function formatPlanningAiRecommendation(message: string): {
 }
 
 export default function Planning() {
-  const [viewMode, setViewMode] = useState<ViewMode>('timeline');
+  const [activeTab, setActiveTab] = useState<PlanningTab>('gantt');
   const [phaseFilter, setPhaseFilter] = useState<PhaseFilter>('ALL');
   const [selectedRegion, setSelectedRegion] = useState<string>('ALL');
   const [selectedTrade, setSelectedTrade] = useState<string>('ALL');
@@ -254,6 +254,7 @@ export default function Planning() {
   const [targetMonths, setTargetMonths] = useState<number>(6);
   const [includeSaturday, setIncludeSaturday] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [viewMode, setViewMode] = useState<'timeline' | 'calendar' | 'gantt' | 'kanban'>('gantt');
   const [planningMode, setPlanningMode] = useState<PlanningMode>('automatic');
   const [showAudit, setShowAudit] = useState(false);
   const [showManualPlanner, setShowManualPlanner] = useState(false);

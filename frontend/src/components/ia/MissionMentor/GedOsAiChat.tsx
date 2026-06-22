@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 🤖 GedOsAiChat - Composant de chat IA intégré avec GedOsAiCore
  * Version améliorée de MissionMentor utilisant le cerveau IA centralisé
  */
@@ -6,15 +6,15 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, Bot, CircleCheck, CircleDashed } from 'lucide-react';
-import { useGedOsAiChat } from '../../../hooks/useGedOsAiCore';
-import type { AIState } from '../../../services/ai/MissionSageService';
-import type { MissionStats } from '../../../services/missionStatsService';
+import { useGedOsAiChat } from '@hooks/useGedOsAiCore';
+import type { AIState } from '@services/ai/MissionSageService';
+import type { MissionStats } from '@services/missionStatsService';
 import ChatInterface from './ChatInterface';
 import InputBar from './InputBar';
 import VoiceControls from './VoiceControls';
-import type { AuditLog, Household, Team } from '../../../utils/types';
-import logger from '../../../utils/logger';
-import apiClient from '../../../api/client';
+import type { AuditLog, Household, Team } from '@utils/types';
+import logger from '@utils/logger';
+import apiClient from '@/api/client';
 
 interface GedOsAiChatProps {
   stats?: MissionStats | null;

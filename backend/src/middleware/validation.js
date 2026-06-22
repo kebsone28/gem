@@ -100,12 +100,7 @@ export const validateSchema = (schema) => {
       });
 
       return res.status(400).json({
-        error: {
-          message: 'Validation failed',
-          code: 'VALIDATION_ERROR',
-          errors,
-          timestamp: new Date().toISOString(),
-        },
+        error: 'Validation failed: ' + errors.join(', '),
       });
     }
 

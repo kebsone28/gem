@@ -1,6 +1,7 @@
-import { useContext, useEffect, useRef } from 'react'
+﻿import { useContext, useEffect, useRef } from 'react'
 import { Map, Popup } from 'maplibre-gl'
-import { useCluster } from '../../../services/cluster/useCluster'
+import { useCluster } from '@services/cluster/useCluster'
+import logger from '@services/logger'
 import { MapContext } from '../MapLibreVectorMap'
 
 type Props = { id?: string; data?: GeoJSON.FeatureCollection }
@@ -96,7 +97,7 @@ export default function LogisticsLayer({ id = 'logistics', data }: Props){
     if (!map) return
     if (!clusters) return
     const fc = { type: 'FeatureCollection', features: clusters as any[] }
-    try{ const src = map.getSource(id) as any; if (src) src.setData(fc) }catch(e){ console.warn('setData failed', e) }
+    try{ const src = map.getSource(id) as any; if (src) src.setData(fc) }catch(e){ logger.warn('setData failed', e) }
   }, [clusters, map, id])
 
   // interactions: hover tooltip and click-to-zoom cluster expansion
@@ -174,7 +175,7 @@ export default function LogisticsLayer({ id = 'logistics', data }: Props){
           const summaryHtml = `<div style=\"min-width:200px;padding:10px;border-radius:12px;backdrop-filter:blur(6px);background:rgba(0,0,0,0.7);color:#fff\">Cluster: <strong>${props.point_count||props.count||''}</strong><br/><small>zoom target: ${expZoom ?? 'auto'}</small></div>`
           new Popup({ offset: 12 }).setLngLat(coords).setHTML(summaryHtml).addTo(map)
         }catch(err){
-          console.warn('Cluster expansion failed', err)
+          logger.warn('Cluster expansion failed', err)
         }
       }else{
         // open popup with details for single feature

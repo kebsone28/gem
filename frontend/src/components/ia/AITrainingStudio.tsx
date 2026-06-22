@@ -1,4 +1,4 @@
-
+﻿
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   BookOpen,
@@ -6,18 +6,18 @@ import {
   Rows3,
   X,
 } from 'lucide-react';
-import type { AIResponse, RegionalSummary } from '../../services/ai/MissionSageService';
-import { missionSageService } from '../../services/ai/MissionSageService';
+import type { AIResponse, RegionalSummary } from '@services/ai/MissionSageService';
+import { missionSageService } from '@services/ai/MissionSageService';
 import {
   mentorTrainingService,
   type MentorTrainingEntry,
-} from '../../services/ai/mentorTrainingService';
+} from '@services/ai/mentorTrainingService';
 import {
   missionSageLearningLogService,
   type MissionSageLearningLog,
-} from '../../services/ai/missionSageLearningLogService';
-import type { MissionStats } from '../../services/missionStatsService';
-import type { AuditLog, Household, Team } from '../../utils/types';
+} from '@services/ai/missionSageLearningLogService';
+import type { MissionStats } from '@services/missionStatsService';
+import type { AuditLog, Household, Team } from '@utils/types';
 import AIPremiumMessage from './AIPremiumMessage';
 import TrainingEditor from './AITrainingStudio/TrainingEditor';
 import EntriesList from './AITrainingStudio/EntriesList';

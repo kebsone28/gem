@@ -1,7 +1,7 @@
  
 import apiClient from '../api/client';
 import type { User, UserRole } from '../utils/types';
-import logger from '../utils/logger';
+import logger from './logger';
 
 export interface ManagedUser extends User {
   id: string;
@@ -25,7 +25,7 @@ export const userService = {
       const response = await apiClient.post('/users', user);
       return response.data;
     } catch (error: any) {
-      console.error('❌ [USER_SERVICE] Create User Error Details:', error.response?.data);
+      logger.error('❌ [USER_SERVICE] Create User Error Details:', error.response?.data);
       throw error;
     }
   },
@@ -39,7 +39,7 @@ export const userService = {
       const response = await apiClient.patch(`/users/${id}`, user);
       return response.data;
     } catch (error: any) {
-      console.error('❌ [USER_SERVICE] Update User Error Details:', error.response?.data);
+      logger.error('❌ [USER_SERVICE] Update User Error Details:', error.response?.data);
       throw error;
     }
   },

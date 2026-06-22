@@ -1,3 +1,4 @@
+import logger from '../utils/logger.js';
 import prisma from '../core/utils/prisma.js';
 
 /**
@@ -16,7 +17,7 @@ export const logPerformance = async ({
 }) => {
     try {
         if (!organizationId || !projectId) {
-            console.warn('[PERFORMANCE-SERVICE] Missing organizationId or projectId');
+            logger.warn('[PERFORMANCE-SERVICE] Missing organizationId or projectId');
             return null;
         }
 
@@ -58,12 +59,12 @@ export const logPerformance = async ({
             }
         });
 
-        console.log(`[PERFORMANCE-SERVICE] Logged ${action} for household ${householdId} (Team: ${teamId || 'N/A'})`);
+        logger.info(`[PERFORMANCE-SERVICE] Logged ${action} for household ${householdId} (Team: ${teamId || 'N/A'})`);
         return log;
 
     } catch (error) {
         // We log the error but don't throw to prevent breaking the caller's transaction/workflow
-        console.error('[PERFORMANCE-SERVICE-ERROR]', error.message);
+        logger.error('[PERFORMANCE-SERVICE-ERROR]', error.message);
         return null;
     }
 };

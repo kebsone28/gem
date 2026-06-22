@@ -3,7 +3,6 @@ import CircuitBreakerService from './CircuitBreakerService.js';
 import FallbackStrategy from './FallbackStrategy.js';
 import RetryPolicy from './RetryPolicy.js';
 import { queryOllama } from '../ollama.client.js';
-import { config } from '../../../core/config/config.js';
 
 /**
  * AIRouterService - Intelligent AI request routing with resilience
@@ -18,7 +17,7 @@ import { config } from '../../../core/config/config.js';
  * - Metrics collection
  */
 class AIRouterService {
-  constructor(options = {}) {
+  constructor(_options = {}) {
     this.initialized = false;
     
     // Create circuit breaker for Ollama (primary)
@@ -92,9 +91,10 @@ class AIRouterService {
     });
 
     try {
-      // Check for emergency bypass (from ApprovalExecutor)
-      if (process.env.APPROVAL_SYSTEM_BYPASS === 'true') {
-        logger.warn('⚠️ Emergency bypass active - routing may be affected');
+      // Check for emergency bypass (must match same gate as ApprovalExecutor)
+      const bypassKey = process.env.APPROVAL_SYSTEM_BYPASS_KEY || '';
+      if (process.env.APPROVAL_SYSTEM_BYPASS === 'true' && bypassKey.length === 36) {
+        logger.warn('⚠️ Emergency bypass active — routing may be affected');
       }
 
       // Use optimized execution for cost efficiency

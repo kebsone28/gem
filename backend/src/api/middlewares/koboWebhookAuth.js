@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { config } from '../../core/config/config.js';
+import logger from '../../utils/logger.js';
 
 /**
  * Middleware to verify KoboToolbox HMAC-SHA256 webhook signatures.
@@ -10,14 +11,14 @@ export const verifyKoboWebhook = (req, res, next) => {
         const koboSignature = req.headers['x-kobo-webhook-signature'];
         
         if (!koboSignature) {
-            console.warn('[WEBHOOK] Missing X-Kobo-Webhook-Signature header.');
+            logger.warn('[WEBHOOK] Missing X-Kobo-Webhook-Signature header.');
             return res.status(401).json({ error: 'Missing security signature' });
         }
 
         const secret = config.kobo?.webhookSecret || process.env.KOBO_WEBHOOK_SECRET;
 
         if (!secret) {
-            console.error('[WEBHOOK] KOBO_WEBHOOK_SECRET is not configured on the server.');
+            logger.error('[WEBHOOK] KOBO_WEBHOOK_SECRET is not configured on the server.');
             return res.status(500).json({ error: 'Server misconfiguration' });
         }
 
@@ -38,7 +39,7 @@ export const verifyKoboWebhook = (req, res, next) => {
             && crypto.timingSafeEqual(providedSignatureBuffer, expectedSignatureBuffer);
 
         if (!signatureValid) {
-            console.warn('[WEBHOOK] Security mismatch. Invalid signature attempt.', {
+            logger.warn('[WEBHOOK] Security mismatch. Invalid signature attempt.', {
                 receivedLength: providedSignatureBuffer.length
             });
             return res.status(403).json({ error: 'Invalid crypto signature' });
@@ -46,7 +47,7 @@ export const verifyKoboWebhook = (req, res, next) => {
 
         return next();
     } catch (error) {
-        console.error('[WEBHOOK-AUTH] Error checking signature:', error);
+        logger.error('[WEBHOOK-AUTH] Error checking signature:', error);
         return res.status(500).json({ error: 'Internal server error validating webhook' });
     }
 };

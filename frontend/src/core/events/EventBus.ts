@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 🔀 GED OS Kernel — EventBus
  * Bus d'événements centralisé pour la communication inter-modules.
  * Implémente le pattern Publisher/Subscriber avec typage fort.
@@ -8,6 +8,8 @@
  *  - Les modules s'abonnent à des événements via EventBus.on()
  *  - Le Kernel trace tous les événements pour l'audit
  */
+
+import logger from '@services/logger';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -181,11 +183,11 @@ class GedOsEventBus {
         const result = sub.handler(event);
         if (result instanceof Promise) {
           result.catch((err) =>
-            console.error(`[EventBus] Handler error for ${eventType}:`, err)
+            logger.error(`[EventBus] Handler error for ${eventType}:`, err)
           );
         }
       } catch (err) {
-        console.error(`[EventBus] Sync handler error for ${eventType}:`, err);
+        logger.error(`[EventBus] Sync handler error for ${eventType}:`, err);
       }
 
       if (sub.once) toRemove.push(sub);

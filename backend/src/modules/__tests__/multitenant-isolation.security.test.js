@@ -7,17 +7,28 @@ import prisma from '../../core/utils/prisma.js';
 import { config } from '../../core/config/config.js';
 import { normalizePermissionsToAtoms } from '../../core/config/permissionNormalization.js';
 
-const adminRoleProbe = await prisma.role.findFirst({ where: { name: 'ADMIN_PROQUELEC' } });
-const restrictedRoleProbe =
-  (await prisma.role.findFirst({ where: { name: 'EMPLOYE' } })) ||
-  (await prisma.role.findFirst({ where: { name: 'CHEF_EQUIPE' } }));
+/**
+ * Multi-Tenant Isolation Security Tests
+ */
+
+let adminRoleProbe, restrictedRoleProbe;
+
+try {
+  adminRoleProbe = await prisma.role.findFirst({ where: { name: 'ADMIN_PROQUELEC' } });
+  restrictedRoleProbe =
+    (await prisma.role.findFirst({ where: { name: 'EMPLOYE' } })) ||
+    (await prisma.role.findFirst({ where: { name: 'CHEF_EQUIPE' } }));
+} catch {
+  adminRoleProbe = null;
+  restrictedRoleProbe = null;
+}
 
 const rbacReadyForMultitenant = !!(adminRoleProbe && restrictedRoleProbe);
 const describeMT = rbacReadyForMultitenant ? describe : describe.skip;
 /** Titre long uniquement quand la suite est skippée : le rapport Vitest affiche alors la raison. */
 const multitenantSuiteName = rbacReadyForMultitenant
   ? '🔒 Multi-Tenant Isolation Tests'
-  : '🔒 Multi-Tenant Isolation Tests — skip: DB sans rôles ADMIN_PROQUELEC et (EMPLOYE ou CHEF_EQUIPE)';
+  : '🔒 Multi-Tenant Isolation Tests — skip: DB indisponible ou rôles manquants (ADMIN_PROQUELEC + EMPLOYE/CHEF_EQUIPE)';
 
 /**
  * Multi-Tenant Isolation Security Tests

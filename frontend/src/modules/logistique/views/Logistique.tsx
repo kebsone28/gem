@@ -2,23 +2,23 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Package, Truck, Users, Wrench, Map as MapIcon, RefreshCcw, Search } from 'lucide-react';
-import StockTab from '../../../components/logistique/StockTab';
-import DeliveriesTab from '../../../components/logistique/DeliveriesTab';
-import AgentsTab from '../../../components/logistique/AgentsTab';
-import GrappesTab from '../../../components/logistique/GrappesTab';
-import TeamLedgerTab from '../../../components/logistique/TeamLedgerTab';
-import { useLogistique } from '../../../hooks/useLogistique';
-import { useTheme } from '../../../contexts/ThemeContext';
-import { usePermissions } from '../../../hooks/usePermissions';
-import { useLabels } from '../../../contexts/LabelsContext';
+import StockTab from '../components/StockTab';
+import DeliveriesTab from '../components/DeliveriesTab';
+import AgentsTab from '../components/AgentsTab';
+import GrappesTab from '../components/GrappesTab';
+import TeamLedgerTab from '../components/TeamLedgerTab';
+import { useLogistique } from '@hooks/useLogistique';
+import { useTheme } from '@contexts/ThemeContext';
+import { usePermissions } from '@hooks/usePermissions';
+import { useLabels } from '@contexts/LabelsContext';
 import toast from 'react-hot-toast';
 
 // Import centralized design system
-import { PageContainer, PageHeader, ContentArea, ActionBar, ModulePageShell } from '../../../components';
+import { PageContainer, PageHeader, ContentArea, ActionBar, ModulePageShell } from '@components';
 import {
   DASHBOARD_SECTION_SURFACE,
   MODULE_ACCENTS,
-} from '../../../components/dashboards/DashboardComponents';
+} from '@/components/dashboards/DashboardComponents';
 
 type LogistiqueTabId = 'stock' | 'deliveries' | 'agents' | 'ledger' | 'grappes';
 

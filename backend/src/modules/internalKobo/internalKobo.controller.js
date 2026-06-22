@@ -1,3 +1,4 @@
+import logger from '../../utils/logger.js';
 import prisma from '../../core/utils/prisma.js';
 import eventBus from '../../core/utils/eventBus.js';
 import { tracerAction } from '../../services/audit.service.js';
@@ -142,6 +143,7 @@ async function findUniversalXlsFormDefinition(organizationId, formKey) {
   });
 
   if (!mapping || !isPlainObject(mapping.mapping)) return null;
+  if (isUniversalXlsFormDeleted(mapping.mapping)) return null;
   return {
     id: mapping.id,
     koboAssetId: mapping.koboAssetId,
@@ -154,6 +156,14 @@ async function findUniversalXlsFormDefinition(organizationId, formKey) {
 
 function isUniversalXlsFormActive(definition) {
   return definition?.lifecycle?.active !== false;
+}
+
+function isUniversalXlsFormDeleted(definition) {
+  return Boolean(definition?.lifecycle?.deletedAt || definition?.lifecycle?.status === 'deleted');
+}
+
+function filterVisibleUniversalXlsFormMappings(mappings = []) {
+  return mappings.filter((mapping) => !isUniversalXlsFormDeleted(mapping.mapping));
 }
 
 function buildDefinitionSummary(definition = {}) {
@@ -780,7 +790,7 @@ export const submitInternalKoboSubmission = async (req, res) => {
           household: sanitizeBigIntForJson(updatedHousehold),
         });
       } catch (eventError) {
-        console.error('[INTERNAL-KOBO] event emit error:', eventError.message);
+        logger.error('[INTERNAL-KOBO] event emit error:', eventError.message);
       }
     }
 
@@ -803,7 +813,7 @@ export const submitInternalKoboSubmission = async (req, res) => {
         req,
       });
     } catch (auditError) {
-      console.error('[INTERNAL-KOBO] audit log error:', auditError.message);
+      logger.error('[INTERNAL-KOBO] audit log error:', auditError.message);
     }
 
     return res.status(201).json({
@@ -812,7 +822,7 @@ export const submitInternalKoboSubmission = async (req, res) => {
       household: updatedHousehold ? sanitizeBigIntForJson(updatedHousehold) : null,
     });
   } catch (err) {
-    console.error('[INTERNAL-KOBO] submit error:', err?.message || err, err?.stack || 'no-stack');
+    logger.error('[INTERNAL-KOBO] submit error:', err?.message || err, err?.stack || 'no-stack');
     const statusCode = err.statusCode || 500;
     return res.status(statusCode).json({
       success: false,
@@ -827,9 +837,11 @@ export const getInternalKoboFormDefinition = async (req, res) => {
     const importedMappings = await prisma.koboFormMapping.findMany({
       where: { organizationId: req.user.organizationId },
       orderBy: { updatedAt: 'desc' },
-      take: 20,
+      take: 50,
     });
-    const importedForms = importedMappings.map(summarizeUniversalXlsFormMapping);
+    const importedForms = filterVisibleUniversalXlsFormMappings(importedMappings)
+      .slice(0, 20)
+      .map(summarizeUniversalXlsFormMapping);
 
     return res.json({
       success: true,
@@ -867,7 +879,7 @@ export const getInternalKoboFormDefinition = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error(
+    logger.error(
       '[INTERNAL-KOBO] form-definition error:',
       err?.message || err,
       err?.stack || 'no-stack'
@@ -885,14 +897,15 @@ export const listInternalKoboFormDefinitions = async (req, res) => {
       where: { organizationId: req.user.organizationId },
       orderBy: { updatedAt: 'desc' },
     });
+    const visibleMappings = filterVisibleUniversalXlsFormMappings(mappings);
 
     return res.json({
       success: true,
-      count: mappings.length,
-      forms: mappings.map(summarizeUniversalXlsFormMapping),
+      count: visibleMappings.length,
+      forms: visibleMappings.map(summarizeUniversalXlsFormMapping),
     });
   } catch (err) {
-    console.error('[INTERNAL-KOBO] form-definitions list error:', err);
+    logger.error('[INTERNAL-KOBO] form-definitions list error:', err);
     return res.status(500).json({
       success: false,
       message: 'Server error while listing XLSForm definitions',
@@ -938,7 +951,7 @@ export const reportInternalKoboClientQueue = async (req, res) => {
       summary: { pending, failed, blocked, mediaBytes, count: queue.length },
     });
   } catch (err) {
-    console.error('[INTERNAL-KOBO] client queue report error:', err);
+    logger.error('[INTERNAL-KOBO] client queue report error:', err);
     return res.status(500).json({
       success: false,
       message: 'Server error while reporting internal Kobo client queue',
@@ -962,7 +975,7 @@ export const getInternalKoboImportedFormDefinition = async (req, res) => {
       form: sanitizeBigIntForJson(mapping.definition),
     });
   } catch (err) {
-    console.error('[INTERNAL-KOBO] form-definition get error:', err);
+    logger.error('[INTERNAL-KOBO] form-definition get error:', err);
     return res.status(500).json({
       success: false,
       message: 'Server error while loading XLSForm definition',
@@ -990,7 +1003,7 @@ export const updateInternalKoboFormDefinitionStatus = async (req, res) => {
       },
     });
 
-    if (!mapping || !isPlainObject(mapping.mapping)) {
+    if (!mapping || !isPlainObject(mapping.mapping) || isUniversalXlsFormDeleted(mapping.mapping)) {
       return res.status(404).json({
         success: false,
         message: 'XLSForm definition not found',
@@ -1039,10 +1052,83 @@ export const updateInternalKoboFormDefinitionStatus = async (req, res) => {
       form: summarizeUniversalXlsFormMapping(updatedMapping),
     });
   } catch (err) {
-    console.error('[INTERNAL-KOBO] form-definition status error:', err);
+    logger.error('[INTERNAL-KOBO] form-definition status error:', err);
     return res.status(500).json({
       success: false,
       message: 'Server error while updating XLSForm status',
+    });
+  }
+};
+
+export const deleteInternalKoboFormDefinition = async (req, res) => {
+  try {
+    const { organizationId, id: userId } = req.user;
+    const formKey = String(req.params.formKey || '').trim();
+
+    if (!formKey) {
+      return res.status(400).json({
+        success: false,
+        message: 'formKey is required',
+      });
+    }
+
+    const mapping = await prisma.koboFormMapping.findFirst({
+      where: {
+        organizationId,
+        koboAssetId: formKey,
+      },
+    });
+
+    if (!mapping || !isPlainObject(mapping.mapping) || isUniversalXlsFormDeleted(mapping.mapping)) {
+      return res.status(404).json({
+        success: false,
+        message: 'XLSForm definition not found',
+      });
+    }
+
+    const now = new Date().toISOString();
+    const nextDefinition = {
+      ...mapping.mapping,
+      lifecycle: {
+        ...(mapping.mapping.lifecycle || {}),
+        active: false,
+        status: 'deleted',
+        deletedAt: now,
+        deletedById: userId,
+      },
+    };
+
+    const updatedMapping = await prisma.koboFormMapping.update({
+      where: { id: mapping.id },
+      data: {
+        mapping: nextDefinition,
+        lastValidated: new Date(),
+      },
+    });
+
+    await prisma.syncLog.create({
+      data: {
+        userId,
+        organizationId,
+        deviceId: 'ged-os-internal-kobo-admin',
+        action: 'INTERNAL_KOBO_XLSFORM_DELETE',
+        details: {
+          formKey,
+          title: mapping.mapping.title || formKey,
+          deletedAt: now,
+        },
+      },
+    });
+
+    return res.json({
+      success: true,
+      form: summarizeUniversalXlsFormMapping(updatedMapping),
+    });
+  } catch (err) {
+    logger.error('[INTERNAL-KOBO] form-definition delete error:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Server error while deleting XLSForm definition',
     });
   }
 };
@@ -1069,7 +1155,7 @@ export const compareInternalKoboFormDefinitions = async (req, res) => {
       comparison: compareXlsFormDefinitions(previousMapping.definition, currentMapping.definition),
     });
   } catch (err) {
-    console.error('[INTERNAL-KOBO] form-definition compare error:', err);
+    logger.error('[INTERNAL-KOBO] form-definition compare error:', err);
     return res.status(500).json({
       success: false,
       message: 'Server error while comparing XLSForm definitions',
@@ -1374,7 +1460,7 @@ export const createInternalKoboFormDefinition = async (req, res) => {
       form: summarizeUniversalXlsFormMapping(storedMapping),
     });
   } catch (err) {
-    console.error(
+    logger.error(
       '[INTERNAL-KOBO] form builder create error:',
       err?.message || err,
       err?.stack || 'no-stack'
@@ -1425,7 +1511,7 @@ export const importInternalKoboXlsFormFromUrl = async (req, res) => {
     req.body = { ...req.body, sourceUrl: url };
     return importInternalKoboXlsForm(req, res);
   } catch (err) {
-    console.error(
+    logger.error(
       '[INTERNAL-KOBO] XLSForm URL import error:',
       err?.message || err,
       err?.stack || 'no-stack'
@@ -1559,7 +1645,7 @@ export const importInternalKoboXlsForm = async (req, res) => {
       form: summarizeUniversalXlsFormMapping(storedMapping),
     });
   } catch (err) {
-    console.error('[INTERNAL-KOBO] XLSForm import error:', err);
+    logger.error('[INTERNAL-KOBO] XLSForm import error:', err);
     return res.status(500).json({
       success: false,
       message: 'Server error while importing XLSForm',
@@ -1567,7 +1653,7 @@ export const importInternalKoboXlsForm = async (req, res) => {
   }
 };
 
-const SUPER_ADMIN_EMAIL = process.env.SUPER_ADMIN_EMAIL || 'admingem';
+const SUPER_ADMIN_EMAIL = process.env.SUPER_ADMIN_EMAIL || '';
 
 function buildSubmissionWhere(user, query = {}) {
   const { organizationId, id: userId, role: rawUserRole } = user;
@@ -1759,7 +1845,7 @@ export const exportInternalKoboSubmissions = async (req, res) => {
     res.setHeader('Content-Disposition', `attachment; filename="${baseFilename}.csv"`);
     return res.send(csv);
   } catch (err) {
-    console.error('[INTERNAL-KOBO] export error:', err);
+    logger.error('[INTERNAL-KOBO] export error:', err);
     return res.status(500).json({
       success: false,
       message: 'Server error while exporting internal Kobo submissions',
@@ -1797,12 +1883,12 @@ export const deleteInternalKoboSubmission = async (req, res) => {
         status: submission.status,
       },
     }).catch((err) => {
-      console.warn('[InternalKobo] Audit delete failed:', err?.message || err);
+      logger.warn('[InternalKobo] Audit delete failed:', err?.message || err);
     });
 
     return res.json({ success: true, message: 'Soumission supprimée.' });
   } catch (err) {
-    console.error('[InternalKobo] Delete submission error:', err);
+    logger.error('[InternalKobo] Delete submission error:', err);
     return res.status(500).json({ success: false, message: 'Erreur lors de la suppression.' });
   }
 };
@@ -1917,12 +2003,12 @@ export const reviewInternalKoboSubmission = async (req, res) => {
         req,
       });
     } catch (auditError) {
-      console.error('[INTERNAL-KOBO] review audit log error:', auditError.message);
+      logger.error('[INTERNAL-KOBO] review audit log error:', auditError.message);
     }
 
     return res.json({ success: true, submission: sanitizeBigIntForJson(submission) });
   } catch (err) {
-    console.error('[INTERNAL-KOBO] review error:', err);
+    logger.error('[INTERNAL-KOBO] review error:', err);
     return res.status(500).json({
       success: false,
       message: 'Server error while reviewing internal Kobo submission',
@@ -2032,7 +2118,7 @@ export const listInternalKoboSubmissions = async (req, res) => {
       submissions: sanitizeBigIntForJson(submissions),
     });
   } catch (err) {
-    console.error('[INTERNAL-KOBO] list error:', err);
+    logger.error('[INTERNAL-KOBO] list error:', err);
     return res.status(500).json({
       success: false,
       message: 'Server error while fetching internal Kobo submissions',
@@ -2235,7 +2321,7 @@ export const getInternalKoboDiagnostics = async (req, res) => {
       }),
     });
   } catch (err) {
-    console.error('[INTERNAL-KOBO] diagnostics error:', err);
+    logger.error('[INTERNAL-KOBO] diagnostics error:', err);
     return res.status(500).json({
       success: false,
       message: 'Server error while fetching internal Kobo diagnostics',
@@ -2294,7 +2380,7 @@ export const getInternalKoboSubmission = async (req, res) => {
       submission: sanitizeBigIntForJson(submission),
     });
   } catch (err) {
-    console.error('[INTERNAL-KOBO] get error:', err);
+    logger.error('[INTERNAL-KOBO] get error:', err);
     return res.status(500).json({
       success: false,
       message: 'Server error while fetching internal Kobo submission',
@@ -2355,7 +2441,7 @@ export const exportInternalKoboMedia = async (req, res) => {
 
     await archive.finalize();
   } catch (err) {
-    console.error('[INTERNAL-KOBO] Media export error:', err);
+    logger.error('[INTERNAL-KOBO] Media export error:', err);
     if (!res.headersSent) {
       res.status(500).json({ success: false, message: 'Erreur lors de la génération du ZIP' });
     }

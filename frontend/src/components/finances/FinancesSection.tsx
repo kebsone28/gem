@@ -10,7 +10,7 @@ import {
   AlertTriangle,
   CheckCircle2,
 } from 'lucide-react';
-import { useFinances } from '../../hooks/useFinances';
+import { useFinances } from '@hooks/useFinances';
 
 interface Props {
   project: any;

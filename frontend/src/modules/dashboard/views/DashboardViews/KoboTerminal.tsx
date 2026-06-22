@@ -1,10 +1,10 @@
 ﻿ 
 import { motion } from 'framer-motion';
 import { ExternalLink, Info, ShieldAlert, MonitorCheck } from 'lucide-react';
-import { useTheme } from '../../../../contexts/ThemeContext';
+import { useTheme } from '@contexts/ThemeContext';
 
 // Import shared layout components
-import { PageContainer, PageHeader, ContentArea } from '../../../../components';
+import { PageContainer, PageHeader, ContentArea } from '@components';
 
 export default function KoboTerminal() {
   const { isDarkMode } = useTheme();

@@ -10,6 +10,7 @@ import {
   TableOfContents,
   BorderStyle,
   TextRun,
+  ImageRun,
   type ISectionOptions,
 } from 'docx';
 import { saveAs } from 'file-saver';
@@ -18,6 +19,7 @@ import { createFrontPage } from './sections/frontPage';
 import { createRoleSection } from './sections/roleSection';
 import { createGeneralSection } from './sections/generalSection';
 import { generateQRCodeBuffer } from './utils/qrcodeGenerator';
+import { fetchImageCached } from './utils/imageLoader';
 import logger from '../logger';
 
 export interface ExportData {
@@ -62,8 +64,20 @@ const PAGE_PROPERTIES = {
   },
 };
 
-const DOCUMENT_HEADER = new Header({
+const createDocumentHeader = (enteteBuffer: ArrayBuffer | null) => new Header({
   children: [
+    ...(enteteBuffer ? [
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        spacing: { after: 60 },
+        children: [
+          new ImageRun({
+            data: enteteBuffer,
+            transformation: { width: 617, height: 90 },
+          }),
+        ],
+      }),
+    ] : []),
     new Paragraph({
       children: [
         createText('BORDEREAU TECHNIQUE ET CONTRACTUEL ', { color: COLORS.SLATE, size: 16 }),
@@ -104,10 +118,12 @@ export const exportCahiersToWord = async (
     return;
   }
 
+  const enteteBuffer = await fetchImageCached('/entete.png');
+
   const allSections: ISectionOptions[] = [];
   const commonProps = {
     ...PAGE_PROPERTIES,
-    headers: { default: DOCUMENT_HEADER },
+    headers: { default: createDocumentHeader(enteteBuffer) },
     footers: { default: DOCUMENT_FOOTER },
   };
 

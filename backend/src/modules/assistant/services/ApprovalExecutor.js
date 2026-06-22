@@ -11,14 +11,21 @@ import {
   getActionConfig,
   canAgentExecuteAction,
   determineExecutionFlow,
-  confidenceThresholds
 } from '../config/actionConfig.js';
 import logger from '../../../utils/logger.js';
 
-// EMERGENCY: Safe override for system recovery
-const APPROVAL_BYPASS_ENABLED = process.env.APPROVAL_SYSTEM_BYPASS === 'true';
+// EMERGENCY OVERRIDE — requires BOTH APPROVAL_SYSTEM_BYPASS=true
+// AND a valid APPROVAL_SYSTEM_BYPASS_KEY (UUID v4).
+// This prevents accidental activation via env typo.
+const BYPASS_KEY = process.env.APPROVAL_SYSTEM_BYPASS_KEY || '';
+const BYPASS_EXPECTED_LENGTH = 36; // UUID v4 length
+const APPROVAL_BYPASS_ENABLED =
+  process.env.APPROVAL_SYSTEM_BYPASS === 'true' &&
+  BYPASS_KEY.length === BYPASS_EXPECTED_LENGTH;
+
 if (APPROVAL_BYPASS_ENABLED) {
-  logger.warn('⚠️ APPROVAL SYSTEM BYPASS ENABLED - Emergency mode active');
+  logger.warn('⚠️ APPROVAL SYSTEM BYPASS ENABLED — Emergency mode active');
+  logger.warn('⚠️ Disable by removing APPROVAL_SYSTEM_BYPASS_KEY or setting APPROVAL_SYSTEM_BYPASS=false');
 }
 
 export class ApprovalExecutor {

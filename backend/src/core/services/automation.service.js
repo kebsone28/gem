@@ -81,7 +81,7 @@ class AutomationService {
     return { success: true };
   }
 
-  async queueWelcomeAutomation(event) {
+  async queueWelcomeAutomation(_event) {
     // Exemple d'action de bienvenue
   }
 }

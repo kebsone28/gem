@@ -1,4 +1,6 @@
  
+import logger from '../services/logger';
+
 /**
  * SERVICE : Cryptography & Integrity
  * Fournit des outils pour garantir que les données n'ont pas été altérées après signature.
@@ -98,7 +100,7 @@ export async function decryptData(encryptedBase64: string, secret: string): Prom
 
     return new TextDecoder().decode(decrypted);
   } catch (err) {
-    console.error('[CRYPTO] Decryption failed:', err);
+    logger.error('[CRYPTO] Decryption failed:', err);
     return null;
   }
 }

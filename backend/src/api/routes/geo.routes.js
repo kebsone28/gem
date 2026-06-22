@@ -1,13 +1,28 @@
 import { Router } from 'express';
 import { Pool } from 'pg';
 import dotenv from 'dotenv';
+import { authProtect } from '../middlewares/auth.js';
+import logger from '../../utils/logger.js';
+import { validate } from '../../middleware/validate.js';
+import Joi from 'joi';
 dotenv.config();
 
 const router = Router();
+router.use(authProtect);
 // Ensure pool doesn't exceed connections, just sharing one connection pool for fast MVT querying
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
-router.get('/mvt/households/:z/:x/:y', async (req, res) => {
+const mvtParamsSchema = Joi.object({
+  z: Joi.number().integer().min(0).max(22).required(),
+  x: Joi.number().integer().min(0).required(),
+  y: Joi.number().integer().min(0).required(),
+}).unknown(false);
+
+const mvtQuerySchema = Joi.object({
+  projectId: Joi.string().uuid().required(),
+}).unknown(false);
+
+router.get('/mvt/households/:z/:x/:y', validate({ params: mvtParamsSchema }), validate({ query: mvtQuerySchema }), async (req, res) => {
   const { z, x, y } = req.params;
   const { projectId } = req.query;
 
@@ -59,12 +74,8 @@ router.get('/mvt/households/:z/:x/:y', async (req, res) => {
       res.send(Buffer.alloc(0));
     }
   } catch (error) {
-    console.error('🔥 MVT Generation Error:', error);
-    res.status(500).json({
-      error: 'Failed to generate vector tile',
-      details: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
-    });
+    logger.error('MVT Generation Error:', error);
+    res.status(500).json({ error: 'Failed to generate vector tile' });
   } finally {
     if (client) client.release();
   }

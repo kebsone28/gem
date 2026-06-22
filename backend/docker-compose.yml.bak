@@ -1,0 +1,65 @@
+name: gem_saas_backend
+
+services:
+  # Base de données PostgreSQL avec extension PostGIS
+  db:
+    image: postgis/postgis:15-3.3
+    environment:
+      POSTGRES_USER: ${DB_USER:-proquelec}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-proquelec_secure_2024}
+      POSTGRES_DB: ${DB_NAME:-electrification}
+    ports:
+      - "${GEM_BACKEND_DB_PORT:-5436}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # File d'attente et Cache Redis
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "${GEM_BACKEND_REDIS_PORT:-6381}:6379"
+    command: redis-server --save 60 1 --loglevel warning
+    volumes:
+      - redisdata:/data
+
+  # Backend PROQUELEC (Node.js)
+  app:
+    build: .
+    ports:
+      - "${GEM_BACKEND_API_PORT:-5011}:3001"
+    environment:
+      - DATABASE_URL=postgresql://${DB_USER:-proquelec}:${DB_PASSWORD:-proquelec_secure_2024}@db:5432/${DB_NAME:-electrification}?schema=public
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_ENABLED=true
+      - NODE_ENV=production
+      - PORT=3001
+      # WARNING: Override CORS_ORIGINS in production with explicit frontend domain.
+      # Default loopback origins are for local development ONLY.
+      - CORS_ORIGINS=http://localhost:5011,http://127.0.0.1:5011,http://localhost:5173,http://localhost:8889,http://127.0.0.1:8889
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  # Tile Server (Martin) - Rust high performance MVT server for 1M+ points
+  martin:
+    image: maplibre/martin
+    ports:
+      - "${GEM_MARTIN_PORT:-3008}:3000"
+    environment:
+      - WATCH_MODE=true
+      - DATABASE_URL=postgresql://${DB_USER:-proquelec}:${DB_PASSWORD:-proquelec_secure_2024}@db:5432/${DB_NAME:-electrification}?schema=public
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  redisdata:

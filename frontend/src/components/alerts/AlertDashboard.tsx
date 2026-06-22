@@ -1,5 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-unused-vars */
-/**
+﻿/**
  * Composant AlertDashboard - Dashboard des Alertes en Temps Réel
  * Affiche toutes les alertes du projet avec gestion (acknowledge, resolve)
  */
@@ -11,18 +10,15 @@ import {
   AlertCircle,
   CheckCircle,
   Clock,
-  X,
   ChevronDown,
-  Bell,
-  TrendingUp,
   Eye,
   CheckSquare,
-  Archive,
 } from 'lucide-react';
-import alertsAPI from '../../services/alertsAPI';
-import { useProject } from '../../contexts/ProjectContext';
+import alertsAPI from '@services/alertsAPI';
+import { useProject } from '@contexts/ProjectContext';
 import toast from 'react-hot-toast';
-import logger from '../../utils/logger';
+import logger from '@utils/logger';
+import { syncEventBus, SYNC_EVENTS } from '@utils/syncEventBus';
 
 interface Alert {
   id: string;
@@ -73,9 +69,10 @@ export const AlertDashboard: React.FC = () => {
 
     fetchAlertsAndStats();
 
-    // Refresh tous les 30 secondes
-    const interval = setInterval(fetchAlertsAndStats, 30000);
-    return () => clearInterval(interval);
+    const unsubscribe = syncEventBus.subscribe(SYNC_EVENTS.NOTIFICATION, () => {
+      fetchAlertsAndStats();
+    });
+    return unsubscribe;
   }, [projectId, selectedStatus]);
 
   const handleAcknowledge = async (alertId: string) => {

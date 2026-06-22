@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
+import logger from '@services/logger';
 import {
   Zap,
   ClipboardList,
@@ -20,7 +21,7 @@ import {
   Clock,
   TrendingUp,
 } from 'lucide-react';
-import { PageContainer, PageHeader, ContentArea } from '../../../components/layout';
+import { PageContainer, PageHeader, ContentArea } from '@components/layout';
 import toast from 'react-hot-toast';
 
 // Types pour le module MES
@@ -141,7 +142,7 @@ const MESDashboard: React.FC = () => {
       setStats(newStats);
     } catch (error) {
       toast.error('Erreur lors du chargement des données MES');
-      console.error(error);
+      logger.error(error);
     } finally {
       setLoading(false);
     }

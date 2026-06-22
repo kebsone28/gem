@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
+import logger from '@services/logger';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Users,
@@ -19,18 +20,17 @@ import {
     Save,
     RefreshCw
 } from 'lucide-react';
-import { useProject } from '../../../contexts/ProjectContext';
-import type { CatalogItem, SubTeamEquipment } from '../../../utils/types';
-import { generateDynamicGrappes } from '../../../utils/clustering';
-import logger from '../../../utils/logger';
-import { useTeams } from '../../../hooks/useTeams';
-import apiClient from '../../../api/client';
-import { PageContainer, PageHeader, ContentArea } from '../../../components';
-import { KoboSettingsSection } from '../../../components/KoboSettingsSection';
+import { useProject } from '@contexts/ProjectContext';
+import type { CatalogItem, SubTeamEquipment } from '@utils/types';
+import { generateDynamicGrappes } from '@utils/clustering';
+import { useTeams } from '@hooks/useTeams';
+import apiClient from '@/api/client';
+import { PageContainer, PageHeader, ContentArea } from '@components';
+import { KoboSettingsSection } from '@components/KoboSettingsSection';
 
-import { SENEGAL_REGIONS } from '../../../utils/config';
-import { StatusBadge } from '../../../components/dashboards/DashboardComponents';
-import { useTerrainData } from '../../../hooks/useTerrainData';
+import { SENEGAL_REGIONS } from '@utils/config';
+import { StatusBadge } from '@components/dashboards/DashboardComponents';
+import { useTerrainData } from '@hooks/useTerrainData';
 
 type TabType = 'teams' | 'costs' | 'zones' | 'logistics' | 'kobo' | 'data';
 
@@ -622,7 +622,7 @@ function CostsSection({ project, onUpdate }: { project: any, onUpdate: any }) {
             
             // Logically, we should trigger an audit log here. 
             // The backend updateProject will log the change to 'config'.
-            console.log(`Rate updated for region ${selectedRegionId}, team ${key}: ${oldVal} -> ${value}`);
+            logger.log(`Rate updated for region ${selectedRegionId}, team ${key}: ${oldVal} -> ${value}`);
         } else {
             newCategory[key] = value;
         }

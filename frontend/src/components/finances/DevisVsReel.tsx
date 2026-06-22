@@ -1,5 +1,4 @@
-﻿/* eslint-disable no-inline-styles */
-/* eslint-disable @typescript-eslint/no-explicit-any */
+﻿/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useMemo } from 'react';
 import {
   Search,
@@ -13,10 +12,10 @@ import {
   Download,
   Upload,
 } from 'lucide-react';
-import { useFinances } from '../../hooks/useFinances';
-import { useTheme } from '../../contexts/ThemeContext';
-import { fmtFCFA } from '../../utils/format';
-import logger from '../../utils/logger';
+import { useFinances } from '@hooks/useFinances';
+import { useTheme } from '@contexts/ThemeContext';
+import { fmtFCFA } from '@utils/format';
+import logger from '@utils/logger';
 
 const REGIONS = ['Tous', 'Global', 'Kaffrine', 'Tambacounda'];
 const STATUS = ['Tous', 'Conforme', 'Dépassement'];
@@ -38,6 +37,7 @@ export default function DevisVsReel() {
   const [statusFilter, setStatusFilter] = useState('Tous');
   const [importErrors, setImportErrors] = useState<string[]>([]);
   const [importSuccess, setImportSuccess] = useState(false);
+  const [percentageAdjustment, setPercentageAdjustment] = useState(0);
 
   // ── Filtered report ──────────────────────────────────────────────────────
   const filtered = useMemo(() => {
@@ -58,6 +58,14 @@ export default function DevisVsReel() {
   const budgetUsagePct = devis.ceiling
     ? Math.min(Math.round((devis.totalReal / devis.ceiling) * 100), 100)
     : 0;
+
+  // ── Apply percentage to all P.U Réel ─────────────────────────────────────
+  const applyPercentageToAll = () => {
+    (devis.report || []).forEach((item: any) => {
+      const newRealUnit = Math.round(item.unit * (1 - percentageAdjustment / 100));
+      updateRealCost(item.id, 'unit', newRealUnit);
+    });
+  };
 
   // ── Excel Export (multi-sheet) ────────────────────────────────────────────
   const handleExcelExport = async () => {
@@ -256,7 +264,7 @@ export default function DevisVsReel() {
               title="Filtrer par région"
               value={regionFilter}
               onChange={(e) => setRegionFilter(e.target.value)}
-              className={`border rounded-xl py-3 px-3 text-sm focus:outline-none transition-all ${isDarkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-700'}`}
+              className={`border rounded-xl py-3 px-4 text-sm font-bold focus:outline-none focus:ring-2 transition-all ${isDarkMode ? 'bg-slate-900 border-slate-800 text-white focus:ring-indigo-500/30' : 'bg-white border-slate-200 text-slate-700 focus:ring-indigo-500/20'}`}
             >
               {REGIONS.map((r) => (
                 <option key={r} value={r}>
@@ -268,7 +276,7 @@ export default function DevisVsReel() {
               title="Filtrer par statut"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className={`border rounded-xl py-3 px-3 text-sm focus:outline-none transition-all ${isDarkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-700'}`}
+              className={`border rounded-xl py-3 px-4 text-sm font-bold focus:outline-none focus:ring-2 transition-all ${isDarkMode ? 'bg-slate-900 border-slate-800 text-white focus:ring-indigo-500/30' : 'bg-white border-slate-200 text-slate-700 focus:ring-indigo-500/20'}`}
             >
               {STATUS.map((s) => (
                 <option key={s} value={s}>
@@ -283,12 +291,40 @@ export default function DevisVsReel() {
                   setRegionFilter('Tous');
                   setStatusFilter('Tous');
                 }}
-                className="text-xs text-indigo-500 hover:text-indigo-700 font-bold transition-all"
+                className="px-3 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 font-black text-xs rounded-xl transition-all border border-rose-500/20"
               >
                 Réinitialiser
               </button>
             )}
           </div>
+        </div>
+
+        {/* Percentage adjustment */}
+        <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border ${isDarkMode ? 'bg-indigo-500/5 border-indigo-500/20' : 'bg-indigo-50 border-indigo-200'}`}>
+          <div className="flex items-center gap-2">
+            <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-indigo-500/10' : 'bg-indigo-100'}`}>
+              <TrendingDown size={14} className="text-indigo-500" />
+            </div>
+            <label className={`text-xs font-black uppercase tracking-widest ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+              Ajustement P.U Réel:
+            </label>
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              value={percentageAdjustment}
+              onChange={(e) => setPercentageAdjustment(parseFloat(e.target.value) || 0)}
+              placeholder="0"
+              className={`w-24 border rounded-lg py-2 px-3 text-sm font-bold text-right focus:outline-none focus:ring-2 transition-all ${isDarkMode ? 'bg-slate-950 border-slate-700 text-white focus:ring-indigo-500/30' : 'bg-white border-slate-300 text-slate-700 focus:ring-indigo-500/20'}`}
+            />
+            <span className={`text-xs font-bold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>%</span>
+          </div>
+          <button
+            onClick={applyPercentageToAll}
+            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs rounded-lg transition-all shadow-lg shadow-indigo-600/20 active:scale-95"
+          >
+            Appliquer
+          </button>
         </div>
 
         {/* Right side: Summary + Buttons */}

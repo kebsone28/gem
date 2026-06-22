@@ -1,6 +1,7 @@
 import { basePrisma as prisma } from '../core/utils/prisma.js';
 import { sendMail } from './mail.service.js';
 import { buildPublicUrl } from '../utils/publicUrl.js';
+import logger from '../utils/logger.js';
 
 /**
  * SERVICE DE NOTIFICATION DES MISSIONS
@@ -40,7 +41,7 @@ export const missionNotificationService = {
                 return org.config.notifications.auditEmails.join(',');
             }
         } catch (error) {
-            console.error('❌ Erreur lecture config audit:', error);
+            logger.error('❌ Erreur lecture config audit:', error);
         }
         return process.env.AUDIT_NOTIF_EMAILS || '';
     },
@@ -82,7 +83,7 @@ export const missionNotificationService = {
                 actionLabel: 'Ouvrir la page d’approbation'
             });
         } catch (error) {
-            console.error('❌ Erreur notification workflow:', error);
+            logger.error('❌ Erreur notification workflow:', error);
         }
     },
 
@@ -150,7 +151,7 @@ export const missionNotificationService = {
                 actionLabel: 'Télécharger l\'Ordre de Mission'
             });
         } catch (error) {
-            console.error('❌ Erreur notification succès général:', error);
+            logger.error('❌ Erreur notification succès général:', error);
         }
     },
 
@@ -199,7 +200,7 @@ export const missionNotificationService = {
                 actionLabel: 'Modifier la mission'
             });
         } catch (error) {
-            console.error('❌ Erreur notification rejet:', error);
+            logger.error('❌ Erreur notification rejet:', error);
         }
     },
 
@@ -237,7 +238,7 @@ export const missionNotificationService = {
                 actionLabel: 'Ouvrir le Cockpit DG'
             });
         } catch (error) {
-            console.error('❌ Erreur notification soumission DG:', error);
+            logger.error('❌ Erreur notification soumission DG:', error);
         }
     },
 
@@ -269,7 +270,7 @@ export const missionNotificationService = {
                 actionLabel: 'Télécharger l\'Ordre de Mission'
             });
         } catch (error) {
-            console.error('❌ Erreur notification certification:', error);
+            logger.error('❌ Erreur notification certification:', error);
         }
     }
 };

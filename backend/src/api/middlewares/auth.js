@@ -127,10 +127,8 @@ export const authorize = (...args) => {
     return (req, res, next) => {
         const rawUserRole = req.user.role?.toUpperCase();
         const userRole = normalizeRole(rawUserRole);
-        const emailStr = req.user.email?.toLowerCase() || '';
-
         const isAdmin =
-            userRole === 'ADMIN_PROQUELEC' || emailStr === 'admin@proquelec.com';
+            userRole === 'ADMIN_PROQUELEC';
 
         const normalizedAuthorizedRoles = authorizedRoles.map((r) => normalizeRole(r));
         const roleMatches =

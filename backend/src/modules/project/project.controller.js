@@ -1,5 +1,6 @@
 import bcrypt from 'bcryptjs';
 import prisma from '../../core/utils/prisma.js';
+import logger from '../../utils/logger.js';
 import { tracerAction } from '../../services/audit.service.js';
 import { socketService } from '../../services/socket.service.js';
 import { recalculateProjectGrappes } from '../../services/project_config.service.js';
@@ -15,47 +16,51 @@ import { securityService } from '../../core/services/security.service.js';
 import { getModuleMetadata } from '../../core/config/modules.js';
 import { ROLES } from '../../core/config/permissions.js';
 import { checkPermission } from '../../core/constants/permissions.js';
+import { PROJECT_STATUS, isValidProjectTransition } from '../../core/config/businessRules.js';
 
-const DONE_STATUSES = new Set(['completed', 'Terminé', 'Réception: Validée', 'Conforme']);
+const DONE_STATUSES = new Set([PROJECT_STATUS.COMPLETED, 'Terminé', 'Réception: Validée', 'Conforme']);
 
 const isCompletedStatus = (status) => DONE_STATUSES.has(status);
 
-// @desc    Get all projects for an organization
+// @desc    Get all projects for an organization (paginated)
 // @route   GET /api/projects
 export const getProjects = async (req, res) => {
   try {
     const { organizationId } = req.user;
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 20));
+    const skip = (page - 1) * limit;
 
-    const rawProjects = await prisma.project.findMany({
-      where: {
-        organizationId,
-        deletedAt: null,
-      },
-      include: {
-        updatedBy: {
-          select: {
-            name: true,
-            email: true,
+    const where = {
+      organizationId,
+      deletedAt: null,
+    };
+
+    const [rawProjects, total] = await Promise.all([
+      prisma.project.findMany({
+        where,
+        skip,
+        take: limit,
+        include: {
+          updatedBy: {
+            select: { name: true, email: true },
+          },
+          _count: {
+            select: { zones: true },
           },
         },
-        _count: {
-          select: { zones: true },
-        },
-      },
-      orderBy: {
-        updatedAt: 'desc',
-      },
-    });
+        orderBy: { updatedAt: 'desc' },
+      }),
+      prisma.project.count({ where }),
+    ]);
 
     const { email, id: userId, role: userRole } = req.user;
-     
-    // 🛡️ Déterminer si l'utilisateur est un Admin Global ou DG
-    const isGlobalAdmin = userRole === ROLES.ADMIN || 
-                         userRole === ROLES.DIRECTEUR || 
-                         userRole === ROLES.ADMIN_ALT || 
-                         userRole === 'ADMIN_PROQUELEC' || 
-                         userRole === 'DG_PROQUELEC';
 
+    const isGlobalAdmin = userRole === ROLES.ADMIN ||
+                         userRole === ROLES.DIRECTEUR ||
+                         userRole === ROLES.ADMIN_ALT ||
+                         userRole === 'ADMIN_PROQUELEC' ||
+                         userRole === 'DG_PROQUELEC';
 
     let projects = rawProjects.map(p => {
       try {
@@ -65,29 +70,30 @@ export const getProjects = async (req, res) => {
           assignedUsers: (config && typeof config === 'object' ? config.assignedUsers : []) || []
         };
       } catch (err) {
-        console.error('[DEBUG] Error mapping project:', p.id, err);
+        logger.error('Error mapping project:', p.id, err);
         return p;
       }
     });
 
-    console.log('[DEBUG] Projects mapped:', projects.length);
-
-    // 🔒 Filtrage de sécurité : Seuls les projets assignés pour les autres
     if (!isGlobalAdmin) {
-      projects = projects.filter(p => 
-        (p.assignedUsers || []).includes(userId) || 
+      projects = projects.filter(p =>
+        (p.assignedUsers || []).includes(userId) ||
         (p.assignedUsers || []).includes(email)
       );
     }
 
-    res.json({ projects });
-  } catch (error) {
-    console.error('Get projects error:', error);
-    res.status(500).json({ 
-      error: 'Server error while fetching projects',
-      message: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    res.json({
+      projects,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
     });
+  } catch (error) {
+    logger.error('Get projects error:', error);
+    res.status(500).json({ error: 'Erreur lors de la récupération des projets' });
   }
 };
 
@@ -128,7 +134,7 @@ export const getProjectById = async (req, res) => {
 
     res.json(enrichedProject);
   } catch (error) {
-    console.error('Get project error:', error);
+    logger.error('Get project error:', error);
     res.status(500).json({ error: 'Server error while fetching project' });
   }
 };
@@ -164,16 +170,17 @@ export const createProject = async (req, res) => {
     const { enabledModules = [], customFields = [], sector = 'elec_bt' } = config || {};
 
     const project = await prisma.$transaction(async (tx) => {
-      console.log('[DEBUG] Creating base project...');
+      logger.info('[DEBUG] Creating base project...');
       // 1. Créer le projet de base
       const newProject = await tx.project.create({
         data: {
           id: id || undefined,
           name: safeName,
-          status: 'active',
+          status: PROJECT_STATUS.ACTIVE,
           budget: budget || 0,
           duration: duration || 12,
           totalHouses: totalHouses || 0,
+          templateKey: sector,
           config: {
             ...config,
             client: safeClient,
@@ -186,11 +193,11 @@ export const createProject = async (req, res) => {
         },
       });
 
-      console.log('[DEBUG] Base project created:', newProject.id);
+      logger.info('[DEBUG] Base project created:', newProject.id);
 
       // 2. Instancier RÉELLEMENT les modules en base de données (Anti-simulation)
       if (enabledModules.length > 0) {
-        console.log('[DEBUG] Instantiating modules:', enabledModules);
+        logger.info('[DEBUG] Instantiating modules:', enabledModules);
         const modulePromises = enabledModules.map(moduleKey => {
           const meta = getModuleMetadata(moduleKey);
           return tx.projectModule.create({
@@ -236,11 +243,8 @@ export const createProject = async (req, res) => {
 
     res.status(201).json(project);
   } catch (error) {
-    console.error('Create project error:', error);
-    res.status(500).json({
-      error: 'Server error while creating project',
-      message: error?.message || 'Erreur interne',
-    });
+    logger.error('Create project error:', error);
+    res.status(500).json({ error: 'Server error while creating project' });
   }
 };
 
@@ -257,29 +261,91 @@ export const updateProject = async (req, res) => {
     });
 
     if (!project) {
-      return res.status(404).json({ error: 'Project not found' });
+      return res.status(404).json({ error: 'Projet introuvable' });
     }
 
-    const updateData = {};
-    if (name !== undefined) updateData.name = name;
-    if (status !== undefined) updateData.status = status;
-    if (budget !== undefined) updateData.budget = budget;
-    if (duration !== undefined) updateData.duration = duration;
-    if (totalHouses !== undefined) updateData.totalHouses = totalHouses;
-    if (config !== undefined) updateData.config = config;
-    updateData.updatedById = userId;
-    updateData.version = project.version + 1;
+    if (status && status !== project.status) {
+      if (!isValidProjectTransition(project.status, status)) {
+        return res.status(400).json({
+          error: `Transition de statut invalide: "${project.status}" → "${status}".`
+        });
+      }
+    }
 
-    const updatedProject = await prisma.project.update({
-      where: { id },
-      data: {
-        ...updateData,
-        config: config !== undefined ? {
-          ...(project.config || {}),
-          ...config,
-          assignedUsers: req.body.assignedUsers !== undefined ? req.body.assignedUsers : (project.config?.assignedUsers || [])
-        } : project.config
-      },
+    // ── Calcul du nouveau config (merge profond) ──────────────────────────
+    const newConfig = config !== undefined ? {
+      ...(project.config || {}),
+      ...config,
+      assignedUsers: req.body.assignedUsers !== undefined
+        ? req.body.assignedUsers
+        : (project.config?.assignedUsers || [])
+    } : project.config;
+
+    // ── Transaction atomique : mise à jour projet + synchronisation modules ──
+    const updatedProject = await prisma.$transaction(async (tx) => {
+      // 1. Mettre à jour le projet
+      const updated = await tx.project.update({
+        where: { id },
+        data: {
+          ...(name !== undefined && { name }),
+          ...(status !== undefined && { status }),
+          ...(budget !== undefined && { budget }),
+          ...(duration !== undefined && { duration }),
+          ...(totalHouses !== undefined && { totalHouses }),
+          config: newConfig,
+          updatedById: userId,
+          version: project.version + 1,
+        },
+      });
+
+      // 2. [FIX] Synchroniser la table ProjectModule si enabledModules est fourni
+      if (config?.enabledModules !== undefined) {
+        const enabledKeys = Array.isArray(config.enabledModules) ? config.enabledModules : [];
+
+        // Récupérer les modules existants
+        const existingModules = await tx.projectModule.findMany({
+          where: { projectId: id },
+        });
+        const existingKeys = new Set(existingModules.map(m => m.key));
+
+        // Upsert les modules à activer
+        for (const moduleKey of enabledKeys) {
+          if (existingKeys.has(moduleKey)) {
+            // Réactiver si désactivé
+            await tx.projectModule.update({
+              where: { projectId_key: { projectId: id, key: moduleKey } },
+              data: { enabled: true },
+            });
+          } else {
+            // Créer le nouveau module
+            const meta = getModuleMetadata(moduleKey);
+            await tx.projectModule.create({
+              data: {
+                projectId: id,
+                key: moduleKey,
+                name: meta.name,
+                enabled: true,
+                config: { activatedAt: new Date(), sector: project.templateKey },
+              },
+            });
+          }
+        }
+
+        // Désactiver les modules retirés (soft-disable, pas de suppression)
+        const enabledSet = new Set(enabledKeys);
+        for (const existing of existingModules) {
+          if (!enabledSet.has(existing.key) && existing.enabled) {
+            await tx.projectModule.update({
+              where: { projectId_key: { projectId: id, key: existing.key } },
+              data: { enabled: false },
+            });
+          }
+        }
+
+        logger.info(`[updateProject] Modules synchronisés pour ${id}: activés=[${enabledKeys.join(',')}]`);
+      }
+
+      return updated;
     });
 
     // Audit Log
@@ -292,11 +358,12 @@ export const updateProject = async (req, res) => {
       details: {
         old: { name: project.name, status: project.status },
         new: { name, status },
+        modulesUpdated: config?.enabledModules !== undefined,
       },
       req,
     });
 
-    // 🟢 NEW: Emit websocket event to notify all clients
+    // Notifier les clients via WebSocket
     try {
       socketService.emit('notification', {
         type: 'SYNC',
@@ -304,19 +371,13 @@ export const updateProject = async (req, res) => {
         data: { user: userId, action: 'PROJECT_UPDATED', id },
       });
     } catch (wsError) {
-      console.error('WebSocket Emit error during project update:', wsError);
+      logger.error('WebSocket Emit error during project update:', wsError);
     }
 
     res.json(updatedProject);
   } catch (error) {
-    console.error('Update project error:', error);
-    res
-      .status(500)
-      .json({
-        error: 'Server error while updating project',
-        details: error.message,
-        ...(process.env.NODE_ENV !== 'production' && { stack: error.stack }),
-      });
+    logger.error('Update project error:', error);
+    res.status(500).json({ error: 'Server error while updating project' });
   }
 };
 
@@ -340,10 +401,7 @@ export const assignUserToProjects = async (req, res) => {
 
     // 2️⃣ PERMISSION CHECK: Verify admin has permission to assign projects
     if (!checkPermission(req.user, 'SYSTEM_USERS')) {
-      return res.status(403).json({
-        error: 'Vous n\'avez pas la permission d\'assigner des projets',
-        details: 'Permission SYSTEM_USERS requise'
-      });
+      return res.status(403).json({ error: 'Vous n\'avez pas la permission d\'assigner des projets' });
     }
 
     // 3️⃣ VALIDATION: Verify all projectIds exist and belong to organization
@@ -360,11 +418,7 @@ export const assignUserToProjects = async (req, res) => {
     const invalidIds = projectIds.filter(id => !validProjectIds.has(id));
 
     if (invalidIds.length > 0) {
-      return res.status(400).json({
-        error: 'Certains projets sont invalides ou appartiennent à une autre organisation',
-        invalidIds,
-        hint: `${invalidIds.length}/${projectIds.length} projets invalides`
-      });
+      return res.status(400).json({ error: 'Certains projets sont invalides ou appartiennent à une autre organisation' });
     }
 
     // Verify target user exists in same organization
@@ -440,7 +494,7 @@ export const assignUserToProjects = async (req, res) => {
           data: { user: adminId, action: 'USER_ASSIGNMENTS_UPDATED', targetUser: userId },
         });
       } catch (wsError) {
-        console.error('WebSocket Emit error during assignment:', wsError);
+        logger.error('WebSocket Emit error during assignment:', wsError);
       }
     }
 
@@ -454,11 +508,8 @@ export const assignUserToProjects = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Assign user to projects error:', error);
-    res.status(500).json({
-      error: 'Erreur serveur lors de la mise à jour des assignations',
-      details: process.env.NODE_ENV !== 'production' ? error.message : undefined
-    });
+    logger.error('Assign user to projects error:', error);
+    res.status(500).json({ error: 'Erreur serveur lors de la mise à jour des assignations' });
   }
 };
 
@@ -529,7 +580,7 @@ export const deleteProject = async (req, res) => {
 
     res.json({ message: 'Project deleted successfully' });
   } catch (error) {
-    console.error('Delete project error:', error);
+    logger.error('Delete project error:', error);
     res.status(500).json({ error: 'Server error while deleting project' });
   }
 };
@@ -553,7 +604,7 @@ const haversineDistance = (lat1, lon1, lat2, lon2) => {
 
 export const getProjectBordereau = async (req, res) => {
   try {
-    console.log(`[BORDEREAU] Starting getProjectBordereau for projectId: ${req.params.id}`);
+    logger.info(`[BORDEREAU] Starting getProjectBordereau for projectId: ${req.params.id}`);
     const { id: projectId } = req.params;
     const { organizationId } = req.user;
 
@@ -680,14 +731,8 @@ export const getProjectBordereau = async (req, res) => {
       grappes: enrichedGrappes,
     });
   } catch (error) {
-    console.error('Bordereau calculation error:', error);
-    res
-      .status(500)
-      .json({
-        error: 'Failed to generate bordereau',
-        details: error.message,
-        ...(process.env.NODE_ENV !== 'production' && { stack: error.stack }),
-      });
+    logger.error('Bordereau calculation error:', error);
+    res.status(500).json({ error: 'Failed to generate bordereau' });
   }
 };
 
@@ -719,7 +764,7 @@ export const triggerRecalculateGrappes = async (req, res) => {
       result,
     });
   } catch (error) {
-    console.error('Manual recalculate error:', error);
+    logger.error('Manual recalculate error:', error);
     const status = error.message?.includes('not found') ? 404 : 500;
     res
       .status(status)
@@ -767,8 +812,8 @@ export const resetProjectData = async (req, res) => {
       },
     });
 
-    console.log(`[RESET] Supprimé ${deletedHouseholds.count} ménages du projet ${projectId}`);
-    console.log(`[RESET] Supprimé ${deletedGrappes.count} grappes orphelines`);
+    logger.info(`[RESET] Supprimé ${deletedHouseholds.count} ménages du projet ${projectId}`);
+    logger.info(`[RESET] Supprimé ${deletedGrappes.count} grappes orphelines`);
 
     // Tracer l'action
     await tracerAction({
@@ -789,7 +834,7 @@ export const resetProjectData = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Project reset error:', error);
+    logger.error('Project reset error:', error);
     res.status(500).json({ error: 'Failed to reset project data' });
   }
 };
@@ -812,15 +857,15 @@ export const deployServerUpdate = async (req, res) => {
     const projectPath = DEFAULT_WANEKOO_DEPLOY_PATH;
     const command = buildWanekooDeployCommand(projectPath);
 
-    console.log(`[SYSTEM] Déploiement initié par ${email}`);
+    logger.info(`[SYSTEM] Déploiement initié par ${email}`);
 
     // On lance en arrière-plan pour ne pas bloquer la requête HTTP
     exec(command, (error, stdout, stderr) => {
       if (error) {
-        console.error(`[DEPLOY ERROR]: ${error.message}`);
+        logger.error(`[DEPLOY ERROR]: ${error.message}`);
         return;
       }
-      console.log(`[DEPLOY SUCCESS]: ${stdout}`);
+      logger.info(`[DEPLOY SUCCESS]: ${stdout}`);
 
       // Notification via Socket.io quand c'est fini
       socketService.emit('notification', {
@@ -846,7 +891,7 @@ export const deployServerUpdate = async (req, res) => {
       details: "L'opération dure environ 60 secondes en arrière-plan.",
     });
   } catch (error) {
-    console.error('Deploy route error:', error);
+    logger.error('Deploy route error:', error);
     res.status(500).json({ error: "Erreur lors de l'initialisation du déploiement" });
   }
 };
@@ -866,7 +911,7 @@ export const dbMaintenance = async (req, res) => {
        return res.status(403).json({ error: 'Privilèges insuffisants pour cette opération.' });
      }
 
-    console.log(`[SYSTEM] Maintenance BD initiée par ${email}`);
+    logger.info(`[SYSTEM] Maintenance BD initiée par ${email}`);
 
     // 1. Nettoyage des Soft Deletes (Vieux de plus de 30 jours)
     const thirtyDaysAgo = new Date();
@@ -919,9 +964,9 @@ export const dbMaintenance = async (req, res) => {
     // 3. Exécuter un VACUUM (Optimisation PostgreSQL) si natif
     try {
       await prisma.$executeRaw`VACUUM ANALYZE;`;
-      console.log('[SYSTEM] DB Vacuum Analyze successful.');
+      logger.info('[SYSTEM] DB Vacuum Analyze successful.');
     } catch (dbErr) {
-      console.warn('[SYSTEM] DB Vacuum non supporté ou ignoré:', dbErr.message);
+      logger.warn('[SYSTEM] DB Vacuum non supporté ou ignoré:', dbErr.message);
     }
 
     // Audit Log
@@ -940,7 +985,7 @@ export const dbMaintenance = async (req, res) => {
       details: `${totalCleaned} anciens enregistrements (corbeille) purgés. Base optimisée.`,
     });
   } catch (error) {
-    console.error('Database Maintenance error:', error);
+    logger.error('Database Maintenance error:', error);
     res.status(500).json({ error: 'Erreur lors de la maintenance de la base de données' });
   }
 };

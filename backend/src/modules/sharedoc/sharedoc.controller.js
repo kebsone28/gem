@@ -172,7 +172,7 @@ export const downloadSharedocDocument = async (req, res) => {
     // In a real implementation, we might redirect to a signed URL or stream the file
     // For simplicity, we'll return the file info and let the frontend handle it
     // Alternatively, we could use the storage service to get a signed URL
-    const { getFileUrl } = require('../../services/storage.service.js');
+    const { getFileUrl } = await import('../../services/storage.service.js');
     const url = await getFileUrl(fileInfo.key);
 
     res.json({

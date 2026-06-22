@@ -1,4 +1,4 @@
-
+﻿
 
 /**
  * AdminDashboardEnhanced - Console d'Administration avec paramètres ajustables
@@ -9,7 +9,7 @@ import React, { useState } from 'react';
 import { ShieldCheck, Activity, Users, AlertCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { ConsoleSettings, type ConsoleSettingsConfig } from './ConsoleSettings';
-import { useConsoleLayout } from '../../hooks/useConsoleLayout';
+import { useConsoleLayout } from '@hooks/useConsoleLayout';
 
 const DEFAULT_SETTINGS: ConsoleSettingsConfig = {
   showSidebar: true,

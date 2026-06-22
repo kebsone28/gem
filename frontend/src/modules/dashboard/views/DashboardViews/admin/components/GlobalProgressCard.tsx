@@ -2,8 +2,8 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Compass } from 'lucide-react';
-import { fmtNum } from '../../../../../../utils/format';
-import { DASHBOARD_SECTION_SURFACE } from '../../../../../../components/dashboards/DashboardComponents';
+import { fmtNum } from '@utils/format';
+import { DASHBOARD_SECTION_SURFACE } from '@components/dashboards/DashboardComponents';
 import type { DashboardMetrics } from '../types';
 
 interface GlobalProgressCardProps {

@@ -1,10 +1,10 @@
-/**
+﻿/**
  * 🔐 Moteur de Sécurité & IAM Enterprise - GED OS
  * Phase 5 : Security Alerting & Proactive Monitoring
  */
 
-import { securityAlertService } from '../../services/securityAlertService';
-import logger from '../../utils/logger';
+import { securityAlertService } from '@services/securityAlertService';
+import logger from '@utils/logger';
 
 // 🛡️ Import des types (Découplage pour éviter les dépendances circulaires)
 import type {
@@ -64,6 +64,10 @@ export const PERMISSION_GROUPS = {
     PERMISSIONS.LOGISTIQUE_DEPLOYMENT,
     PERMISSIONS.LOGISTIQUE_MANAGE,
   ],
+  SECTOR_ALL_PACK: [
+    PERMISSIONS.SECTOR_GEM,
+    PERMISSIONS.SECTOR_MES,
+  ],
 };
 
 const ALL_ATOMIC_PERMISSIONS = Object.values(PERMISSIONS).filter((p) => p.includes('.'));
@@ -86,8 +90,8 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     PERMISSIONS.SYSTEM_SYNC,
     PERMISSIONS.UI_TEAMS,
     PERMISSIONS.DOCS_CONFIDENTIAL,
-    PERMISSIONS.SYSTEM_USERS,
     ...PERMISSION_GROUPS.LOGISTIQUE_FULL_PACK,
+    ...PERMISSION_GROUPS.SECTOR_ALL_PACK,
   ],
   [AppRole.CHEF_PROJET]: [
     ...PERMISSION_GROUPS.SOCLE_COMMUN,
@@ -96,8 +100,9 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     ...PERMISSION_GROUPS.LOGISTIQUE_FULL_PACK,
     PERMISSIONS.UI_TEAMS,
     PERMISSIONS.IA_USE,
+    ...PERMISSION_GROUPS.SECTOR_ALL_PACK,
   ],
-  [AppRole.CHEF_EQUIPE]: [...PERMISSION_GROUPS.SOCLE_COMMUN, ...PERMISSION_GROUPS.MISSION_VIEWER],
+  [AppRole.CHEF_EQUIPE]: [...PERMISSION_GROUPS.SOCLE_COMMUN, ...PERMISSION_GROUPS.MISSION_VIEWER, ...PERMISSION_GROUPS.SECTOR_ALL_PACK],
   [AppRole.COMPTABLE]: [
     ...PERMISSION_GROUPS.SOCLE_COMMUN,
     ...PERMISSION_GROUPS.MISSION_VIEWER,
@@ -105,6 +110,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     PERMISSIONS.LOGISTIQUE_READ,
     PERMISSIONS.LOGISTIQUE_STOCK,
     PERMISSIONS.SYSTEM_EXPORT,
+    ...PERMISSION_GROUPS.SECTOR_ALL_PACK,
   ],
   [AppRole.PATRIMOINE]: [
     ...PERMISSION_GROUPS.SOCLE_COMMUN,
@@ -112,19 +118,22 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     PERMISSIONS.TERRAIN_MENAGES,
     ...PERMISSION_GROUPS.LOGISTIQUE_FULL_PACK,
     PERMISSIONS.UI_TEAMS,
+    ...PERMISSION_GROUPS.SECTOR_ALL_PACK,
   ],
-  [AppRole.EMPLOYE]: [...PERMISSION_GROUPS.SOCLE_COMMUN, ...PERMISSION_GROUPS.MISSION_VIEWER],
+  [AppRole.EMPLOYE]: [...PERMISSION_GROUPS.SOCLE_COMMUN, ...PERMISSION_GROUPS.MISSION_VIEWER, ...PERMISSION_GROUPS.SECTOR_ALL_PACK],
   [AppRole.SUPERVISEUR]: [
     ...PERMISSION_GROUPS.SOCLE_COMMUN,
     ...PERMISSION_GROUPS.MISSION_VIEWER,
     PERMISSIONS.MISSIONS_VALIDATE,
     PERMISSIONS.SYSTEM_EXPORT,
+    ...PERMISSION_GROUPS.SECTOR_ALL_PACK,
   ],
   [AppRole.CONTROLEUR]: [
     ...PERMISSION_GROUPS.SOCLE_COMMUN,
     ...PERMISSION_GROUPS.MISSION_VIEWER,
     PERMISSIONS.MISSIONS_VALIDATE,
     PERMISSIONS.TERRAIN_REJECT,
+    ...PERMISSION_GROUPS.SECTOR_ALL_PACK,
   ],
 };
 
@@ -354,8 +363,11 @@ export const PERMISSION_LABELS: Record<string, string> = {
   [PERMISSIONS.SYSTEM_SYNC]: 'Logs de Synchronisation',
   [PERMISSIONS.IA_USE]: 'Assistant GED OS',
   [PERMISSIONS.IA_METRICS]: 'Consommation & Coûts IA',
-  [PERMISSIONS.IA_SIMULATION]: 'Scénarios de Simulation',
   [PERMISSIONS.IA_CONFIG]: 'Configuration Cerveau IA',
+
+  // ── SECTEURS AUTORISÉS ──
+  [PERMISSIONS.SECTOR_GEM]: 'Secteur: GEM (Électrification de Masse)',
+  [PERMISSIONS.SECTOR_MES]: 'Secteur: MES (Mise En Service)',
 };
 
 // 9️⃣ GESTION DES DÉPENDANCES

@@ -6,7 +6,7 @@
  * context setup to ensure Prisma auto-filtering works correctly
  */
 
-import { contextStorage, runWithContext } from '../context/storage.js';
+import { runWithContext } from '../context/storage.js';
 
 /**
  * Execute function with explicit tenant context

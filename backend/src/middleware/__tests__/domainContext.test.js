@@ -23,7 +23,7 @@ vi.mock('../../services/domain/DomainConfigService.js', () => ({
 describe('domainContext middleware', () => {
   it('attaches domainType, domainConfig and domainAdapter when org id and supported domain exist', async () => {
     const req = {
-      query: { domainType: 'electricity' },
+      query: { domainType: 'gem' },
       headers: { 'x-org-id': 'org-123' },
       user: null,
     };
@@ -36,14 +36,14 @@ describe('domainContext middleware', () => {
     await domainContext(req, res, next);
 
     expect(next).toHaveBeenCalled();
-    expect(req.domainType).toBe('electricity');
+    expect(req.domainType).toBe('gem');
     expect(req.domainConfig).toEqual(expect.objectContaining({ organizationId: 'org-123' }));
     expect(req.domainAdapter).toBeDefined();
   });
 
   it('calls next when organization id is missing (unauthenticated routes allowed)', async () => {
     const req = {
-      query: { domainType: 'electricity' },
+      query: { domainType: 'gem' },
       headers: {},
       user: null,
     };

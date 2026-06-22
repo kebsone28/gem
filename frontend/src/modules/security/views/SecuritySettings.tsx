@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
+﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 import { useState, type ComponentType, type ReactNode } from 'react';
 import {
   ShieldCheck,
@@ -16,9 +16,9 @@ import {
   Lock,
   Unlock,
 } from 'lucide-react';
-import { appSecurity } from '../../../services/appSecurity';
-import apiClient from '../../../api/client';
-import { PageContainer, PageHeader, ContentArea } from '../../../components';
+import { appSecurity } from '@services/appSecurity';
+import apiClient from '@/api/client';
+import { PageContainer, PageHeader, ContentArea } from '@components';
 
 type ToastType = 'success' | 'error' | 'info' | 'warning';
 interface Toast {

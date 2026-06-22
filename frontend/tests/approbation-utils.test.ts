@@ -3,7 +3,7 @@ import {
   getMissionStartInDays,
   isMissionUrgent,
   summarizeDeleteSettlements,
-} from '../src/pages/approbationUtils';
+} from '../src/modules/approval/views/approbationUtils';
 
 describe('approbationUtils', () => {
   it('marks urgent when mission starts within 3 days', () => {

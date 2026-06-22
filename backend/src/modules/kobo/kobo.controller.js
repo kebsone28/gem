@@ -104,7 +104,7 @@ export const getKoboStatus = async (req, res) => {
  */
 export const handleKoboWebhook = async (req, res) => {
   try {
-    console.log('[WEBHOOK] Kobo data push received.');
+    logger.log('[WEBHOOK] Kobo data push received.');
 
     // Webhooks must explicitly specify organizationId - no fallbacks allowed.
     // This prevents cross-tenant data injection vulnerabilities.
@@ -134,7 +134,7 @@ export const handleKoboWebhook = async (req, res) => {
 
     return res.json({ success: true, message: 'Webhook processed', result });
   } catch (e) {
-    console.error('[WEBHOOK-ERROR] Error handling webhook:', e.message);
+    logger.error('[WEBHOOK-ERROR] Error handling webhook:', e.message);
     return res.status(500).json({ error: 'Processing error' });
   }
 };
@@ -169,7 +169,7 @@ export const autoDetectMapping = async (req, res) => {
       message: `Mapping généré avec ${Math.round(avgConfidence)}% de confiance`,
     });
   } catch (error) {
-    console.error('[KOBO_AUTO_DETECT] Error:', error.message);
+    logger.error('[KOBO_AUTO_DETECT] Error:', error.message);
     res.status(500).json({ error: 'Échec de la détection automatique', details: error.message });
   }
 };
@@ -192,7 +192,7 @@ export const getMapping = async (req, res) => {
 
     res.json({ success: true, mapping });
   } catch (error) {
-    console.error('[KOBO_GET_MAPPING] Error:', error.message);
+    logger.error('[KOBO_GET_MAPPING] Error:', error.message);
     res.status(500).json({ error: 'Erreur lors de la récupération du mapping' });
   }
 };
@@ -223,7 +223,7 @@ export const migrateMapping = async (req, res) => {
         : 'Aucun changement détecté',
     });
   } catch (error) {
-    console.error('[KOBO_MIGRATE] Error:', error.message);
+    logger.error('[KOBO_MIGRATE] Error:', error.message);
     res.status(500).json({ error: 'Échec de la migration', details: error.message });
   }
 };
@@ -249,7 +249,7 @@ export const transformData = async (req, res) => {
 
     res.json({ success: true, transformed, mapping });
   } catch (error) {
-    console.error('[KOBO_TRANSFORM] Error:', error.message);
+    logger.error('[KOBO_TRANSFORM] Error:', error.message);
     res.status(500).json({ error: 'Échec de la transformation', details: error.message });
   }
 };

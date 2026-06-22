@@ -1,3 +1,4 @@
+import logger from '../../services/logger';
 import { planningErrorHandler } from '../../services/errorHandling/PlanningErrorHandler';
 
 // Interface pour les métriques de performance
@@ -220,7 +221,7 @@ class PlanningMetricsCollector {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type, metric, timestamp: Date.now() })
     }).catch(error => {
-      console.error('Failed to send metrics:', error);
+      logger.error('Failed to send metrics:', error);
     });
     */
   }

@@ -1,10 +1,10 @@
-/* eslint-disable @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const */
+﻿/* eslint-disable @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const */
 import { useMemo } from 'react';
-import { fmtNum } from '../../../../utils/format';
-import { useAuth } from '../../../../contexts/AuthContext';
+import { fmtNum } from '@utils/format';
+import { useAuth } from '@contexts/AuthContext';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../../../../store/db';
-import { useLabels } from '../../../../contexts/LabelsContext';
+import { db } from '@/store/db';
+import { useLabels } from '@contexts/LabelsContext';
 import { motion } from 'framer-motion';
 import {
   MapPin,
@@ -18,7 +18,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { PageContainer, PageHeader, ContentArea } from '../../../../components';
+import { PageContainer, PageHeader, ContentArea } from '@components';
 import {
   DASHBOARD_ACTION_TILE_PRIMARY,
   DASHBOARD_ACTION_TILE_SECONDARY,
@@ -28,7 +28,7 @@ import {
   StatusBadge,
   KPICard,
   ProgressBar,
-} from '../../../../components/dashboards/DashboardComponents';
+} from '@components/dashboards/DashboardComponents';
 
 const TRADES = [
   {
@@ -207,7 +207,7 @@ export default function TeamDashboard() {
                   </p>
                 </div>
                 <button
-                  onClick={() => navigate('/terrain')}
+                  onClick={() => navigate('/operations/map')}
                   className={`${DASHBOARD_PRIMARY_BUTTON} w-full lg:w-auto lg:min-w-[220px]`}
                 >
                   <MapPin size={18} />
@@ -231,7 +231,7 @@ export default function TeamDashboard() {
                   </div>
                 </button>
                 <button
-                  onClick={() => navigate('/logistique')}
+                  onClick={() => navigate('/resources/inventory')}
                   className={DASHBOARD_ACTION_TILE_SECONDARY}
                 >
                   <div className="flex items-center gap-3">
@@ -481,7 +481,7 @@ export default function TeamDashboard() {
               )}
 
               <button
-                onClick={() => navigate('/terrain')}
+                onClick={() => navigate('/operations/map')}
                 className="mt-5 sm:mt-10 w-full flex items-center justify-center gap-3 sm:gap-4 h-14 sm:h-20 border-2 border-dashed border-white/10 hover:border-blue-500/40 hover:bg-white/[0.03] text-slate-400 hover:text-white rounded-[1.3rem] sm:rounded-[2rem] font-black text-[10px] sm:text-[10px] uppercase tracking-[0.08em] sm:tracking-[0.22em] transition-all group"
               >
                 <ExternalLink size={18} className="group-hover:text-blue-500 transition-colors" />{' '}

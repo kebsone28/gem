@@ -18,19 +18,19 @@ import {
   Sparkles,
   Zap,
 } from 'lucide-react';
-import { useAuth } from '../../../contexts/AuthContext';
-import * as missionApprovalService from '../../../services/missionApprovalService';
-import { PageContainer, PageHeader } from '../../../components';
+import { useAuth } from '@contexts/AuthContext';
+import * as missionApprovalService from '@services/missionApprovalService';
+import { PageContainer, PageHeader } from '@components';
 import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
-import SignatureModal from '../../../components/common/SignatureModal';
-import { fmtFCFA } from '../../../utils/format';
-import { syncEventBus, SYNC_EVENTS } from '../../../utils/syncEventBus';
-import { getSocketInstance } from '../../../hooks/useWebSockets';
-import StockMonitorWidget from '../../../components/logistique/StockMonitorWidget';
-import logger from '../../../utils/logger';
-import { normalizeMissionApprovalRole } from '../../../core/security/roleUtils';
-import { usePermissions } from '../../../hooks/usePermissions';
+import SignatureModal from '@components/common/SignatureModal';
+import { fmtFCFA } from '@utils/format';
+import { syncEventBus, SYNC_EVENTS } from '@utils/syncEventBus';
+import { getSocketInstance } from '@hooks/useWebSockets';
+import StockMonitorWidget from '@modules/logistique/components/StockMonitorWidget';
+import logger from '@utils/logger';
+import { normalizeMissionApprovalRole } from '@core/security/roleUtils';
+import { usePermissions } from '@hooks/usePermissions';
 import {
   getMissionStartInDays,
   isMissionUrgent,

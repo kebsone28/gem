@@ -1,7 +1,7 @@
 /**
  * DomainAdapter - Abstract pattern for domain-specific implementations
  *
- * Each domain (electricity, agriculture, health, logistics, etc.)
+ * Each domain (gem, mes, targeting, data_collection, etc.)
  * implements this interface to handle domain-specific normalization,
  * validation, alerting, and status derivation logic.
  */

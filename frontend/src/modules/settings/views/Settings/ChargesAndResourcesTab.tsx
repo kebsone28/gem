@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { MapPin, Trash2, DollarSign, Wrench } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import { useTeams } from '../../../../hooks/useTeams';
-import { useProject } from '../../../../contexts/ProjectContext';
-import apiClient from '../../../../api/client';
+import { useTeams } from '@hooks/useTeams';
+import { useProject } from '@contexts/ProjectContext';
+import apiClient from '@/api/client';
 
 function DebouncedInput({ value, onChange, type = 'text', placeholder, className, disabled, min, max }: any) {
   const [localValue, setLocalValue] = useState(value);
@@ -216,7 +216,14 @@ export default function ChargesAndResourcesTab({
       await updateProject({ duration: projectDurationMonths });
       toast.success(response.data?.message || 'Équipes générées', { id: toastId });
     } catch (err: any) {
-      toast.error(err?.response?.data?.error || 'Erreur de génération', { id: toastId });
+      const errorObj = err?.response?.data?.error;
+      const msg = typeof errorObj === 'string'
+        ? errorObj
+        : errorObj?.message
+        || (Array.isArray(errorObj?.errors) ? errorObj.errors.join(', ') : '')
+        || err?.message
+        || 'Erreur de génération';
+      toast.error(msg, { id: toastId });
     } finally {
       setIsAutoGenerating(false);
     }

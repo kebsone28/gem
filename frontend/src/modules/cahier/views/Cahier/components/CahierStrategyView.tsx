@@ -1,6 +1,6 @@
-import React from 'react';
+﻿import React from 'react';
 import { Target, Map, Flag, Zap, ShieldCheck } from 'lucide-react';
-import type { OperationalStrategyTemplate } from '../../../../../data/operationalStrategyTemplates';
+import type { OperationalStrategyTemplate } from '@/data/operationalStrategyTemplates';
 import { isStrategyHeading } from '../utils/cahierUtils';
 
 interface CahierStrategyViewProps {

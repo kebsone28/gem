@@ -5,6 +5,7 @@
 
 import { db } from '../../store/db';
 import type { AIResponse } from './MissionSageService';
+import logger from '../logger';
 
 // ─────────────────────────────────────────────
 // TYPES POUR L'APPRENTISSAGE
@@ -84,7 +85,7 @@ export const userFeedbackService = {
         reason,
       });
     } catch (err) {
-      console.error('[UserFeedback] Failed to record feedback', err);
+      logger.error('[UserFeedback] Failed to record feedback', err);
     }
   },
 

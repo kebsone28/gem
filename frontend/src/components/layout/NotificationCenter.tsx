@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, react-hooks/exhaustive-deps */
+﻿/* eslint-disable @typescript-eslint/no-explicit-any, react-hooks/exhaustive-deps */
 import React, { useState, useEffect, useMemo, memo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
@@ -14,13 +14,13 @@ import {
   Zap
 } from 'lucide-react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../../store/db';
-import { syncEventBus } from '../../utils/syncEventBus';
+import { db } from '@/store/db';
+import { syncEventBus } from '@utils/syncEventBus';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { audioService } from '../../services/audioService';
+import { audioService } from '@services/audioService';
 import { toast } from 'react-hot-toast';
-import logger from '../../utils/logger';
+import logger from '@utils/logger';
 
 /* ─────────────────────────────────────────────────────────────────────────────
    SUB-COMPONENT: NotificationItem (Memoized to prevent massive re-renders)

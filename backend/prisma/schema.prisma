@@ -5,7 +5,6 @@ generator client {
 
 datasource db {
   provider   = "postgresql"
-  extensions = [postgis]
 }
 
 model Organization {
@@ -93,6 +92,7 @@ model User {
   mesRecordsValidated      MESRecord[]              @relation("MESValidator")
   mesControls              MESControl[]
 
+  @@index([email])
   @@unique([email, organizationId])
 }
 
@@ -137,6 +137,10 @@ model Project {
   workflows             Workflow[]
   zones                 Zone[]
   mesRecords            MESRecord[]
+
+  @@index([organizationId, deletedAt])
+  @@index([templateKey])
+  @@index([status])
 }
 
 model ProjectTemplate {
@@ -193,7 +197,9 @@ model Zone {
   deletedAt      DateTime?
   households     Household[]
   teams          Team[]
-  project        Project     @relation(fields: [projectId], references: [id])
+  project        Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, deletedAt])
 }
 
 model Household {
@@ -209,7 +215,7 @@ model Household {
   longitude               Float?
   status                  String
   location                Json
-  location_gis            Unsupported("geometry")?
+  location_gis            Json?
   owner                   Json
   koboData                Json?                    @default("{}")
   koboSync                Json?                    @default("{}")
@@ -226,13 +232,14 @@ model Household {
   deletedAt               DateTime?
   projectId               String?
   grappe                  Grappe?                  @relation(fields: [grappeId], references: [id])
-  project                 Project?                 @relation(fields: [projectId], references: [id])
+  project                 Project?                 @relation(fields: [projectId], references: [id], onDelete: Cascade)
   zone                    Zone?                    @relation(fields: [zoneId], references: [id])
   internalKoboSubmissions InternalKoboSubmission[]
   performanceLogs         PerformanceLog[]
 
   @@unique([numeroordre, organizationId])
   @@index([region])
+  @@index([organizationId, deletedAt])
   @@index([departement])
   @@index([village])
   @@index([assignedTeams])
@@ -305,6 +312,8 @@ model Team {
   @@index([regionId])
   @@index([path])
   @@index([role])
+  @@index([status])
+  @@index([tradeKey])
 }
 
 model SyncLog {
@@ -702,6 +711,7 @@ model PVRecord {
   @@index([householdId])
   @@index([type])
   @@index([createdAt])
+  @@index([organizationId, deletedAt])
 }
 
 model AlertConfiguration {
@@ -936,6 +946,7 @@ model Document {
   @@index([folderId])
   @@index([uploadedById])
   @@index([accessLevel])
+  @@index([organizationId, deletedAt])
 }
 
 model DocumentVersion {
@@ -1112,6 +1123,7 @@ model FinancialCharge {
   @@index([category])
   @@index([status])
   @@index([date])
+  @@index([organizationId, deletedAt])
 }
 
 model SystemError {
@@ -1166,7 +1178,7 @@ model Field {
   name           String?
   status         String                   @default("prepared")
   location       Json?
-  location_gis   Unsupported("geometry")?
+  location_gis   Json?
   domainData     Json?                    @default("{}")
   alerts         Json?                    @default("[]")
   version        Int                      @default(1)
@@ -1188,7 +1200,7 @@ model Livestock {
   name           String?
   status         String                   @default("healthy")
   location       Json?
-  location_gis   Unsupported("geometry")?
+  location_gis   Json?
   domainData     Json?                    @default("{}")
   alerts         Json?                    @default("[]")
   version        Int                      @default(1)
@@ -1210,7 +1222,7 @@ model HealthCenter {
   name           String?
   status         String                   @default("operational")
   location       Json?
-  location_gis   Unsupported("geometry")?
+  location_gis   Json?
   domainData     Json?                    @default("{}")
   alerts         Json?                    @default("[]")
   version        Int                      @default(1)
@@ -1250,7 +1262,7 @@ model Warehouse {
   name           String?
   status         String                   @default("operational")
   location       Json?
-  location_gis   Unsupported("geometry")?
+  location_gis   Json?
   domainData     Json?                    @default("{}")
   alerts         Json?                    @default("[]")
   version        Int                      @default(1)
@@ -1290,7 +1302,7 @@ model HighVoltageNetwork {
   name           String?
   status         String                   @default("operational")
   location       Json?
-  location_gis   Unsupported("geometry")?
+  location_gis   Json?
   domainData     Json?                    @default("{}")
   alerts         Json?                    @default("[]")
   version        Int                      @default(1)
@@ -1312,7 +1324,7 @@ model SolarInstallation {
   name           String?
   status         String                   @default("operational")
   location       Json?
-  location_gis   Unsupported("geometry")?
+  location_gis   Json?
   domainData     Json?                    @default("{}")
   alerts         Json?                    @default("[]")
   version        Int                      @default(1)

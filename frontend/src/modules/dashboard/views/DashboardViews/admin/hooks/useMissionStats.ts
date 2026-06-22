@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
-import { hasPermission, PERMISSIONS } from '../../../../../../core/security/permissions';
-import type { MissionStats } from '../../../../../../services/missionStatsService';
-import { missionStatsService } from '../../../../../../services/missionStatsService';
+﻿import { useState, useEffect, useCallback } from 'react';
+import { hasPermission, PERMISSIONS } from '@core/security/permissions';
+import type { MissionStats } from '@services/missionStatsService';
+import { missionStatsService } from '@services/missionStatsService';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../../../../../../store/db';
-import logger from '../../../../../../utils/logger';
+import { db } from '@/store/db';
+import logger from '@utils/logger';
 
 export function useMissionStats(user: Record<string, unknown> | null, projectId: string) {
   const [stats, setStats] = useState<MissionStats | null>(null);

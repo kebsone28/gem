@@ -9,23 +9,23 @@ import {
   Package,
   Wrench,
 } from 'lucide-react';
-import { useFinances } from '../../../hooks/useFinances';
-import FinancialKpis from '../../../components/finances/FinancialKpis';
-import CostPieChart from '../../../components/finances/CostPieChart';
-import DetailedBreakdown from '../../../components/finances/DetailedBreakdown';
-import DevisVsReel from '../../../components/finances/DevisVsReel';
-import MaterialDatabase from '../../../components/finances/MaterialDatabase';
-import ChargeDotationsSection from '../../../components/finances/ChargeDotationsSection';
+import { useFinances } from '@hooks/useFinances';
+import FinancialKpis from '@components/finances/FinancialKpis';
+import CostPieChart from '@components/finances/CostPieChart';
+import DetailedBreakdown from '@components/finances/DetailedBreakdown';
+import DevisVsReel from '@components/finances/DevisVsReel';
+import MaterialDatabase from '@components/finances/MaterialDatabase';
+import ChargeDotationsSection from '@components/finances/ChargeDotationsSection';
 import { motion, AnimatePresence } from 'framer-motion';
-import SparklineChart from '../../../components/finances/SparklineChart';
-import { useTheme } from '../../../contexts/ThemeContext';
-import { useProject } from '../../../contexts/ProjectContext';
+import SparklineChart from '@components/finances/SparklineChart';
+import { useTheme } from '@contexts/ThemeContext';
+import { useProject } from '@contexts/ProjectContext';
 import { useNavigate } from 'react-router-dom';
-import { exportFinancialPDF } from '../../../services/exportService';
+import { exportFinancialPDF } from '@services/exportService';
 import { Database } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-import { PageContainer, Section, COMMON_CLASSES } from '../../../components';
+import { PageContainer, Section, COMMON_CLASSES } from '@components';
 
 export default function Charges() {
   const { isLoading, stats, devis, project, toggleClientProvidesMaterials } = useFinances();
@@ -235,7 +235,7 @@ export default function Charges() {
               EXPORTER PDF
             </button>
             <button
-              onClick={() => navigate('/simulation')}
+              onClick={() => navigate('/finance/simulation')}
               className={`${COMMON_CLASSES.btnSecondary} flex items-center justify-center gap-2 px-8 py-4 rounded-2xl font-black text-xs transition-all hover:scale-105`}
             >
               EXPLORER LES SCÉNARIOS

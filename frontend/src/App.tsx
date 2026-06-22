@@ -4,6 +4,7 @@ import { useAuth } from './contexts/AuthContext';
 import BackgroundServices from './components/BackgroundServices';
 import ImpersonationBanner from './components/ImpersonationBanner';
 import ChatNotificationHandler from './components/ChatNotificationHandler';
+import { Toaster } from 'react-hot-toast';
 import { LazyRouteErrorBoundary } from './components/LazyRouteErrorBoundary';
 import { useWebSockets } from './hooks/useWebSockets';
 import { AppRouter, PageLoader } from './core/router/AppRouter';
@@ -29,6 +30,7 @@ function App() {
       <ImpersonationBanner />
       <BackgroundServices />
       <ChatNotificationHandler />
+      <Toaster position="top-right" toastOptions={{ style: { background: '#1e293b', color: '#fff', borderRadius: '1rem' } }} />
 
       <LazyRouteErrorBoundary>
         <AppRouter />

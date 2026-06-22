@@ -1,4 +1,4 @@
-import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
+﻿import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle,
   Calendar,
@@ -16,7 +16,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { PageContainer, PageHeader } from '../../../components';
+import { PageContainer, PageHeader } from '@components';
 import {
   DASHBOARD_INPUT,
   DASHBOARD_MINI_STAT_CARD,
@@ -25,15 +25,15 @@ import {
   DASHBOARD_TABLE_ROW,
   DASHBOARD_TABLE_SHELL,
   DASHBOARD_TEXTAREA,
-} from '../../../components/dashboards/DashboardComponents';
-import { useAuth } from '../../../contexts/AuthContext';
-import logger from '../../../utils/logger';
+} from '@components/dashboards/DashboardComponents';
+import { useAuth } from '@contexts/AuthContext';
+import logger from '@utils/logger';
 import {
   evaluateFormationExpert,
   type FormationExpertActionId,
   type FormationExpertQuestion,
   type FormationExpertReplyOption,
-} from '../../../services/formationExpertEngine';
+} from '@services/formationExpertEngine';
 import {
   AI_STRUCTURED_QUESTION_IDS,
   MAX_TIMELINE_DAYS_CLASS,
@@ -68,7 +68,7 @@ import {
   type StatsResponse,
   type TimelineDay,
   type TrainerResource,
-} from '../../../services/formationPlanningService';
+} from '@services/formationPlanningService';
 import './PlanningFormation.css';
 
 interface ExpertConversationMessage {

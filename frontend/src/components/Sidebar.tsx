@@ -50,6 +50,8 @@ import { modulesManagementService } from '../services/modulesManagementService';
 import { PROJECT_CONFIG } from '../config/projectConfig';
 
 import { MODULE_REGISTRY, getAllModules } from '../core/kernel/registry';
+import { CATEGORY_ORDER, CATEGORY_METADATA } from '../core/navigation';
+import type { ModuleCategory } from '../core/kernel/types';
 
 const LUCIDE_ICONS: Record<string, any> = {
   Home,
@@ -141,7 +143,7 @@ export default function Sidebar() {
       '/admin/diagnostic',
       '/admin/organization',
       '/admin/security',
-      '/admin/project-creation',
+      '/projects/create',
       '/admin/ai-config',
       '/admin/agent-local',
       '/admin/permissions',
@@ -197,7 +199,7 @@ export default function Sidebar() {
     title: string; // Plain explanation for hover
     permission?: string | string[];
     visible?: boolean;
-    category: 'PILOTAGE' | 'OPÉRATIONS' | 'SYSTÈME';
+    category: ModuleCategory;
   }
 
   const navItems: NavItem[] = useMemo(() => {
@@ -257,8 +259,19 @@ export default function Sidebar() {
 
   // 🚀 [REACTIVITY] Re-calculate items when user or permissions change
   const [globalModulesConfig, setGlobalModulesConfig] = useState<any>(null);
+  const [domainModulesConfig, setDomainModulesConfig] = useState<any>(null);
+  const [currentDomain, setCurrentDomain] = useState<string | null>(null);
+
   useEffect(() => {
     modulesManagementService.getGlobalModulesConfig().then(setGlobalModulesConfig);
+    // Déterminer le domaine courant depuis le localStorage
+    const sector = localStorage.getItem('selectedSector');
+    if (sector) {
+      // SECTOR_GEM → gem, SECTOR_MES → mes
+      const domain = sector.replace('SECTOR_', '').toLowerCase();
+      setCurrentDomain(domain);
+      modulesManagementService.getDomainModulesConfig().then(setDomainModulesConfig);
+    }
   }, []);
 
   const memoGroupedItems = useMemo(() => {
@@ -282,7 +295,10 @@ export default function Sidebar() {
           simulation: 'ai_assistant',
           formation: 'formation',
           planning: 'planning',
-          bordereau: 'bordereau'
+          bordereau: 'bordereau',
+          mes: 'sectors',
+          kobo_mapping: 'admin',
+          kobo_terminal: 'admin'
         };
         const targetModuleId = moduleMapping[item.id] || item.id;
 
@@ -304,12 +320,21 @@ export default function Sidebar() {
           if (config && config.enabled === false) return acc;
         }
 
+        // 🛡️ [DOMAIN] Vérifier si le module est activé pour le domaine courant
+        if (domainModulesConfig && currentDomain && item.id !== 'home') {
+          const domainConfig = domainModulesConfig[currentDomain];
+          if (domainConfig) {
+            const moduleDomainConfig = domainConfig[targetModuleId];
+            if (moduleDomainConfig && moduleDomainConfig.enabled === false) return acc;
+          }
+        }
+
         // 🛡️ Filtre par module (Config Projet - isolation tenante)
         if (item.id !== 'home') {
           if (enabledModules) {
             const isSystemPage = [
               'modules', 'diagnostic', 'kobo_terminal', 'gem_toolbox', 'gem_collect',
-              'organization', 'settings', 'security', 'help', 'users', 'ai_config', 'admin_agent', 'agriculture', 'health'
+              'organization', 'settings', 'security', 'help', 'users', 'ai_config', 'admin_agent'
             ].includes(item.id);
 
             const bypassModuleCheck = isSystemPage && isMaster;
@@ -318,7 +343,7 @@ export default function Sidebar() {
             // Sans projet chargé : les pages système passent toujours pour les admins
             const isSystemPage = [
               'modules', 'diagnostic', 'kobo_terminal', 'gem_toolbox', 'gem_collect',
-              'organization', 'settings', 'security', 'help', 'users', 'ai_config', 'admin_agent', 'agriculture', 'health'
+              'organization', 'settings', 'security', 'help', 'users', 'ai_config', 'admin_agent'
             ].includes(item.id);
             if (!isSystemPage && !PROJECT_CONFIG.isModuleEnabled(item.id)) return acc;
           }
@@ -331,15 +356,11 @@ export default function Sidebar() {
         }
         return acc;
       },
-      {} as Record<string, NavItem[]>
+      {} as Record<ModuleCategory, NavItem[]>
     );
-  }, [navItems, isMaster, peut, project?.config?.enabledModules, globalModulesConfig, isGlobalAdminContext]);
+  }, [navItems, isMaster, peut, project?.config?.enabledModules, globalModulesConfig, domainModulesConfig, currentDomain, isGlobalAdminContext]);
 
-  const categoryConfig = {
-    PILOTAGE: { color: 'blue', label: 'STRATÉGIE', glow: 'shadow-blue-500/10' },
-    OPÉRATIONS: { color: 'blue', label: 'OPÉRATIONS TERRAIN', glow: 'shadow-blue-500/10' },
-    SYSTÈME: { color: 'blue', label: 'ADMINISTRATION', glow: 'shadow-blue-500/10' },
-  };
+  const categoryConfig = CATEGORY_METADATA;
   const isRailDesktop = sidebarMode === 'rail';
   const isCompactDesktop = sidebarMode !== 'wide';
   const asideWidthClass =
@@ -445,7 +466,7 @@ export default function Sidebar() {
             className={`flex items-start gap-3 ${isRailDesktop ? 'justify-center' : 'justify-between'}`}
           >
             <Link
-              to="/home"
+              to="/projects"
               title="Retour à la sélection des projets"
               className={`flex min-w-0 items-center gap-3 ${isRailDesktop ? 'justify-center' : 'flex-1'} group cursor-pointer transition-all duration-200 hover:opacity-85`}
             >
@@ -546,11 +567,13 @@ export default function Sidebar() {
           <div
             className={`rounded-[1.7rem] border border-white/6 bg-white/[0.025] shadow-[0_16px_38px_rgba(2,6,23,0.14)] ${isRailDesktop ? 'px-2 py-3' : 'px-2.5 py-2 lg:px-3 lg:py-3'}`}
           >
-            {Object.entries(memoGroupedItems).map(([cat, items], sectionIndex) => (
-              <section
-                key={cat}
-                className={`${sectionIndex > 0 ? 'mt-3 border-t border-white/6 pt-3 lg:mt-4 lg:pt-4' : ''}`}
-              >
+            {CATEGORY_ORDER.filter(cat => memoGroupedItems[cat] && memoGroupedItems[cat]!.length > 0).map((cat, sectionIndex) => {
+              const items = memoGroupedItems[cat]!;
+              return (
+                <section
+                  key={cat}
+                  className={`${sectionIndex > 0 ? 'mt-3 border-t border-white/6 pt-3 lg:mt-4 lg:pt-4' : ''}`}
+                >
                 {!isRailDesktop ? (
                   <div className="mb-2 flex items-center justify-between gap-3 px-1 lg:mb-3">
                     <span className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">
@@ -637,7 +660,8 @@ export default function Sidebar() {
                   ))}
                 </nav>
               </section>
-            ))}
+            );
+          })}
           </div>
         </div>
 

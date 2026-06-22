@@ -1,5 +1,6 @@
 import prisma from '../../core/utils/prisma.js';
 import { tracerAction } from '../../services/audit.service.js';
+import logger from '../../utils/logger.js';
 
 // Get template configuration for a project
 export const getProjectTemplate = async (req, res) => {
@@ -28,7 +29,7 @@ export const getProjectTemplate = async (req, res) => {
 
     res.json({ template, templateVersion: project.templateVersion });
   } catch (err) {
-    console.error('Get template error', err);
+    logger.error('Get template error', err);
     res.status(500).json({ error: 'Server error getting template' });
   }
 };
@@ -39,7 +40,7 @@ export const listPages = async (req, res) => {
     const pages = await prisma.projectPage.findMany({ where: { projectId }, orderBy: { order: 'asc' } });
     res.json({ pages });
   } catch (err) {
-    console.error('List pages error', err);
+    logger.error('List pages error', err);
     res.status(500).json({ error: 'Server error listing pages' });
   }
 };
@@ -52,7 +53,7 @@ export const createPage = async (req, res) => {
     await tracerAction({ userId: req.user.id, organizationId: req.user.organizationId, action: 'CREATE_PROJECT_PAGE', resource: 'ProjectPage', resourceId: page.id, req });
     res.status(201).json(page);
   } catch (err) {
-    console.error('Create page error', err);
+    logger.error('Create page error', err);
     res.status(500).json({ error: 'Server error creating page' });
   }
 };
@@ -65,7 +66,7 @@ export const updatePage = async (req, res) => {
     await tracerAction({ userId: req.user.id, organizationId: req.user.organizationId, action: 'UPDATE_PROJECT_PAGE', resource: 'ProjectPage', resourceId: pageId, req });
     res.json(updated);
   } catch (err) {
-    console.error('Update page error', err);
+    logger.error('Update page error', err);
     res.status(500).json({ error: 'Server error updating page' });
   }
 };
@@ -77,7 +78,7 @@ export const deletePage = async (req, res) => {
     await tracerAction({ userId: req.user.id, organizationId: req.user.organizationId, action: 'DELETE_PROJECT_PAGE', resource: 'ProjectPage', resourceId: pageId, req });
     res.json({ message: 'Deleted' });
   } catch (err) {
-    console.error('Delete page error', err);
+    logger.error('Delete page error', err);
     res.status(500).json({ error: 'Server error deleting page' });
   }
 };
@@ -89,7 +90,7 @@ export const listModules = async (req, res) => {
     const modules = await prisma.projectModule.findMany({ where: { projectId } });
     res.json({ modules });
   } catch (err) {
-    console.error('List modules error', err);
+    logger.error('List modules error', err);
     res.status(500).json({ error: 'Server error listing modules' });
   }
 };
@@ -102,7 +103,7 @@ export const createModule = async (req, res) => {
     await tracerAction({ userId: req.user.id, organizationId: req.user.organizationId, action: 'CREATE_PROJECT_MODULE', resource: 'ProjectModule', resourceId: mod.id, req });
     res.status(201).json(mod);
   } catch (err) {
-    console.error('Create module error', err);
+    logger.error('Create module error', err);
     res.status(500).json({ error: 'Server error creating module' });
   }
 };
@@ -115,7 +116,7 @@ export const updateModule = async (req, res) => {
     await tracerAction({ userId: req.user.id, organizationId: req.user.organizationId, action: 'UPDATE_PROJECT_MODULE', resource: 'ProjectModule', resourceId: moduleId, req });
     res.json(updated);
   } catch (err) {
-    console.error('Update module error', err);
+    logger.error('Update module error', err);
     res.status(500).json({ error: 'Server error updating module' });
   }
 };
@@ -127,7 +128,7 @@ export const deleteModule = async (req, res) => {
     await tracerAction({ userId: req.user.id, organizationId: req.user.organizationId, action: 'DELETE_PROJECT_MODULE', resource: 'ProjectModule', resourceId: moduleId, req });
     res.json({ message: 'Deleted' });
   } catch (err) {
-    console.error('Delete module error', err);
+    logger.error('Delete module error', err);
     res.status(500).json({ error: 'Server error deleting module' });
   }
 };

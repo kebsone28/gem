@@ -1,5 +1,5 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import type { MissionStats } from '../../../../../services/missionStatsService';
+﻿/* eslint-disable @typescript-eslint/no-explicit-any */
+import type { MissionStats } from '@services/missionStatsService';
 
 export interface PipelineData {
   murs: number;

@@ -6,7 +6,6 @@ import {
     updateTeam,
     deleteTeam,
     assignTeamToZone,
-    getTeamPositions,
     autoGenerateTeams
 } from '../../modules/team/team.controller.js';
 import { getRegions } from '../../modules/team/region.controller.js';
@@ -24,8 +23,6 @@ router.get('/', getTeams);
 router.get('/tree', getTeamsTree);
 router.get('/regions', getRegions);
 router.get('/grappes', getGrappes);
-router.get('/positions', getTeamPositions);
-
 router.post('/auto-generate', verifierPermission(PERMISSIONS.GERER_UTILISATEURS), autoGenerateTeams);
 router.post('/grappes/sync', verifierPermission(PERMISSIONS.GERER_PARAMETRES), syncGrappes);
 

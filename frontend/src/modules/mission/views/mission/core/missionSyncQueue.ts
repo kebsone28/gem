@@ -1,7 +1,7 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { db } from '../../../../../store/db';
+﻿/* eslint-disable @typescript-eslint/no-explicit-any */
+import { db } from '@/store/db';
 import type { MissionAction } from './missionTypes';
-import logger from '../../../../../utils/logger';
+import logger from '@utils/logger';
 
 /**
  * SERVICE : Sync Queue legacy

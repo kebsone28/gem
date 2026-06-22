@@ -3,6 +3,7 @@ import { tracerAction } from '../../services/audit.service.js';
 import { socketService } from '../../services/socket.service.js';
 import { hasPrismaDelegate, isPrismaSchemaDriftError } from '../../core/utils/prismaCompat.js';
 import { assistantService } from '../assistant/assistant.service.js';
+import logger from '../../utils/logger.js';
 
 // 🛡️ [QUALITY qual_003] Concurrency guard for AI responses
 const pendingAiResponses = new Map();
@@ -313,7 +314,7 @@ export const getChatBootstrap = async (req, res) => {
       return res.status(400).json({ error: 'Session invalide : organizationId ou userId manquant.' });
     }
 
-    console.log(`[CHAT_BOOTSTRAP] Starting for user ${userId} in org ${organizationId}`);
+    logger.info(`[CHAT_BOOTSTRAP] Starting for user ${userId} in org ${organizationId}`);
 
     if (!isChatPersistenceAvailable()) {
       return sendBootstrapFallback(res, organizationId, userId);
@@ -321,7 +322,7 @@ export const getChatBootstrap = async (req, res) => {
 
     const [globalConversation, users, conversations, activeBlocksByUserId] = await Promise.all([
       ensureGlobalConversation(organizationId, userId).catch(e => {
-        console.error('[CHAT_BOOTSTRAP] ensureGlobalConversation failed:', e);
+        logger.error('[CHAT_BOOTSTRAP] ensureGlobalConversation failed:', e);
         throw e;
       }),
       prisma.user.findMany({
@@ -329,7 +330,7 @@ export const getChatBootstrap = async (req, res) => {
         orderBy: [{ active: 'desc' }, { name: 'asc' }, { email: 'asc' }],
         select: userSelect,
       }).catch(e => {
-        console.error('[CHAT_BOOTSTRAP] findMany users failed:', e);
+        logger.error('[CHAT_BOOTSTRAP] findMany users failed:', e);
         throw e;
       }),
       prisma.chatConversation.findMany({
@@ -347,16 +348,16 @@ export const getChatBootstrap = async (req, res) => {
         include: conversationInclude,
         orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
       }).catch(e => {
-        console.error('[CHAT_BOOTSTRAP] findMany conversations failed:', e);
+        logger.error('[CHAT_BOOTSTRAP] findMany conversations failed:', e);
         throw e;
       }),
       getActiveBlocksByUserId(organizationId).catch(e => {
-        console.error('[CHAT_BOOTSTRAP] getActiveBlocksByUserId failed:', e);
+        logger.error('[CHAT_BOOTSTRAP] getActiveBlocksByUserId failed:', e);
         throw e;
       }),
     ]);
 
-    console.log(`[CHAT_BOOTSTRAP] Data fetched. GlobalConv: ${globalConversation?.id}, Users: ${users.length}, Convs: ${conversations.length}`);
+    logger.info(`[CHAT_BOOTSTRAP] Data fetched. GlobalConv: ${globalConversation?.id}, Users: ${users.length}, Convs: ${conversations.length}`);
 
     const onlineUserIds = new Set(socketService.getOrganizationPresence(organizationId));
     const safeUsers = users.map((user) => toSafeUser(user, activeBlocksByUserId, onlineUserIds));
@@ -370,7 +371,7 @@ export const getChatBootstrap = async (req, res) => {
           toSafeConversation(conversation, userId, activeBlocksByUserId, onlineUserIds)
         );
       } catch (convError) {
-        console.error(`[CHAT_BOOTSTRAP] Error transforming conversation ${conversation.id}:`, convError);
+        logger.error(`[CHAT_BOOTSTRAP] Error transforming conversation ${conversation.id}:`, convError);
       }
     });
 
@@ -386,7 +387,7 @@ export const getChatBootstrap = async (req, res) => {
     if (isPrismaSchemaDriftError(error)) {
       return sendBootstrapFallback(res, req.user.organizationId, req.user.id);
     }
-    console.error('[CHAT_BOOTSTRAP_ERROR]', error);
+    logger.error('[CHAT_BOOTSTRAP_ERROR]', error);
     res.status(500).json({ error: 'Erreur lors du chargement de la messagerie.', details: error.message });
   }
 };
@@ -472,7 +473,7 @@ export const createConversation = async (req, res) => {
         },
         req,
       }).catch((auditError) => {
-        console.warn('[CHAT_AUDIT] createConversation failed:', auditError.message);
+        logger.warn('[CHAT_AUDIT] createConversation failed:', auditError.message);
       });
     }
 
@@ -489,7 +490,7 @@ export const createConversation = async (req, res) => {
       error.statusCode = 503;
       error.message = 'La messagerie n’est pas encore disponible sur ce serveur. Finalisez la mise à niveau de la base puis réessayez.';
     }
-    console.error('[CHAT_CREATE_CONVERSATION_ERROR]', error);
+    logger.error('[CHAT_CREATE_CONVERSATION_ERROR]', error);
     res.status(error.statusCode || 500).json({
       error: error.message || 'Erreur lors de la création de la conversation.',
       ...(error.code && { code: error.code }),
@@ -518,7 +519,7 @@ export const getConversationMessages = async (req, res) => {
       error.statusCode = 503;
       error.message = 'La messagerie n’est pas encore disponible sur ce serveur. Finalisez la mise à niveau de la base puis réessayez.';
     }
-    console.error('[CHAT_GET_MESSAGES_ERROR]', error);
+    logger.error('[CHAT_GET_MESSAGES_ERROR]', error);
     res.status(error.statusCode || 500).json({
       error: error.message || 'Erreur lors du chargement des messages.',
       ...(error.code && { code: error.code }),
@@ -646,7 +647,7 @@ export const sendMessage = async (req, res) => {
           socketService.emit('chat:message:new', { message: toSafeMessage(aiMessage) }, getConversationRoom(conversationId));
 
         } catch (e) {
-          console.error('[AI_BOT_ERROR]', e);
+          logger.error('[AI_BOT_ERROR]', e);
         } finally {
           pendingAiResponses.delete(conversationId);
         }
@@ -657,7 +658,7 @@ export const sendMessage = async (req, res) => {
       error.statusCode = 503;
       error.message = 'La messagerie n’est pas encore disponible sur ce serveur. Finalisez la mise à niveau de la base puis réessayez.';
     }
-    console.error('[CHAT_SEND_MESSAGE_ERROR]', error);
+    logger.error('[CHAT_SEND_MESSAGE_ERROR]', error);
     res.status(error.statusCode || 500).json({
       error: error.message || "Erreur lors de l'envoi du message.",
       ...(error.code && { code: error.code }),
@@ -687,7 +688,7 @@ export const markAsRead = async (req, res) => {
 
     res.json({ success: true });
   } catch (error) {
-    console.error('[CHAT_MARK_READ_ERROR]', error);
+    logger.error('[CHAT_MARK_READ_ERROR]', error);
     res.status(500).json({ error: 'Erreur lors du marquage comme lu.' });
   }
 };
@@ -760,7 +761,7 @@ export const deleteMessage = async (req, res) => {
       },
       req,
     }).catch((auditError) => {
-      console.warn('[CHAT_AUDIT] deleteMessage failed:', auditError.message);
+      logger.warn('[CHAT_AUDIT] deleteMessage failed:', auditError.message);
     });
 
     const activeBlocksByUserId = await getActiveBlocksByUserId(organizationId);
@@ -788,7 +789,7 @@ export const deleteMessage = async (req, res) => {
       error.statusCode = 503;
       error.message = 'La messagerie n’est pas encore disponible sur ce serveur. Finalisez la mise à niveau de la base puis réessayez.';
     }
-    console.error('[CHAT_DELETE_MESSAGE_ERROR]', error);
+    logger.error('[CHAT_DELETE_MESSAGE_ERROR]', error);
     res.status(error.statusCode || 500).json({
       error: error.message || 'Erreur lors de la suppression du message.',
       ...(error.code && { code: error.code }),
@@ -856,7 +857,7 @@ export const toggleUserChatBlock = async (req, res) => {
       },
       req,
     }).catch((auditError) => {
-      console.warn('[CHAT_AUDIT] toggleUserChatBlock failed:', auditError.message);
+      logger.warn('[CHAT_AUDIT] toggleUserChatBlock failed:', auditError.message);
     });
 
     const payload = {
@@ -874,7 +875,7 @@ export const toggleUserChatBlock = async (req, res) => {
       error.statusCode = 503;
       error.message = 'La messagerie n’est pas encore disponible sur ce serveur. Finalisez la mise à niveau de la base puis réessayez.';
     }
-    console.error('[CHAT_BLOCK_ERROR]', error);
+    logger.error('[CHAT_BLOCK_ERROR]', error);
     res.status(error.statusCode || 500).json({
       error: error.message || 'Erreur lors de la mise à jour du blocage.',
       ...(error.code && { code: error.code }),
@@ -909,7 +910,7 @@ export const deleteConversation = async (req, res) => {
       error.statusCode = 503;
       error.message = 'La messagerie n’est pas encore disponible sur ce serveur. Finalisez la mise à niveau de la base puis réessayez.';
     }
-    console.error('[CHAT_DELETE_ERROR]', error);
+    logger.error('[CHAT_DELETE_ERROR]', error);
     res.status(error.statusCode || 500).json({
       error: error.message || 'Erreur lors de la suppression de la conversation.',
       ...(error.code && { code: error.code }),
@@ -921,7 +922,7 @@ export const clearHistory = async (req, res) => {
     const { organizationId, email } = req.user;
     const { conversationId } = req.params;
 
-    console.log(`[CHAT] clearHistory: user=${email} org=${organizationId} conv=${conversationId}`);
+    logger.info(`[CHAT] clearHistory: user=${email} org=${organizationId} conv=${conversationId}`);
 
     assertChatPersistenceAvailable();
 
@@ -932,7 +933,7 @@ export const clearHistory = async (req, res) => {
       },
     });
 
-    console.log(`[CHAT] clearHistory done: deleted ${deletedCount.count} messages from ${conversationId}`);
+    logger.info(`[CHAT] clearHistory done: deleted ${deletedCount.count} messages from ${conversationId}`);
 
     // Mettre à jour updatedAt pour que la conversation remonte dans la liste (même vide)
     await prisma.chatConversation.update({
@@ -944,7 +945,7 @@ export const clearHistory = async (req, res) => {
 
     res.json({ success: true, message: 'Historique vidé pour tous.', deletedCount: deletedCount.count });
   } catch (error) {
-    console.error('[CHAT_CLEAR_HISTORY_ERROR]', error);
+    logger.error('[CHAT_CLEAR_HISTORY_ERROR]', error);
     res.status(500).json({ error: "Erreur lors du vidage de l'historique." });
   }
 };
@@ -969,7 +970,7 @@ export const markConversationAsCleared = async (req, res) => {
 
     res.json({ success: true, message: 'Conversation cleared' });
   } catch (error) {
-    console.error('[CHAT_CLEAR_ERROR]', error);
+    logger.error('[CHAT_CLEAR_ERROR]', error);
     res.status(500).json({ error: 'Erreur lors de l’effacement de la conversation.' });
   }
 };
@@ -1002,7 +1003,7 @@ export const updateUserStatus = async (req, res) => {
 
     res.json({ success: true, data: payload });
   } catch (error) {
-    console.error('[CHAT_UPDATE_STATUS_ERROR]', error);
+    logger.error('[CHAT_UPDATE_STATUS_ERROR]', error);
     res.status(500).json({ error: 'Erreur lors de la mise à jour du statut.' });
   }
 };
@@ -1027,7 +1028,7 @@ export const clearMyHistory = async (req, res) => {
 
     res.json({ success: true, message: 'Votre historique a été vidé.' });
   } catch (error) {
-    console.error('[CHAT_CLEAR_MY_HISTORY_ERROR]', error);
+    logger.error('[CHAT_CLEAR_MY_HISTORY_ERROR]', error);
     res.status(500).json({ error: "Erreur lors du nettoyage de votre historique." });
   }
 };
@@ -1053,7 +1054,7 @@ export const updateRetention = async (req, res) => {
 
     res.json({ success: true, retentionDays });
   } catch (error) {
-    console.error('[CHAT_RETENTION_ERROR]', error);
+    logger.error('[CHAT_RETENTION_ERROR]', error);
     res.status(500).json({ error: 'Erreur lors de la mise à jour de la rétention.' });
   }
 };
@@ -1086,7 +1087,7 @@ export const editMessage = async (req, res) => {
 
     res.json(payload);
   } catch (error) {
-    console.error('[CHAT_EDIT_MESSAGE_ERROR]', error);
+    logger.error('[CHAT_EDIT_MESSAGE_ERROR]', error);
     res.status(500).json({ error: 'Erreur lors de la modification.' });
   }
 };
@@ -1117,7 +1118,7 @@ export const deleteMessageForMe = async (req, res) => {
 
     res.json({ success: true, messageId, note: 'Désactivé temporairement (en attente de redémarrage serveur)' });
   } catch (error) {
-    console.error('[CHAT_DELETE_FOR_ME_ERROR]', error);
+    logger.error('[CHAT_DELETE_FOR_ME_ERROR]', error);
     res.status(500).json({ error: 'Erreur lors de la suppression.' });
   }
 };
@@ -1164,7 +1165,7 @@ export const resolveEntity = async (req, res) => {
 
     res.json(data);
   } catch (error) {
-    console.error('[CHAT_RESOLVE_ENTITY_ERROR]', error);
+    logger.error('[CHAT_RESOLVE_ENTITY_ERROR]', error);
     res.status(500).json({ error: 'Erreur lors de la résolution.' });
   }
 };

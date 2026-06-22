@@ -1,10 +1,10 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps */
+﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps */
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useAuth } from '../../../contexts/AuthContext';
-import * as safeStorage from '../../../utils/safeStorage';
+import { useAuth } from '@contexts/AuthContext';
+import * as safeStorage from '@utils/safeStorage';
 import {
   ClipboardList,
   MapPin,
@@ -17,37 +17,37 @@ import {
   List,
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import logger from '../../../utils/logger';
-import * as missionApprovalService from '../../../services/missionApprovalService';
-import * as missionService from '../../../services/missionService';
-import { organizationService } from '../../../services/organizationService';
-import { sharedocService } from '../../../services/sharedocService';
-import { normalizeMissionApprovalRole } from '../../../core/security/roleUtils';
-import { ROLES, normalizeRole } from '../../../core/security/permissions';
+import logger from '@utils/logger';
+import * as missionApprovalService from '@services/missionApprovalService';
+import * as missionService from '@services/missionService';
+import { organizationService } from '@services/organizationService';
+import { sharedocService } from '@services/sharedocService';
+import { normalizeMissionApprovalRole } from '@core/security/roleUtils';
+import { ROLES, normalizeRole } from '@core/security/permissions';
 
 // Services & Store
-import { generateMissionOrderPDF, generateMissionReportPDF } from '../../../services/missionOrderGenerator';
+import { generateMissionOrderPDF, generateMissionReportPDF } from '@services/missionOrderGenerator';
 import {
   generateMissionOrderWord,
   generateMissionReportWord,
-} from '../../../services/missionOrderWordGenerator';
+} from '@services/missionOrderWordGenerator';
 import * as XLSX from 'xlsx';
-import { db } from '../../../store/db';
-import { createMissionFromTemplate } from '../../../services/missionTemplates';
+import { db } from '@/store/db';
+import { createMissionFromTemplate } from '@services/missionTemplates';
 
 // Types
 import type { MissionOrderData, MissionMember } from './mission/core/missionTypes';
 import { KAFFRINE_TEMPLATE } from './mission/core/missionTypes';
 
 // Hooks
-import { usePermissions } from '../../../hooks/usePermissions';
-import { useFinances } from '../../../hooks/useFinances';
-import { useProject } from '../../../contexts/ProjectContext';
+import { usePermissions } from '@hooks/usePermissions';
+import { useFinances } from '@hooks/useFinances';
+import { useProject } from '@contexts/ProjectContext';
 import { useMissionState } from './mission/hooks/useMissionState';
 import { useMissionSync } from './mission/hooks/useMissionSync';
 import { useMissionWorkflow } from './mission/hooks/useMissionWorkflow';
-import { syncEventBus } from '../../../utils/syncEventBus';
-import { useLabels } from '../../../contexts/LabelsContext';
+import { syncEventBus } from '@utils/syncEventBus';
+import { useLabels } from '@contexts/LabelsContext';
 
 // Core Selectors
 import {
@@ -79,11 +79,11 @@ import { MissionTeamEditor } from './mission/components/MissionTeamEditor';
 import { MissionAuditTrail } from './mission/components/MissionAuditTrail';
 import { MissionInfoSection } from './mission/components/MissionInfoSection';
 import { MissionItineraryEditor } from './mission/components/MissionItineraryEditor';
-import { MissionMiniMap, MissionStatusWidget, MissionSimplifiedMode } from '../../../components/mission';
+import { MissionMiniMap, MissionStatusWidget, MissionSimplifiedMode } from '@components/mission';
 import { MissionApprovalStatusBanner } from './mission/components/MissionApprovalStatusBanner';
 import { MissionNotificationCenter } from './mission/components/MissionNotificationCenter';
-import { PageContainer, PageHeader, ContentArea } from '../../../components';
-import { WidgetErrorBoundary } from '../../../components/common/WidgetErrorBoundary';
+import { PageContainer, PageHeader, ContentArea } from '@components';
+import { WidgetErrorBoundary } from '@components/common/WidgetErrorBoundary';
 
 const DEFAULT_PLANNING_STEPS = [
   "Jour 1 : Dakar ➔ Tambacounda (Mise en route)\n• Matin : Départ 06h00 de Dakar.\n• Après-midi : Trajet Dakar-Tamba.\n• Soir : Réunion de cadrage initiale avec l'entrepreneur principal de Tamba.",

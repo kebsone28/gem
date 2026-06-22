@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import logger from '../services/logger';
 
 interface AIModel {
   name: string;
@@ -26,11 +27,11 @@ const DeepSeekExample: React.FC = () => {
         const models = await puter.ai.listModels();
         setAvailableModels(models);
         setModelInfo(`✅ ${models.length} modèles disponibles`);
-        console.log('Available models:', models);
+        logger.log('Available models:', models);
       }
     } catch (error) {
       setModelInfo('⚠️ Impossible de charger la liste dynamique');
-      console.error('Error loading models:', error);
+      logger.error('Error loading models:', error);
     }
   };
 

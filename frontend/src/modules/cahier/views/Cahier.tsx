@@ -1,19 +1,19 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
+﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 import { useState, useMemo, useCallback } from 'react';
 import { HardHat } from 'lucide-react';
 import { useAuth } from '@contexts/AuthContext';
 import { useProject } from '@contexts/ProjectContext';
-import { usePermissions } from '../../../hooks/usePermissions';
+import { usePermissions } from '@hooks/usePermissions';
 import { exportCahiersToWord } from '@utils/word_engine';
 import type { CahierTask } from '@utils/types';
 
 import {
   DEFAULT_CONTRACT_TEMPLATES,
-} from '../../../data/contractTemplates';
+} from '@/data/contractTemplates';
 import {
   DEFAULT_OPERATIONAL_STRATEGY,
-} from '../../../data/operationalStrategyTemplates';
-import { DEFAULT_TASK_LIBRARY } from '../../../data/cahierTaskLibrary';
+} from '@/data/operationalStrategyTemplates';
+import { DEFAULT_TASK_LIBRARY } from '@/data/cahierTaskLibrary';
 import './Cahier.css';
 
 import {
@@ -76,7 +76,17 @@ export default function Cahier() {
   const [showHistory, setShowHistory] = useState(false);
 
   const currentTask = useMemo(() => {
-    return customLibrary[selectedRole] || sanitizeTaskForCahier(selectedRole, DEFAULT_TASK_LIBRARY[Object.keys(DEFAULT_TASK_LIBRARY)[0]]);
+    const task = customLibrary[selectedRole];
+    const defaultTask = DEFAULT_TASK_LIBRARY[selectedRole] || DEFAULT_TASK_LIBRARY[Object.keys(DEFAULT_TASK_LIBRARY)[0]];
+    
+    if (task) {
+      return {
+        ...task,
+        technicalImages: task.technicalImages || defaultTask.technicalImages,
+      };
+    }
+    
+    return sanitizeTaskForCahier(selectedRole, defaultTask);
   }, [customLibrary, selectedRole]);
 
   const automatedRate = useMemo(() => getAutomatedRate(selectedRole), [getAutomatedRate, selectedRole]);
@@ -147,74 +157,97 @@ export default function Cahier() {
   }
 
   return (
-    <PageContainer className="overflow-x-hidden !bg-slate-950">
-      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-8">
-        <CahierHeader
-          selectedRole={selectedRole}
-          documentMode={documentMode}
-          isEditing={isEditing || isContractEditing || isStrategyEditing}
-          hasUnsavedChanges={false} 
-          showAdvancedSections={showAdvancedSections}
-          showHistory={showHistory}
-          setShowHistory={setShowHistory}
-          setShowAdvancedSections={setShowAdvancedSections}
-          onSave={documentMode === 'cahier' ? handleSave : documentMode === 'contrat' ? handleSaveContract : handleSaveStrategy}
-          onReset={documentMode === 'cahier' ? () => handleRoleChange(selectedRole) : documentMode === 'contrat' ? handleResetContract : () => setOperationalStrategy(DEFAULT_OPERATIONAL_STRATEGY)}
-          onExportWord={documentMode === 'cahier' ? () => exportCahiersToWord([{ ...currentTask, role: selectedRole, responsible: user?.name || '' } as any], false, []) : documentMode === 'contrat' ? () => exportContractToWord(selectedContractLot, contractDraft) : () => exportStrategyToWord(operationalStrategy, strategyDraft)}
-          onEditToggle={() => {
-            if (documentMode === 'cahier') setIsEditing(!isEditing);
-            else if (documentMode === 'contrat') setIsContractEditing(!isContractEditing);
-            else if (documentMode === 'strategie') setIsStrategyEditing(!isStrategyEditing);
-          }}
-        />
+    <PageContainer className="overflow-x-hidden !bg-slate-950 relative min-h-screen">
+      <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-6 relative z-10">
+        <div className="flex flex-col gap-6">
 
-        <CahierNavigation
-          taskLibrary={customLibrary}
-          selectedRole={selectedRole}
-          setSelectedRole={handleRoleChange}
-          documentMode={documentMode}
-          setDocumentMode={setDocumentMode}
-        />
+          {/* ⬆️ Workspace Header (Top Panel) */}
+          <CahierHeader
+            projectName={project.name}
+            isSaving={isSaving}
+            selectedRole={selectedRole}
+            documentMode={documentMode}
+            isEditing={isEditing || isContractEditing || isStrategyEditing}
+            hasUnsavedChanges={false}
+            showAdvancedSections={showAdvancedSections}
+            showHistory={showHistory}
+            setShowHistory={setShowHistory}
+            setShowAdvancedSections={setShowAdvancedSections}
+            onSave={documentMode === 'cahier' ? handleSave : documentMode === 'contrat' ? handleSaveContract : handleSaveStrategy}
+            onReset={documentMode === 'cahier' ? () => handleRoleChange(selectedRole) : documentMode === 'contrat' ? handleResetContract : () => setOperationalStrategy(DEFAULT_OPERATIONAL_STRATEGY)}
+            onExportWord={documentMode === 'cahier' ? () => exportCahiersToWord([{ ...currentTask, role: selectedRole, responsible: user?.name || '' } as any], false, []) : documentMode === 'contrat' ? () => exportContractToWord(['LOT A', 'LOT B', 'LOT C'].map(lot => ({
+              lotName: lot,
+              content: (contractLibrary[lot] || DEFAULT_CONTRACT_TEMPLATES[lot]).content.join('\n'),
+            }))) : () => exportStrategyToWord(operationalStrategy, strategyDraft)}
+            onEditToggle={() => {
+              if (documentMode === 'cahier') setIsEditing(!isEditing);
+              else if (documentMode === 'contrat') setIsContractEditing(!isContractEditing);
+              else if (documentMode === 'strategie') setIsStrategyEditing(!isStrategyEditing);
+            }}
+          />
 
-        <main className="mt-2 md:mt-6">
-          {documentMode === 'cahier' && (
-            <CahierTechnicalView
-              currentTask={currentTask}
-              isEditing={isEditing}
-              editData={editData}
-              setEditData={setEditData}
-              showAdvancedSections={showAdvancedSections}
-              automatedRate={automatedRate}
-              handleExportWord={() => exportCahiersToWord([{ ...currentTask, role: selectedRole, responsible: user?.name || '' } as any], false, [])}
-              selectedRole={selectedRole}
-            />
-          )}
+          {/* ⏸️ Workspace Navigation (Middle Panel) */}
+          <CahierNavigation
+            taskLibrary={customLibrary}
+            selectedRole={selectedRole}
+            setSelectedRole={handleRoleChange}
+            selectedContractLot={selectedContractLot}
+            setSelectedContractLot={setSelectedContractLot}
+            documentMode={documentMode}
+            setDocumentMode={setDocumentMode}
+            isEditing={isEditing || isContractEditing || isStrategyEditing}
+            onEditToggle={() => {
+              if (documentMode === 'cahier') setIsEditing(!isEditing);
+              else if (documentMode === 'contrat') setIsContractEditing(!isContractEditing);
+              else if (documentMode === 'strategie') setIsStrategyEditing(!isStrategyEditing);
+            }}
+            onSave={documentMode === 'cahier' ? handleSave : documentMode === 'contrat' ? handleSaveContract : handleSaveStrategy}
+          />
 
-          {documentMode === 'contrat' && (
-            <CahierContractView
-              contractLibrary={contractLibrary}
-              selectedRole={selectedRole}
-              isEditing={isContractEditing}
-              editData={{ ...editData, contractContent: contractDraft } as any}
-              setEditData={(updater: any) => {
-                const newVal = typeof updater === 'function' ? updater({ contractContent: contractDraft }).contractContent : updater.contractContent;
-                setContractDraft(newVal);
-              }}
-            />
-          )}
+          {/* ⬇️ Workspace Editor Area (Bottom Panel) */}
+          <main className="flex-1 min-w-0 flex flex-col">
+            {/* Vues de l'éditeur avec fond contrasté */}
+            <div className="w-full bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 rounded-[2.5rem] shadow-2xl shadow-black/40 overflow-hidden relative min-h-[60vh] p-1">
+              {documentMode === 'cahier' && (
+                <CahierTechnicalView
+                  currentTask={currentTask}
+                  isEditing={isEditing}
+                  editData={editData}
+                  setEditData={setEditData}
+                  showAdvancedSections={showAdvancedSections}
+                  automatedRate={automatedRate}
+                  handleExportWord={() => exportCahiersToWord([{ ...currentTask, role: selectedRole, responsible: user?.name || '' } as any], false, [])}
+                  selectedRole={selectedRole}
+                />
+              )}
 
-          {documentMode === 'strategie' && (
-            <CahierStrategyView
-              operationalStrategy={operationalStrategy}
-              isEditing={isStrategyEditing}
-              editData={{ ...editData, strategyContent: strategyDraft } as any}
-              setEditData={(updater: any) => {
-                const newVal = typeof updater === 'function' ? updater({ strategyContent: strategyDraft }).strategyContent : updater.strategyContent;
-                setStrategyDraft(newVal);
-              }}
-            />
-          )}
-        </main>
+              {documentMode === 'contrat' && (
+                <CahierContractView
+                  contractLibrary={contractLibrary}
+                  selectedContractLot={selectedContractLot}
+                  isEditing={isContractEditing}
+                  editData={{ ...editData, contractContent: contractDraft } as any}
+                  setEditData={(updater: any) => {
+                    const newVal = typeof updater === 'function' ? updater({ contractContent: contractDraft }).contractContent : updater.contractContent;
+                    setContractDraft(newVal);
+                  }}
+                />
+              )}
+
+              {documentMode === 'strategie' && (
+                <CahierStrategyView
+                  operationalStrategy={operationalStrategy}
+                  isEditing={isStrategyEditing}
+                  editData={{ ...editData, strategyContent: strategyDraft } as any}
+                  setEditData={(updater: any) => {
+                    const newVal = typeof updater === 'function' ? updater({ strategyContent: strategyDraft }).strategyContent : updater.strategyContent;
+                    setStrategyDraft(newVal);
+                  }}
+                />
+              )}
+            </div>
+          </main>
+        </div>
       </div>
     </PageContainer>
   );

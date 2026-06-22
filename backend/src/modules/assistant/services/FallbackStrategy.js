@@ -113,7 +113,7 @@ class FallbackStrategy {
   /**
    * Simplified fallback - Ollama → MissionSage (100% FREE)
    */
-  async executeWithFallback(input, primaryService, context = {}) {
+  async executeWithFallback(input, primaryService, _context = {}) {
     try {
       if (primaryService === 'ollama') {
         const result = await this.services.ollama.circuitBreaker.call(

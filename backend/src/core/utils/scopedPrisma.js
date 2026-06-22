@@ -1,5 +1,4 @@
 import { runWithContext } from '../context/storage.js';
-import prisma from './prisma.js';
 
 /**
  * Utility to run an async function with a temporary tenant context.

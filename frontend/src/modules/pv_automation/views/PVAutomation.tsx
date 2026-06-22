@@ -1,5 +1,6 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, prefer-const */
+﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, prefer-const */
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import logger from '@services/logger';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -43,28 +44,27 @@ import {
 import { saveAs } from 'file-saver';
 import QRCode from 'qrcode';
 import * as XLSX from 'xlsx';
-import { encryptData, decryptData } from '../../../utils/crypto';
+import { encryptData, decryptData } from '@utils/crypto';
 
 // --- Services & DB ---
-import { db } from '../../../store/db';
+import { db } from '@/store/db';
 import { PageContainer, PageHeader, ContentArea } from '@components';
-import { TableRowSkeleton, CardSkeleton } from '../../../components/common/Skeleton';
-import SignatureModal from '../../../components/common/SignatureModal';
-import { usePermissions } from '../../../hooks/usePermissions';
-import { dispatchPVAlerts } from '../../../services/alertTraceService';
-import { createNotification } from '../../../services/notificationService';
-import { alertsAPI } from '../../../services/alertsAPI';
-import { PVAIEngine, PV_TEMPLATES, PV_DESCRIPTIONS } from '../../../services/ai/PVAIEngine';
-import type { PVType } from '../../../services/ai/PVAIEngine';
-import { PVRulesEngine } from '../../../services/ai/PVRulesEngine';
-import { PVDocGenerator } from '../../../services/ai/PVDocGenerator';
-import pvService from '../../../services/pvService';
-import { audioService } from '../../../services/audioService';
-import { AnimatedCounter } from '../../../components/common/AnimatedCounter';
-import { useAuthStore } from '../../../store/authStore';
-import { useProject } from '../../../contexts/ProjectContext';
-import type { Household, Team } from '../../../utils/types';
-import logger from '../../../utils/logger';
+import { TableRowSkeleton, CardSkeleton } from '@components/common/Skeleton';
+import SignatureModal from '@components/common/SignatureModal';
+import { usePermissions } from '@hooks/usePermissions';
+import { dispatchPVAlerts } from '@services/alertTraceService';
+import { createNotification } from '@services/notificationService';
+import { alertsAPI } from '@services/alertsAPI';
+import { PVAIEngine, PV_TEMPLATES, PV_DESCRIPTIONS } from '@services/ai/PVAIEngine';
+import type { PVType } from '@services/ai/PVAIEngine';
+import { PVRulesEngine } from '@services/ai/PVRulesEngine';
+import { PVDocGenerator } from '@services/ai/PVDocGenerator';
+import pvService from '@services/pvService';
+import { audioService } from '@services/audioService';
+import { AnimatedCounter } from '@components/common/AnimatedCounter';
+import { useAuthStore } from '@/store/authStore';
+import { useProject } from '@contexts/ProjectContext';
+import type { Household, Team } from '@utils/types';
 
 // --- Constants & Types ---
 
@@ -79,7 +79,7 @@ const storeSignatureWithTTL = async (key: string, value: string, secret: string,
     };
     localStorage.setItem(key, JSON.stringify(item));
   } catch (e) {
-    console.warn('[PVAutomation] Signature storage failed:', e);
+    logger.warn('[PVAutomation] Signature storage failed:', e);
   }
 };
 

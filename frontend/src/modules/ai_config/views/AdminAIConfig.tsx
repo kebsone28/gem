@@ -1,12 +1,12 @@
-/**
+﻿/**
  * 🎛️ AdminAIConfig - Page d'administration unifiée du système IA Souverain
  * Utilise le composant AIEngineAdminPanel en mode standalone
  */
 
-import AIEngineAdminPanel from '../../../components/ia/AIEngineAdminPanel';
-import { useAuth } from '../../../contexts/AuthContext';
+import AIEngineAdminPanel from '@components/ia/AIEngineAdminPanel';
+import { useAuth } from '@contexts/AuthContext';
 import { Shield } from 'lucide-react';
-import { hasPermission, PERMISSIONS } from '../../../core/security/permissions';
+import { hasPermission, PERMISSIONS } from '@core/security/permissions';
 
 export default function AdminAIConfig() {
   const { user } = useAuth();

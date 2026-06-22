@@ -1,6 +1,6 @@
-import { lazyWithRetry } from '../../utils/lazy';
-import { PERMISSIONS, ROLES } from '../../core/security/permissions';
-import type { ModuleManifest } from '../../core/kernel/types';
+﻿import { lazyWithRetry } from '@utils/lazy';
+import { PERMISSIONS, ROLES } from '@core/security/permissions';
+import type { ModuleManifest } from '@core/kernel/types';
 
 export const manifest: ModuleManifest = {
     key: 'users',
@@ -9,6 +9,6 @@ export const manifest: ModuleManifest = {
     component: lazyWithRetry(() => import('./views/AdminUsers'), 'lazy:admin-users'),
     route: '/admin/users',
     requiredPermission: PERMISSIONS.SYSTEM_USERS,
-    category: 'SYSTÈME',
+    category: 'ADMIN',
     description: 'Gérez les comptes, les rôles et les accès de votre équipe',
   };

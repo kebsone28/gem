@@ -2,7 +2,7 @@
 import React from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { AlertCircle, RefreshCw, CheckCircle2, Calendar } from 'lucide-react';
-import { AlertPanel, ActivityFeed, StatusBadge } from '../../../../../../components/dashboards/DashboardComponents';
+import { AlertPanel, ActivityFeed, StatusBadge } from '@components/dashboards/DashboardComponents';
 import type { DashboardMetrics, Activity } from '../types';
 
 interface ControlPanelProps {

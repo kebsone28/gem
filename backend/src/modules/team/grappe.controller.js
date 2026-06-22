@@ -1,5 +1,6 @@
 import prisma from '../../core/utils/prisma.js';
 import { tracerAction } from '../../services/audit.service.js';
+import logger from '../../utils/logger.js';
 
 // @desc    Get all grappes (clusters)
 // @route   GET /api/teams/grappes
@@ -19,7 +20,7 @@ export const getGrappes = async (req, res) => {
 
         res.json({ grappes });
     } catch (error) {
-        console.error('Get grappes error:', error);
+        logger.error('Get grappes error:', error);
         res.status(500).json({ error: 'Server error while fetching clusters' });
     }
 };
@@ -27,7 +28,7 @@ export const getGrappes = async (req, res) => {
 // @desc    Sync grappes (Bulk UPSERT)
 // @route   POST /api/teams/grappes/sync
 export const syncGrappes = async (req, res) => {
-    console.log('📥 [SYNC GRAPPES] Body reçu:', JSON.stringify(req.body).slice(0, 300));
+    logger.info('📥 [SYNC GRAPPES] Body reçu:', JSON.stringify(req.body).slice(0, 300));
 
     try {
         const { grappes } = req.body;
@@ -41,13 +42,13 @@ export const syncGrappes = async (req, res) => {
             return res.status(400).json({ error: 'Tableau de grappes vide' });
         }
 
-        console.log(`📊 [SYNC GRAPPES] ${grappes.length} grappes à synchroniser pour org: ${organizationId}`);
+        logger.info(`📊 [SYNC GRAPPES] ${grappes.length} grappes à synchroniser pour org: ${organizationId}`);
 
         const results = [];
 
         for (const g of grappes) {
             if (!g.name || !g.regionName) {
-                console.warn(`⚠️ [SYNC GRAPPES] Grappe invalide ignorée:`, g);
+                logger.warn(`⚠️ [SYNC GRAPPES] Grappe invalide ignorée:`, g);
                 continue;
             }
 
@@ -77,7 +78,7 @@ export const syncGrappes = async (req, res) => {
             results.push(grappe);
         }
 
-        console.log(`✅ [SYNC GRAPPES] ${results.length} grappes synchronisées`);
+        logger.info(`✅ [SYNC GRAPPES] ${results.length} grappes synchronisées`);
 
         // Audit log
         if (results.length > 0) {
@@ -88,12 +89,12 @@ export const syncGrappes = async (req, res) => {
                 resource: 'Grappe',
                 details: { count: results.length },
                 req
-            }).catch(e => console.warn('Audit log failed (non-blocking):', e.message));
+            }).catch(e => logger.warn('Audit log failed (non-blocking):', e.message));
         }
 
         res.json({ success: true, count: results.length, synced: results.length });
     } catch (error) {
-        console.error('🔥 [SYNC GRAPPES] Erreur:', error.message, error.stack);
+        logger.error('🔥 [SYNC GRAPPES] Erreur:', error.message, error.stack);
         res.status(500).json({
             error: 'Erreur lors de la synchronisation des grappes',
             details: process.env.NODE_ENV === 'development' ? error.message : undefined
@@ -117,7 +118,7 @@ export const getGrappeById = async (req, res) => {
 
         res.json(grappe);
     } catch (error) {
-        console.error('Get grappe error:', error);
+        logger.error('Get grappe error:', error);
         res.status(500).json({ error: 'Server error while fetching cluster' });
     }
 };

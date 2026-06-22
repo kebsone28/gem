@@ -1,7 +1,7 @@
 ﻿/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect, useCallback } from 'react';
-import apiClient from '../../../../../../api/client';
-import logger from '../../../../../../utils/logger';
+import apiClient from '@/api/client';
+import logger from '@utils/logger';
 
 export function useMonitoring(canViewReports: boolean) {
   const [activities, setActivities] = useState<any[]>([]);

@@ -1,5 +1,6 @@
 import { createQueue } from '../../core/utils/queueManager.js';
 import { PERMISSIONS } from '../../core/config/permissions.js';
+import logger from '../../utils/logger.js';
 
 const simulationQueue = createQueue('simulation-queue');
 
@@ -40,7 +41,7 @@ export const lancerSimulation = async (req, res) => {
       jobId: job.id,
     });
   } catch (error) {
-    console.error('Lancer simulation error:', error);
+    logger.error('Lancer simulation error:', error);
     res.status(500).json({ error: 'Erreur lors du lancement de la simulation' });
   }
 };
@@ -73,7 +74,7 @@ export const getSimulationStatus = async (req, res) => {
       result,
     });
   } catch (error) {
-    console.error('Get simulation status error:', error);
+    logger.error('Get simulation status error:', error);
     res.status(500).json({ error: 'Erreur lors de la récupération du statut' });
   }
 };

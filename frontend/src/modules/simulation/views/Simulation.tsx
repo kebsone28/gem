@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization */
+﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -13,8 +13,8 @@ import {
   Check,
   Link as LinkIcon,
 } from 'lucide-react';
-import { useFinances } from '../../../hooks/useFinances';
-import { fmtFCFA } from '../../../utils/format';
+import { useFinances } from '@hooks/useFinances';
+import { fmtFCFA } from '@utils/format';
 import { toast } from 'react-hot-toast';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -22,7 +22,7 @@ import {
   calculerScenarioV2,
   optimiserConfigurationsEquipes,
   buildRoleCapacities,
-} from '../../../hooks/useSimulationModel';
+} from '@hooks/useSimulationModel';
 import type {
   TeamConfig,
   RoleKey,
@@ -31,19 +31,19 @@ import type {
   CustomCharge,
   VehicleMode,
   PaymentMode,
-} from '../../../hooks/useSimulationModel';
-import * as safeStorage from '../../../utils/safeStorage';
-import { db } from '../../../store/db';
-import apiClient from '../../../api/client';
-import logger from '../../../utils/logger';
+} from '@hooks/useSimulationModel';
+import * as safeStorage from '@utils/safeStorage';
+import { db } from '@/store/db';
+import apiClient from '@/api/client';
+import logger from '@services/logger';
 
 // Import centralized design system
-import { PageContainer, PageHeader, ContentArea, ActionBar } from '../../../components';
+import { PageContainer, PageHeader, ContentArea, ActionBar } from '@components';
 import {
   DASHBOARD_ACCENT_SURFACE,
   DASHBOARD_PRIMARY_BUTTON,
   DASHBOARD_SECTION_SURFACE,
-} from '../../../components/dashboards/DashboardComponents';
+} from '@components/dashboards/DashboardComponents';
 
 const ROLE_LABELS = {
   macon: 'Maçons',
@@ -113,7 +113,7 @@ export default function Simulation() {
           if (state.isHivernage !== undefined) setIsHivernage(state.isHivernage);
           if (state.tauxRejet !== undefined) setTauxRejet(state.tauxRejet);
         } catch (e) {
-          console.warn('[Simulation] Failed to restore state');
+          logger.warn('[Simulation] Failed to restore state');
         }
       }
     }
@@ -461,7 +461,7 @@ export default function Simulation() {
           await apiClient.delete(`/teams/${id}`);
           await (db as any).teams.delete(id);
         } catch (delErr) {
-          console.warn('[Simulation] Rollback failed for team:', id, delErr);
+          logger.warn('[Simulation] Rollback failed for team:', id, delErr);
         }
       }
 

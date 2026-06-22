@@ -4,8 +4,8 @@ import {
   MAP_STYLE_DARK,
   MAP_STYLE_LIGHT_VECTOR,
   MAP_STYLE_SATELLITE,
-} from '../../components/terrain/mapConfig';
-import { registerIcons } from '../../components/terrain/mapUtils';
+} from '@modules/terrain/components/mapConfig';
+import { registerIcons } from '@modules/terrain/components/mapUtils';
 import logger from '../../utils/logger';
 
 export class MapManager {

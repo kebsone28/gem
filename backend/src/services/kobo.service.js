@@ -16,6 +16,7 @@ import { transformRowToHousehold } from './kobo.mapping.js';
 import { tracerAction } from './audit.service.js';
 import { normalizeLegacyHousehold } from '../modules/household/household.compat.js';
 import { v4 as uuidv4 } from 'uuid';
+import logger from '../utils/logger.js';
 
 const KOBO_API_URL = process.env.KOBO_API_URL || 'https://kf.kobotoolbox.org';
 const KOBO_TOKEN = process.env.KOBO_TOKEN || '';
@@ -58,7 +59,7 @@ function validateGPSRegion(latitude, longitude, region, submissionId = null) {
     );
 
     if (!isValid) {
-        console.warn(
+        logger.warn(
             `[KOBO-SYNC] ⚠️ GPS-REGION MISMATCH - ID: ${submissionId}, ` +
             `Region: ${region}, GPS: [${latitude}, ${longitude}]`
         );
@@ -133,7 +134,7 @@ export async function fetchKoboSubmissions(token, assetUid, since = null) {
                 success = true;
             } catch (error) {
                 retries--;
-                console.warn(`[KOBO-SYNC] ⚠️ Échec du téléchargement Kobo (reste ${retries} tentatives) : ${error.message}`);
+                logger.warn(`[KOBO-SYNC] ⚠️ Échec du téléchargement Kobo (reste ${retries} tentatives) : ${error.message}`);
                 if (retries === 0) {
                     const finalError = new Error(`KoboToolbox API error après 3 tentatives : ${error.message}`);
                     finalError.statusCode = error.statusCode || 400;
@@ -266,7 +267,7 @@ export async function syncKoboToDatabase(organizationId, fallbackZoneId, since =
             const project = await prisma.project.findUnique({ where: { id: fallbackZoneId } });
             if (project) {
                 targetProjectId = project.id;
-                console.log(`[KOBO-SYNC] 💡 fallbackZoneId was actually a projectId [${project.name}]. Resolving default zone...`);
+                logger.info(`[KOBO-SYNC] 💡 fallbackZoneId was actually a projectId [${project.name}]. Resolving default zone...`);
                 
                 // Trouver ou créer une zone par défaut pour ce projet ("Zone Générale")
                 let defaultZone = await prisma.zone.findFirst({
@@ -294,7 +295,7 @@ export async function syncKoboToDatabase(organizationId, fallbackZoneId, since =
             koboToken = targetProject.config.kobo?.token;
             koboAssetUid = targetProject.config.kobo?.assetUid;
             mappingConfig = targetProject.config.kobo_field_mapping;
-            console.log(`[KOBO-SYNC] Using project-specific config for project: ${targetProject.name}`);
+            logger.info(`[KOBO-SYNC] Using project-specific config for project: ${targetProject.name}`);
         }
     }
 
@@ -302,7 +303,7 @@ export async function syncKoboToDatabase(organizationId, fallbackZoneId, since =
     if (!mappingConfig || Object.keys(mappingConfig).length === 0) {
         const org = await prisma.organization.findUnique({ where: { id: organizationId } });
         mappingConfig = org?.config?.kobo_field_mapping || {};
-        console.log(`[KOBO-SYNC] Using organization-level mapping config fallback`);
+        logger.info(`[KOBO-SYNC] Using organization-level mapping config fallback`);
     }
 
     // 🎯 Kobo Engine Master v2.0: Add dynamic mapping parameters
@@ -352,7 +353,7 @@ export async function syncKoboToDatabase(organizationId, fallbackZoneId, since =
                     });
 
                     if (!zone) {
-                        console.log(`[KOBO-SYNC] 🏗️ Creating new zone for region: ${regionName}`);
+                        logger.info(`[KOBO-SYNC] 🏗️ Creating new zone for region: ${regionName}`);
                         zone = await prisma.zone.create({
                             data: {
                                 name: regionName,
@@ -412,7 +413,7 @@ export async function syncKoboToDatabase(organizationId, fallbackZoneId, since =
                             select: EXISTING_HOUSEHOLD_LOOKUP_SELECT
                         });
                         if (existingHousehold) {
-                            console.log(`[KOBO-SYNC] 💡 Fuzzy match successful: ${numeroDemande} -> ${fallbackNumero}`);
+                            logger.info(`[KOBO-SYNC] 💡 Fuzzy match successful: ${numeroDemande} -> ${fallbackNumero}`);
                         }
                     }
 
@@ -420,7 +421,7 @@ export async function syncKoboToDatabase(organizationId, fallbackZoneId, since =
                         matchType = 'NUMERO_ORDRE';
                     }
                 } catch (e) {
-                     console.warn(`[KOBO-SYNC] Could not search for existing household by numeroordre [${numeroDemande}]:`, e.message);
+                     logger.warn(`[KOBO-SYNC] Could not search for existing household by numeroordre [${numeroDemande}]:`, e.message);
                 }
             }
 
@@ -449,7 +450,7 @@ export async function syncKoboToDatabase(organizationId, fallbackZoneId, since =
 
                     if (isMatch) {
                         if (rule.action === 'SET_STATUS' && rule.status) {
-                            console.log(`[KOBO-DECISION] 🤖 Auto-setting status to [${rule.status}] for household ${numeroDemande} due to rule on [${rule.field}]`);
+                            logger.info(`[KOBO-DECISION] 🤖 Auto-setting status to [${rule.status}] for household ${numeroDemande} due to rule on [${rule.field}]`);
                             household.status = rule.status;
                         }
                         if (rule.alert) {
@@ -609,7 +610,7 @@ export async function syncKoboToDatabase(organizationId, fallbackZoneId, since =
 
             if (existingHousehold) {
                 // ✅ MISE À JOUR: Ménage existant trouvé par ID Kobo ou N° Demande
-                console.log(`[KOBO-SYNC] 🔄 UPDATE existing household: ${existingHousehold.id} (Match Type: ${matchType})`);
+                logger.info(`[KOBO-SYNC] 🔄 UPDATE existing household: ${existingHousehold.id} (Match Type: ${matchType})`);
                 await prisma.household.update({
                     where: { id: existingHousehold.id },
                     data: updateData,
@@ -656,7 +657,7 @@ export async function syncKoboToDatabase(organizationId, fallbackZoneId, since =
 
             applied++;
         } catch (err) {
-            console.error(`[KOBO-SYNC] Error applying submission ${submission['_id']}:`, err.message);
+            logger.error(`[KOBO-SYNC] Error applying submission ${submission['_id']}:`, err.message);
             errors++;
         }
     }
@@ -666,11 +667,11 @@ export async function syncKoboToDatabase(organizationId, fallbackZoneId, since =
         try {
             await recalculateProjectGrappes(targetProjectId, organizationId);
         } catch (e) {
-            console.error('[KOBO-SYNC] ❌ Error during grappe automation:', e.message);
+            logger.error('[KOBO-SYNC] ❌ Error during grappe automation:', e.message);
         }
     }
 
-    console.log(`[KOBO-SYNC] ✅ Done — Applied: ${applied}, Skipped: ${skipped}, Errors: ${errors}`);
+    logger.info(`[KOBO-SYNC] ✅ Done — Applied: ${applied}, Skipped: ${skipped}, Errors: ${errors}`);
 
     // 🔥 AUDIT LOG: Tracer le résultat global de la synchronisation
     await tracerAction({

@@ -1,10 +1,10 @@
-/**
+﻿/**
  * 🔍 DiffViewer - Composant de visualisation des différences
  * Affiche côte à côte la réponse actuelle et la réponse de référence
  */
 
 import React, { useMemo, useCallback } from 'react';
-import { normalizeComparableText, toComparableLines } from '../../../utils/ai';
+import { normalizeComparableText, toComparableLines } from '@utils/ai';
 
 interface DiffRow {
   id: string;

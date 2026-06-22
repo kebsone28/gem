@@ -1,3 +1,4 @@
+import logger from '../utils/logger.js';
 import Joi from 'joi';
 
 /**
@@ -26,7 +27,7 @@ export const validate = (schema) => {
         message: details.message,
       }));
 
-      console.error('[DIAGNOSTIC] Joi Validation Error:', JSON.stringify(errorDetails, null, 2), 'Body was:', req.body);
+      logger.error('[DIAGNOSTIC] Joi Validation Error:', JSON.stringify(errorDetails, null, 2), 'Body was:', req.body);
 
       return res.status(400).json({
         error: 'Validation Error',

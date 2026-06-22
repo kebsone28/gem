@@ -5,7 +5,7 @@
  */
 
 import React from 'react';
-import logger from '../utils/logger';
+import logger from '../services/logger';
 import apiClient from '../api/client';
 
 interface Props {
@@ -30,6 +30,9 @@ export class ErrorBoundary extends React.Component<Props, State> {
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
     logger.error('[ErrorBoundary] Uncaught error', error, info);
+    if (import.meta.env.DEV) {
+      console.error('[ErrorBoundary] Component stack:', info.componentStack);
+    }
     
     // 🛡️ REPORT TO BACKEND (ROBUST INFRA)
     apiClient.post('/monitoring/client-errors', {
@@ -38,7 +41,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
       context: {
         componentStack: info.componentStack
       }
-    }).catch(err => console.error('[ErrorBoundary] Failed to report error:', err.message));
+    }).catch(err => logger.error('[ErrorBoundary] Failed to report error:', err.message));
   }
 
   handleReset = () => {

@@ -11,13 +11,52 @@ import {
   ArrowRight,
   Loader2,
   ChevronLeft,
+  Zap,
+  Activity,
 } from 'lucide-react';
 import { motion, AnimatePresence, useSpring, useMotionValue, useTransform } from 'framer-motion';
-import { useAuth } from '../../../contexts/AuthContext';
-import apiClient from '../../../api/client';
-import type { User as DBUser } from '../../../utils/types';
+import { useAuth } from '@contexts/AuthContext';
+import apiClient from '@/api/client';
+import { normalizeRole, ROLES as AppRole } from '@core/security/permissions';
+import type { User as DBUser } from '@utils/types';
 
-type LoginStep = 'credentials' | '2fa' | 'recovery';
+type LoginStep = 'sector-select' | 'credentials' | '2fa' | 'recovery';
+
+const hasSectorAccess = (userPayload: any, sectorKey: string) => {
+  if (!sectorKey) return true;
+  const roleNormalized = normalizeRole(userPayload?.role || '');
+  const isAdmin = userPayload?.isPlatformAdmin || roleNormalized === AppRole.ADMIN || roleNormalized === AppRole.PLATFORM_ADMIN;
+  if (isAdmin) return true;
+  
+  const userPermissions = userPayload?.permissions || [];
+  const requiredPermission = `sector.${sectorKey}`;
+  return userPermissions.includes(requiredPermission);
+};
+
+const SECTORS = [
+  {
+    key: 'gem',
+    label: 'GEM',
+    role: "Gestionnaire d'Électrification Massive",
+    description: 'Suivi terrain, raccordements, ménages, logistique et pilotage.',
+    icon: Zap,
+    color: 'from-orange-500/10 to-amber-500/10',
+    borderColor: 'border-orange-500/20 hover:border-orange-500/40',
+    iconColor: 'text-orange-400',
+    shadowColor: 'hover:shadow-orange-500/10',
+  },
+  {
+    key: 'mes',
+    label: 'MES',
+    role: 'Mise En Service',
+    description: 'Branchement, pose compteur, contrôle qualité et validation.',
+    icon: Activity,
+    color: 'from-blue-500/10 to-indigo-500/10',
+    borderColor: 'border-blue-500/20 hover:border-blue-500/40',
+    iconColor: 'text-blue-400',
+    shadowColor: 'hover:shadow-blue-500/10',
+  },
+];
 
 // Positions stables des particules (calculées une seule fois au chargement du module)
 const PARTICLE_POSITIONS = Array.from({ length: 15 }, () => ({
@@ -37,8 +76,22 @@ function getApiErrorMessage(err: any, fallback: string) {
   const serverMessage = data?.message;
   const networkMessage = err?.message || '';
 
+  const getMessageFromError = (errorVal: any): string | null => {
+    if (!errorVal) return null;
+    if (typeof errorVal === 'string') return errorVal;
+    if (typeof errorVal === 'object') {
+      if (errorVal.message) return errorVal.message;
+      if (Array.isArray(errorVal.errors) && errorVal.errors.length > 0) {
+        return errorVal.errors.join(', ');
+      }
+    }
+    return null;
+  };
+
+  const extractedError = getMessageFromError(serverError);
+
   if (status === 401) {
-    return serverError || 'Identifiant ou mot de passe incorrect.';
+    return extractedError || 'Identifiant ou mot de passe incorrect.';
   }
   if (status === 503) {
     return serverMessage || 'Serveur indisponible.';
@@ -46,15 +99,17 @@ function getApiErrorMessage(err: any, fallback: string) {
   if (!err?.response) {
     return 'Serveur backend injoignable.';
   }
-  return serverError || serverMessage || networkMessage || fallback;
+  return extractedError || serverMessage || networkMessage || fallback;
 }
+
 
 export default function Login() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [twoFAAnswer, setTwoFAAnswer] = useState('');
-  const [step, setStep] = useState<LoginStep>('credentials');
+  const [step, setStep] = useState<LoginStep>('sector-select');
+  const [selectedSector, setSelectedSector] = useState<any>(null);
   const [pendingUser, setPendingUser] = useState<DBUser | null>(null);
   const [error, setError] = useState('');
   const [info, setInfo] = useState<string | null>(null);
@@ -127,6 +182,18 @@ export default function Login() {
         return;
       }
 
+      if (selectedSector && !hasSectorAccess(userPayload, selectedSector.key)) {
+        setError(`Vous n'avez pas l'autorisation d'accéder au secteur "${selectedSector.label}".`);
+        setLoading(false);
+        return;
+      }
+
+      if (selectedSector) {
+        localStorage.setItem('selectedSector', selectedSector.key);
+      } else {
+        localStorage.removeItem('selectedSector');
+      }
+
       login(
         emailResp,
         roleResp,
@@ -134,9 +201,10 @@ export default function Login() {
         orgResp,
         idResp,
         orgConfigResp,
-        userPayload?.permissions
+        userPayload?.permissions,
+        userPayload?.organizationId,  // ✅ Pass org UUID so ProjectContext can load projects
       );
-      navigate('/home');
+      navigate(selectedSector ? `/projects?domainType=${selectedSector.key}` : '/projects');
     } catch (err: any) {
       setError(getApiErrorMessage(err, 'Identifiant ou mot de passe incorrect.'));
     } finally {
@@ -157,6 +225,19 @@ export default function Login() {
         answer: twoFAAnswer,
       });
       const { user } = data;
+
+      if (selectedSector && !hasSectorAccess(user, selectedSector.key)) {
+        setError(`Vous n'avez pas l'autorisation d'accéder au secteur "${selectedSector.label}".`);
+        setLoading(false);
+        return;
+      }
+
+      if (selectedSector) {
+        localStorage.setItem('selectedSector', selectedSector.key);
+      } else {
+        localStorage.removeItem('selectedSector');
+      }
+
       login(
         user.email,
         user.role,
@@ -164,9 +245,10 @@ export default function Login() {
         user.organization,
         user.id,
         user.organizationConfig,
-        user.permissions
+        user.permissions,
+        user.organizationId,  // ✅ Pass org UUID from 2FA response
       );
-      navigate('/home');
+      navigate(selectedSector ? `/projects?domainType=${selectedSector.key}` : '/projects');
     } catch {
       setError('Réponse de sécurité incorrecte.');
     } finally {
@@ -389,16 +471,18 @@ export default function Login() {
           </div>
 
           {/* Right Panel: Form */}
-          <div className="flex-1 p-8 md:p-14 flex flex-col justify-center">
-            <div className="max-w-[340px] mx-auto w-full">
+          <div className="flex-1 p-6 md:p-10 flex flex-col justify-center overflow-y-auto max-h-[85vh] md:max-h-none">
+            <div className={`${step === 'sector-select' ? 'max-w-[620px]' : 'max-w-[340px]'} mx-auto w-full transition-all duration-300`}>
               {/* Step Title */}
-              <div className="mb-10 text-center md:text-left">
-                <h2 className="text-2xl font-black text-white tracking-tight italic mb-2 uppercase">
-                  {step === 'credentials'
-                    ? 'Connexion'
-                    : step === '2fa'
-                      ? 'Sécurité'
-                      : 'Récupération'}
+              <div className="mb-6 text-center md:text-left">
+                <h2 className="text-xl font-black text-white tracking-tight italic mb-2 uppercase">
+                  {step === 'sector-select'
+                    ? 'Sélectionnez votre secteur'
+                    : step === 'credentials'
+                      ? `Connexion - ${selectedSector?.label || ''}`
+                      : step === '2fa'
+                        ? 'Sécurité'
+                        : 'Récupération'}
                 </h2>
                 <div className="h-1 w-12 bg-indigo-500 rounded-full mx-auto md:mx-0" />
               </div>
@@ -420,6 +504,44 @@ export default function Login() {
               {recoveryInfo && (
                 <div className="mb-6 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl animate-in slide-in-from-top-2">
                   <span className="text-[11px] font-bold text-emerald-300">{recoveryInfo}</span>
+                </div>
+              )}
+
+              {/* Sector Selection Grid */}
+              {step === 'sector-select' && (
+                <div className="space-y-4 animate-in fade-in duration-500">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {SECTORS.map((sector) => {
+                      const IconComponent = sector.icon;
+                      return (
+                        <motion.button
+                          key={sector.key}
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => {
+                            setSelectedSector(sector);
+                            setStep('credentials');
+                          }}
+                          className={`flex flex-col items-start text-left p-4 bg-gradient-to-br ${sector.color} border ${sector.borderColor} rounded-2xl transition-all hover:bg-white/[0.02] shadow-md ${sector.shadowColor} group`}
+                        >
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className={`p-2 bg-white/[0.04] rounded-lg border border-white/5 ${sector.iconColor}`}>
+                              <IconComponent size={16} />
+                            </div>
+                            <h3 className="text-xs font-black text-white uppercase tracking-wider group-hover:text-indigo-400 transition-colors">
+                              {sector.label}
+                            </h3>
+                          </div>
+                          <p className="text-[10px] font-black text-slate-300 leading-snug mb-1">
+                            {sector.role}
+                          </p>
+                          <p className="text-[9px] font-medium text-slate-500 leading-normal">
+                            {sector.description}
+                          </p>
+                        </motion.button>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
 
@@ -528,6 +650,18 @@ export default function Login() {
                       </>
                     )}
                   </motion.button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStep('sector-select');
+                      setSelectedSector(null);
+                      setError('');
+                    }}
+                    className="w-full mt-4 flex items-center justify-center gap-2 text-[9px] font-black text-slate-500 hover:text-white uppercase tracking-widest transition-colors"
+                  >
+                    <ChevronLeft size={14} /> Retour aux secteurs
+                  </button>
                 </form>
               )}
 

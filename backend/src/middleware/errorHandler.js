@@ -1,7 +1,8 @@
 import logger from '../utils/logger.js';
+import { basePrisma } from '../core/utils/prisma.js';
 
 /**
- * Middleware 404 Not Found
+ * 404 Not Found
  */
 export const notFoundHandler = (req, res) => {
   res.status(404).json({
@@ -12,15 +13,46 @@ export const notFoundHandler = (req, res) => {
   });
 };
 
+/** Persist critical errors to DB for diagnostics (fire-and-forget safe) */
+const persistSystemError = (err, req) => {
+  const isDbError =
+    err.message?.includes("Can't reach database server") ||
+    err.code?.startsWith('P');
+  if (isDbError) return;
+
+  const status = err.statusCode || err.status || 500;
+  if (status < 500) return;
+
+  const { organizationId, userId, projectId } = req.user || {};
+  try {
+    basePrisma.systemError.create({
+      data: {
+        organizationId,
+        userId,
+        projectId,
+        code: err.code || 'UNEXPECTED_ERROR',
+        message: String(err.message || '').substring(0, 1000),
+        stack: String(err.stack || '').substring(0, 5000),
+        context: {
+          url: req.originalUrl,
+          method: req.method,
+          userAgent: req.headers['user-agent']
+        }
+      }
+    }).catch(() => {});
+  } catch {
+    // silently ignore persistence failures to avoid error loops
+  }
+};
+
 /**
- * Middleware de gestion des erreurs centralisé
+ * Centralized error handler
  */
-export const errorHandler = (err, req, res) => {
+export const errorHandler = (err, req, res, _next) => {
   const timestamp = new Date().toISOString();
   const requestId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-  // Log l'erreur
-  logger.error(`[${requestId}] Erreur: ${err.message}`, {
+  logger.error(`[${requestId}] ${err.message}`, {
     stack: err.stack,
     path: req.path,
     method: req.method,
@@ -28,10 +60,11 @@ export const errorHandler = (err, req, res) => {
     timestamp
   });
 
-  // Erreurs validations Joi
+  persistSystemError(err, req);
+
   if (err.isJoi) {
     return res.status(400).json({
-      error: 'Validation failed',
+      error: 'Données invalides',
       details: err.details.map(d => ({
         path: d.path.join('.'),
         message: d.message
@@ -40,46 +73,38 @@ export const errorHandler = (err, req, res) => {
     });
   }
 
-  // Erreurs de base de données
   if (err.code === 'ECONNREFUSED' || err.code === 'ENOTFOUND') {
-    logger.error(`❌ Erreur DB: Impossible de se connecter`);
     return res.status(503).json({
       error: 'Service indisponible. Veuillez réessayer.',
       requestId
     });
   }
 
-  // Erreurs PostgreSQL
-  if (err.code && err.code.startsWith('23')) { // Unique violation, etc.
+  if (err.code?.startsWith('23')) {
     if (err.code === '23505') {
-      return res.status(409).json({
-        error: 'Ces données existent déjà',
-        requestId
-      });
+      return res.status(409).json({ error: 'Ces données existent déjà', requestId });
     }
+    return res.status(400).json({ error: 'Erreur de base de données', requestId });
+  }
 
-    return res.status(400).json({
-      error: 'Erreur de base de données',
-      requestId
+  if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
+    return res.status(401).json({ error: 'Session invalide ou expirée', requestId });
+  }
+
+  if (err.message?.includes("Can't reach database server")) {
+    return res.status(503).json({
+      error: 'Le serveur ne parvient pas à contacter PostgreSQL.',
+      code: 'DB_CONNECTION_ERROR',
     });
   }
 
-  // Erreur JWT
-  if (err.name === 'JsonWebTokenError') {
-    return res.status(401).json({
-      error: 'Token invalide',
-      requestId
-    });
-  }
-
-  // Erreur par défaut
   const statusCode = err.statusCode || err.status || 500;
-  const message = err.message || 'Erreur serveur interne';
+  const isDev = process.env.NODE_ENV === 'development';
 
   res.status(statusCode).json({
-    error: process.env.NODE_ENV === 'development' ? message : 'Erreur serveur',
+    error: statusCode === 500 && !isDev ? 'Erreur serveur interne' : err.message || 'Erreur serveur',
     requestId,
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+    ...(isDev && { stack: err.stack })
   });
 };
 

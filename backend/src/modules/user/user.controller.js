@@ -1,3 +1,4 @@
+import logger from '../../utils/logger.js';
 import bcrypt from 'bcryptjs';
 import prisma from '../../core/utils/prisma.js';
 import { tracerAction } from '../../services/audit.service.js';
@@ -40,7 +41,7 @@ export const getUsers = async (req, res) => {
 
     res.json({ users: safeUsers });
   } catch (error) {
-    console.error('Get users error:', error);
+    logger.error('Get users error:', error);
     res.status(500).json({ error: 'Server error while fetching users' });
   }
 };
@@ -133,13 +134,13 @@ export const createUser = async (req, res) => {
         req,
       });
     } catch (e) {
-      console.warn('[AUDIT] Create user log failed:', e.message);
+      logger.warn('[AUDIT] Create user log failed:', e.message);
     }
 
     const safeUser = sanitizeUser(user);
     res.json({ ...safeUser, role: user.role?.name || user.roleLegacy });
   } catch (error) {
-    console.error('Create user error:', error);
+    logger.error('Create user error:', error);
     res.status(500).json({ error: 'Server error while creating user' });
   }
 };
@@ -286,13 +287,13 @@ export const updateUser = async (req, res) => {
         req,
       });
     } catch (e) {
-      console.warn('[AUDIT] Update user log failed:', e.message);
+      logger.warn('[AUDIT] Update user log failed:', e.message);
     }
 
     const safeUser = sanitizeUser(updatedUser);
     res.json({ ...safeUser, role: updatedUser.role?.name || updatedUser.roleLegacy });
   } catch (error) {
-    console.error('[USER_UPDATE_ERROR]', error);
+    logger.error('[USER_UPDATE_ERROR]', error);
     res.status(500).json({
       error: 'Erreur serveur lors de la mise à jour',
       code: 'USER_UPDATE_FAILED',
@@ -349,7 +350,7 @@ export const requestUserDeletion = async (req, res) => {
       message: `Confirmation requise pour supprimer ${targetUser.email}`,
     });
   } catch (error) {
-    console.error('Request user deletion error:', error);
+    logger.error('Request user deletion error:', error);
     res.status(500).json({ error: 'Server error while requesting deletion token' });
   }
 };
@@ -468,12 +469,12 @@ const { ROLES, isSuperAdminEmail } = await import('../../core/config/permissions
         req,
       });
     } catch (e) {
-      console.warn('[AUDIT] Delete user log failed:', e.message);
+      logger.warn('[AUDIT] Delete user log failed:', e.message);
     }
 
     res.json({ message: 'Utilisateur supprimé avec succès' });
   } catch (error) {
-    console.error('Delete user error:', error);
+    logger.error('Delete user error:', error);
     res.status(500).json({
       error: 'Server error while deleting user',
       ...(isDev && { details: error.message, code: error.code }),

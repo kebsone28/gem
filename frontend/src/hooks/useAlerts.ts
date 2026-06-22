@@ -6,6 +6,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import alertsAPI from '../services/alertsAPI';
 import logger from '../utils/logger';
+import { syncEventBus, SYNC_EVENTS } from '../utils/syncEventBus';
 
 interface Alert {
   id: string;
@@ -57,9 +58,10 @@ export function useAlerts(projectId: string) {
   useEffect(() => {
     fetchAlerts();
 
-    // Refresh toutes les 30 secondes
-    const interval = setInterval(() => fetchAlerts(), 30000);
-    return () => clearInterval(interval);
+    const unsubscribe = syncEventBus.subscribe(SYNC_EVENTS.NOTIFICATION, () => {
+      fetchAlerts();
+    });
+    return unsubscribe;
   }, [fetchAlerts]);
 
   const acknowledge = useCallback(

@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+﻿/* eslint-disable @typescript-eslint/no-explicit-any */
 import React from 'react';
 import { motion } from 'framer-motion';
 import {
@@ -18,7 +18,7 @@ import {
   DASHBOARD_ACTION_TILE_PRIMARY,
   DASHBOARD_ACTION_TILE_SECONDARY,
   StatusBadge,
-} from '../../../../../../components/dashboards/DashboardComponents';
+} from '@components/dashboards/DashboardComponents';
 import { useNavigate } from 'react-router-dom';
 
 interface DashboardHeaderProps {
@@ -90,7 +90,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
       label: 'Ouvrir carte',
       description: 'Voir zones et menages',
       icon: Map,
-      onClick: () => navigate('/terrain'),
+      onClick: () => navigate('/operations/map'),
       variant: 'secondary' as const,
     },
     {

@@ -1,3 +1,4 @@
+import logger from '../../utils/logger.js';
 import prisma from '../../core/utils/prisma.js';
 
 /**
@@ -11,7 +12,7 @@ export const getRegions = async (req, res) => {
         });
         res.json({ regions });
     } catch (error) {
-        console.error('Get regions error:', error);
+        logger.error('Get regions error:', error);
         res.status(500).json({ error: 'Server error while fetching regions' });
     }
 };

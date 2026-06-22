@@ -1,12 +1,12 @@
-/**
+﻿/**
  * 📚 EntriesList - Composant de liste des entrées d'entraînement
  * Affiche et gère les réponses mémorisées avec recherche et filtrage
  */
 
 import React, { useMemo } from 'react';
 import { Archive, BookOpen, CheckCircle2, Loader2, Search, X } from 'lucide-react';
-import type { MentorTrainingEntry } from '../../../services/ai/mentorTrainingService';
-import type { MissionSageLearningLog } from '../../../services/ai/missionSageLearningLogService';
+import type { MentorTrainingEntry } from '@services/ai/mentorTrainingService';
+import type { MissionSageLearningLog } from '@services/ai/missionSageLearningLogService';
 
 interface EntriesListProps {
   entries: MentorTrainingEntry[];

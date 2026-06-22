@@ -1,4 +1,3 @@
-/* eslint-disable no-inline-styles */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React from 'react';
 import { TrendingUp, AlertTriangle, CheckCircle2 } from 'lucide-react';

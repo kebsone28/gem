@@ -1,3 +1,4 @@
+import logger from '../../utils/logger.js';
 import express from 'express';
 import { authProtect } from '../middlewares/auth.js';
 import { verifierPermission } from '../../middleware/verifierPermission.js';
@@ -5,7 +6,7 @@ import { PERMISSIONS } from '../../core/config/permissions.js';
 import prisma from '../../core/utils/prisma.js';
 import { tracerAction } from '../../services/audit.service.js';
 import { normalizePermissionsToAtoms } from '../../core/config/permissionNormalization.js';
-import { getModulesConfig, updateModulesConfig } from '../../modules/system/system.controller.js';
+import { getModulesConfig, updateModulesConfig, getDomainModulesConfig, updateDomainModulesConfig } from '../../modules/system/system.controller.js';
 
 const router = express.Router();
 
@@ -15,6 +16,10 @@ router.use(authProtect);
 // --- Modules Configuration ---
 router.get('/modules/config', verifierPermission(PERMISSIONS.GERER_PARAMETRES), getModulesConfig);
 router.post('/modules/config', verifierPermission(PERMISSIONS.GERER_PARAMETRES), updateModulesConfig);
+
+// --- Domain Modules Configuration ---
+router.get('/modules/domain-config', verifierPermission(PERMISSIONS.GERER_PARAMETRES), getDomainModulesConfig);
+router.post('/modules/domain-config', verifierPermission(PERMISSIONS.GERER_PARAMETRES), updateDomainModulesConfig);
 
 // Only user managers may edit role permissions
 router.get('/role-permissions', verifierPermission(PERMISSIONS.GERER_UTILISATEURS), async (req, res) => {
@@ -40,7 +45,7 @@ router.get('/role-permissions', verifierPermission(PERMISSIONS.GERER_UTILISATEUR
 
         return res.json({ ok: true, roles: result, permissions: keys });
     } catch (err) {
-        console.error('Failed to fetch role-permissions', err);
+        logger.error('Failed to fetch role-permissions', err);
         return res.status(500).json({ error: 'Server error' });
     }
 });
@@ -59,7 +64,7 @@ router.get('/role-permissions/export', verifierPermission(PERMISSIONS.GERER_UTIL
         }));
         return res.json({ ok: true, exportedAt: new Date().toISOString(), roles: result });
     } catch (err) {
-        console.error('Failed to export role-permissions', err);
+        logger.error('Failed to export role-permissions', err);
         return res.status(500).json({ error: 'Server error' });
     }
 });
@@ -115,12 +120,12 @@ router.post('/role-permissions/:role', verifierPermission(PERMISSIONS.GERER_UTIL
                 details: { before: beforeKeys, after: permissions }
             }, null);
         } catch (auditErr) {
-            console.error('Audit logging failed for role-permissions update', auditErr);
+            logger.error('Audit logging failed for role-permissions update', auditErr);
         }
 
         return res.json({ ok: true, role: role.name, permissions });
     } catch (err) {
-        console.error('Failed to update role-permissions', err);
+        logger.error('Failed to update role-permissions', err);
         return res.status(500).json({ error: 'Server error' });
     }
 });
@@ -171,7 +176,7 @@ router.post('/role-permissions/import', verifierPermission(PERMISSIONS.GERER_UTI
 
         return res.json({ ok: true, importedAt: new Date().toISOString(), rolesImported: payload.roles.length });
     } catch (err) {
-        console.error('Failed to import role-permissions', err);
+        logger.error('Failed to import role-permissions', err);
         return res.status(500).json({ error: 'Server error' });
     }
 });

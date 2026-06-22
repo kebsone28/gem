@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+﻿import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useAuth } from '@contexts/AuthContext';
 import { useProject } from '@contexts/ProjectContext';
 import { useTeams } from '@hooks/useTeams';
@@ -7,12 +7,12 @@ import type { TaskLibrary, CahierTask } from '@utils/types';
 import {
   DEFAULT_CONTRACT_TEMPLATES,
   type ContractTemplateLibrary,
-} from '../../../../../data/contractTemplates';
+} from '@/data/contractTemplates';
 import {
   DEFAULT_OPERATIONAL_STRATEGY,
   type OperationalStrategyTemplate,
-} from '../../../../../data/operationalStrategyTemplates';
-import { DEFAULT_TASK_LIBRARY, ROLE_TO_TRADE_MAPPING } from '../../../../../data/cahierTaskLibrary';
+} from '@/data/operationalStrategyTemplates';
+import { DEFAULT_TASK_LIBRARY, ROLE_TO_TRADE_MAPPING } from '@/data/cahierTaskLibrary';
 import logger from '@utils/logger';
 import {
   mergeContractLibraryWithDefaults,

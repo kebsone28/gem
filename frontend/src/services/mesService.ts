@@ -1,4 +1,5 @@
 import apiClient from '../api/client';
+import logger from './logger';
 
 // Types pour le module MES
 export type MESStatus = 'RECU' | 'PROGRAMME' | 'EN_COURS' | 'REALISE' | 'CONTROLE' | 'VALIDE' | 'FACTURE' | 'PAYE';
@@ -88,7 +89,7 @@ class MESService {
       const response = await apiClient.get(url);
       return response.data.records || response.data;
     } catch (error) {
-      console.error('[MESService] Error fetching MES records:', error);
+      logger.error('[MESService] Error fetching MES records:', error);
       throw error;
     }
   }
@@ -99,7 +100,7 @@ class MESService {
       const response = await apiClient.get(`/mes/records/${id}`);
       return response.data;
     } catch (error) {
-      console.error('[MESService] Error fetching MES record:', error);
+      logger.error('[MESService] Error fetching MES record:', error);
       throw error;
     }
   }
@@ -110,7 +111,7 @@ class MESService {
       const response = await apiClient.post('/mes/records', record);
       return response.data;
     } catch (error) {
-      console.error('[MESService] Error creating MES record:', error);
+      logger.error('[MESService] Error creating MES record:', error);
       throw error;
     }
   }
@@ -121,7 +122,7 @@ class MESService {
       const response = await apiClient.patch(`/mes/records/${id}`, record);
       return response.data;
     } catch (error) {
-      console.error('[MESService] Error updating MES record:', error);
+      logger.error('[MESService] Error updating MES record:', error);
       throw error;
     }
   }
@@ -131,7 +132,7 @@ class MESService {
     try {
       await apiClient.delete(`/mes/records/${id}`);
     } catch (error) {
-      console.error('[MESService] Error deleting MES record:', error);
+      logger.error('[MESService] Error deleting MES record:', error);
       throw error;
     }
   }
@@ -142,7 +143,7 @@ class MESService {
       const response = await apiClient.patch(`/mes/records/${id}/status`, { status });
       return response.data;
     } catch (error) {
-      console.error('[MESService] Error updating MES status:', error);
+      logger.error('[MESService] Error updating MES status:', error);
       throw error;
     }
   }
@@ -164,7 +165,7 @@ class MESService {
       const response = await apiClient.get(url);
       return response.data;
     } catch (error) {
-      console.error('[MESService] Error fetching MES stats:', error);
+      logger.error('[MESService] Error fetching MES stats:', error);
       throw error;
     }
   }
@@ -183,7 +184,7 @@ class MESService {
 
       return response.data;
     } catch (error) {
-      console.error('[MESService] Error importing from Excel:', error);
+      logger.error('[MESService] Error importing from Excel:', error);
       throw error;
     }
   }
@@ -211,7 +212,7 @@ class MESService {
 
       return response.data;
     } catch (error) {
-      console.error('[MESService] Error exporting to Excel:', error);
+      logger.error('[MESService] Error exporting to Excel:', error);
       throw error;
     }
   }
@@ -222,7 +223,7 @@ class MESService {
       const response = await apiClient.get('/mes/zones');
       return response.data.zones || response.data;
     } catch (error) {
-      console.error('[MESService] Error fetching zones:', error);
+      logger.error('[MESService] Error fetching zones:', error);
       throw error;
     }
   }
@@ -233,7 +234,7 @@ class MESService {
       const response = await apiClient.get('/mes/postes');
       return response.data.postes || response.data;
     } catch (error) {
-      console.error('[MESService] Error fetching postes:', error);
+      logger.error('[MESService] Error fetching postes:', error);
       throw error;
     }
   }
@@ -252,7 +253,7 @@ class MESService {
       const response = await apiClient.get(url);
       return response.data.agents || response.data;
     } catch (error) {
-      console.error('[MESService] Error fetching agents:', error);
+      logger.error('[MESService] Error fetching agents:', error);
       throw error;
     }
   }
@@ -263,7 +264,7 @@ class MESService {
       const response = await apiClient.post(`/mes/records/${id}/validate`, { validatorId });
       return response.data;
     } catch (error) {
-      console.error('[MESService] Error validating MES record:', error);
+      logger.error('[MESService] Error validating MES record:', error);
       throw error;
     }
   }
@@ -277,7 +278,7 @@ class MESService {
       });
       return response.data;
     } catch (error) {
-      console.error('[MESService] Error controlling MES record:', error);
+      logger.error('[MESService] Error controlling MES record:', error);
       throw error;
     }
   }

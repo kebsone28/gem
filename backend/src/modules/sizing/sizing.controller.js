@@ -1,6 +1,8 @@
 import bcrypt from 'bcryptjs';
 import prisma from '../../core/utils/prisma.js';
 import { tracerAction } from '../../services/audit.service.js';
+import logger from '../../utils/logger.js';
+import { TEAM_TRADES, DEFAULT_TRADE_RATES, DEFAULT_WORKING_DAYS_PER_MONTH } from '../../core/config/businessRules.js';
 
 // @desc    Determine target sizing (teams needed) based on constraints
 // @route   POST /api/sizing/recommend
@@ -9,52 +11,48 @@ export const getSizingRecommendation = async (req, res) => {
         const { targetMonths, totalHouseholds, customRates } = req.body;
         const { organizationId } = req.user;
 
-        // Default constraints (can be overridden by customRates)
-        const daysPerMonth = 22; // Working days
+        const daysPerMonth = DEFAULT_WORKING_DAYS_PER_MONTH;
         const targetDays = targetMonths * daysPerMonth;
 
-        const rateMaconPerDay = customRates?.macon || 5; 
-        const rateLivreurPerDay = customRates?.livreur || 15;
-        const rateElecPerDay = customRates?.elec || 10;
+        const rateMasonPerDay = customRates?.mason || DEFAULT_TRADE_RATES[TEAM_TRADES.MASON];
+        const rateDeliveryPerDay = customRates?.delivery || DEFAULT_TRADE_RATES[TEAM_TRADES.DELIVERY];
+        const rateElectricianPerDay = customRates?.electrician || DEFAULT_TRADE_RATES[TEAM_TRADES.ELECTRICIAN];
 
-        // Calculate REQUIRED force
-        // Number of teams = (TotalHouseholds / Operations_per_day) / Target_Days
-        const requiredMacons = Math.ceil(totalHouseholds / (rateMaconPerDay * targetDays));
-        const requiredLivreurs = Math.ceil(totalHouseholds / (rateLivreurPerDay * targetDays));
-        const requiredElecs = Math.ceil(totalHouseholds / (rateElecPerDay * targetDays));
+        const requiredMasons = Math.ceil(totalHouseholds / (rateMasonPerDay * targetDays));
+        const requiredDeliveries = Math.ceil(totalHouseholds / (rateDeliveryPerDay * targetDays));
+        const requiredElectricians = Math.ceil(totalHouseholds / (rateElectricianPerDay * targetDays));
 
-        // Let's see what we currently have
         const currentTeams = await prisma.team.findMany({
             where: { organizationId, status: { in: ['active', 'disponible'] } }
         });
 
-        const currentMacons = currentTeams.filter(t => t.name.toLowerCase().includes('maç') || t.role === 'INSTALLATION').length;
-        const currentLivreurs = currentTeams.filter(t => t.name.toLowerCase().includes('livr') || t.role === 'LOGISTICS').length;
-        const currentElecs = currentTeams.filter(t => t.name.toLowerCase().includes('elec') || t.role === 'TECHNICAL').length;
+        const currentMasons = currentTeams.filter(t => t.tradeKey === TEAM_TRADES.MASON).length;
+        const currentDeliveries = currentTeams.filter(t => t.tradeKey === TEAM_TRADES.DELIVERY).length;
+        const currentElectricians = currentTeams.filter(t => t.tradeKey === TEAM_TRADES.ELECTRICIAN).length;
 
         const recommendation = {
             targetDays,
             totalHouseholds,
             required: {
-                macons: requiredMacons,
-                livreurs: requiredLivreurs,
-                elecs: requiredElecs,
+                masons: requiredMasons,
+                deliveries: requiredDeliveries,
+                electricians: requiredElectricians,
             },
             current: {
-                macons: currentMacons,
-                livreurs: currentLivreurs,
-                elecs: currentElecs,
+                masons: currentMasons,
+                deliveries: currentDeliveries,
+                electricians: currentElectricians,
             },
             delta: {
-                macons: requiredMacons - currentMacons,
-                livreurs: requiredLivreurs - currentLivreurs,
-                elecs: requiredElecs - currentElecs,
+                masons: requiredMasons - currentMasons,
+                deliveries: requiredDeliveries - currentDeliveries,
+                electricians: requiredElectricians - currentElectricians,
             }
         };
 
         res.json(recommendation);
     } catch (error) {
-        console.error('Sizing calc error:', error);
+        logger.error('Sizing calc error:', error);
         res.status(500).json({ error: 'Server error while calculating sizing' });
     }
 };
@@ -63,78 +61,72 @@ export const getSizingRecommendation = async (req, res) => {
 // @route   POST /api/sizing/apply
 export const applySizingScale = async (req, res) => {
     try {
-        const { deltas } = req.body; // { macons: 2, livreurs: 1, elecs: 0 }
+        const { deltas } = req.body; // { masons: 2, deliveries: 1, electricians: 0 }
         const { organizationId } = req.user;
 
-        // Ensure we are adding and not destructively removing teams for safety
-        const toCreateUserAndTeams = [];
+        const TRADE_MAP = {
+            masons: { tradeKey: TEAM_TRADES.MASON, baseName: 'Maçon', role: 'INSTALLATION' },
+            deliveries: { tradeKey: TEAM_TRADES.DELIVERY, baseName: 'Livreur', role: 'LOGISTICS' },
+            electricians: { tradeKey: TEAM_TRADES.ELECTRICIAN, baseName: 'Électricien', role: 'TECHNICAL' },
+        };
 
+        const toCreateEntries = [];
         for (const [roleKey, amountToAdd] of Object.entries(deltas)) {
-            if (amountToAdd > 0) {
+            if (amountToAdd > 0 && TRADE_MAP[roleKey]) {
                 for (let i = 0; i < amountToAdd; i++) {
-                    toCreateUserAndTeams.push(roleKey);
+                    toCreateEntries.push(roleKey);
                 }
             }
         }
 
-        if (toCreateUserAndTeams.length === 0) {
+        if (toCreateEntries.length === 0) {
             return res.json({ message: 'Aucun scale-up nécessaire.', created: 0 });
         }
 
-        // Default password for generated accounts
+        const defaultPassword = process.env.DEFAULT_TEAM_PASSWORD || 'ChangeMe_2024!';
         const salt = await bcrypt.genSalt(10);
-        const passwordHash = await bcrypt.hash('ProquelecA1!', salt);
+        const passwordHash = await bcrypt.hash(defaultPassword, salt);
 
         const createdEntities = [];
-        
-        // Count existing teams to assign sequential numbers (e.g. Maçon 1, Maçon 2)
+
         const currentTeams = await prisma.team.findMany({
             where: { organizationId }
         });
-        
-        const counts = {
-            macons: currentTeams.filter(t => t.name.toLowerCase().includes('maç')).length,
-            livreurs: currentTeams.filter(t => t.name.toLowerCase().includes('livr')).length,
-            elecs: currentTeams.filter(t => t.name.toLowerCase().includes('elec') || t.name.toLowerCase().includes('élec')).length,
-        };
 
-        for (const roleKey of toCreateUserAndTeams) {
-            counts[roleKey] += 1; // Increment for the new team sequence
-            
-            let baseName = roleKey;
-            if (roleKey === 'macons') baseName = 'Maçon';
-            if (roleKey === 'livreurs') baseName = 'Livreur';
-            if (roleKey === 'elecs') baseName = 'Électricien';
+        const counts = {};
+        for (const key of Object.keys(TRADE_MAP)) {
+            counts[key] = currentTeams.filter(t => t.tradeKey === TRADE_MAP[key].tradeKey).length;
+        }
 
-            const teamName = `${baseName} ${counts[roleKey]}`;
-            
-            // Clean dummy email format
-            const cleanEmailString = baseName.toLowerCase().replace(/ç/g, 'c').replace(/é/g, 'e');
-            const email = `chef-${cleanEmailString}${counts[roleKey]}@ged-os.local`;
+        for (const roleKey of toCreateEntries) {
+            const trade = TRADE_MAP[roleKey];
+            counts[roleKey] += 1;
+            const teamName = `${trade.baseName} ${counts[roleKey]}`;
+            const cleanEmailBase = trade.baseName.toLowerCase().replace(/ç/g, 'c').replace(/é/g, 'e');
+            const email = `chef-${cleanEmailBase}${counts[roleKey]}@ged-os.local`;
 
-            // 1. Create the User (CHEF_EQUIPE)
             const user = await prisma.user.create({
                 data: {
                     name: `Chef ${teamName}`,
-                    email: email,
+                    email,
                     passwordHash,
                     roleLegacy: 'CHEF_EQUIPE',
                     organizationId,
                 }
             });
 
-            // 2. Create the Team Linked to the User
             const team = await prisma.team.create({
                 data: {
                     name: teamName,
                     status: 'disponible',
                     leaderId: user.id,
                     organizationId,
-                    role: roleKey === 'macons' ? 'INSTALLATION' : (roleKey === 'livreurs' ? 'LOGISTICS' : 'PREPARATION')
+                    tradeKey: trade.tradeKey,
+                    role: trade.role,
                 }
             });
 
-            createdEntities.push({ email, pass: 'ProquelecA1!', teamName });
+            createdEntities.push({ email, teamName });
         }
 
         // Audit Log
@@ -150,11 +142,11 @@ export const applySizingScale = async (req, res) => {
 
         res.json({
             message: `${createdEntities.length} équipes(s) et compte(s) utilisateur(s) ont été créés automatiquement.`,
-            credentials: createdEntities // Important for the Admin to give to the physical agency!
+            created: createdEntities.length,
         });
 
     } catch (error) {
-        console.error('Auto-scale error:', error);
+        logger.error('Auto-scale error:', error);
         res.status(500).json({ error: 'Server error while applying auto-scale' });
     }
 };

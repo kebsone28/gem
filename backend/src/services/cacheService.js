@@ -6,23 +6,63 @@
 import { redisConnection } from '../core/utils/queueManager.js';
 import logger from '../utils/logger.js';
 
+// In-memory fallback when Redis is unavailable (dev/test environments)
+const memoryCache = new Map();
+
 // Safe Redis wrapper to handle disabled/offline Redis state gracefully without throwing
 const redis = {
   get: async (key) => {
-    if (!redisConnection || typeof redisConnection.get !== 'function') return null;
-    return redisConnection.get(key);
+    if (redisConnection && typeof redisConnection.get === 'function') {
+      try {
+        return await redisConnection.get(key);
+      } catch (e) {
+        // Redis error, fall through to memory
+      }
+    }
+    const entry = memoryCache.get(key);
+    if (!entry) return null;
+    if (entry.expiry < Date.now()) {
+      memoryCache.delete(key);
+      return null;
+    }
+    return entry.value;
   },
   setex: async (key, ttl, value) => {
-    if (!redisConnection || typeof redisConnection.setex !== 'function') return null;
-    return redisConnection.setex(key, ttl, value);
+    memoryCache.set(key, { value, expiry: Date.now() + ttl * 1000 });
+    if (redisConnection && typeof redisConnection.setex === 'function') {
+      try {
+        return await redisConnection.setex(key, ttl, value);
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
   },
   del: async (...keys) => {
-    if (!redisConnection || typeof redisConnection.del !== 'function') return null;
-    return redisConnection.del(...keys);
+    for (const key of keys) {
+      memoryCache.delete(key);
+    }
+    if (redisConnection && typeof redisConnection.del === 'function') {
+      try {
+        return await redisConnection.del(...keys);
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
   },
   keys: async (pattern) => {
-    if (!redisConnection || typeof redisConnection.keys !== 'function') return [];
-    return redisConnection.keys(pattern);
+    const regex = new RegExp('^' + pattern.replace(/\*/g, '.*').replace(/\?/g, '.') + '$');
+    const memoryKeys = Array.from(memoryCache.keys()).filter(k => regex.test(k));
+    if (redisConnection && typeof redisConnection.keys === 'function') {
+      try {
+        const redisKeys = await redisConnection.keys(pattern);
+        return [...new Set([...redisKeys, ...memoryKeys])];
+      } catch (e) {
+        return memoryKeys.length > 0 ? memoryKeys : [];
+      }
+    }
+    return memoryKeys.length > 0 ? memoryKeys : [];
   }
 };
 

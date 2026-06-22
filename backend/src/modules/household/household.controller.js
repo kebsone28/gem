@@ -1,4 +1,4 @@
-import prisma from '../../core/utils/prisma.js';
+import prisma, { basePrisma } from '../../core/utils/prisma.js';
 import eventBus from '../../core/utils/eventBus.js';
 import EventPublisher from '../../core/utils/EventPublisher.js';
 import { tracerAction } from '../../services/audit.service.js';
@@ -7,6 +7,13 @@ import {
     LEGACY_SAFE_HOUSEHOLD_READ_SELECT,
     normalizeLegacyHousehold
 } from './household.compat.js';
+import {
+    HOUSEHOLD_STATUS,
+    isValidHouseholdTransition,
+    getDefaultHouseholdWorkflow,
+    HOUSEHOLD_APPROVAL_STEPS,
+} from '../../core/config/businessRules.js';
+import logger from '../../utils/logger.js';
 
 function sanitizeBigIntForJson(value) {
     if (typeof value === 'bigint') {
@@ -61,9 +68,9 @@ function mergeJsonField(existingValue, nextValue) {
 export const getHouseholds = async (req, res) => {
     try {
         const { organizationId } = req.user;
-        const { projectId, zoneId, grappeId, status, bbox, limit = '5000', page = '1', search } = req.query;
+        const { projectId, zoneId, grappeId, status, bbox, limit = '100', page = '1', search } = req.query;
 
-        const limitNum = Math.min(parseInt(limit), 10000);
+        const limitNum = Math.min(Math.max(parseInt(limit) || 100, 1), 1000);
         const pageNum = Math.max(parseInt(page, 10) || 1, 1);
         const skip = (pageNum - 1) * limitNum;
 
@@ -115,7 +122,7 @@ export const getHouseholds = async (req, res) => {
             hasMore: households.length === limitNum
         });
     } catch (error) {
-        console.error('Get households error:', error);
+        logger.error('Get households error:', error);
         res.status(500).json({ error: 'Server error while fetching households' });
     }
 };
@@ -133,7 +140,7 @@ export const getHouseholdsCount = async (req, res) => {
         });
         res.json({ count });
     } catch (error) {
-        console.error('Get households count error:', error);
+        logger.error('Get households count error:', error);
         res.status(500).json({ error: 'Server error while fetching household count' });
     }
 };
@@ -161,7 +168,7 @@ export const getHouseholdById = async (req, res) => {
 
         res.json(sanitizeBigIntForJson(normalizeLegacyHousehold(household)));
     } catch (error) {
-        console.error('Get household error:', error);
+        logger.error('Get household error:', error);
         res.status(500).json({ error: 'Server error while fetching household' });
     }
 };
@@ -229,7 +236,7 @@ export const createHousehold = async (req, res) => {
                 data: { household: payload }
             });
         } catch (e) {
-            console.error('EventBus emit createHousehold error:', e.message);
+            logger.error('EventBus emit createHousehold error:', e.message);
         }
 
         // Sync PostGIS
@@ -253,7 +260,7 @@ export const createHousehold = async (req, res) => {
 
         res.status(201).json(sanitizeBigIntForJson(household));
     } catch (error) {
-        console.error('Create household error:', error);
+        logger.error('Create household error:', error);
         res.status(500).json({ error: 'Server error while creating household' });
     }
 };
@@ -276,7 +283,26 @@ export const updateHousehold = async (req, res) => {
         });
 
         if (!household) {
-            return res.status(404).json({ error: 'Household not found' });
+            return res.status(404).json({ error: 'Ménage introuvable' });
+        }
+
+        // Optimistic concurrency check
+        const expectedVersion = updates.expectedVersion ?? parseInt(req.headers['if-match'], 10);
+        if (expectedVersion !== undefined && !isNaN(expectedVersion) && household.version !== expectedVersion) {
+            return res.status(409).json({
+                error: 'Ce ménage a été modifié par un autre utilisateur. Veuillez recharger et réessayer.',
+                currentVersion: household.version,
+            });
+        }
+
+        // Validate status transition
+        if (updates.status && updates.status !== household.status) {
+            const transitionCheck = isValidHouseholdTransition(household.status, updates.status);
+            if (!transitionCheck) {
+                return res.status(400).json({
+                    error: `Transition de statut invalide: "${household.status}" → "${updates.status}".`
+                });
+            }
         }
 
         const unlockFields = Array.isArray(updates.unlockFields) ? updates.unlockFields : [];
@@ -362,12 +388,12 @@ export const updateHousehold = async (req, res) => {
                 }
             });
         } catch (e) {
-            console.error('EventBus emit updateHousehold error:', e.message);
+            logger.error('EventBus emit updateHousehold error:', e.message);
         }
 
         res.json(sanitizeBigIntForJson(updated));
     } catch (error) {
-        console.error('Update household error:', error);
+        logger.error('Update household error:', error);
         res.status(500).json({ error: 'Server error while updating household' });
     }
 };
@@ -388,7 +414,7 @@ export const getHouseholdByNumero = async (req, res) => {
             normalizedNumero.replace(/^0+/, '') || normalizedNumero,
         ]));
 
-        const household = await prisma.household.findFirst({
+        const household = await basePrisma.household.findFirst({
             where: {
                 organizationId,
                 deletedAt: null,
@@ -402,7 +428,7 @@ export const getHouseholdByNumero = async (req, res) => {
         if (!household) return res.status(404).json({ error: 'Household not found' });
         res.json({ household: sanitizeBigIntForJson(household) });
     } catch (error) {
-        console.error('Get household by numero error:', error);
+        logger.error('Get household by numero error:', error);
         res.status(500).json({ error: 'Server error while fetching household' });
     }
 };
@@ -430,22 +456,12 @@ export const getHouseholdApprovalHistory = async (req, res) => {
         let workflow = constructionData.approvalWorkflow;
 
         if (!workflow) {
-            workflow = {
-                householdId: household.id,
-                steps: [
-                    { role: 'CHEF_PROJET', status: 'pending', label: 'Validation Chef de Projet' },
-                    { role: 'ADMIN', status: 'pending', label: 'Validation Administration' },
-                    { role: 'DIRECTEUR', status: 'pending', label: 'Approbation Direction' }
-                ],
-                overallStatus: 'pending',
-                createdAt: household.createdAt,
-                updatedAt: household.updatedAt
-            };
+            workflow = getDefaultHouseholdWorkflow(household.id, household.createdAt);
         }
 
         res.json(workflow);
     } catch (error) {
-        console.error('Get approval history error:', error);
+        logger.error('Get approval history error:', error);
         res.status(500).json({ error: 'Server error' });
     }
 };
@@ -466,22 +482,24 @@ export const approveHouseholdStep = async (req, res) => {
         if (!household) return res.status(404).json({ error: 'Household not found' });
 
         const constructionData = household.constructionData || {};
-        let workflow = constructionData.approvalWorkflow || {
-            householdId: household.id,
-            steps: [
-                { role: 'CHEF_PROJET', status: 'pending', label: 'Validation Chef de Projet' },
-                { role: 'ADMIN', status: 'pending', label: 'Validation Administration' },
-                { role: 'DIRECTEUR', status: 'pending', label: 'Approbation Direction' }
-            ],
-            overallStatus: 'pending',
-            createdAt: new Date().toISOString()
-        };
+        let workflow = constructionData.approvalWorkflow || getDefaultHouseholdWorkflow(household.id);
 
         const stepIndex = workflow.steps.findIndex(s => s.role === role);
-        if (stepIndex === -1) return res.status(400).json({ error: 'Role invalid' });
+        if (stepIndex === -1) return res.status(400).json({ error: 'Role invalide' });
+
+        const targetStep = workflow.steps[stepIndex];
+        if (targetStep.status === 'approved') {
+            return res.status(400).json({ error: 'Cette étape a déjà été approuvée.' });
+        }
+
+        const prevSteps = workflow.steps.slice(0, stepIndex);
+        const allPrevApproved = prevSteps.every(s => s.status === 'approved');
+        if (!allPrevApproved) {
+            return res.status(400).json({ error: 'Les étapes précédentes doivent être approuvées d\'abord.' });
+        }
 
         workflow.steps[stepIndex] = {
-            ...workflow.steps[stepIndex],
+            ...targetStep,
             status: 'approved',
             approvedBy: userId,
             approvedAt: new Date().toISOString(),
@@ -492,6 +510,15 @@ export const approveHouseholdStep = async (req, res) => {
         workflow.overallStatus = allApproved ? 'approved' : 'in_progress';
         workflow.updatedAt = new Date().toISOString();
 
+        const newHouseholdStatus = allApproved ? HOUSEHOLD_STATUS.VALIDATED : household.status;
+
+        const transitionCheck = isValidHouseholdTransition(household.status, newHouseholdStatus);
+        if (!transitionCheck) {
+            return res.status(400).json({
+                error: `Transition de statut invalide: ${household.status} → ${newHouseholdStatus}`
+            });
+        }
+
         await prisma.household.update({
             where: { id: householdId },
             data: {
@@ -499,7 +526,7 @@ export const approveHouseholdStep = async (req, res) => {
                     ...constructionData,
                     approvalWorkflow: workflow
                 },
-                status: allApproved ? 'validated' : household.status
+                status: newHouseholdStatus
             }
         });
 
@@ -512,7 +539,7 @@ export const approveHouseholdStep = async (req, res) => {
 
         res.json(workflow);
     } catch (error) {
-        console.error('Approve step error:', error);
+        logger.error('Approve step error:', error);
         res.status(500).json({ error: 'Server error' });
     }
 };
@@ -535,10 +562,10 @@ export const rejectHouseholdStep = async (req, res) => {
         const constructionData = household.constructionData || {};
         let workflow = constructionData.approvalWorkflow;
 
-        if (!workflow) return res.status(400).json({ error: 'No workflow' });
+        if (!workflow) return res.status(400).json({ error: 'Aucun workflow trouvé.' });
 
         const stepIndex = workflow.steps.findIndex(s => s.role === role);
-        if (stepIndex === -1) return res.status(400).json({ error: 'Role invalid' });
+        if (stepIndex === -1) return res.status(400).json({ error: 'Rôle invalide' });
 
         workflow.steps[stepIndex] = {
             ...workflow.steps[stepIndex],
@@ -551,6 +578,13 @@ export const rejectHouseholdStep = async (req, res) => {
         workflow.overallStatus = 'rejected';
         workflow.updatedAt = new Date().toISOString();
 
+        const transitionCheck = isValidHouseholdTransition(household.status, HOUSEHOLD_STATUS.REJECTED);
+        if (!transitionCheck) {
+            return res.status(400).json({
+                error: `Impossible de rejeter un ménage avec le statut "${household.status}".`
+            });
+        }
+
         await prisma.household.update({
             where: { id: householdId },
             data: {
@@ -558,7 +592,7 @@ export const rejectHouseholdStep = async (req, res) => {
                     ...constructionData,
                     approvalWorkflow: workflow
                 },
-                status: 'rejected'
+                status: HOUSEHOLD_STATUS.REJECTED
             }
         });
 
@@ -571,7 +605,51 @@ export const rejectHouseholdStep = async (req, res) => {
 
         res.json(workflow);
     } catch (error) {
-        console.error('Reject step error:', error);
+        logger.error('Reject step error:', error);
         res.status(500).json({ error: 'Server error' });
+    }
+};
+
+// @desc    Soft-delete a household (archive) — [FIX C-3]
+// @route   DELETE /api/households/:id
+export const deleteHousehold = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { organizationId } = req.user;
+
+        const household = await prisma.household.findFirst({
+            where: { id, organizationId, deletedAt: null }
+        });
+
+        if (!household) {
+            return res.status(404).json({ error: 'Ménage introuvable ou déjà supprimé.' });
+        }
+
+        await prisma.household.update({
+            where: { id },
+            data: { deletedAt: new Date() }
+        });
+
+        // Notifier le SSE pour mise à jour temps réel des cartes
+        try {
+            eventBus.emit('household:delete', { action: 'delete', id });
+        } catch (e) {
+            logger.error('EventBus emit deleteHousehold error:', e.message);
+        }
+
+        await tracerAction({
+            userId: req.user.id,
+            organizationId,
+            action: 'SUPPRESSION_MENAGE',
+            resource: 'Ménage',
+            resourceId: id,
+            details: { previousStatus: household.status },
+            req
+        });
+
+        res.json({ message: 'Ménage archivé avec succès.', id });
+    } catch (error) {
+        logger.error('Delete household error:', error);
+        res.status(500).json({ error: 'Server error while deleting household' });
     }
 };

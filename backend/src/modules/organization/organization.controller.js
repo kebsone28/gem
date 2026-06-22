@@ -1,6 +1,7 @@
 import prisma from '../../core/utils/prisma.js';
 import { tracerAction } from '../../services/audit.service.js';
 import { validateOrganizationConfig } from '../../services/configValidation.service.js';
+import logger from '../../utils/logger.js';
 
 /**
  * Met à jour la configuration JSON de l'organisation
@@ -55,7 +56,7 @@ export const updateConfig = async (req, res) => {
 
         res.json({ message: 'Configuration mise à jour avec succès', config: updated.config });
     } catch (error) {
-        console.error('Update org config error:', error);
+        logger.error('Update org config error:', error);
         res.status(500).json({ error: 'Erreur serveur lors de la mise à jour' });
     }
 };
@@ -68,7 +69,7 @@ export const getConfig = async (req, res) => {
         const { organizationId } = req.user;
         
         if (!organizationId) {
-            console.warn('⚠️ [ORG] organizationId missing in req.user');
+            logger.warn('⚠️ [ORG] organizationId missing in req.user');
             return res.json({ name: 'PROQUELEC', config: {} });
         }
 
@@ -83,7 +84,7 @@ export const getConfig = async (req, res) => {
 
         res.json(org);
     } catch (error) {
-        console.error('❌ [ORG] getConfig error:', error);
+        logger.error('❌ [ORG] getConfig error:', error);
         res.status(200).json({ name: 'PROQUELEC', config: {} }); // On renvoie 200 avec config vide pour éviter de bloquer l'UI
     }
 };

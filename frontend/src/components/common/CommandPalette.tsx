@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
+﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -17,8 +17,8 @@ import {
   ServerCog
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useTerrainData } from '../../hooks/useTerrainData';
-import { useAuth } from '../../contexts/AuthContext';
+import { useTerrainData } from '@hooks/useTerrainData';
+import { useAuth } from '@contexts/AuthContext';
 
 /**
  * CommandPalette (Axe 4 — Plan d'Amélioration Continue GEM-SAAS)
@@ -41,7 +41,7 @@ export const CommandPalette = () => {
 
   // 1️⃣ Initialisation du Search Worker
   useEffect(() => {
-    const worker = new Worker(new URL('../../workers/searchWorker.ts', import.meta.url), {
+    const worker = new Worker(new URL('@/workers/searchWorker.ts', import.meta.url), {
       type: 'module'
     });
     
@@ -86,7 +86,7 @@ export const CommandPalette = () => {
     const staticPages = [
       { title: 'Dashboard', to: '/dashboard', type: 'page', id: 'page-dash' },
       { title: 'Missions', to: '/missions', type: 'page', id: 'page-miss' },
-      { title: 'Terrain', to: '/terrain', type: 'page', id: 'page-terr' },
+      { title: 'Terrain', to: '/operations/map', type: 'page', id: 'page-terr' },
       { title: 'Planning', to: '/planning', type: 'page', id: 'page-plan' },
       { title: 'Rapports', to: '/reports', type: 'page', id: 'page-rep' },
       { title: 'Équipes', to: '/teams', type: 'page', id: 'page-teams' },
@@ -165,10 +165,10 @@ export const CommandPalette = () => {
                     <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-4">Actions Rapides</h4>
                     <div className="grid grid-cols-2 gap-3">
                       {[
-                        { icon: MapIcon, label: 'Ouvrir la Carte', to: '/terrain' },
+                        { icon: MapIcon, label: 'Ouvrir la Carte', to: '/operations/map' },
                         { icon: Activity, label: 'Diagnostic Santé', to: '/admin/diagnostic' },
                         { icon: ServerCog, label: 'Agent Local', to: '/admin/agent-local' },
-                        { icon: FileText, label: 'Cahier de Charge', to: '/cahier' },
+                        { icon: FileText, label: 'Cahier de Charge', to: '/documents/specifications' },
                         { icon: Settings, label: 'Paramètres', to: '/settings' },
                       ].map((action) => (
                         <button

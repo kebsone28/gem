@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import apiClient from '../../../../../../api/client';
-import logger from '../../../../../../utils/logger';
-import type { AuditLog, Household, Team } from '../../../../../../utils/types';
-import type { RegionalSummary } from '../../../../../../services/ai/MissionSageService';
+﻿import { useCallback, useEffect, useMemo, useState } from 'react';
+import apiClient from '@/api/client';
+import logger from '@utils/logger';
+import type { AuditLog, Household, Team } from '@utils/types';
+import type { RegionalSummary } from '@services/ai/MissionSageService';
 
 const DONE_HOUSEHOLD_STATUSES = new Set([
   'Terminé',

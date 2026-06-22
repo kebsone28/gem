@@ -1,21 +1,21 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+﻿/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useCallback, useState, useEffect, useMemo } from 'react';
 import toast from 'react-hot-toast';
 import { ShieldCheck, BarChart3, Users, AlertTriangle, Activity, CheckCircle2 } from 'lucide-react';
-import { PageContainer, PageHeader, ContentArea } from '../../../../components';
+import { PageContainer, PageHeader, ContentArea } from '@components';
 import { useNavigate } from 'react-router-dom';
-import { useProject } from '../../../../contexts/ProjectContext';
-import { usePermissions } from '../../../../hooks/usePermissions';
-import { useLabels } from '../../../../contexts/LabelsContext';
-import { missionStatsService } from '../../../../services/missionStatsService';
-import { useAuth } from '../../../../contexts/AuthContext';
+import { useProject } from '@contexts/ProjectContext';
+import { usePermissions } from '@hooks/usePermissions';
+import { useLabels } from '@contexts/LabelsContext';
+import { missionStatsService } from '@services/missionStatsService';
+import { useAuth } from '@contexts/AuthContext';
 import {
   ConsoleSettings,
   type ConsoleSettingsConfig,
-} from '../../../../components/admin/ConsoleSettings';
-import { useConsoleLayout } from '../../../../hooks/useConsoleLayout';
-import { organizationService } from '../../../../services/organizationService';
-import { ROLES, normalizeRole } from '../../../../core/security/permissions';
+} from '@components/admin/ConsoleSettings';
+import { useConsoleLayout } from '@hooks/useConsoleLayout';
+import { organizationService } from '@services/organizationService';
+import { ROLES, normalizeRole } from '@core/security/permissions';
 import { FileText, CheckCircle, Shield } from 'lucide-react';
 
 // ── MODULE ARCHITECTURE ──
@@ -23,7 +23,7 @@ import { DashboardHeader } from './admin/components/DashboardHeader';
 import { GlobalProgressCard } from './admin/components/GlobalProgressCard';
 import { UnifiedStatsTable } from './admin/components/UnifiedStatsTable';
 import { ControlPanel } from './admin/components/ControlPanel';
-import { TeamPerformance } from '../../../../components/dashboards/TeamPerformance';
+import { TeamPerformance } from '@components/dashboards/TeamPerformance';
 
 import { useDashboardData } from './admin/hooks/useDashboardData';
 import { useMissionStats } from './admin/hooks/useMissionStats';
@@ -32,8 +32,8 @@ import { useAuditLogs } from './admin/hooks/useAuditLogs';
 import { useSyncHandler } from './admin/hooks/useSyncHandler';
 import { useAutoRefresh } from './admin/hooks/useAutoRefresh';
 import { useServerAIContext } from './admin/hooks/useServerAIContext';
-import { GlobalGedOsAiChat } from '../../../../components/ia/GlobalGedOsAiChat';
-import AIEngineAdminPanel from '../../../../components/ia/AIEngineAdminPanel';
+import { GlobalGedOsAiChat } from '@components/ia/GlobalGedOsAiChat';
+import AIEngineAdminPanel from '@components/ia/AIEngineAdminPanel';
 import { Brain } from 'lucide-react';
 
 // ── DEFAULT CONSOLE SETTINGS ──

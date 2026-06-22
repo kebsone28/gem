@@ -1,9 +1,10 @@
-import React, { useMemo, useState, useEffect } from 'react';
+﻿import React, { useMemo, useState, useEffect } from 'react';
+import logger from '@services/logger';
 import { useNavigate } from 'react-router-dom';
-import apiClient from '../../../../api/client';
-import { usePermissions } from '../../../../hooks/usePermissions';
+import apiClient from '@/api/client';
+import { usePermissions } from '@hooks/usePermissions';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../../../../store/db';
+import { db } from '@/store/db';
 import { motion } from 'framer-motion';
 import {
    ShieldCheck,
@@ -20,7 +21,7 @@ import {
    DollarSign,
    Zap,
 } from 'lucide-react';
-import { PageContainer, PageHeader, ContentArea } from '../../../../components';
+import { PageContainer, PageHeader, ContentArea } from '@components';
 import {
    DASHBOARD_ACTION_TILE_PRIMARY,
    DASHBOARD_ACTION_TILE_SECONDARY,
@@ -29,10 +30,9 @@ import {
    StatusBadge,
    KPICard,
    ProgressBar,
-} from '../../../../components/dashboards/DashboardComponents';
-import { useProject } from '../../../../contexts/ProjectContext';
-import { SECTOR_PACKS } from '../../../../config/packs/sectorPacks';
-import { fmtNum } from '../../../../utils/format';
+} from '@components/dashboards/DashboardComponents';
+import { useProject } from '@contexts/ProjectContext';
+import { fmtNum } from '@utils/format';
 
 interface ProjectMetrics {
   overallProgress: number;
@@ -139,7 +139,7 @@ export default function ProjectManagerDashboard() {
              setRealStats(res.data.data.stats);
            }
          })
-         .catch(err => console.error('Error fetching real analytics:', err));
+          .catch(err => logger.error('Error fetching real analytics:', err));
      }
    }, [project?.id]);
 
@@ -174,11 +174,15 @@ export default function ProjectManagerDashboard() {
      };
    }, [households, teams, realStats]);
 
-   // Récupération du Pack Sectoriel
-   const sectorPack = useMemo(() => {
-     const sectorId = project?.config?.sector || 'elec_bt';
-     return Object.values(SECTOR_PACKS).find(p => p.id === sectorId) || SECTOR_PACKS.ELECTRICITY_BT;
-   }, [project]);
+    // Récupération du Pack Sectoriel
+    const sectorPack = useMemo(() => {
+      const sectorId = project?.config?.sector || 'elec_bt';
+      return {
+        name: sectorId,
+        kpis: [] as { id: string; label: string; unit: string }[],
+        aiFeatures: [] as string[],
+      };
+    }, [project]);
 
    // Calcul des métriques de coordination d'équipe
    const teamCoordination: TeamCoordinationMetrics = useMemo(() => {

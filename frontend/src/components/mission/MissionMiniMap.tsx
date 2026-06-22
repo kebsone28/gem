@@ -1,8 +1,8 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useMemo } from 'react';
 import { Map as MapIcon, Maximize2 } from 'lucide-react';
-import MapLibreVectorMap from '../terrain/MapLibreVectorMap';
-import { senegalRegions } from '../../data/senegal-regions';
+import MapLibreVectorMap from "@modules/terrain/components/MapLibreVectorMap";
+import { senegalRegions } from '@/data/senegal-regions';
 
 interface MissionMiniMapProps {
   region: string;
@@ -44,7 +44,7 @@ export function MissionMiniMap({ region, households = [] }: MissionMiniMapProps)
       <button
         aria-label="Agrandir la carte"
         className="absolute top-6 right-6 z-10 p-2 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md rounded-xl shadow-xl border border-slate-200/50 dark:border-white/10 text-slate-600 dark:text-slate-400 hover:text-indigo-500 transition-colors"
-        onClick={() => (window.location.href = '/terrain')}
+        onClick={() => (window.location.href = '/operations/map')}
       >
         <Maximize2 size={18} />
       </button>

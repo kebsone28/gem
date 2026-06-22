@@ -1,6 +1,6 @@
-import { lazyWithRetry } from '../../utils/lazy';
-import { PERMISSIONS, ROLES } from '../../core/security/permissions';
-import type { ModuleManifest } from '../../core/kernel/types';
+﻿import { lazyWithRetry } from '@utils/lazy';
+import { PERMISSIONS, ROLES } from '@core/security/permissions';
+import type { ModuleManifest } from '@core/kernel/types';
 
 export const manifest: ModuleManifest = {
     key: 'diagnostic',
@@ -9,6 +9,6 @@ export const manifest: ModuleManifest = {
     component: lazyWithRetry(() => import('./views/DiagnosticSante'), 'lazy:diagnostic'),
     route: '/admin/diagnostic',
     requiredPermission: PERMISSIONS.SYSTEM_AUDIT,
-    category: 'SYSTÈME',
+    category: 'ADMIN',
     description: 'Vérifiez l’état technique du serveur et de la synchronisation',
   };

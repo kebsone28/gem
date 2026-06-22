@@ -1,3 +1,4 @@
+import logger from '../../utils/logger.js';
 import prisma from '../../core/utils/prisma.js';
 import { tracerAction } from '../../services/audit.service.js';
 
@@ -33,11 +34,11 @@ export const getTeams = async (req, res) => {
         const { organizationId } = req.user;
         const { projectId, role } = req.query;
 
-        console.log(`[TEAMS API] Fetching teams for organizationId: ${organizationId}, projectId: ${projectId}`);
+        logger.log(`[TEAMS API] Fetching teams for organizationId: ${organizationId}, projectId: ${projectId}`);
 
         if (!organizationId) {
-            console.error('[TEAMS API] ERROR: organizationId is undefined or null in req.user');
-            console.error('[TEAMS API] req.user:', JSON.stringify(req.user));
+            logger.error('[TEAMS API] ERROR: organizationId is undefined or null in req.user');
+            logger.error('[TEAMS API] req.user:', JSON.stringify(req.user));
             return res.status(400).json({ error: 'organizationId missing' });
         }
 
@@ -59,10 +60,10 @@ export const getTeams = async (req, res) => {
             }
         });
 
-        console.log(`[TEAMS API] Success: found ${teams.length} teams`);
+        logger.log(`[TEAMS API] Success: found ${teams.length} teams`);
         res.json({ teams });
     } catch (error) {
-        console.error('[TEAMS API] ERROR:', {
+        logger.error('[TEAMS API] ERROR:', {
             message: error.message,
             code: error.code,
             stack: error.stack,
@@ -100,7 +101,7 @@ export const getTeamsTree = async (req, res) => {
         const tree = buildTeamTree(teams);
         res.json({ tree });
     } catch (error) {
-        console.error('Get teams tree error:', error);
+        logger.error('Get teams tree error:', error);
         res.status(500).json({ error: 'Server error while building team tree' });
     }
 };
@@ -179,7 +180,7 @@ export const createTeam = async (req, res) => {
 
         res.status(201).json(updatedTeam);
     } catch (error) {
-        console.error('Create team error:', error);
+        logger.error('Create team error:', error);
         res.status(500).json({ error: 'Server error while creating team', message: error.message });
     }
 };
@@ -291,7 +292,7 @@ export const updateTeam = async (req, res) => {
 
         res.json(updatedTeam);
     } catch (error) {
-        console.error('Update team error:', error);
+        logger.error('Update team error:', error);
         res.status(500).json({ error: 'Server error while updating team' });
     }
 };
@@ -332,7 +333,7 @@ export const deleteTeam = async (req, res) => {
 
         res.json({ message: 'Team and descendants soft-deleted successfully' });
     } catch (error) {
-        console.error('Delete team error:', error);
+        logger.error('Delete team error:', error);
         res.status(500).json({ error: 'Server error while deleting team' });
     }
 };
@@ -355,74 +356,8 @@ export const assignTeamToZone = async (req, res) => {
 
         res.json({ message: 'Team assigned successfully', team: updatedTeam });
     } catch (error) {
-        console.error('Assign team error:', error);
+        logger.error('Assign team error:', error);
         res.status(500).json({ error: 'Server error while assigning team' });
-    }
-};
-
-/**
- * Jitter déterministe [0,1) à partir d'une chaîne (positions mock stables par équipe).
- * @param {string} seed
- */
-function deterministicUnit(seed) {
-    let h = 0;
-    const s = String(seed || '');
-    for (let i = 0; i < s.length; i += 1) {
-        h = (Math.imul(31, h) + s.charCodeAt(i)) | 0;
-    }
-    const u = (h >>> 0) / 4294967296;
-    return u;
-}
-
-// @desc    Positions terrain des équipes (DTO aligné sur le frontend TeamTracking)
-// @route   GET /api/teams/positions
-// @query   projectId (optionnel) — filtre les équipes du projet
-export const getTeamPositions = async (req, res) => {
-    try {
-        const { organizationId } = req.user;
-        const { projectId } = req.query;
-
-        const where = {
-            organizationId,
-            deletedAt: null
-        };
-        if (projectId) {
-            where.projectId = projectId;
-        }
-
-        const teams = await prisma.team.findMany({
-            where,
-            include: { zone: { select: { name: true } } },
-            orderBy: { name: 'asc' }
-        });
-
-        // Mock positions (remplacer plus tard par Redis / traceur GPS réel)
-        const baseLat = 14.7167;
-        const baseLng = -17.4677;
-
-        const positions = teams.map((team) => {
-            const uLat = deterministicUnit(`${team.id}:lat`);
-            const uLng = deterministicUnit(`${team.id}:lng`);
-            const lat = baseLat + (uLat - 0.5) * 0.18;
-            const lng = baseLng + (uLng - 0.5) * 0.18;
-            const updatedAt = new Date().toISOString();
-
-            return {
-                userId: team.id,
-                name: team.name,
-                role: team.role || 'INSTALLATION',
-                lat,
-                lon: lng,
-                updatedAt,
-                zoneName: team.zone?.name || null,
-                source: 'mock'
-            };
-        });
-
-        res.json({ positions });
-    } catch (error) {
-        console.error('Get team positions error:', error);
-        res.status(500).json({ error: 'Server error while fetching team positions' });
     }
 };
 
@@ -628,7 +563,7 @@ export const autoGenerateTeams = async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Auto Generate Teams error:', error);
+        logger.error('Auto Generate Teams error:', error);
         res.status(500).json({ error: 'Erreur lors de la génération automatique des équipes', details: error.message });
     }
 };

@@ -32,14 +32,11 @@ export default defineConfig([globalIgnores([
   },
   rules: {
     '@typescript-eslint/no-explicit-any': 'off',
-    'no-inline-styles': 'off',
+    '@typescript-eslint/no-unused-vars': 'warn',
     'jsx-a11y/aria-proptypes': 'off',
     'react/no-unknown-property': 'off',
-    'react-inline-styles/no-inline-styles': 'off',
     'react-hooks/preserve-manual-memoization': 'off',
     'react-hooks/set-state-in-effect': 'off',
-    // provide fallbacks for project-specific custom rules that may not be installed
-    'no-inline-styles/no-inline-styles': 'off',
     'react-refresh/only-export-components': 'off',
   },
 }, ...storybook.configs["flat/recommended"]])

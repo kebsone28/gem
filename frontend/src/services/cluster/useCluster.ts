@@ -1,3 +1,4 @@
+import logger from '../logger';
 import { useEffect, useRef, useState, useCallback } from 'react';
 
 type WorkerResponse = {
@@ -59,7 +60,7 @@ export function useCluster() {
 
       worker.postMessage({ type: 'init', options: { radius: 60, maxZoom: 16 } });
     } catch (e) {
-      console.error('Worker init failed', e);
+      logger.error('Worker init failed', e);
     }
     return () => {
       if (workerRef.current) workerRef.current.terminate();

@@ -14,13 +14,13 @@ import {
   ChevronUp,
   ChevronDown,
 } from 'lucide-react';
-import { useFinances } from '../../hooks/useFinances';
-import { useTheme } from '../../contexts/ThemeContext';
-import { useProject } from '../../contexts/ProjectContext';
+import { useFinances } from '@hooks/useFinances';
+import { useTheme } from '@contexts/ThemeContext';
+import { useProject } from '@contexts/ProjectContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import * as XLSX from 'xlsx';
-import { fmtFCFA } from '../../utils/format';
-import logger from '../../utils/logger';
+import { fmtFCFA } from '@utils/format';
+import logger from '@utils/logger';
 
 const STANDARD_CATALOG = [
   { name: 'Poteau Béton HTA 12m/800daN', category: 'HTA', stock: 150, unitPrice: 350000 },

@@ -1,3 +1,4 @@
+import logger from '../../utils/logger.js';
 import prisma from '../../core/utils/prisma.js';
 import * as XLSX from 'xlsx';
 
@@ -278,7 +279,7 @@ class MESService {
         details,
       };
     } catch (error) {
-      console.error('[MESService] Error importing from Excel:', error);
+      logger.error('[MESService] Error importing from Excel:', error);
       throw error;
     }
   }

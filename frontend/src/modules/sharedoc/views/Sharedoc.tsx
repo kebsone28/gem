@@ -5,11 +5,12 @@ import {
   ChevronRight, ChevronDown, Grid, List, Filter, Clock,
   Users, Lock, Globe, Star, Eye, Loader2
 } from 'lucide-react';
-import { sharedocService } from '../../../services/sharedocService';
-import type { SharedDocument } from '../../../services/sharedocService';
+import { sharedocService } from '@services/sharedocService';
+import type { SharedDocument } from '@services/sharedocService';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { filesize } from 'filesize';
+import logger from '@services/logger';
 
 const getDocType = (mimeType: string, isFolder: boolean): 'folder' | 'pdf' | 'word' | 'excel' | 'image' | 'video' | 'archive' | 'other' => {
   if (isFolder || mimeType === 'application/vnd.folder') return 'folder';
@@ -87,7 +88,7 @@ export default function Sharedoc() {
         setDocuments(res.data.documents);
       }
     } catch (error) {
-      console.error('Failed to load documents:', error);
+      logger.error('Failed to load documents:', error);
     } finally {
       setLoading(false);
     }
@@ -131,7 +132,7 @@ export default function Sharedoc() {
       await sharedocService.createFolder(name, selectedFolderId);
       fetchDocuments();
     } catch (e) {
-      console.error('Failed to create folder', e);
+      logger.error('Failed to create folder', e);
     }
   };
 
@@ -141,8 +142,10 @@ export default function Sharedoc() {
     try {
       await sharedocService.uploadDocument(file, selectedFolderId);
       fetchDocuments();
-    } catch (e) {
-      console.error('Upload failed', e);
+    } catch (error) {
+      logger.error('Upload failed', error);
+    } finally {
+      e.target.value = '';
     }
   };
 
@@ -153,7 +156,7 @@ export default function Sharedoc() {
          window.open(res.data.downloadUrl, '_blank');
       }
     } catch (e) {
-      console.error('Download failed', e);
+      logger.error('Download failed', e);
     }
   };
 
@@ -163,7 +166,7 @@ export default function Sharedoc() {
       await sharedocService.deleteDocument(id);
       fetchDocuments(); // Refresh
     } catch (e) {
-      console.error('Delete failed', e);
+      logger.error('Delete failed', e);
     }
   };
 
@@ -194,14 +197,22 @@ export default function Sharedoc() {
          className="group relative flex flex-col gap-2 rounded-2xl border border-white/8 bg-white/[0.03] p-4 hover:border-blue-500/30 hover:bg-white/[0.06] transition-all cursor-pointer">
       <div className="flex items-start justify-between">
         {typeIcon(type, false)}
-        <button className="opacity-0 group-hover:opacity-100 transition p-1 rounded-lg hover:bg-white/10 text-slate-400"><MoreVertical size={14}/></button>
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
+          {type !== 'folder' && (
+            <>
+              <button title="Visualiser" onClick={(e) => { e.stopPropagation(); handleDownload(item.id); }} className="p-1 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white"><Eye size={14}/></button>
+              <button title="Télécharger" onClick={(e) => { e.stopPropagation(); handleDownload(item.id); }} className="p-1 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white"><Download size={14}/></button>
+            </>
+          )}
+          <button title="Supprimer" onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }} className="p-1 rounded-lg hover:bg-rose-500/10 text-slate-400 hover:text-rose-400"><Trash2 size={14}/></button>
+        </div>
       </div>
       <p className="text-[13px] font-semibold text-white line-clamp-2 leading-snug">{item.filename}</p>
       <div className="mt-auto flex items-center justify-between gap-2">
         {accessBadge(item.accessLevel)}
         {item.size > 0 && <span className="text-[10px] text-slate-500">{filesize(item.size, { base: 10, round: 1 })}</span>}
       </div>
-      <p className="text-[10px] text-slate-500">{item.uploadedBy?.name || 'Inconnu'} · {format(new Date(item.uploadedAt), 'dd MMM yyyy', { locale: fr })}</p>
+      <p className="text-[10px] text-slate-500">{item.uploadedBy?.name || 'Inconnu'} · {item.uploadedAt && !isNaN(new Date(item.uploadedAt).getTime()) ? format(new Date(item.uploadedAt), 'dd MMM yyyy', { locale: fr }) : 'Date inconnue'}</p>
     </div>
   )};
 
@@ -218,7 +229,7 @@ export default function Sharedoc() {
       </div>
       {accessBadge(item.accessLevel)}
       {item.size > 0 ? <span className="text-[11px] text-slate-500 w-16 text-right">{filesize(item.size, { base: 10, round: 1 })}</span> : <span className="w-16" />}
-      <span className="text-[11px] text-slate-500 w-24 text-right">{format(new Date(item.uploadedAt), 'dd MMM yyyy', { locale: fr })}</span>
+      <span className="text-[11px] text-slate-500 w-24 text-right">{item.uploadedAt && !isNaN(new Date(item.uploadedAt).getTime()) ? format(new Date(item.uploadedAt), 'dd MMM yyyy', { locale: fr }) : '-'}</span>
       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition w-[100px] justify-end">
         {type !== 'folder' && (
           <>
@@ -330,7 +341,7 @@ export default function Sharedoc() {
             { label: 'Total fichiers', value: documents.filter(d => d.mimeType !== 'application/vnd.folder').length, icon: File, color: 'blue' },
             { label: 'Dossiers', value: documents.filter(d => d.mimeType === 'application/vnd.folder').length, icon: Folder, color: 'amber' },
             { label: 'Espace utilisé', value: filesize(documents.reduce((acc, d) => acc + (d.size || 0), 0), { base: 10, round: 1 }), icon: Archive, color: 'emerald' },
-            { label: 'Récents (7j)', value: documents.filter(d => new Date(d.uploadedAt).getTime() > Date.now() - 7 * 24 * 60 * 60 * 1000).length, icon: Clock, color: 'purple' },
+            { label: 'Récents (7j)', value: documents.filter(d => d.uploadedAt && !isNaN(new Date(d.uploadedAt).getTime()) && new Date(d.uploadedAt).getTime() > Date.now() - 7 * 24 * 60 * 60 * 1000).length, icon: Clock, color: 'purple' },
           ].map(s => (
             <div key={s.label} className="flex items-center gap-3 rounded-2xl border border-white/6 bg-white/[0.025] px-4 py-3">
               <div className={`flex h-9 w-9 items-center justify-center rounded-xl bg-${s.color}-500/10 border border-${s.color}-500/20`}>

@@ -1,11 +1,11 @@
-/**
+﻿/**
  * Hybrid Chatbot Widget Component
  * Floating bubble (bottom-right) with intelligent routing
  * Routes queries to Ollama (private data) or Puter.js (public questions)
  */
 
 import React, { useState, useRef, useEffect } from 'react';
-import { useHybridChatbot } from '../../hooks/useHybridChatbot';
+import { useHybridChatbot } from '@hooks/useHybridChatbot';
 
 export const HybridChatbot: React.FC = () => {
   const [isOpen, setIsOpen] = useState<boolean>(false);
@@ -26,37 +26,13 @@ export const HybridChatbot: React.FC = () => {
   };
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        bottom: '20px',
-        right: '20px',
-        zIndex: 9999,
-        fontFamily: 'sans-serif',
-      }}
-    >
+    <div className="fixed bottom-5 right-5 z-[9999] font-sans">
       {/* 1. BULLE FLOTTANTE (Bouton d'ouverture) */}
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          style={{
-            width: '58px',
-            height: '58px',
-            borderRadius: '50%',
-            backgroundColor: '#2563eb',
-            color: 'white',
-            border: 'none',
-            cursor: 'pointer',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-            fontSize: '24px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            transition: 'transform 0.2s',
-          }}
+          className="w-[58px] h-[58px] rounded-full bg-blue-600 text-white border-none cursor-pointer shadow-lg text-2xl flex items-center justify-center transition-transform duration-200 hover:scale-105"
           title="Ouvrir l'assistant GED OS"
-          onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.05)')}
-          onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
         >
           🤖
         </button>
@@ -64,74 +40,29 @@ export const HybridChatbot: React.FC = () => {
 
       {/* 2. PANNEAU DE CHAT EXTENSIBLE */}
       {isOpen && (
-        <div
-          style={{
-            width: '340px',
-            height: '450px',
-            backgroundColor: '#ffffff',
-            borderRadius: '12px',
-            boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
-            display: 'flex',
-            flexDirection: 'column',
-            overflow: 'hidden',
-            border: '1px solid #e5e7eb',
-          }}
-        >
+        <div className="w-[340px] h-[450px] bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden border border-gray-200">
           {/* Header */}
-          <div
-            style={{
-              backgroundColor: '#1e293b',
-              color: 'white',
-              padding: '12px 16px',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-            }}
-          >
+          <div className="bg-slate-800 text-white px-4 py-3 flex justify-between items-center">
             <div>
-              <div style={{ fontWeight: 'bold', fontSize: '14px' }}>
+              <div className="font-bold text-sm">
                 GED OS AI Assistant
               </div>
-              <div style={{ fontSize: '11px', color: '#94a3b8' }}>
+              <div className="text-[11px] text-slate-400">
                 Hybride (Local/Cloud)
               </div>
             </div>
             <button
               onClick={() => setIsOpen(false)}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: '#94a3b8',
-                cursor: 'pointer',
-                fontSize: '18px',
-              }}
+              className="bg-transparent border-none text-slate-400 cursor-pointer text-lg hover:text-slate-300"
             >
               ✕
             </button>
           </div>
 
           {/* Zone d'historique des messages */}
-          <div
-            style={{
-              flex: 1,
-              padding: '16px',
-              overflowY: 'auto',
-              backgroundColor: '#f8fafc',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '12px',
-            }}
-          >
+          <div className="flex-1 p-4 overflow-y-auto bg-slate-50 flex flex-col gap-3">
             {messages.length === 0 && (
-              <div
-                style={{
-                  color: '#64748b',
-                  fontSize: '13px',
-                  textAlign: 'center',
-                  marginTop: '40px',
-                  padding: '0 10px',
-                }}
-              >
+              <div className="text-slate-500 text-[13px] text-center mt-10 px-2.5">
                 Posez une question générale (Gratuit via Cloud) ou une question
                 sur vos données métiers (Sécurisé via Ollama).
               </div>
@@ -140,55 +71,24 @@ export const HybridChatbot: React.FC = () => {
             {messages.map((msg) => (
               <div
                 key={msg.id}
-                style={{
-                  alignSelf: msg.sender === 'user' ? 'flex-end' : 'flex-start',
-                  maxWidth: '85%',
-                }}
+                className={`max-w-[85%] ${msg.sender === 'user' ? 'self-end' : 'self-start'}`}
               >
                 {/* Badge indicateur de route (Uniquement pour l'assistant) */}
                 {msg.sender === 'assistant' && msg.route !== 'system' && (
-                  <span
-                    style={{
-                      fontSize: '9px',
-                      color: '#64748b',
-                      marginLeft: '4px',
-                      display: 'block',
-                      marginBottom: '2px',
-                    }}
-                  >
+                  <span className="text-[9px] text-slate-500 ml-1 block mb-0.5">
                     {msg.route}
                   </span>
                 )}
 
                 {/* Corps du message */}
                 <div
-                  style={{
-                    padding: '10px 14px',
-                    borderRadius: '8px',
-                    fontSize: '13px',
-                    lineHeight: '1.4',
-                    backgroundColor:
-                      msg.sender === 'user'
-                        ? '#2563eb'
-                        : msg.route === 'system'
-                          ? '#fee2e2'
-                          : '#ffffff',
-                    color:
-                      msg.sender === 'user'
-                        ? 'white'
-                        : msg.route === 'system'
-                          ? '#991b1b'
-                          : '#334155',
-                    boxShadow:
-                      msg.sender === 'user'
-                        ? 'none'
-                        : '0 1px 3px rgba(0,0,0,0.05)',
-                    border:
-                      msg.sender === 'user'
-                        ? 'none'
-                        : '1px solid #e2e8f0',
-                    whiteSpace: 'pre-line', // Gère grossièrement les retours à la ligne
-                  }}
+                  className={`px-3.5 py-2.5 rounded-lg text-[13px] leading-relaxed whitespace-pre-line ${
+                    msg.sender === 'user'
+                      ? 'bg-blue-600 text-white shadow-none border-none'
+                      : msg.route === 'system'
+                        ? 'bg-red-100 text-red-800 shadow-sm border border-slate-200'
+                        : 'bg-white text-slate-700 shadow-sm border border-slate-200'
+                  }`}
                 >
                   {msg.content}
                 </div>
@@ -197,16 +97,7 @@ export const HybridChatbot: React.FC = () => {
 
             {/* Spinner de chargement */}
             {loading && (
-              <div
-                style={{
-                  alignSelf: 'flex-start',
-                  padding: '10px 14px',
-                  backgroundColor: '#e2e8f0',
-                  borderRadius: '8px',
-                  fontSize: '12px',
-                  color: '#475569',
-                }}
-              >
+              <div className="self-start px-3.5 py-2.5 bg-slate-200 rounded-lg text-xs text-slate-600">
                 Analyse et génération en cours...
               </div>
             )}
@@ -216,13 +107,7 @@ export const HybridChatbot: React.FC = () => {
           {/* Formulaire de saisie */}
           <form
             onSubmit={handleSend}
-            style={{
-              padding: '12px',
-              borderTop: '1px solid #e5e7eb',
-              display: 'flex',
-              gap: '8px',
-              backgroundColor: '#ffffff',
-            }}
+            className="p-3 border-t border-gray-200 flex gap-2 bg-white"
           >
             <input
               type="text"
@@ -230,29 +115,12 @@ export const HybridChatbot: React.FC = () => {
               onChange={(e) => setInputValue(e.target.value)}
               placeholder="Posez votre question ici..."
               disabled={loading}
-              style={{
-                flex: 1,
-                padding: '8px 12px',
-                borderRadius: '6px',
-                border: '1px solid #cbd5e1',
-                fontSize: '13px',
-                outline: 'none',
-              }}
+              className="flex-1 px-3 py-2 rounded-md border border-slate-300 text-[13px] focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <button
               type="submit"
               disabled={loading || !inputValue.trim()}
-              style={{
-                padding: '8px 14px',
-                backgroundColor:
-                  loading || !inputValue.trim() ? '#94a3b8' : '#2563eb',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '13px',
-                fontWeight: 'bold',
-              }}
+              className="px-3.5 py-2 text-white border-none rounded-md cursor-pointer text-[13px] font-bold disabled:bg-slate-400 disabled:cursor-not-allowed bg-blue-600 hover:bg-blue-700"
             >
               Envoyer
             </button>

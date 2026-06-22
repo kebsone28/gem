@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { getSocketInstance } from '../hooks/useWebSockets';
 import { useAuth } from '../contexts/AuthContext';
 import { type ChatMessage } from '../services/chatService';
+import logger from '../services/logger';
 
 /**
  * ChatNotificationHandler
@@ -19,10 +20,10 @@ export default function ChatNotificationHandler() {
     if ('Notification' in window) {
       if (Notification.permission === 'default') {
         Notification.requestPermission().then(permission => {
-          console.log('[CHAT-NOTIF] Permission requested:', permission);
+          logger.log('[CHAT-NOTIF] Permission requested:', permission);
         });
       } else {
-        console.log('[CHAT-NOTIF] Current permission:', Notification.permission);
+        logger.log('[CHAT-NOTIF] Current permission:', Notification.permission);
       }
     }
 
@@ -63,7 +64,7 @@ export default function ChatNotificationHandler() {
         audio.volume = 0.4;
         audio.play().catch(() => { });
       } catch (e) {
-        console.error('Failed to play notification sound', e);
+        logger.error('Failed to play notification sound', e);
       }
 
       // Show toast alert

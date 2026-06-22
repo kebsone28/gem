@@ -1,5 +1,6 @@
 import prisma from '../../core/utils/prisma.js';
 import { tracerAction } from '../../services/audit.service.js';
+import logger from '../../utils/logger.js';
 
 export const listTemplates = async (req, res) => {
   try {
@@ -24,7 +25,7 @@ export const listTemplates = async (req, res) => {
 
     res.json(formatted);
   } catch (err) {
-    console.error('List templates error', err);
+    logger.error('List templates error', err);
     res.status(500).json({ error: 'Server error listing templates' });
   }
 };
@@ -36,7 +37,7 @@ export const getTemplate = async (req, res) => {
     if (!t) return res.status(404).json({ error: 'Template not found' });
     res.json(t);
   } catch (err) {
-    console.error('Get template error', err);
+    logger.error('Get template error', err);
     res.status(500).json({ error: 'Server error fetching template' });
   }
 };
@@ -52,7 +53,7 @@ export const createTemplate = async (req, res) => {
 
     res.status(201).json(tpl);
   } catch (err) {
-    console.error('Create template error', err);
+    logger.error('Create template error', err);
     res.status(500).json({ error: 'Server error creating template' });
   }
 };
@@ -65,7 +66,7 @@ export const updateTemplate = async (req, res) => {
     await tracerAction({ userId: req.user.id, organizationId: req.user.organizationId, action: 'UPDATE_PROJECT_TEMPLATE', resource: 'ProjectTemplate', resourceId: id, req });
     res.json(updated);
   } catch (err) {
-    console.error('Update template error', err);
+    logger.error('Update template error', err);
     res.status(500).json({ error: 'Server error updating template' });
   }
 };
@@ -77,7 +78,7 @@ export const deleteTemplate = async (req, res) => {
     await tracerAction({ userId: req.user.id, organizationId: req.user.organizationId, action: 'DELETE_PROJECT_TEMPLATE', resource: 'ProjectTemplate', resourceId: id, req });
     res.json({ message: 'Deleted' });
   } catch (err) {
-    console.error('Delete template error', err);
+    logger.error('Delete template error', err);
     res.status(500).json({ error: 'Server error deleting template' });
   }
 };

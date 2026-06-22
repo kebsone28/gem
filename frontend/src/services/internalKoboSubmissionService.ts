@@ -444,6 +444,17 @@ export async function updateInternalKoboFormDefinitionStatus(
   return response.data.form || null;
 }
 
+export async function deleteInternalKoboFormDefinition(
+  formKey: string
+): Promise<InternalKoboImportedFormSummary | null> {
+  const response = await apiClient.delete<{
+    success: boolean;
+    form?: InternalKoboImportedFormSummary;
+  }>(`${INTERNAL_KOBO_FORM_DEFINITIONS_ENDPOINT}/${encodeURIComponent(formKey)}`);
+
+  return response.data.form || null;
+}
+
 export async function compareInternalKoboFormDefinitions(
   formKey: string,
   targetFormKey: string

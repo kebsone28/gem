@@ -1,6 +1,7 @@
 import prisma from '../../core/utils/prisma.js';
 import { redisConnection } from '../../core/utils/queueManager.js';
 import { isPrismaSchemaDriftError } from '../../core/utils/prismaCompat.js';
+import logger from '../../utils/logger.js';
 
 // @desc    Get project KPIs (Snapshot current state)
 // @route   GET /api/kpi/:projectId
@@ -11,7 +12,7 @@ export const getProjectKPIs = async (req, res) => {
 
         // --- VALIDATION CRITIQUE ---
         if (!projectId || !organizationId) {
-            console.warn('[KPI] Paramètres manquants:', { projectId, organizationId });
+            logger.warn('[KPI] Paramètres manquants:', { projectId, organizationId });
             return res.status(400).json({ error: 'ID de projet ou organisation manquant' });
         }
 
@@ -24,22 +25,22 @@ export const getProjectKPIs = async (req, res) => {
                     new Promise((_, reject) => setTimeout(() => reject(new Error('Redis GET timeout')), 500))
                 ]);
                 if (cachedData) {
-                    console.log(`[CACHE HIT] KPI pour le projet ${projectId}`);
+                    logger.info(`[CACHE HIT] KPI pour le projet ${projectId}`);
                     return res.json(JSON.parse(cachedData));
                 }
             }
         } catch (cacheError) {
-            console.error('[REDIS CACHE ERROR] Pass bypass:', cacheError.message);
+            logger.error('[REDIS CACHE ERROR] Pass bypass:', cacheError.message);
         }
 
-        console.log(`[CACHE MISS] Calcul des KPI pour le projet ${projectId}`);
+        logger.info(`[CACHE MISS] Calcul des KPI pour le projet ${projectId}`);
 
         const project = await prisma.project.findFirst({
             where: { id: projectId, organizationId }
         });
 
         if (!project) {
-            console.warn(`[KPI] Projet non trouvé: ${projectId} pour l'organisation ${organizationId}`);
+            logger.warn(`[KPI] Projet non trouvé: ${projectId} pour l'organisation ${organizationId}`);
             // Return 200 with null metrics to verify project existence without console error noise
             // This happens for newly created local projects not yet synced
             return res.status(200).json({
@@ -260,12 +261,12 @@ export const getProjectKPIs = async (req, res) => {
                 ]);
             }
         } catch (cacheError) {
-            console.error('[REDIS CACHE SET ERROR]', cacheError.message);
+            logger.error('[REDIS CACHE SET ERROR]', cacheError.message);
         }
 
         res.json(result);
     } catch (error) {
-        console.error('KPI calculation error:', error);
+        logger.error('KPI calculation error:', error);
         res.status(500).json({ error: 'Server error while calculating KPIs' });
     }
 };
@@ -297,7 +298,7 @@ export const getGlobalSummary = async (req, res) => {
             projects
         });
     } catch (error) {
-        console.error('Global summary error:', error);
+        logger.error('Global summary error:', error);
         res.status(500).json({ error: 'Server error while fetching global summary' });
     }
 };

@@ -12,10 +12,11 @@ import {
     dbMaintenance,
     assignUserToProjects
 } from '../../modules/project/project.controller.js';
-import { authProtect } from '../middlewares/auth.js';
+import { authProtect, authorize } from '../middlewares/auth.js';
 import { verifierPermission, verifierAssignation } from '../../middleware/verifierPermission.js';
 import { PERMISSIONS } from '../../core/config/permissions.js';
 import { validateSchema } from '../../middleware/validation.js';
+import { getValidProjectStatuses } from '../../core/config/businessRules.js';
 import * as projectConfig from '../../modules/projectConfig/projectConfig.controller.js';
 import { getProjectAnalytics } from '../../modules/project/project_analytics.controller.js';
 
@@ -29,8 +30,10 @@ const router = express.Router();
  */
 
 // Define project schemas for validation
+const VALID_PROJECT_STATUSES = getValidProjectStatuses();
+
 const projectCreateSchema = {
-  required: ['name', 'status'],
+  required: ['name'],
   fields: {
     name: {
       type: 'string',
@@ -40,8 +43,7 @@ const projectCreateSchema = {
     },
     status: {
       type: 'string',
-      required: true,
-      enum: ['active', 'paused', 'completed', 'archived'],
+      enum: VALID_PROJECT_STATUSES,
     },
     budget: {
       type: 'number',
@@ -63,7 +65,7 @@ const projectUpdateSchema = {
     },
     status: {
       type: 'string',
-      enum: ['active', 'paused', 'completed', 'archived'],
+      enum: VALID_PROJECT_STATUSES,
     },
     budget: {
       type: 'number',
@@ -92,6 +94,16 @@ router.use(authProtect);
  *         description: Liste des projets
  */
 router.get('/', getProjects);
+
+// [FIX M-2] Routes fixes avant /:id pour éviter les conflits d'interprétation
+router.post('/assign-user', verifierPermission(PERMISSIONS.CREER_PROJET), assignUserToProjects);
+
+// [FIX M-5] Routes système renforcees avec authorize() expléicité Admin uniquement
+router.post('/system/deploy', authorize('ADMIN_PROQUELEC'), deployServerUpdate);
+router.post('/system/db-maintenance', authorize('ADMIN_PROQUELEC'), dbMaintenance);
+
+// Routes spécifiques au projet (segment fixe) AVANT les routes /:id
+router.post('/', validateSchema(projectCreateSchema), verifierPermission(PERMISSIONS.CREER_PROJET), createProject);
 
 /**
  * @swagger
@@ -167,97 +179,9 @@ router.post('/:id/recalculate-grappes', verifierPermission(PERMISSIONS.MODIFIER_
  */
 router.post('/:id/reset-data', verifierPermission(PERMISSIONS.SUPPRIMER_PROJET), resetProjectData);
 
-/**
- * @swagger
- * /api/projects/assign-user:
- *   post:
- *     summary: Assigner un utilisateur aux projets
- *     tags: [Projects]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Utilisateur assigné
- */
-router.post('/assign-user', verifierPermission(PERMISSIONS.CREER_PROJET), assignUserToProjects);
-
-/**
- * @swagger
- * /api/projects:
- *   post:
- *     summary: Créer un nouveau projet
- *     tags: [Projects]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       201:
- *         description: Projet créé
- */
-router.post('/', validateSchema(projectCreateSchema), verifierPermission(PERMISSIONS.CREER_PROJET), createProject);
-
-/**
- * @swagger
- * /api/projects/{id}:
- *   patch:
- *     summary: Mettre à jour un projet existant
- *     tags: [Projects]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *     responses:
- *       200:
- *         description: Projet mis à jour
- */
+// CRUD projet — modif et suppression (apr\u00e8s les routes fixes)
 router.patch('/:id', validateSchema(projectUpdateSchema), verifierPermission(PERMISSIONS.MODIFIER_CARTE), verifierAssignation('projet'), updateProject);
-
-/**
- * @swagger
- * /api/projects/{id}:
- *   delete:
- *     summary: Supprimer un projet
- *     tags: [Projects]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *     responses:
- *       200:
- *         description: Projet supprimé
- */
 router.delete('/:id', verifierPermission(PERMISSIONS.SUPPRIMER_PROJET), verifierAssignation('projet'), deleteProject);
-
-/**
- * @swagger
- * /api/projects/system/deploy:
- *   post:
- *     summary: Déployer une mise à jour serveur
- *     tags: [System]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Déploiement initié
- */
-router.post('/system/deploy', verifierPermission(PERMISSIONS.GERER_PARAMETRES), deployServerUpdate);
-
-/**
- * @swagger
- * /api/projects/system/db-maintenance:
- *   post:
- *     summary: Lancer la maintenance de la base de données
- *     tags: [System]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Maintenance initiée
- */
-router.post('/system/db-maintenance', verifierPermission(PERMISSIONS.GERER_PARAMETRES), dbMaintenance);
 
 // Project pages & modules (scoped by :id project)
 /**

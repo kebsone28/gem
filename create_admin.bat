@@ -11,7 +11,8 @@ async function createAdmin() {
     try {
         console.log('🌱 Création de l\'admin...');
 
-        const password = 'suprime';
+        // Générer un mot de passe sécurisé aléatoire
+        const password = Math.random().toString(36).slice(-12);
         const answer2FA = 'coran';
 
         const salt = await bcrypt.genSalt(10);
@@ -46,8 +47,11 @@ async function createAdmin() {
 
         console.log('✅ Admin créé avec succès!');
         console.log('   Login: admingem');
-        console.log('   Password: suprime');
-        console.log('   2FA: coran');
+        console.log('   Mot de passe généré: ' + password);
+        console.log('   Réponse 2FA: coran');
+        console.log('');
+        console.log('⚠️  IMPORTANT: Enregistrez le mot de passe généré !');
+        console.log('   Le mot de passe est stocké en hash et ne peut pas être récupéré.');
 
     } catch (error) {
         console.error('❌ Erreur:', error.message);

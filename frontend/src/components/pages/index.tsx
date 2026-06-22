@@ -1,6 +1,6 @@
 ﻿ 
 import React from 'react';
-import { COMMON_CLASSES } from '../../styles/tokens';
+import { COMMON_CLASSES } from '@/styles/tokens';
 import { PageHeader, PageContainer, StatsGrid, Section, LoadingState } from '../layout';
 
 /* ═══════════════════════════════════════════════════════════════════════════

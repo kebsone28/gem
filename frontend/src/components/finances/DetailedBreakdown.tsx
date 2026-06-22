@@ -1,8 +1,8 @@
 ﻿/* eslint-disable @typescript-eslint/no-explicit-any */
 import { ArrowDownRight } from 'lucide-react';
-import { useFinances } from '../../hooks/useFinances';
-import { useTheme } from '../../contexts/ThemeContext';
-import { fmtFCFA } from '../../utils/format';
+import { useFinances } from '@hooks/useFinances';
+import { useTheme } from '@contexts/ThemeContext';
+import { fmtFCFA } from '@utils/format';
 
 export default function DetailedBreakdown({ stats }: { stats: any }) {
   const { duration, householdsCount } = useFinances();

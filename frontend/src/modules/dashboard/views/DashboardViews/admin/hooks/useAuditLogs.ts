@@ -1,8 +1,8 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+﻿/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import apiClient from '../../../../../../api/client';
-import logger from '../../../../../../utils/logger';
-import type { AuditLog } from '../../../../../../utils/types';
+import apiClient from '@/api/client';
+import logger from '@utils/logger';
+import type { AuditLog } from '@utils/types';
 import type { Activity } from '../types';
 
 function inferSeverity(activity: any): AuditLog['severity'] {

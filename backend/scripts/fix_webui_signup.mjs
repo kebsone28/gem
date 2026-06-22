@@ -1,31 +1,23 @@
 import { NodeSSH } from 'node-ssh';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const ssh = new NodeSSH();
 
 async function run() {
   try {
     console.log('🔗 Connexion SSH à gem.proquelec.sn...');
-    
-    // On tente les deux variantes de mot de passe signalées
-    let connected = false;
-    const passwords = [process.env.VPS_SSH_PASSWORD, 'Ur94w4NVdhcpJJUPCnj'];
-    
-    for (const pwd of passwords) {
-      try {
-        await ssh.connect({
-          host: 'gem.proquelec.sn',
-          username: 'root',
-          password: pwd,
-        });
-        connected = true;
-        console.log('✅ Connecté avec succès !');
-        break;
-      } catch (e) {
-        console.log(`❌ Échec avec le mot de passe ${pwd.substring(0,5)}...`);
-      }
-    }
 
-    if (!connected) throw new Error('Impossible de se connecter au VPS.');
+    const password = process.env.VPS_SSH_PASSWORD;
+    if (!password) throw new Error('VPS_SSH_PASSWORD non défini dans l\'environnement.');
+
+    await ssh.connect({
+      host: 'gem.proquelec.sn',
+      username: 'root',
+      password,
+    });
+    console.log('✅ Connecté avec succès !');
 
     console.log('🚀 Reconfiguration de Open WebUI (Activation Inscription)...');
     

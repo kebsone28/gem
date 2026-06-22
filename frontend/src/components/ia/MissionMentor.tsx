@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, react-hooks/exhaustive-deps */
+﻿/* eslint-disable @typescript-eslint/no-explicit-any, react-hooks/exhaustive-deps */
 import React, { useState, useRef, useEffect } from 'react';
 import {
   Bot,
@@ -16,21 +16,21 @@ import {
   Info,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useAuth } from '../../contexts/AuthContext';
-import apiClient from '../../api/client';
+import { useAuth } from '@contexts/AuthContext';
+import apiClient from '@/api/client';
 import toast from 'react-hot-toast';
-import type { AIResponse, RegionalSummary } from '../../services/ai/MissionSageService';
-import { missionSageService } from '../../services/ai/MissionSageService';
-import { wordReportService } from '../../services/ai/WordReportService';
-import { analyzeDG } from '../../services/ai/DecisionEngine';
-import type { MissionStats } from '../../services/missionStatsService';
-import logger from '../../utils/logger';
-import type { AuditLog, Household, Team } from '../../utils/types';
+import type { AIResponse, RegionalSummary } from '@services/ai/MissionSageService';
+import { missionSageService } from '@services/ai/MissionSageService';
+import { wordReportService } from '@services/ai/WordReportService';
+import { analyzeDG } from '@services/ai/DecisionEngine';
+import type { MissionStats } from '@services/missionStatsService';
+import logger from '@utils/logger';
+import type { AuditLog, Household, Team } from '@utils/types';
 import AIEngineAdminPanel from './AIEngineAdminPanel';
 import AIPremiumMessage from './AIPremiumMessage';
 import AITrainingStudio from './AITrainingStudio';
 
-import { hasPermission, PERMISSIONS } from '../../core/security/permissions';
+import { hasPermission, PERMISSIONS } from '@core/security/permissions';
 import ChatInterface from './MissionMentor/ChatInterface';
 import InputBar from './MissionMentor/InputBar';
 import VoiceControls from './MissionMentor/VoiceControls';

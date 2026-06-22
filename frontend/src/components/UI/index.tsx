@@ -1,7 +1,7 @@
- 
+﻿ 
 import React, { useState, useRef, useEffect } from 'react';
 import { ChevronDown, Check } from 'lucide-react';
-import { withAnalytics } from '../../utils/designSystemAnalytics';
+import { withAnalytics } from '@utils/designSystemAnalytics';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';

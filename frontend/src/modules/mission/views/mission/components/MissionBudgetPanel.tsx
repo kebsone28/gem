@@ -1,7 +1,7 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+﻿/* eslint-disable @typescript-eslint/no-explicit-any */
 import React from 'react';
 import { Wallet, TrendingUp, TrendingDown, Users, AlertCircle } from 'lucide-react';
-import { calculateBudgetConsumption, formatFCFA } from '../../../../../utils/missionBudget';
+import { calculateBudgetConsumption, formatFCFA } from '@utils/missionBudget';
 
 interface MissionBudgetPanelProps {
   totalFrais: number;

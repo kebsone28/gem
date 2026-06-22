@@ -1,63 +1,63 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useMemo, Suspense, useRef, useEffect, useCallback } from 'react';
-import logger from '../../../utils/logger';
+import logger from '@utils/logger';
 import toast from 'react-hot-toast';
 
-import { useTerrainData } from '../../../hooks/useTerrainData';
-import { TerrainMissionEditor } from '../../../components/terrain/TerrainMissionEditor';
-import { createMission } from '../../../services/missionService';
-import { useAuth } from '../../../contexts/AuthContext';
-const MapComponent = React.lazy(() => import('../../../components/terrain/MapComponent'));
-import type { Household } from '../../../utils/types';
+import { useTerrainData } from '@hooks/useTerrainData';
+import { TerrainMissionEditor } from '../components/TerrainMissionEditor';
+import { createMission } from '@services/missionService';
+import { useAuth } from '@contexts/AuthContext';
+const MapComponent = React.lazy(() => import('../components/MapComponent'));
+import type { Household } from '@utils/types';
 import { motion, AnimatePresence } from 'framer-motion';
 
-import { useProject } from '../../../contexts/ProjectContext';
-import { useSync } from '../../../contexts/SyncContext';
-import { useLogistique } from '../../../hooks/useLogistique';
-import { useSyncListener } from '../../../hooks/useSyncListener';
-import { usePermissions } from '../../../hooks/usePermissions';
-import { useTerrainFeatures } from '../../../hooks/useTerrainFeatures';
-import { MapRoutingPanel } from '../../../components/terrain/MapRoutingPanel';
-import { GeofencingAlerts } from '../../../components/terrain/GeofencingAlerts';
-import { PhotoLightbox } from '../../../components/terrain/PhotoLightbox';
-import { GrappeSelectorPanel } from '../../../components/terrain/GrappeSelectorPanel';
-import { MapGrappeAllocationPanel } from '../../../components/terrain/MapGrappeAllocationPanel';
-import { MapRegionDownload } from '../../../components/terrain/MapRegionDownload';
-import { HouseholdDetailsPanel } from '../../../components/terrain/HouseholdDetailsPanel';
-import { TerrainSyncIssuesPanel } from '../../../components/terrain/TerrainSyncIssuesPanel';
-import { useFavorites } from '../../../hooks/useFavorites';
-import { useTerrainUIStore } from '../../../store/terrainUIStore';
-import { useSyncStore } from '../../../store/syncStore';
+import { useProject } from '@contexts/ProjectContext';
+import { useSync } from '@contexts/SyncContext';
+import { useLogistique } from '@hooks/useLogistique';
+import { useSyncListener } from '@hooks/useSyncListener';
+import { usePermissions } from '@hooks/usePermissions';
+import { useTerrainFeatures } from '@hooks/useTerrainFeatures';
+import { MapRoutingPanel } from '../components/MapRoutingPanel';
+import { GeofencingAlerts } from '../components/GeofencingAlerts';
+import { PhotoLightbox } from '../components/PhotoLightbox';
+import { GrappeSelectorPanel } from '../components/GrappeSelectorPanel';
+import { MapGrappeAllocationPanel } from '../components/MapGrappeAllocationPanel';
+import { MapRegionDownload } from '../components/MapRegionDownload';
+import { HouseholdDetailsPanel } from '../components/HouseholdDetailsPanel';
+import { TerrainSyncIssuesPanel } from '../components/TerrainSyncIssuesPanel';
+import { useFavorites } from '@hooks/useFavorites';
+import { useTerrainUIStore } from '@/store/terrainUIStore';
+import { useSyncStore } from '@/store/syncStore';
 import {
   CONFORMING_HOUSEHOLD_LOCK_FIELDS,
   mergeManualOverrides,
   removeManualOverrides,
-} from '../../../constants/householdLocks';
+} from '@/constants/householdLocks';
 import { useNavigate } from 'react-router-dom';
 
-import { useGeolocation } from '../../../hooks/useGeolocation';
+import { useGeolocation } from '@hooks/useGeolocation';
 import {
   useMapFilters,
   hasValidCoordinates,
   type SearchResult,
   ALL_STATUSES,
-} from '../../../hooks/useMapFilters';
-import { getHouseholdDerivedStatus } from '../../../utils/statusUtils';
-import { HouseholdListView } from '../../../components/terrain/HouseholdListView';
+} from '@hooks/useMapFilters';
+import { getHouseholdDerivedStatus } from '@utils/statusUtils';
+import { HouseholdListView } from '../components/HouseholdListView';
 
-import { useGrappeClustering } from '../../../hooks/useGrappeClustering';
-import { useAuditData } from '../../../hooks/useAuditData';
-import { useRouting } from '../../../hooks/useRouting';
+import { useGrappeClustering } from '@hooks/useGrappeClustering';
+import { useAuditData } from '@hooks/useAuditData';
+import { useRouting } from '@hooks/useRouting';
 
 import TopBar from './Terrain/TopBar';
 import BottomBar from './Terrain/BottomBar';
-import { TerrainErrorBoundary } from '../../../components/terrain/TerrainErrorBoundary';
-import { compressImage } from '../../../utils/imageUtils';
+import { TerrainErrorBoundary } from '../components/TerrainErrorBoundary';
+import { compressImage } from '@utils/imageUtils';
 
-import '../../../components/terrain/MapWidgets.css';
+import '../components/MapWidgets.css';
 
-import { ContentArea } from '../../../components';
-import { MODULE_ACCENTS } from '../../../components/dashboards/DashboardComponents';
+import { ContentArea } from '@components';
+import { MODULE_ACCENTS } from '@components/dashboards/DashboardComponents';
 
 const Terrain: React.FC = () => {
   const terrainAccent = MODULE_ACCENTS.terrain;

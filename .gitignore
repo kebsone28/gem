@@ -32,7 +32,17 @@ coverage/
 *.log
 .DS_Store
 .env
+.env.local
+.env.production
+.env.staging
 tmp/
+certs/
+uploads/
+*.pem
+*.key
+*.crt
+credentials.json
+create_admin.mjs
 
 # Large data files (>50MB)
 *.xlsx
@@ -72,6 +82,7 @@ backend/test-*.cjs
 backend/test-*.mjs
 backend/update_project_id.js
 backend/verification_sync_automation.js
+# Temporary scripts (now in scripts/)
 backend/scripts/*.js
 !backend/scripts/ensure-backend-port-free.js
 !backend/scripts/prisma-generate-safe.js
@@ -89,3 +100,6 @@ context_application.md
 # Planify test artifacts
 plan.json
 plan_test.*
+
+# Stakpak session files
+.stakpak/session*

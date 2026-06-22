@@ -1,6 +1,7 @@
 import { Queue, Worker } from 'bullmq';
 import IORedis from 'ioredis';
 import { config } from '../config/config.js';
+import logger from '../../utils/logger.js';
 
 /**
  * Service de Gestion des Queues - PROQUELEC Phase 2
@@ -38,17 +39,17 @@ if (isRedisConfigured) {
     redisConnection.on('error', (err) => {
         const now = Date.now();
         if (now - lastErrorLog > 10000) {
-            console.error('[REDIS ERROR] Connexion Redis impossible:', err.message);
+            logger.error('[REDIS ERROR] Connexion Redis impossible:', err.message);
             lastErrorLog = now;
         }
     });
 
     redisConnection.on('connect', () => {
-        console.log(`[REDIS] ✅ Connecté à Redis: ${config.redis.host || 'via URL'}:${config.redis.port}`);
+        logger.info(`[REDIS] ✅ Connecté à Redis: ${config.redis.host || 'via URL'}:${config.redis.port}`);
     });
 } else {
-    console.warn('[REDIS] ⚠️  Redis désactivé pour cet environnement. Les jobs asynchrones (BullMQ) sont désactivés.');
-    console.warn('[REDIS]    Définissez REDIS_ENABLED=true ou REDIS_URL dans backend/.env pour activer les queues.');
+    logger.warn('[REDIS] ⚠️  Redis désactivé pour cet environnement. Les jobs asynchrones (BullMQ) sont désactivés.');
+    logger.warn('[REDIS]    Définissez REDIS_ENABLED=true ou REDIS_URL dans backend/.env pour activer les queues.');
 }
 
 /**
@@ -62,7 +63,7 @@ export const createQueue = (name) => {
     try {
         return new Queue(name, { connection: redisConnection });
     } catch (e) {
-        console.warn(`[QUEUE] Impossible de créer la file "${name}":`, e.message);
+        logger.warn(`[QUEUE] Impossible de créer la file "${name}":`, e.message);
         return null;
     }
 };
@@ -81,7 +82,7 @@ export const createWorker = (name, processor, options = {}) => {
             ...options
         });
     } catch (e) {
-        console.warn(`[WORKER] Impossible de créer le worker "${name}":`, e.message);
+        logger.warn(`[WORKER] Impossible de créer le worker "${name}":`, e.message);
         return null;
     }
 };

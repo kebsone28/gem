@@ -1,8 +1,8 @@
 ﻿ 
 import React, { Component, type ErrorInfo, type ReactNode } from 'react';
 import { AlertTriangle, RefreshCcw } from 'lucide-react';
-import { remoteLogger } from '../../utils/remoteLogger';
-import logger from '../../utils/logger';
+import { remoteLogger } from '@utils/remoteLogger';
+import logger from '@utils/logger';
 
 interface Props {
   children?: ReactNode;

@@ -1,10 +1,17 @@
-/* GED OS Communication Module - v2.1.1 */
+﻿/* GED OS Communication Module - v2.1.1 */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * GED OS Chat — Messagerie d'équipe opérationnelle
  * Fonctionnalités : réactions, réponses citées, @mentions, indicateurs de frappe,
  * commandes rapides, recherche, markdown, panneau de conversation, avatars colorés.
  */
+function safeToastError(e: any, fallback: string) {
+  const err = e?.response?.data?.error;
+  if (!err) return fallback;
+  if (typeof err === 'string') return err;
+  return (err as { message?: string }).message || fallback;
+}
+
 import React, { useEffect, useState, useRef, memo, useCallback, useMemo, Fragment } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 
@@ -59,20 +66,21 @@ import {
   Trash2,
   UserMinus,
 } from 'lucide-react';
-import { PageContainer, LoadingState } from '../../../components/layout';
-import { useAuth } from '../../../contexts/AuthContext';
-import { usePermissions } from '../../../hooks/usePermissions';
-import { PERMISSIONS } from '../../../core/security/permissions';
-import { getSocketInstance } from '../../../hooks/useWebSockets';
+import { PageContainer, LoadingState } from '@components/layout';
+import { useAuth } from '@contexts/AuthContext';
+import { usePermissions } from '@hooks/usePermissions';
+import { PERMISSIONS } from '@core/security/permissions';
+import { getSocketInstance } from '@hooks/useWebSockets';
 
 import chatService, {
   type ChatConversation,
   type ChatMessage,
   type ChatUserSummary,
   type ChatBootstrapResponse,
-} from '../../../services/chatService';
-import * as missionService from '../../../services/missionService';
-import apiClient from '../../../api/client';
+} from '@services/chatService';
+import * as missionService from '@services/missionService';
+import apiClient from '@/api/client';
+import logger from '@services/logger';
 
 // Inline household search service (no dedicated frontend service file)
 const householdService = {
@@ -799,7 +807,7 @@ const ChatAudioPlayer = memo(({ url, duration }: { url: string; duration?: numbe
     if (playing) {
       audioRef.current.pause();
     } else {
-      audioRef.current.play().catch((e) => console.warn('[AUDIO_PLAY_ERROR]', e));
+      audioRef.current.play().catch((e) => logger.warn('[AUDIO_PLAY_ERROR]', e));
     }
     setPlaying(!playing);
   };
@@ -1417,7 +1425,7 @@ const GemChatComposer = memo(
           });
           setFoundHouseholds(results);
         } catch (e) {
-          console.error('[HOUSEHOLD_SEARCH_ERROR]', e);
+          logger.error('[HOUSEHOLD_SEARCH_ERROR]', e);
         } finally {
           setSearchingHouseholds(false);
         }
@@ -1438,7 +1446,7 @@ const GemChatComposer = memo(
           const results = await missionService.getMissions({ search: missionQuery, limit: 5 });
           setFoundMissions(results);
         } catch (e) {
-          console.error('[MISSION_SEARCH_ERROR]', e);
+          logger.error('[MISSION_SEARCH_ERROR]', e);
         } finally {
           setSearchingMissions(false);
         }
@@ -1515,7 +1523,7 @@ const GemChatComposer = memo(
               });
               await handleSend(fileInfo);
             } catch (err) {
-              console.error('[VOICE_SEND_ERROR]', err);
+              logger.error('[VOICE_SEND_ERROR]', err);
               toast.error("Échec de l'envoi du vocal.");
             } finally {
               setSending(false);
@@ -1533,7 +1541,7 @@ const GemChatComposer = memo(
             recordingTimeRef.current += 1;
           }, 1000);
         } catch (err) {
-          console.error('[VOICE_REC_ERROR]', err);
+          logger.error('[VOICE_REC_ERROR]', err);
           toast.error("Impossible d'accéder au micro.");
         }
       } else {
@@ -1605,7 +1613,7 @@ const GemChatComposer = memo(
 
         await handleSend(fileInfo);
       } catch (err) {
-        console.error('[CHAT_UPLOAD_ERROR]', err);
+        logger.error('[CHAT_UPLOAD_ERROR]', err);
         toast.error("Échec de l'envoi du fichier.");
       } finally {
         setSending(false);
@@ -2471,7 +2479,7 @@ export default function Communication() {
       const defaultId = payload.globalConversationId || payload.conversations[0]?.id || '';
       if (defaultId) setActiveConversationId(defaultId);
     } catch (e: any) {
-      toast.error(e?.response?.data?.error || 'Impossible de charger la messagerie.');
+      toast.error(safeToastError(e, 'Impossible de charger la messagerie.'));
     } finally {
       setBootstrapping(false);
     }
@@ -2493,7 +2501,7 @@ export default function Communication() {
         setMessagesByConversation((c) => ({ ...c, [activeConversationId]: msgs }));
       } catch (e: any) {
         if (!active) return;
-        toast.error(e?.response?.data?.error || 'Impossible de charger les messages.');
+        toast.error(safeToastError(e, 'Impossible de charger les messages.'));
       } finally {
         if (active) setLoadingMessages(false);
       }
@@ -2799,7 +2807,7 @@ export default function Communication() {
             .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
         );
       } catch (e: any) {
-        toast.error(e?.response?.data?.error || "Impossible d'envoyer.");
+        toast.error(safeToastError(e, "Impossible d'envoyer."));
         throw e;
       }
     },
@@ -2821,7 +2829,7 @@ export default function Communication() {
         setEditingMessage(null);
         toast.success('Message modifié.');
       } catch (e: any) {
-        toast.error(e?.response?.data?.error || 'Impossible de modifier.');
+        toast.error(safeToastError(e, 'Impossible de modifier.'));
       }
     },
     [activeConversationId]
@@ -2834,7 +2842,7 @@ export default function Communication() {
         await chatService.deleteMessage(activeConversationId, messageId);
         toast.success('Message supprimé.');
       } catch (e: any) {
-        toast.error(e?.response?.data?.error || 'Impossible de supprimer.');
+        toast.error(safeToastError(e, 'Impossible de supprimer.'));
       }
     },
     [activeConversationId]
@@ -2854,7 +2862,7 @@ export default function Communication() {
         });
         toast.success('Masqué pour vous.');
       } catch (e: any) {
-        toast.error(e?.response?.data?.error || 'Impossible de masquer.');
+        toast.error(safeToastError(e, 'Impossible de supprimer.'));
       }
     },
     [activeConversationId]
@@ -2923,7 +2931,7 @@ export default function Communication() {
       setActiveConversationId(c.id);
       setActiveTab('chats');
     } catch (e: any) {
-      toast.error(e?.response?.data?.error || "Impossible d'ouvrir.");
+      toast.error(safeToastError(e, "Impossible d'ouvrir."));
     }
   }, []);
 
@@ -2955,7 +2963,7 @@ export default function Communication() {
             : 'Conversation ouverte !'
       );
     } catch (e: any) {
-      toast.error(e?.response?.data?.error || 'Impossible de créer.');
+      toast.error(safeToastError(e, 'Impossible de créer.'));
     }
   }, [selectedUserIds, groupName, isGroupPublic]);
 
@@ -2964,7 +2972,7 @@ export default function Communication() {
     try {
       await chatService.deleteConversation(id);
     } catch (e: any) {
-      toast.error(e?.response?.data?.error || 'Impossible de supprimer.');
+      toast.error(safeToastError(e, 'Impossible de supprimer.'));
     }
   }, []);
 
@@ -2984,7 +2992,7 @@ export default function Communication() {
         );
         toast.success(r.blocked ? `${member.name} bloqué.` : `${member.name} débloqué.`);
       } catch (e: any) {
-        toast.error(e?.response?.data?.error || 'Impossible.');
+        toast.error(safeToastError(e, 'Impossible.'));
       }
     },
     [isAdmin]
@@ -3005,7 +3013,7 @@ export default function Communication() {
       const count = (res as any).deletedCount ?? '?';
       toast.success(`L'historique a été vidé (${count} messages supprimés).`);
     } catch (e: any) {
-      const errorMsg = e?.response?.data?.error || e?.message || 'Erreur lors du nettoyage.';
+      const errorMsg = safeToastError(e, e?.message || 'Erreur lors du nettoyage.');
       toast.error(errorMsg);
     }
   }, [activeConversationId]);
@@ -3018,7 +3026,7 @@ export default function Communication() {
       setMessagesByConversation((prev) => ({ ...prev, [activeConversationId]: [] }));
       toast.success('Votre vue a été nettoyée.');
     } catch (e: any) {
-      toast.error(e?.response?.data?.error || 'Erreur lors du nettoyage.');
+      toast.error(safeToastError(e, 'Erreur lors du nettoyage.'));
     }
   }, [activeConversationId]);
 
@@ -3032,7 +3040,7 @@ export default function Communication() {
         );
         toast.success(`Rétention mise à jour : ${days === 0 ? 'Permanent' : days + ' jours'}`);
       } catch (e: any) {
-        toast.error(e?.response?.data?.error || 'Erreur lors de la mise à jour.');
+        toast.error(safeToastError(e, 'Erreur lors de la mise à jour.'));
       }
     },
     [activeConversationId]
@@ -3412,7 +3420,7 @@ export default function Communication() {
               {(
                 [
                   {
-                    to: '/terrain',
+                    to: '/operations/map',
                     icon: <Map size={14} />,
                     label: 'Terrain',
                     perm: PERMISSIONS.UI_MAP,

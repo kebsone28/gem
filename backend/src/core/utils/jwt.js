@@ -23,7 +23,7 @@ export const generateTokens = (user, impersonator = null) => {
     const accessToken = jwt.sign(
         payload,
         config.jwt.secret,
-        { expiresIn: expiry }
+        { expiresIn: expiry, algorithm: 'HS256' }
     );
 
     const refreshPayload = { id: user.id || user._id };
@@ -35,7 +35,7 @@ export const generateTokens = (user, impersonator = null) => {
     const refreshToken = jwt.sign(
         refreshPayload,
         config.jwt.refreshSecret,
-        { expiresIn: impersonator ? '30m' : config.jwt.refreshExpiry }
+        { expiresIn: impersonator ? '30m' : config.jwt.refreshExpiry, algorithm: 'HS256' }
     );
 
     return { accessToken, refreshToken };

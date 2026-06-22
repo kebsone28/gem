@@ -6,21 +6,18 @@
  * returns the correct adapter for a given domain type.
  */
 var _a;
+import logger from '../utils/logger.js';
 import { ElectrificationAdapter } from './adapters/ElectrificationAdapter.js';
-import { AgricultureAdapter } from './adapters/AgricultureAdapter.js';
-import { HealthAdapter } from './adapters/HealthAdapter.js';
-import { LogisticsAdapter } from './adapters/LogisticsAdapter.js';
-import { HighVoltageAdapter } from './adapters/HighVoltageAdapter.js';
-import { SolarAdapter } from './adapters/SolarAdapter.js';
 import { TargetingAdapter } from './adapters/TargetingAdapter.js';
 import { DataCollectionAdapter } from './adapters/DataCollectionAdapter.js';
+import { MESAdapter } from './adapters/MESAdapter.js';
 export class DomainAdapterFactory {
     /**
      * Register a domain adapter
      */
     static register(adapter) {
         if (this.adapters.has(adapter.domainType)) {
-            console.warn(`Domain adapter '${adapter.domainType}' already registered, overwriting`);
+            logger.warn(`Domain adapter '${adapter.domainType}' already registered, overwriting`);
         }
         this.adapters.set(adapter.domainType, adapter);
     }
@@ -60,11 +57,7 @@ DomainAdapterFactory.adapters = new Map();
 (() => {
     // Register all domain adapters at startup
     _a.register(new ElectrificationAdapter());
-    _a.register(new AgricultureAdapter());
-    _a.register(new HealthAdapter());
-    _a.register(new LogisticsAdapter());
-    _a.register(new HighVoltageAdapter());
-    _a.register(new SolarAdapter());
     _a.register(new TargetingAdapter());
     _a.register(new DataCollectionAdapter());
+    _a.register(new MESAdapter());
 })();

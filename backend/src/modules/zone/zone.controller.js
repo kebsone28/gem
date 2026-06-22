@@ -1,5 +1,6 @@
 import prisma from '../../core/utils/prisma.js';
 import { tracerAction } from '../../services/audit.service.js';
+import logger from '../../utils/logger.js';
 
 // @desc    Get all zones for a project
 // @route   GET /api/zones
@@ -29,7 +30,7 @@ export const getZones = async (req, res) => {
 
         res.json({ zones });
     } catch (error) {
-        console.error('Get zones error:', error);
+        logger.error('Get zones error:', error);
         res.status(500).json({ error: 'Server error while fetching zones' });
     }
 };
@@ -62,7 +63,7 @@ export const createZone = async (req, res) => {
 
         res.status(201).json(zone);
     } catch (error) {
-        console.error('Create zone error:', error);
+        logger.error('Create zone error:', error);
         res.status(500).json({ error: 'Server error while creating zone' });
     }
 };
@@ -97,7 +98,7 @@ export const deleteZone = async (req, res) => {
 
         res.json({ message: 'Zone deleted successfully' });
     } catch (error) {
-        console.error('Delete zone error:', error);
+        logger.error('Delete zone error:', error);
         res.status(500).json({ error: 'Server error while deleting zone' });
     }
 };

@@ -1,34 +1,22 @@
 import http from 'http';
 import { config } from './core/config/config.js';
+import logger from './utils/logger.js';
 
 const PORT = config.port || 5005;
 
-// ── CORS ALLOWLIST ──────────────────────────────────────────────────
-// Only origins explicitly listed here are granted cross-origin access.
-// Never reflect req.headers.origin without validation when credentials
-// are enabled – doing so opens a full CORS bypass.
-const CORS_ALLOWED_ORIGINS = (() => {
-  const fromEnv = (process.env.CORS_ORIGINS || '')
-    .split(',')
-    .map((o) => o.trim())
-    .filter(Boolean);
-  const fromFrontend = process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : [];
-  const devOrigins = [
-    'http://localhost:5173',
-    'http://localhost:8889',
-    'http://127.0.0.1:5173',
-    'http://127.0.0.1:8889',
-  ];
-  return new Set([...fromEnv, ...fromFrontend, ...devOrigins]);
-})();
+// ── Minimal pre-flight CORS for raw HTTP server (before Express takes over) ──
+// Express cors() middleware handles all CORS logic via config.js.
+// This only handles the brief bootstrap window before Express is loaded.
+const BOOTSTRAP_ALLOWED_ORIGINS = new Set([
+  ...(process.env.CORS_ORIGINS || '').split(',').map(o => o.trim()).filter(Boolean),
+  ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : []),
+  'http://localhost:5173', 'http://localhost:8889',
+  'http://127.0.0.1:5173', 'http://127.0.0.1:8889',
+]);
 
-/**
- * Apply CORS headers only for known, allowlisted origins.
- * Returns true if the origin was accepted.
- */
-function applyCors(req, res) {
+function applyBootstrapCors(req, res) {
   const origin = req.headers.origin;
-  if (origin && CORS_ALLOWED_ORIGINS.has(origin)) {
+  if (origin && BOOTSTRAP_ALLOWED_ORIGINS.has(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Access-Control-Allow-Credentials', 'true');
     res.setHeader('Vary', 'Origin');
@@ -44,7 +32,7 @@ function applyCors(req, res) {
 async function ensureAdminUser() {
   const bootstrapEnabled = process.env.ENABLE_BOOTSTRAP_ADMIN === 'true';
   if (!bootstrapEnabled) {
-    console.log('ℹ️ Bootstrap admin creation disabled.');
+    logger.info('ℹ️ Bootstrap admin creation disabled.');
     return;
   }
 
@@ -54,14 +42,14 @@ async function ensureAdminUser() {
   const bootstrapOrganization = process.env.BOOTSTRAP_ADMIN_ORGANIZATION || 'PROQUELEC';
 
   if (!bootstrapEmail || !bootstrapPassword || !bootstrapSecurityAnswer) {
-    console.warn(
+    logger.warn(
       '⚠️ Bootstrap admin skipped: missing BOOTSTRAP_ADMIN_EMAIL/BOOTSTRAP_ADMIN_PASSWORD/BOOTSTRAP_ADMIN_SECURITY_ANSWER.'
     );
     return;
   }
 
   try {
-    console.log('🔍 Checking for admin user...');
+    logger.info('🔍 Checking for admin user...');
     const { default: prisma } = await import('./core/utils/prisma.js');
     const bcrypt = (await import('bcryptjs')).default;
 
@@ -80,7 +68,7 @@ async function ensureAdminUser() {
     });
 
     if (!existingAdmin) {
-      console.log('🌱 Creating bootstrap admin user...');
+      logger.info('🌱 Creating bootstrap admin user...');
 
       const salt = await bcrypt.genSalt(10);
       const passwordHash = await bcrypt.hash(bootstrapPassword, salt);
@@ -100,12 +88,12 @@ async function ensureAdminUser() {
         },
       });
 
-      console.log('✅ Bootstrap admin user created.');
+      logger.info('✅ Bootstrap admin user created.');
     } else {
-      console.log('✅ Bootstrap admin user already exists');
+      logger.info('✅ Bootstrap admin user already exists');
     }
   } catch (error) {
-    console.error('❌ Error ensuring admin user:', error.message);
+    logger.error('❌ Error ensuring admin user:', error.message);
   }
 }
 
@@ -116,16 +104,11 @@ async function ensureAdminUser() {
  * 3. Provides error feedback if the boot fails.
  */
 async function bootstrap() {
-  console.log(`🚀 Bootstrapping PROQUELEC Server on port ${PORT}...`);
+  logger.info(`🚀 Bootstrapping PROQUELEC Server on port ${PORT}...`);
 
   const server = http.createServer((req, res) => {
-    // Apply CORS only for allowlisted origins (never reflect arbitrary Origin).
-    applyCors(req, res);
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-    res.setHeader(
-      'Access-Control-Allow-Headers',
-      'Content-Type, Authorization, X-Requested-With, Accept, Origin'
-    );
+    // Apply minimal CORS during bootstrap (Express will take over after app.js loads)
+    applyBootstrapCors(req, res);
 
     if (req.method === 'OPTIONS') {
       res.writeHead(204);
@@ -139,7 +122,7 @@ async function bootstrap() {
   });
 
   server.listen(PORT, '0.0.0.0', async () => {
-    console.log(`✅ Port ${PORT} bound. Initializing application modules...`);
+    logger.info(`✅ Port ${PORT} bound. Initializing application modules...`);
 
     try {
       // Asynchronous loading to isolate import failures
@@ -188,18 +171,18 @@ async function bootstrap() {
         cleanupFunctions.push(() => clearInterval(alertEscalationCleanup));
       if (igppAlertCleanup) cleanupFunctions.push(() => clearInterval(igppAlertCleanup));
 
-      console.log('💎 PROQUELEC Server is now fully operational.');
+      logger.info('💎 PROQUELEC Server is now fully operational.');
 
       // ✅ IMPROVED: Complete graceful shutdown
       const gracefulShutdown = async () => {
-        console.log('📥 Signal reçu. Fermeture des ressources...');
+        logger.info('📥 Signal reçu. Fermeture des ressources...');
 
         // Stop all background services
         for (const cleanup of cleanupFunctions) {
           try {
             await cleanup();
           } catch (e) {
-            console.error('❌ Error during cleanup:', e.message);
+            logger.error('❌ Error during cleanup:', e.message);
           }
         }
 
@@ -207,25 +190,25 @@ async function bootstrap() {
         try {
           socketService.close();
         } catch (e) {
-          console.error('❌ Error closing Socket.IO:', e.message);
+          logger.error('❌ Error closing Socket.IO:', e.message);
         }
 
         // Disconnect from database
         await prisma.$disconnect();
 
-        console.log('✅ All resources closed. Exiting gracefully.');
+        logger.info('✅ All resources closed. Exiting gracefully.');
         process.exit(0);
       };
 
       process.on('SIGTERM', gracefulShutdown);
       process.on('SIGINT', gracefulShutdown);
     } catch (error) {
-      console.error('🔥 FATAL INITIALIZATION ERROR:', error);
+      logger.error('🔥 FATAL INITIALIZATION ERROR:', error);
 
       // Fallback handler to show the error in the browser/curl
       server.removeAllListeners('request');
       server.on('request', (req, res) => {
-        applyCors(req, res);
+        applyBootstrapCors(req, res);
         res.writeHead(500, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'Service temporairement indisponible' }));
       });
@@ -234,11 +217,12 @@ async function bootstrap() {
 
   // Global error handlers
   process.on('uncaughtException', (err) => {
-    console.error('🔥 UNCAUGHT EXCEPTION:', err);
+    logger.error('🔥 UNCAUGHT EXCEPTION:', err);
     process.exit(1);
   });
   process.on('unhandledRejection', (reason) => {
-    console.error('☄️ UNHANDLED REJECTION:', reason);
+    logger.error('☄️ UNHANDLED REJECTION:', reason);
+    process.exit(1);
   });
 }
 

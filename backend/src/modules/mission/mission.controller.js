@@ -9,15 +9,21 @@ import { missionNotificationService } from '../../services/notification.service.
 import { sendMail } from '../../services/mail.service.js';
 import { missionMentorService } from '../assistant/missionMentorService.js';
 import { normalizeRole } from '../../core/utils/roles.js';
+import {
+    MISSION_STATUS,
+    isValidMissionTransition,
+    isMissionEditable,
+    isMissionSubmitted,
+    validateMissionBudget as validateBudgetRule,
+} from '../../core/config/businessRules.js';
 import QRCode from 'qrcode';
 import { buildPublicUrl } from '../../utils/publicUrl.js';
 import { socketService } from '../../services/socket.service.js';
-import { createErrorResponse, formatServerError } from '../../utils/errorFormatter.js';
+import { formatServerError } from '../../utils/errorFormatter.js';
 
 const isDev = process.env.NODE_ENV !== 'production';
-const SUPER_ADMIN_EMAIL = process.env.SUPER_ADMIN_EMAIL || 'admin_gem';
-const SUBMITTED_MISSION_STATUSES = ['soumise', 'en_attente_validation'];
-const FINAL_MISSION_STATUSES = ['approuvee', 'rejetee'];
+const SUPER_ADMIN_EMAIL = process.env.SUPER_ADMIN_EMAIL || '';
+const FINAL_MISSION_STATUSES = ['approuvee', 'rejetee', 'annulee'];
 const REJECTION_CATEGORIES = new Set([
   'DONNEES_INCOMPLETES',
   'BUDGET_INCOHERENT',
@@ -1141,20 +1147,13 @@ const validateMissionDates = (startDate, endDate) => {
  * Validate mission budget
  */
 const validateMissionBudget = (budget) => {
-  if (budget !== undefined && budget !== null) {
-    const numBudget = parseFloat(budget);
-    if (isNaN(numBudget)) {
-      return 'Le budget doit être un nombre valide';
-    }
-    if (numBudget < 0) {
-      return 'Le budget ne peut pas être négatif';
-    }
-  }
-  return null;
+  if (budget === undefined || budget === null) return null;
+  const result = validateBudgetRule(budget);
+  return result.valid ? null : result.error;
 };
 
 const isSubmittedMissionStatus = (status) =>
-  status === 'soumise' || status === 'en_attente_validation';
+  isMissionSubmitted(status) || status === 'soumise' || status === 'en_attente_validation';
 
 const emitMissionRealtimeEvent = (event, mission, organizationId, extra = {}) => {
   try {
@@ -1335,7 +1334,7 @@ export const updateMission = async (req, res) => {
     }
 
     if (
-      SUBMITTED_MISSION_STATUSES.includes(missionBefore.status) &&
+      isSubmittedMissionStatus(missionBefore.status) &&
       !['DG_PROQUELEC', 'DIRECTEUR', 'ADMIN', 'ADMIN_PROQUELEC'].includes(userRole) &&
       status !== 'soumise' &&
       status !== 'en_attente_validation'
@@ -1371,6 +1370,16 @@ export const updateMission = async (req, res) => {
     const budgetError = validateMissionBudget(budget);
     if (budgetError) {
       return res.status(400).json({ error: budgetError });
+    }
+
+    // VALIDATION: State transition
+    if (status && status !== missionBefore.status) {
+      const transitionCheck = isValidMissionTransition(missionBefore.status, status);
+      if (!transitionCheck) {
+        return res.status(400).json({
+          error: `Transition de statut invalide: "${missionBefore.status}" → "${status}".`
+        });
+      }
     }
 
     const missionResult = await prisma.$transaction(async (tx) => {
@@ -1442,7 +1451,7 @@ export const updateMission = async (req, res) => {
             status,
           });
         } catch (e) {
-          console.warn('[AUDIT] Mission submit log failed:', e.message);
+          logger.warn('[AUDIT] Mission submit log failed:', e.message);
         }
 
         // EMAIL NOTIFICATION: Alert full chain when a mission is submitted
@@ -1492,7 +1501,7 @@ export const updateMission = async (req, res) => {
           timestamp: new Date().toISOString(),
         });
       } catch (e) {
-        console.warn('[AUDIT] Mission certify log failed:', e.message);
+        logger.warn('[AUDIT] Mission certify log failed:', e.message);
       }
 
       // Also update the workflow if it exists
@@ -1513,16 +1522,19 @@ export const updateMission = async (req, res) => {
 
       // EMAIL: Notify initiator their mission is certified
       if (missionBefore.createdBy) {
-        prisma.user
-          .findUnique({ where: { id: missionBefore.createdBy }, select: { email: true } })
-          .then((initiator) => {
-            if (initiator?.email) {
-              missionNotificationService
-                .notifyDGCertified(missionBefore, finalOrderNumber, initiator.email)
-                .catch((err) => logger.error('[NOTIF] Certified notification failed:', err));
-            }
-          })
-          .catch((err) => logger.error('[NOTIF] Initiator lookup failed:', err));
+        try {
+          const initiator = await prisma.user.findUnique({
+            where: { id: missionBefore.createdBy },
+            select: { email: true }
+          });
+          if (initiator?.email) {
+            missionNotificationService
+              .notifyDGCertified(missionBefore, finalOrderNumber, initiator.email)
+              .catch((err) => logger.error('[NOTIF] Certified notification failed:', err));
+          }
+        } catch (err) {
+          logger.error('[NOTIF] Initiator lookup failed:', err);
+        }
       }
     } else {
       await tracerAction(organizationId, userId, 'MISSION_UPDATE', 'Mission', id, {
@@ -1584,7 +1596,7 @@ export const deleteMission = async (req, res) => {
     try {
       await tracerAction(organizationId, userId, 'MISSION_DELETE', 'Mission', id);
     } catch (e) {
-      console.warn('[AUDIT] Delete mission log failed:', e.message);
+      logger.warn('[AUDIT] Delete mission log failed:', e.message);
     }
 
     res.json({ message: 'Mission supprimée avec succès' });
@@ -1684,7 +1696,7 @@ export const duplicateMission = async (req, res) => {
         newId: copy.id,
       });
     } catch (e) {
-      console.warn('[AUDIT] Duplicate mission log failed:', e.message);
+      logger.warn('[AUDIT] Duplicate mission log failed:', e.message);
     }
 
     res.json(copy);
@@ -2230,7 +2242,7 @@ export const approveMissionStep = async (req, res) => {
         comment,
       });
     } catch (e) {
-      console.warn('[AUDIT] Mission approve step log failed:', e.message);
+      logger.warn('[AUDIT] Mission approve step log failed:', e.message);
     }
 
     // ==============================================
@@ -2395,7 +2407,7 @@ export const rejectMissionStep = async (req, res) => {
         category: normalizedCategory,
       });
     } catch (e) {
-      console.warn('[AUDIT] Mission reject log failed:', e.message);
+      logger.warn('[AUDIT] Mission reject log failed:', e.message);
     }
 
     // Email Notification: Rejection
@@ -2495,7 +2507,7 @@ export const overrideOrderNumber = async (req, res) => {
         }
       );
     } catch (e) {
-      console.warn('[AUDIT] Mission override log failed:', e.message);
+      logger.warn('[AUDIT] Mission override log failed:', e.message);
     }
 
     res.json({

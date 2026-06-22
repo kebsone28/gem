@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+﻿import { useState, useCallback, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   getAIEngineConfig,
@@ -10,7 +10,7 @@ import {
   isRulesEnabled,
   type AIEngineMode,
   type AIEngineSettings,
-} from '../../services/ai/AIEngineConfig';
+} from '@services/ai/AIEngineConfig';
 import {
   Bot,
   ChevronLeft,
@@ -36,9 +36,9 @@ import {
   Search,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import apiClient from '../../api/client';
+import apiClient from '@/api/client';
 
-import { hasPermission, PERMISSIONS } from '../../core/security/permissions';
+import { hasPermission, PERMISSIONS } from '@core/security/permissions';
 
 interface Props {
   user: any; // On utilise any pour plus de souplesse avec le contexte Auth

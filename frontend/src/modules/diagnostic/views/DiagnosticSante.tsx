@@ -1,7 +1,7 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+﻿/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from 'react';
-import logger from '../../../utils/logger';
-import * as safeStorage from '../../../utils/safeStorage';
+import logger from '@utils/logger';
+import * as safeStorage from '@utils/safeStorage';
 import {
   Activity,
   RefreshCw,
@@ -16,12 +16,12 @@ import {
   Cpu,
   Unplug
 } from 'lucide-react';
-import { db } from '../../../store/db';
+import { db } from '@/store/db';
 import { useLiveQuery } from 'dexie-react-hooks';
-import apiClient from '../../../api/client';
-import { PageContainer, PageHeader, ContentArea } from '../../../components';
-import { useTheme } from '../../../contexts/ThemeContext';
-import { fmtNum } from '../../../utils/format';
+import apiClient from '@/api/client';
+import { PageContainer, PageHeader, ContentArea } from '@components';
+import { useTheme } from '@contexts/ThemeContext';
+import { fmtNum } from '@utils/format';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function DiagnosticSante() {

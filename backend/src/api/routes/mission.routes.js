@@ -22,7 +22,8 @@ import {
 import { authProtect, authorize } from '../middlewares/auth.js';
 import { verifierPermission, verifierModule } from '../../middleware/verifierPermission.js';
 import { PERMISSIONS } from '../../core/config/permissions.js';
-import { validateSchema, schemas } from '../../middleware/validation.js';
+import { validateSchema } from '../../middleware/validation.js';
+import { getAllValidMissionStatuses } from '../../core/config/businessRules.js';
 import multer from 'multer';
 
 // Internal multer for doc sending
@@ -55,6 +56,8 @@ router.get('/stats', getMissionStats); // Statistiques KPI
 router.delete('/purge/all', authorize('ADMIN_PROQUELEC'), purgeMissions); // Purge massive (Admin seulement)
 
 // Define mission schemas
+const MISSION_STATUS_ENUM = getAllValidMissionStatuses();
+
 const missionCreateSchema = {
   required: ['title'],
   fields: {
@@ -77,7 +80,7 @@ const missionCreateSchema = {
     },
     status: {
       type: 'string',
-      enum: ['draft', 'soumise', 'en_attente_validation', 'approuvee', 'rejetee'],
+      enum: MISSION_STATUS_ENUM,
     },
   },
 };
@@ -102,7 +105,7 @@ const missionUpdateSchema = {
     },
     status: {
       type: 'string',
-      enum: ['draft', 'soumise', 'en_attente_validation', 'approuvee', 'rejetee'],
+      enum: MISSION_STATUS_ENUM,
     },
   },
 };

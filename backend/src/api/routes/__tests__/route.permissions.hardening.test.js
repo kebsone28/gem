@@ -34,6 +34,9 @@ vi.mock('../../../modules/monitoring/monitoring.controller.js', () => ({
   getActivityFeed: (req, res) => res.json({ ok: true, requiredPermission: req.requiredPermission }),
   getPerformanceStats: (req, res) => res.json({ ok: true, requiredPermission: req.requiredPermission }),
   getSystemHealth: (req, res) => res.json({ ok: true, requiredPermission: req.requiredPermission }),
+  logClientError: (req, res) => res.json({ ok: true, requiredPermission: req.requiredPermission }),
+  getSystemErrors: (req, res) => res.json({ ok: true, requiredPermission: req.requiredPermission }),
+  resolveSystemError: (req, res) => res.json({ ok: true, requiredPermission: req.requiredPermission }),
 }));
 
 vi.mock('../../../modules/sync/sync.controller.js', () => ({

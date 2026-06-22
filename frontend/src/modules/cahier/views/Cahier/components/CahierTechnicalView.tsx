@@ -42,55 +42,71 @@ export const CahierTechnicalView: React.FC<CahierTechnicalViewProps> = ({
   const synopticRightNotes = synopticSchema?.notes?.slice(2) || [];
 
   return (
-    <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 lg:items-start">
-        {/* Colonne Gauche - Missions & HSE */}
-        <section className="lg:col-span-7 xl:col-span-8 space-y-10">
-          <CahierSection title="Missions & Exigences Techniques" color="#3b82f6">
+    <div className="flex gap-8 relative animate-in fade-in slide-in-from-bottom-4 duration-700 p-8 w-full">
+      
+      {/* 📖 Main Document Content */}
+      <div className="flex-1 space-y-16 w-full min-w-0">
+        <div className="space-y-16">
+          <CahierSection title="Missions & Exigences Techniques" color="#3b82f6" id="section-missions">
             <div className="rounded-3xl border border-white/5 bg-white/[0.02] p-5 md:p-8 backdrop-blur-xl">
               {isEditing ? (
-                <textarea
-                  title="Modifier les missions"
-                  value={editData.missions}
-                  onChange={(e) => setEditData((prev: any) => ({ ...prev, missions: e.target.value }))}
-                  className="w-full h-48 bg-slate-950 border border-indigo-500/30 rounded-2xl p-4 text-slate-300 text-sm focus:border-indigo-500 outline-none resize-none font-mono"
-                />
+                <div className="flex flex-col rounded-2xl border border-indigo-500/30 bg-slate-950/80 overflow-hidden focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500/50 transition-all shadow-inner">
+                  <div className="flex items-center gap-1 border-b border-indigo-500/20 bg-indigo-500/10 px-3 py-2">
+                    {['B', 'I', 'U'].map((style) => (
+                      <button key={style} className="h-6 w-6 rounded-md hover:bg-white/10 text-[11px] font-bold text-slate-300">{style}</button>
+                    ))}
+                    <div className="w-px h-4 bg-white/10 mx-1" />
+                    <span className="text-[10px] font-mono text-indigo-400/70 ml-2">markdown supported</span>
+                  </div>
+                  <textarea
+                    title="Modifier les missions"
+                    value={editData.missions}
+                    onChange={(e) => setEditData((prev: any) => ({ ...prev, missions: e.target.value }))}
+                    className="w-full h-64 bg-transparent p-5 text-slate-200 text-sm outline-none resize-y font-mono leading-relaxed custom-scrollbar placeholder:text-slate-600"
+                    placeholder="- Mission 1..."
+                  />
+                </div>
               ) : (
-                <div className="space-y-4">
+                <div className="flex flex-col gap-4 relative w-full">
+                  {/* Decorative Line in Read Mode */}
+                  <div className="absolute left-[2.25rem] top-4 bottom-4 w-px bg-indigo-500/10 hidden sm:block" />
                   {currentTask.missions.map((m: string, i: number) => (
                     <div
                       key={i}
-                      className={`group rounded-2xl border p-4 transition-all duration-300 md:p-5 ${
+                      className={`group relative overflow-hidden rounded-2xl border transition-all duration-500 hover:-translate-y-1 w-full ${
                         m.startsWith('ART 1.5') || m.includes('Reporting')
-                          ? 'border-indigo-500/20 bg-indigo-500/5 shadow-lg shadow-indigo-500/5'
-                          : 'border-white/5 bg-slate-950/40 hover:border-indigo-500/30 hover:bg-slate-900/60'
+                          ? 'border-indigo-500/30 bg-indigo-500/10 shadow-[0_8px_30px_rgb(99,102,241,0.15)] hover:shadow-[0_8px_30px_rgb(99,102,241,0.25)] hover:bg-indigo-500/20'
+                          : 'border-white/5 bg-slate-900/40 hover:border-indigo-500/30 hover:bg-slate-800/60 hover:shadow-xl'
                       }`}
                     >
-                      <div className="flex items-start gap-4">
+                      {/* Subtle hover gradient */}
+                      <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/0 via-indigo-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                      
+                      <div className="relative p-5 sm:p-6 flex flex-col sm:flex-row items-start gap-4 sm:gap-6 w-full">
                         <div
-                          className={`mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-colors ${
+                          className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl transition-all duration-500 group-hover:scale-110 shadow-inner ${
                             m.startsWith('ART 1.5') || m.includes('Reporting')
-                              ? 'bg-indigo-500 text-white'
-                              : 'bg-slate-800 text-slate-400 group-hover:bg-indigo-500/20 group-hover:text-indigo-400'
+                              ? 'bg-indigo-500 text-white shadow-indigo-500/25'
+                              : 'bg-slate-950 text-slate-400 group-hover:bg-indigo-500/20 group-hover:text-indigo-400 border border-white/5 group-hover:border-indigo-500/30'
                           }`}
                         >
-                          <Target size={18} />
+                          <Target size={20} className={m.startsWith('ART 1.5') || m.includes('Reporting') ? 'animate-pulse' : ''} />
                         </div>
-                        <div className="min-w-0 flex-1">
+                        <div className="min-w-0 flex-1 w-full pt-1">
                           {(() => {
                             const [art, ...rest] = m.split(' : ');
                             const detail = rest.join(' : ');
                             return detail ? (
-                              <>
-                                <p className="text-[10px] font-black uppercase tracking-[0.15em] text-indigo-400/80">
-                                  {art}
-                                </p>
-                                <p className="mt-1.5 text-sm leading-relaxed text-slate-200 lg:text-base">
+                              <div className="flex flex-col gap-1 w-full">
+                                <p className="text-sm sm:text-base leading-relaxed text-slate-300">
+                                  <span className="text-[11px] font-black uppercase tracking-[0.1em] text-indigo-400 mr-2">
+                                    {art} :
+                                  </span>
                                   {detail}
                                 </p>
-                              </>
+                              </div>
                             ) : (
-                              <p className="text-sm leading-relaxed text-slate-200 lg:text-base">{m}</p>
+                              <p className="text-sm sm:text-base leading-relaxed text-slate-300 pt-2">{m}</p>
                             );
                           })()}
                         </div>
@@ -102,41 +118,50 @@ export const CahierTechnicalView: React.FC<CahierTechnicalViewProps> = ({
             </div>
           </CahierSection>
 
-          <CahierSection title="Cadre Hygiène & Sécurité (HSE)" color="#f43f5e">
+          <CahierSection title="Cadre Hygiène & Sécurité (HSE)" color="#f43f5e" id="section-hse">
             <div className="rounded-3xl border border-rose-500/10 bg-rose-500/[0.02] p-5 md:p-8 backdrop-blur-xl">
               {isEditing ? (
-                <textarea
-                  title="Modifier les règles HSE"
-                  value={editData.hse}
-                  onChange={(e) => setEditData((prev: any) => ({ ...prev, hse: e.target.value }))}
-                  className="w-full h-32 bg-slate-950 border border-rose-500/30 rounded-2xl p-4 text-rose-300 text-sm focus:border-rose-500 outline-none resize-none font-mono"
-                />
+                <div className="flex flex-col rounded-2xl border border-rose-500/30 bg-slate-950/80 overflow-hidden focus-within:border-rose-500 focus-within:ring-1 focus-within:ring-rose-500/50 transition-all shadow-inner">
+                  <div className="flex items-center gap-1 border-b border-rose-500/20 bg-rose-500/10 px-3 py-2">
+                    <span className="text-[10px] font-mono text-rose-400/70 ml-2">markdown supported</span>
+                  </div>
+                  <textarea
+                    title="Modifier les règles HSE"
+                    value={editData.hse}
+                    onChange={(e) => setEditData((prev: any) => ({ ...prev, hse: e.target.value }))}
+                    className="w-full h-40 bg-transparent p-5 text-rose-200 text-sm outline-none resize-y font-mono leading-relaxed custom-scrollbar placeholder:text-rose-900"
+                    placeholder="- Casque obligatoire..."
+                  />
+                </div>
               ) : (
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-1">
+                <div className="flex flex-col gap-4 w-full">
                   {currentTask.hse.map((h: string, i: number) => (
                     <div
                       key={i}
-                      className="rounded-2xl border border-rose-500/5 bg-slate-950/40 p-4 md:p-5 transition-all hover:border-rose-500/20"
+                      className="group relative overflow-hidden rounded-2xl border border-rose-500/10 bg-rose-500/[0.02] p-5 sm:p-6 transition-all duration-500 hover:-translate-y-1 hover:border-rose-500/30 hover:bg-rose-500/[0.05] hover:shadow-[0_8px_30px_rgb(244,63,94,0.1)] w-full"
                     >
-                      <div className="flex items-start gap-3">
-                        <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-rose-500/10 text-rose-400">
-                          <AlertTriangle size={16} />
+                      {/* Subtle hover gradient */}
+                      <div className="absolute inset-0 bg-gradient-to-r from-rose-500/0 via-rose-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+
+                      <div className="relative flex flex-col sm:flex-row items-start gap-4 sm:gap-6 w-full">
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-rose-500/10 text-rose-500 transition-transform duration-500 group-hover:scale-110 shadow-inner">
+                          <AlertTriangle size={20} />
                         </div>
-                        <div className="min-w-0 flex-1">
+                        <div className="min-w-0 flex-1 w-full pt-1">
                           {(() => {
                             const [title, ...rest] = h.split(' : ');
                             const detail = rest.join(' : ');
                             return detail ? (
-                              <>
-                                <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-rose-400">
-                                  {title}
-                                </p>
-                                <p className="mt-1 text-sm leading-relaxed text-slate-300">
+                              <div className="flex flex-col gap-1 w-full">
+                                <p className="text-sm sm:text-base leading-relaxed text-slate-300">
+                                  <span className="text-[11px] font-black uppercase tracking-[0.1em] text-rose-400 mr-2">
+                                    {title} :
+                                  </span>
                                   {detail}
                                 </p>
-                              </>
+                              </div>
                             ) : (
-                              <p className="text-sm leading-relaxed text-slate-300">{h}</p>
+                              <p className="text-sm sm:text-base leading-relaxed text-slate-300 pt-2">{h}</p>
                             );
                           })()}
                         </div>
@@ -147,38 +172,43 @@ export const CahierTechnicalView: React.FC<CahierTechnicalViewProps> = ({
               )}
             </div>
           </CahierSection>
-        </section>
+        </div>
 
-        {/* Colonne Droite - Matériel, Finances, Juridique */}
-        <aside className="lg:col-span-5 xl:col-span-4 space-y-10">
-          <CahierSection title="Matériaux & Intrants" color="#f59e0b">
-            <div className="rounded-3xl border border-white/5 bg-white/[0.02] p-5 md:p-6 backdrop-blur-xl">
+        <div className="space-y-16">
+          <CahierSection title="Matériaux & Intrants" color="#f59e0b" id="section-materiaux">
+            <div className="rounded-3xl border border-white/5 bg-white/[0.02] p-5 md:p-8 backdrop-blur-xl">
               {isEditing ? (
-                <textarea
-                  title="Modifier les matériaux"
-                  value={editData.materials}
-                  onChange={(e) => setEditData((prev: any) => ({ ...prev, materials: e.target.value }))}
-                  className="w-full h-32 bg-slate-950 border border-amber-500/30 rounded-2xl p-4 text-amber-200 text-sm focus:border-amber-500 outline-none resize-none font-mono"
-                />
+                <div className="flex flex-col rounded-2xl border border-amber-500/30 bg-slate-950/80 overflow-hidden focus-within:border-amber-500 focus-within:ring-1 focus-within:ring-amber-500/50 transition-all shadow-inner">
+                  <div className="flex items-center gap-1 border-b border-amber-500/20 bg-amber-500/10 px-3 py-2">
+                    <span className="text-[10px] font-mono text-amber-400/70 ml-2">markdown supported</span>
+                  </div>
+                  <textarea
+                    title="Modifier les matériaux"
+                    value={editData.materials}
+                    onChange={(e) => setEditData((prev: any) => ({ ...prev, materials: e.target.value }))}
+                    className="w-full h-40 bg-transparent p-5 text-amber-200 text-sm outline-none resize-y font-mono leading-relaxed custom-scrollbar placeholder:text-amber-900"
+                    placeholder="- Ciment..."
+                  />
+                </div>
               ) : (
-                <div className="space-y-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
                   {currentTask.materials.map((m: string, i: number) => (
                     <div
                       key={i}
-                      className={`rounded-xl border p-4 transition-all duration-300 ${
+                      className={`group relative overflow-hidden rounded-xl border p-4 sm:p-5 transition-all duration-500 hover:-translate-y-1 w-full ${
                         m.startsWith('- Matériel fourni') || m.includes('Client')
-                          ? 'border-amber-500/30 bg-amber-500/10'
-                          : 'border-white/5 bg-slate-950/40 hover:border-amber-500/20'
+                          ? 'border-amber-500/30 bg-amber-500/10 shadow-[0_8px_20px_rgb(245,158,11,0.1)]'
+                          : 'border-white/5 bg-slate-900/40 hover:border-amber-500/30 hover:bg-slate-800/60 hover:shadow-lg'
                       }`}
                     >
-                      <div className="flex items-center gap-3">
-                        <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${
-                          m.startsWith('- Matériel fourni') ? 'bg-amber-500 text-white' : 'bg-slate-800 text-slate-400'
+                      <div className="relative flex items-center gap-4 w-full">
+                        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-transform duration-500 group-hover:scale-110 shadow-inner ${
+                          m.startsWith('- Matériel fourni') ? 'bg-amber-500 text-white shadow-amber-500/20' : 'bg-slate-950 text-amber-500/70 border border-white/5'
                         }`}>
-                          <Package size={14} />
+                          <Package size={18} />
                         </div>
-                        <span className={`text-sm font-medium ${
-                          m.startsWith('- Matériel fourni') ? 'text-amber-100 uppercase text-[10px] tracking-widest' : 'text-slate-300'
+                        <span className={`text-sm font-medium flex-1 min-w-0 leading-relaxed ${
+                          m.startsWith('- Matériel fourni') ? 'text-amber-100' : 'text-slate-300'
                         }`}>
                           {m.replace('- ', '')}
                         </span>
@@ -192,7 +222,7 @@ export const CahierTechnicalView: React.FC<CahierTechnicalViewProps> = ({
 
           {showAdvancedSections && (
             <>
-              <CahierSection title="Pénalités & Barèmes" color="#10b981">
+              <CahierSection title="Pénalités & Barèmes" color="#10b981" id="section-finances">
                 <div className="rounded-3xl border border-emerald-500/20 bg-emerald-500/[0.03] p-6 space-y-6">
                   {isEditing ? (
                     <div className="space-y-4">
@@ -273,7 +303,7 @@ export const CahierTechnicalView: React.FC<CahierTechnicalViewProps> = ({
                 </div>
               </CahierSection>
 
-              <CahierSection title="Juridique & Conformité" color="#a855f7">
+              <CahierSection title="Juridique & Conformité" color="#a855f7" id="section-juridique">
                 <div className="rounded-3xl border border-purple-500/10 bg-purple-500/[0.02] p-6 space-y-3">
                   {currentTask.legal?.map((item: string, i: number) => (
                     <div key={i} className="flex items-start gap-3 group">
@@ -287,13 +317,12 @@ export const CahierTechnicalView: React.FC<CahierTechnicalViewProps> = ({
               </CahierSection>
             </>
           )}
-        </aside>
-      </div>
+        </div>
 
-      {/* SECTION INNOVATION - KOBO GUIDE & SCHÉMA */}
-      <div className="pt-10 border-t border-white/5 space-y-10">
-        <CahierSection title="Guide de Saisie Kobo & Contrôles GED OS" color="#22d3ee">
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+        {/* SECTION INNOVATION - KOBO GUIDE & SCHÉMA */}
+        <div className="pt-10 border-t border-white/5 space-y-16">
+          <CahierSection title="Guide de Saisie Kobo & Contrôles GED OS" color="#22d3ee" id="section-kobo">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-2">
             {currentTask.koboGuide?.map((block, i) => (
               <div key={i} className="flex flex-col rounded-3xl border border-cyan-500/10 bg-cyan-500/[0.02] p-6 transition-all hover:border-cyan-500/30">
                 <div className="flex items-center gap-3 mb-4">
@@ -448,6 +477,8 @@ export const CahierTechnicalView: React.FC<CahierTechnicalViewProps> = ({
           <div className="h-px w-20 bg-white/10" />
         </div>
       </div>
+      </div>
+
     </div>
   );
 };

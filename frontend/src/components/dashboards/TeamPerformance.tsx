@@ -1,8 +1,8 @@
- 
+﻿ 
 import React from 'react';
 import { Target, TrendingUp, Users, Zap } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { fmtNum } from '../../utils/format';
+import { fmtNum } from '@utils/format';
 
 interface TeamStat {
   worker: string;

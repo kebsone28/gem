@@ -1,8 +1,8 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../../contexts/AuthContext';
-import { normalizeRole, ROLES } from '../../../core/security/permissions';
-import { usePermissions } from '../../../hooks/usePermissions';
+import { useAuth } from '@contexts/AuthContext';
+import { normalizeRole, ROLES } from '@core/security/permissions';
+import { usePermissions } from '@hooks/usePermissions';
 import AdminDashboard from './DashboardViews/AdminDashboard';
 import ClientDashboard from './DashboardViews/ClientDashboard';
 import TeamDashboard from './DashboardViews/TeamDashboard';

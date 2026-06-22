@@ -8,26 +8,30 @@ import logger from '../../utils/logger.js';
 // Timing attack mitigation: pre-computed dummy hash to normalize bcrypt latency on failed logins
 const DUMMY_HASH = '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lHHG';
 
+const SECTOR_PERMISSIONS = ['sector.gem', 'sector.mes'];
+
 const resolveMergedPermissions = (user) => {
   // 1. Récupérer les permissions du rôle (si disponible)
   const rolePermissions = user.role?.permissions?.map((p) => p.permission.key) || [];
 
   // 2. Vérifier les surcharges (Overrides)
   // Si user.permissions est NULL ou UNDEFINED -> On utilise le comportement par défaut (Rôle)
+  let merged;
   if (user.permissions === null || user.permissions === undefined) {
-    return rolePermissions;
-  }
-
-  // 3. Si c'est un tableau (même vide []), c'est une surcharge explicite
-  // [REINFORCEMENT] For Admins, we don't allow an empty override to strip all permissions
-  if (Array.isArray(user.permissions)) {
+    merged = rolePermissions;
+  } else if (Array.isArray(user.permissions)) {
+    // [REINFORCEMENT] For Admins, we don't allow an empty override to strip all permissions
     if (user.permissions.length === 0 && (user.role?.name === 'ADMIN_PROQUELEC' || user.roleLegacy === 'ADMIN_PROQUELEC')) {
-      return rolePermissions;
+      merged = rolePermissions;
+    } else {
+      merged = user.permissions;
     }
-    return user.permissions;
+  } else {
+    merged = rolePermissions;
   }
 
-  return rolePermissions;
+  // Toujours inclure les permissions de secteur pour que hasSectorAccess fonctionne
+  return [...new Set([...merged, ...SECTOR_PERMISSIONS])];
 };
 
 const buildSessionUser = (user) => ({
@@ -131,7 +135,7 @@ export const registerOrganization = async (req, res) => {
       accessToken,
     });
   } catch (error) {
-    console.error('Registration error:', error);
+    logger.error('Registration error:', error);
     res.status(500).json({ error: 'Server error during registration' });
   }
 };
@@ -142,7 +146,7 @@ export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
     if (process.env.NODE_ENV !== 'production') {
-      console.log('🔍 Login attempt received');
+      logger.info('🔍 Login attempt received');
     }
 
 
@@ -164,13 +168,13 @@ export const login = async (req, res) => {
       // Timing attack mitigation: normalize latency even when user doesn't exist
       await bcrypt.compare(password, DUMMY_HASH);
       if (process.env.NODE_ENV !== 'production') {
-        console.log('❌ User not found for email:', email);
+        logger.info('❌ User not found for email:', email);
       }
     } else {
       // ✅ VÉRIFICATION SÉCURITÉ: Vérifier que passwordHash existe
       if (!user.passwordHash) {
         if (process.env.NODE_ENV !== 'production') {
-          console.log('❌ User found but passwordHash is missing - user may be corrupted');
+          logger.info('❌ User found but passwordHash is missing - user may be corrupted');
         }
         return res.status(400).json({ error: 'Invalid user account - contact administrator' });
       }
@@ -178,8 +182,8 @@ export const login = async (req, res) => {
       user.mergedPermissions = resolveMergedPermissions(user);
 
       if (process.env.NODE_ENV !== 'production') {
-        console.log('✅ User found in DB. Role:', user.role?.name || user.roleLegacy);
-        console.log('✅ passwordHash exists:', !!user.passwordHash);
+        logger.info('✅ User found in DB. Role:', user.role?.name || user.roleLegacy);
+        logger.info('✅ passwordHash exists:', !!user.passwordHash);
       }
     }
 
@@ -206,13 +210,13 @@ export const login = async (req, res) => {
         );
         if (!isValidAnswer) {
           if (process.env.NODE_ENV !== 'production') {
-            console.log('❌ Invalid 2FA code');
+            logger.info('❌ Invalid 2FA code');
           }
           return res.status(401).json({ error: 'Invalid 2FA code' });
         }
 
         if (process.env.NODE_ENV !== 'production') {
-          console.log('✅ 2FA code verified');
+          logger.info('✅ 2FA code verified');
         }
       }
 
@@ -227,7 +231,7 @@ export const login = async (req, res) => {
       });
 
       if (process.env.NODE_ENV !== 'production') {
-        console.log('✅ Passing 2FA check...');
+        logger.info('✅ Passing 2FA check...');
       }
 
       // On s'assure que generateTokens reçoit les données minimales et propres
@@ -240,7 +244,7 @@ export const login = async (req, res) => {
       };
 
       if (process.env.NODE_ENV !== 'production') {
-        console.log('🗝️ Token Payload Logic:', {
+        logger.info('🗝️ Token Payload Logic:', {
           role: tokenPayload.role,
           email: tokenPayload.email,
         });
@@ -252,7 +256,7 @@ export const login = async (req, res) => {
       // logger.debug(`[AUTH-DEBUG] AccessToken: ${accessToken.substring(0, 15)}...`);
 
       if (process.env.NODE_ENV !== 'production') {
-        console.log('✅ Tokens generated');
+        logger.info('✅ Tokens generated');
       }
 
       // Set access token in cookie
@@ -271,7 +275,7 @@ export const login = async (req, res) => {
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
       });
       if (process.env.NODE_ENV !== 'production') {
-        console.log('✅ Final User Data for Frontend:', {
+        logger.info('✅ Final User Data for Frontend:', {
           id: user.id,
           email: user.email,
           role: user.role?.name || user.roleLegacy,
@@ -282,7 +286,7 @@ export const login = async (req, res) => {
         user: buildSessionUser(user)
       });
       if (process.env.NODE_ENV !== 'production') {
-        console.log('✅ Response sent successfully');
+        logger.info('✅ Response sent successfully');
       }
     } else {
       // Audit Log - Échec de connexion (si l'utilisateur existe)
@@ -297,31 +301,22 @@ export const login = async (req, res) => {
           req,
         });
       }
-      res.status(401).json({ error: 'Invalid email or password' });
+      res.status(401).json({ error: 'Identifiants incorrects' });
     }
   } catch (error) {
-    console.error('❌ [CRITICAL LOGIN CRASH]');
-    console.error('   Message:', error.message);
-    console.error('   Code:', error.code);
-    console.error('   Stack:', error.stack);
+    logger.error('❌ [CRITICAL LOGIN CRASH]');
+    logger.error('   Message:', error.message);
+    logger.error('   Code:', error.code);
+    logger.error('   Stack:', error.stack);
 
     // Handle database connection errors specifically
     if (error.code === 'P1001' || error.message?.includes("Can't reach database server")) {
-      console.error('🔴 Database connection failed at login');
-      return res.status(503).json({
-        error: 'Base de données inaccessible',
-        message:
-          'Le serveur ne parvient pas à contacter la base de données. Vérifiez que Docker Desktop est lancé.',
-        code: 'DB_CONNECTION_ERROR',
-      });
+      logger.error('🔴 Database connection failed at login');
+      return res.status(503).json({ error: 'Base de données inaccessible' });
     }
 
     // Generic error
-    res.status(500).json({
-      error: 'Server error during login',
-      message: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
-    });
+    res.status(500).json({ error: 'Server error during login' });
   }
 };
 
@@ -330,9 +325,9 @@ export const login = async (req, res) => {
 export const refreshToken = async (req, res) => {
   try {
     // Diagnostic logs for refresh flow
-    console.log('[AUTH-REFRESH] incoming refresh request');
+    logger.info('[AUTH-REFRESH] incoming refresh request');
     const token = req.cookies.refreshToken;
-    console.log('[AUTH-REFRESH] hasRefreshCookie=', !!token);
+    logger.info('[AUTH-REFRESH] hasRefreshCookie=', !!token);
     if (!token) return res.status(401).json({ error: 'No refresh token' });
 
     const decoded = verifyRefreshToken(token);
@@ -376,7 +371,7 @@ export const refreshToken = async (req, res) => {
       user: buildSessionUser(user),
     });
   } catch (error) {
-    console.error('[AUTH-REFRESH] refresh failed');
+    logger.error('[AUTH-REFRESH] refresh failed');
     res.status(401).json({ error: 'Invalid refresh token' });
   }
 };
@@ -453,7 +448,7 @@ export const changePassword = async (req, res) => {
 
     res.json({ message: 'Mot de passe mis à jour avec succès' });
   } catch (error) {
-    console.error('Change password error:', error);
+    logger.error('Change password error:', error);
     res.status(500).json({ error: 'Erreur lors du changement de mot de passe' });
   }
 };
@@ -492,7 +487,7 @@ export const updateSecuritySettings = async (req, res) => {
 
     res.json({ message: 'Paramètres de sécurité mis à jour' });
   } catch (error) {
-    console.error('Security update error:', error);
+    logger.error('Security update error:', error);
     res.status(500).json({ error: 'Erreur lors de la mise à jour de la sécurité' });
   }
 };
@@ -546,7 +541,7 @@ export const resetPassword = async (req, res) => {
 
     res.json({ message: 'Mot de passe réinitialisé avec succès' });
   } catch (error) {
-    console.error('Reset password error:', error);
+    logger.error('Reset password error:', error);
     res.status(500).json({ error: 'Erreur lors de la réinitialisation' });
   }
 };
@@ -557,7 +552,7 @@ export const verify2FA = async (req, res) => {
   try {
     const { id, email, answer } = req.body;
     if (process.env.NODE_ENV !== 'production') {
-      console.log(`🔍 [2FA] Tentative de vérification pour ID/Email: ${id || email}`);
+      logger.info(`🔍 [2FA] Tentative de vérification pour ID/Email: ${id || email}`);
     }
 
 
@@ -577,14 +572,14 @@ export const verify2FA = async (req, res) => {
 
     if (!user) {
       if (process.env.NODE_ENV !== 'production') {
-        console.log(`❌ [2FA] Utilisateur non trouvé pour ID: ${id}`);
+        logger.info(`❌ [2FA] Utilisateur non trouvé pour ID: ${id}`);
       }
       return res.status(404).json({ error: 'Utilisateur non trouvé' });
     }
 
     if (!user.securityAnswerHash) {
       if (process.env.NODE_ENV !== 'production') {
-        console.log(`❌ [2FA] Pas de réponse de sécurité configurée pour ${user.email}`);
+        logger.info(`❌ [2FA] Pas de réponse de sécurité configurée pour ${user.email}`);
       }
       return res.status(400).json({ error: 'Sécurité non configurée pour ce compte' });
     }
@@ -593,7 +588,7 @@ export const verify2FA = async (req, res) => {
 
     if (!isMatch) {
       if (process.env.NODE_ENV !== 'production') {
-        console.log(`❌ [2FA] Réponse incorrecte pour ${user.email}`);
+        logger.info(`❌ [2FA] Réponse incorrecte pour ${user.email}`);
       }
       await tracerAction({
         userId: user.id,
@@ -608,7 +603,7 @@ export const verify2FA = async (req, res) => {
     }
 
     if (process.env.NODE_ENV !== 'production') {
-      console.log(`✅ [2FA] Réponse correcte pour ${user.email}`);
+      logger.info(`✅ [2FA] Réponse correcte pour ${user.email}`);
     }
 
     // Audit Log - Succès 2FA
@@ -633,7 +628,7 @@ export const verify2FA = async (req, res) => {
     };
 
     if (process.env.NODE_ENV !== 'production') {
-      console.log('🗝️ [2FA] Token Payload Logic:', {
+      logger.info('🗝️ [2FA] Token Payload Logic:', {
         role: tokenPayload.role,
         email: tokenPayload.email,
       });
@@ -645,7 +640,7 @@ export const verify2FA = async (req, res) => {
     // logger.debug(`[AUTH-DEBUG] AccessToken: ${tokens.accessToken.substring(0, 15)}...`);
 
     if (process.env.NODE_ENV !== 'production') {
-      console.log('✅ [2FA] Tokens générés');
+      logger.info('✅ [2FA] Tokens générés');
     }
 
     // Set access token in cookie
@@ -664,21 +659,18 @@ export const verify2FA = async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
     if (process.env.NODE_ENV !== 'production') {
-      console.log('✅ [2FA] Cookies configurés');
+      logger.info('✅ [2FA] Cookies configurés');
     }
 
     res.json({
       user: buildSessionUser(user),
     });
     if (process.env.NODE_ENV !== 'production') {
-      console.log('✅ [2FA] Réponse envoyée avec succès');
+      logger.info('✅ [2FA] Réponse envoyée avec succès');
     }
   } catch (error) {
-    console.error('❌ [2FA ERROR]:', error);
-    res.status(500).json({
-      error: 'Erreur lors de la vérification 2FA',
-      message: process.env.NODE_ENV === 'development' ? error.message : undefined,
-    });
+    logger.error('❌ [2FA ERROR]:', error);
+    res.status(500).json({ error: 'Erreur lors de la vérification 2FA' });
   }
 };
 
@@ -730,7 +722,7 @@ export const impersonateUser = async (req, res) => {
     const targetRole = targetUser.role?.name || targetUser.roleLegacy || targetUser.role;
     if (
       (targetRole === 'ADMIN_PROQUELEC' || targetRole === 'DG_PROQUELEC' || targetRole === 'ADMIN') &&
-      !isSuperAdmin && adminUser.email !== 'admingem'
+      !isSuperAdmin
     ) {
       return res.status(403).json({
         error: "Sécurité : Impossible de simuler un compte de Direction ou d'Administration.",
@@ -740,7 +732,7 @@ export const impersonateUser = async (req, res) => {
     // Sécurité Multi-tenant : on ne simule pas hors de son organisation
     if (
       targetUser.organizationId !== adminUser.organizationId &&
-      !isSuperAdmin && adminUser.email !== 'admingem'
+      !isSuperAdmin
     ) {
       return res
         .status(403)
@@ -812,7 +804,7 @@ export const impersonateUser = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Impersonation error:', error);
+    logger.error('Impersonation error:', error);
     res.status(500).json({ error: "Erreur lors de la tentative d'impersonation" });
   }
 };
@@ -900,7 +892,7 @@ export const stopImpersonation = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Stop impersonation error:', error);
+    logger.error('Stop impersonation error:', error);
     res.status(500).json({ error: "Erreur lors de l'arrêt de la simulation" });
   }
 };
@@ -919,12 +911,12 @@ export const verifyPassword = async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.passwordHash);
 
     if (isMatch) {
-      res.json({ success: true, message: 'Mot de passe vérifié' });
+      res.json({ message: 'Mot de passe vérifié' });
     } else {
-      res.status(401).json({ success: false, error: 'Mot de passe incorrect' });
+      res.status(401).json({ error: 'Mot de passe incorrect' });
     }
   } catch (error) {
-    console.error('Verify password error:', error);
+    logger.error('Verify password error:', error);
     res.status(500).json({ error: 'Erreur lors de la vérification' });
   }
 };

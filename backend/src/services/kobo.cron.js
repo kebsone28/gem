@@ -1,5 +1,6 @@
 import prisma from '../core/utils/prisma.js';
 import { syncKoboToDatabase } from './kobo.service.js';
+import logger from '../utils/logger.js';
 
 /**
  * Service de synchronisation automatique (Cron)
@@ -14,12 +15,12 @@ let autoSyncInterval = null;
 let initialTimeout = null;
 
 export function startKoboAutoSync() {
-    console.log(`[KOBO-CRON] ⏱️ Démarrage de l'auto-sync Kobo (Toutes les ${SYNC_INTERVAL_MINUTES} min)`);
+    logger.info(`[KOBO-CRON] ⏱️ Démarrage de l'auto-sync Kobo (Toutes les ${SYNC_INTERVAL_MINUTES} min)`);
     
     // On exécute immédiatement au (re)démarrage (optionnel, mais utile)
     initialTimeout = setTimeout(() => {
         runGlobalSync()
-            .catch(err => console.error('[KOBO-CRON] ❌ Erreur critique initiale:', err));
+            .catch(err => logger.error('[KOBO-CRON] ❌ Erreur critique initiale:', err));
     }, 10000); // Wait 10s after boot
 
     // Puis toutes les X minutes
@@ -27,13 +28,13 @@ export function startKoboAutoSync() {
         try {
             await runGlobalSync();
         } catch (error) {
-            console.error('[KOBO-CRON] ❌ Erreur lors de la boucle de synchronisation:', error);
+            logger.error('[KOBO-CRON] ❌ Erreur lors de la boucle de synchronisation:', error);
         }
     }, SYNC_INTERVAL_MINUTES * 60 * 1000);
 
     // Return cleanup function
     return () => {
-        console.log('[KOBO-CRON] 🛑 Arrêt de l\'auto-sync Kobo...');
+        logger.info('[KOBO-CRON] 🛑 Arrêt de l\'auto-sync Kobo...');
         if (autoSyncInterval) {
             clearInterval(autoSyncInterval);
             autoSyncInterval = null;
@@ -46,7 +47,7 @@ export function startKoboAutoSync() {
 }
 
 async function runGlobalSync() {
-    console.log(`[KOBO-CRON] 🔄 Début de la boucle serveur de synchronisation Kobo...`);
+    logger.info(`[KOBO-CRON] 🔄 Début de la boucle serveur de synchronisation Kobo...`);
     
     // Récupérer toutes les organisations avec des projets actifs ayant potentiellement des paramètres Kobo
     const orgs = await prisma.organization.findMany({
@@ -65,7 +66,7 @@ async function runGlobalSync() {
     });
 
     if (orgs.length === 0) {
-        return console.log('[KOBO-CRON] ⚠️ Aucune organisation trouvée.');
+        return logger.info('[KOBO-CRON] ⚠️ Aucune organisation trouvée.');
     }
 
     // On parcourt chaque organisation
@@ -79,12 +80,12 @@ async function runGlobalSync() {
                                   process.env.KOBO_TOKEN;
             
             if (!hasKoboConfig) {
-                console.log(`[KOBO-CRON] ⏭️ Pas de config Kobo pour ${org.name} / ${project.name}`);
+                logger.info(`[KOBO-CRON] ⏭️ Pas de config Kobo pour ${org.name} / ${project.name}`);
                 continue;
             }
 
             try {
-                console.log(`[KOBO-CRON] 📡 Sync pour l'organisation ${org.name} (Projet: ${project.name})...`);
+                logger.info(`[KOBO-CRON] 📡 Sync pour l'organisation ${org.name} (Projet: ${project.name})...`);
                 
                 // Appel de la logique de service avec le projectId spécifique
                 const result = await syncKoboToDatabase(org.id, null, null, project.id);
@@ -110,11 +111,11 @@ async function runGlobalSync() {
                             },
                             timestamp: new Date()
                         }
-                    }).catch(e => console.error('[KOBO-CRON] ❌ Log fail:', e.message));
+                    }).catch(e => logger.error('[KOBO-CRON] ❌ Log fail:', e.message));
                 }
 
                 if (result.applied > 0) {
-                    console.log(`[KOBO-CRON] ✅ Succès pour ${org.name}/${project.name}: ${result.applied} ménages importés/mis à jour.`);
+                    logger.info(`[KOBO-CRON] ✅ Succès pour ${org.name}/${project.name}: ${result.applied} ménages importés/mis à jour.`);
                     
                     // NOTIFICATION TEMPS RÉEL (Socket.IO)
                     const { socketService } = await import('./socket.service.js');
@@ -126,11 +127,11 @@ async function runGlobalSync() {
                         sender: 'SERVEUR GEM'
                     });
                 } else {
-                    console.log(`[KOBO-CRON] ℹ️ Rien de nouveau pour ${org.name}/${project.name}.`);
+                    logger.info(`[KOBO-CRON] ℹ️ Rien de nouveau pour ${org.name}/${project.name}.`);
                 }
 
             } catch (projectError) {
-                console.error(`[KOBO-CRON] ❌ Échec pour ${org.name}/${project.name}:`, projectError.message);
+                logger.error(`[KOBO-CRON] ❌ Échec pour ${org.name}/${project.name}:`, projectError.message);
             }
         }
     }

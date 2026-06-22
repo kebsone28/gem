@@ -1,4 +1,5 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
+import logger from '@services/logger';
 import {
   Plus,
   Minus,
@@ -14,18 +15,18 @@ import {
   ChevronDown,
   ArrowUpDown
 } from 'lucide-react';
-import { useLogistique } from '../../../hooks/useLogistique';
-import { useAuth } from '../../../contexts/AuthContext';
-import { usePermissions } from '../../../hooks/usePermissions';
-import { normalizeRole, ROLES } from '../../../core/security/permissions';
-import { AppRole } from '../../../core/security/types';
+import { useLogistique } from '@hooks/useLogistique';
+import { useAuth } from '@contexts/AuthContext';
+import { usePermissions } from '@hooks/usePermissions';
+import { normalizeRole, ROLES } from '@core/security/permissions';
+import { AppRole } from '@core/security/types';
 import toast from 'react-hot-toast';
 import {
   PageContainer,
   PageHeader,
   ModulePageShell,
   ContentArea
-} from '../../../components';
+} from '@components';
 
 export default function Atelier() {
   const {
@@ -158,7 +159,7 @@ export default function Atelier() {
       toast.success('Supprimé');
     } catch (err) {
       toast.error('Erreur lors de la suppression');
-      console.error(err);
+      logger.error(err);
     }
   };
 

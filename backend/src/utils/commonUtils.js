@@ -4,6 +4,15 @@
  */
 
 /**
+ * JSON replacer that safely serializes BigInt values
+ * Usage: JSON.stringify(obj, jsonBigIntReplacer)
+ */
+export const jsonBigIntReplacer = (_key, value) => {
+  if (typeof value === 'bigint') return value.toString();
+  return value;
+};
+
+/**
  * Sanitize BigInt values for JSON serialization
  * Converts BigInt to string to prevent JSON.stringify errors
  */
@@ -100,7 +109,7 @@ export const deepClone = (obj) => {
 
   const cloned = {};
   for (const key in obj) {
-    if (obj.hasOwnProperty(key)) {
+    if (Object.prototype.hasOwnProperty.call(obj, key)) {
       cloned[key] = deepClone(obj[key]);
     }
   }

@@ -99,7 +99,7 @@ class RetryPolicy {
   /**
    * Determine if error should be retried
    */
-  shouldRetry(error, currentAttempt, context = {}) {
+  shouldRetry(error, currentAttempt, _context = {}) {
     if (currentAttempt >= this.maxAttempts) {
       return false;
     }

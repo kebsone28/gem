@@ -1,8 +1,8 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+﻿/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useCallback } from 'react';
-import * as missionApprovalService from '../../../../../services/missionApprovalService';
-import type { MissionApprovalWorkflow } from '../../../../../services/missionApprovalService';
-import logger from '../../../../../utils/logger';
+import * as missionApprovalService from '@services/missionApprovalService';
+import type { MissionApprovalWorkflow } from '@services/missionApprovalService';
+import logger from '@utils/logger';
 
 export const useMissionWorkflow = (currentMissionId: string | null) => {
   const [workflow, setWorkflow] = useState<MissionApprovalWorkflow | null>(null);

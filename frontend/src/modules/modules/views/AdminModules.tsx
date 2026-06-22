@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useAuth } from '../../../contexts/AuthContext';
+import { useAuth } from '@contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { modulesManagementService, AVAILABLE_MODULES } from '../../../services/modulesManagementService';
+import { modulesManagementService, AVAILABLE_MODULES } from '@services/modulesManagementService';
 // auditService utilisé en interne par modulesManagementService — pas besoin ici
-import logger from '../../../utils/logger';
+import logger from '@utils/logger';
 import toast from 'react-hot-toast';
 import * as LucideIcons from 'lucide-react';
 import {
@@ -19,8 +19,11 @@ import {
   CheckCircle2,
   X,
   Settings,
+  Globe,
+  LayoutGrid,
+  Building2,
 } from 'lucide-react';
-import { PageContainer, PageHeader, ContentArea } from '../../../components';
+import { PageContainer, PageHeader, ContentArea } from '@components';
 
 interface ModuleStats {
   moduleId: string;
@@ -45,6 +48,11 @@ export default function AdminModules() {
 
   const [stats, setStats] = useState<Record<string, ModuleStats>>({});
   const [showDisabled, setShowDisabled] = useState(false);
+  const [configMode, setConfigMode] = useState<'global' | 'domain'>('global');
+  const [selectedDomain, setSelectedDomain] = useState<string | null>(null);
+  const [domainModulesConfig, setDomainModulesConfig] = useState<Record<string, Record<string, ModuleConfig>>>({});
+  const [loadingDomainConfig, setLoadingDomainConfig] = useState(false);
+  const [domains, setDomains] = useState<{ key: string; label: string }[]>([]);
 
   // Charger la configuration actuelle des modules
   const loadModules = async () => {
@@ -66,6 +74,40 @@ export default function AdminModules() {
   useEffect(() => {
     loadModules();
   }, []);
+
+  // Charger la configuration des modules par domaine
+  const loadDomainModulesConfig = async () => {
+    setLoadingDomainConfig(true);
+    try {
+      const config = await modulesManagementService.getDomainModulesConfig();
+      setDomainModulesConfig(config);
+
+      // Déterminer la liste des domaines depuis la config
+      const domainKeys = Object.keys(config);
+      if (domainKeys.length === 0) {
+        // Fallback: domaines par défaut si aucun enregistré
+        const defaults = ['gem', 'mes'];
+        setDomains(defaults.map(key => ({ key, label: key.toUpperCase() })));
+      } else {
+        setDomains(domainKeys.map(key => ({ key, label: key.toUpperCase() })));
+      }
+
+      if (!selectedDomain && domainKeys.length > 0) {
+        setSelectedDomain(domainKeys[0]);
+      }
+    } catch (error) {
+      logger.error('[AdminModules] Error loading domain modules config:', error);
+      toast.error('Erreur lors du chargement de la configuration par domaine');
+    } finally {
+      setLoadingDomainConfig(false);
+    }
+  };
+
+  useEffect(() => {
+    if (configMode === 'domain') {
+      loadDomainModulesConfig();
+    }
+  }, [configMode]);
 
   // Basculer un module globalement
   const toggleModule = async (moduleId: string, enabled: boolean) => {
@@ -107,6 +149,33 @@ export default function AdminModules() {
       moduleName: module.name,
       enabled,
     });
+  };
+
+  // Basculer un module pour un domaine
+  const toggleDomainModule = async (domain: string, moduleId: string, enabled: boolean) => {
+    if (!user) return;
+    try {
+      const updated = { ...domainModulesConfig };
+      if (!updated[domain]) {
+        updated[domain] = {};
+      }
+      updated[domain] = {
+        ...updated[domain],
+        [moduleId]: {
+          ...(updated[domain][moduleId] || {}),
+          id: moduleId,
+          enabled,
+        } as ModuleConfig,
+      };
+      await modulesManagementService.setDomainModulesConfig(updated);
+      setDomainModulesConfig(updated);
+      toast.success(
+        `Module ${modules.find((m) => m.id === moduleId)?.name} ${enabled ? 'activé' : 'désactivé'} pour le domaine ${domain.toUpperCase()}`
+      );
+    } catch (error: any) {
+      logger.error('[AdminModules] Error toggling domain module:', error);
+      toast.error(`Erreur: ${error.message}`);
+    }
   };
 
   // Confirmer l'action
@@ -324,9 +393,61 @@ export default function AdminModules() {
             </div>
           </div>
 
+          {/* Mode tabs */}
+          <div className="flex items-center gap-2 bg-slate-900/50 border border-slate-800 rounded-2xl p-1 w-fit">
+            <button
+              onClick={() => setConfigMode('global')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${
+                configMode === 'global'
+                  ? 'bg-blue-600 text-white shadow-lg'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Globe size={16} />
+              Global
+            </button>
+            <button
+              onClick={() => setConfigMode('domain')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${
+                configMode === 'domain'
+                  ? 'bg-blue-600 text-white shadow-lg'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <LayoutGrid size={16} />
+              Par Domaine
+            </button>
+          </div>
+
+          {/* Sélecteur de domaine */}
+          {configMode === 'domain' && (
+            <div className="flex items-center gap-2 flex-wrap">
+              {domains.map((domain) => (
+                <button
+                  key={domain.key}
+                  onClick={() => setSelectedDomain(domain.key)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all border ${
+                    selectedDomain === domain.key
+                      ? 'bg-blue-600/20 border-blue-500 text-blue-400'
+                      : 'bg-slate-800/50 border-slate-700 text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <Building2 size={16} />
+                  {domain.label}
+                </button>
+              ))}
+            </div>
+          )}
+
           {/* Filtres */}
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-black text-white">Configuration des Modules</h2>
+            <h2 className="text-xl font-black text-white">
+              {configMode === 'global'
+                ? 'Configuration des Modules'
+                : selectedDomain
+                  ? `Modules pour le domaine ${selectedDomain.toUpperCase()}`
+                  : 'Sélectionnez un domaine'}
+            </h2>
             <button
               onClick={() => setShowDisabled(!showDisabled)}
               className="flex items-center gap-2 px-4 py-2 bg-slate-800/50 rounded-xl text-slate-400 hover:text-white transition-all"
@@ -337,7 +458,131 @@ export default function AdminModules() {
           </div>
 
           {/* Modules par catégorie */}
-          {Object.entries(modulesByCategory).map(([category, categoryModules]) => {
+          {/* Modules par catégorie - Mode Domaine */}
+          {configMode === 'domain' && selectedDomain && Object.entries(modulesByCategory).map(([category, categoryModules]) => {
+            const CategoryIcon = getModuleIcon(categoryModules[0]?.icon);
+            const domainConfig = domainModulesConfig[selectedDomain] || {};
+            const domainModules = modules.map(m => ({
+              ...m,
+              enabled: domainConfig[m.id]?.enabled ?? true,
+            }));
+            const domainModulesByCategory = domainModules.reduce(
+              (acc, m) => {
+                if (!acc[m.category]) acc[m.category] = [];
+                acc[m.category].push(m);
+                return acc;
+              },
+              {} as Record<string, typeof modules>
+            );
+            const domainCategoryModules = domainModulesByCategory[category] || [];
+            return (
+              <div key={category} className="space-y-4">
+                <div className="flex items-center gap-3 mb-4">
+                  <div
+                    className={`w-8 h-8 rounded-xl flex items-center justify-center ${getCategoryColor(category)}`}
+                  >
+                    <CategoryIcon size={20} />
+                  </div>
+                  <h3 className="text-lg font-black text-white capitalize">
+                    {category === 'core'
+                      ? 'Modules Core'
+                      : category === 'advanced'
+                        ? 'Modules Avancés'
+                        : category === 'experimental'
+                          ? 'Modules Expérimentaux'
+                          : 'Modules Admin'}
+                  </h3>
+                  <span className="text-xs text-slate-500 uppercase tracking-widest">
+                    {domainCategoryModules.filter((m) => m.enabled).length}/{domainCategoryModules.length}{' '}
+                    activés
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {domainCategoryModules
+                    .filter((module) => showDisabled || module.enabled)
+                    .map((module) => {
+                      const ModuleIcon = getModuleIcon(module.icon);
+                      const isEnabled = module.enabled;
+                      const canToggle = module.global;
+
+                      return (
+                        <motion.div
+                          key={module.id}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className={`p-6 rounded-2xl border transition-all cursor-pointer hover:shadow-xl ${
+                            isEnabled
+                              ? 'bg-gradient-to-br from-slate-800/50 to-slate-700/50 border-slate-600/50'
+                              : 'bg-slate-900/50 border-slate-800/50 opacity-60'
+                          }`}
+                          onClick={() =>
+                            canToggle && toggleDomainModule(selectedDomain, module.id, !isEnabled)
+                          }
+                        >
+                          <div className="flex items-start justify-between mb-4">
+                            <div className="flex items-center gap-3">
+                              <div
+                                className={`w-12 h-12 rounded-xl flex items-center justify-center ${getCategoryColor(category)}`}
+                              >
+                                <ModuleIcon size={24} />
+                              </div>
+                              <div>
+                                <h4 className="text-white font-black text-base mb-1">
+                                  {module.name}
+                                </h4>
+                                <p className="text-slate-400 text-xs">{module.description}</p>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              {canToggle ? (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleDomainModule(selectedDomain, module.id, !isEnabled);
+                                  }}
+                                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                                    isEnabled ? 'bg-emerald-600' : 'bg-slate-700'
+                                  }`}
+                                >
+                                  <span
+                                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                      isEnabled ? 'translate-x-6' : 'translate-x-1'
+                                    }`}
+                                  />
+                                </button>
+                              ) : (
+                                <div className="px-3 py-1 bg-slate-700 rounded-lg">
+                                  <span className="text-xs text-slate-400">Non désactivable</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="mt-3">
+                            <p className="text-xs text-slate-500 mb-2">Permissions requises:</p>
+                            <div className="flex flex-wrap gap-1">
+                              {(module.permissions || []).map((perm) => (
+                                <span
+                                  key={perm}
+                                  className="px-2 py-1 bg-slate-800 rounded text-xs text-slate-300"
+                                >
+                                  {perm}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        </motion.div>
+                      );
+                    })}
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Modules par catégorie - Mode Global */}
+          {configMode === 'global' && Object.entries(modulesByCategory).map(([category, categoryModules]) => {
             const CategoryIcon = getModuleIcon(categoryModules[0]?.icon);
             return (
               <div key={category} className="space-y-4">

@@ -1,3 +1,4 @@
+import logger from '../utils/logger.js';
 import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
 dotenv.config();
@@ -57,10 +58,10 @@ export const sendMail = async ({ to, subject, title, body, actionLink, actionLab
             attachments: attachments || []
         });
 
-        console.log(`📧 Mail envoyé à: ${to} (Sujet: ${subject})`);
+        logger.info(`📧 Mail envoyé à: ${to} (Sujet: ${subject})`);
         return true;
     } catch (error) {
-        console.error('❌ Erreur lors de l\'envoi du mail:', error);
+        logger.error('Erreur lors de l\'envoi du mail:', error);
         return false;
     }
 };

@@ -1,9 +1,9 @@
-import React, { useMemo, useState } from 'react';
+﻿import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../../../contexts/AuthContext';
-import { usePermissions } from '../../../../hooks/usePermissions';
+import { useAuth } from '@contexts/AuthContext';
+import { usePermissions } from '@hooks/usePermissions';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../../../../store/db';
+import { db } from '@/store/db';
 import { motion } from 'framer-motion';
 import {
    ShieldCheck,
@@ -16,7 +16,7 @@ import {
    Award,
    BarChart3,
 } from 'lucide-react';
-import { PageContainer, PageHeader, ContentArea } from '../../../../components';
+import { PageContainer, PageHeader, ContentArea } from '@components';
 import {
    DASHBOARD_ACTION_TILE_PRIMARY,
    DASHBOARD_ACTION_TILE_SECONDARY,
@@ -26,8 +26,8 @@ import {
    StatusBadge,
    KPICard,
    ProgressBar,
-} from '../../../../components/dashboards/DashboardComponents';
-import { fmtNum } from '../../../../utils/format';
+} from '@components/dashboards/DashboardComponents';
+import { fmtNum } from '@utils/format';
 
 interface SupervisionMetrics {
   // Supervision technique

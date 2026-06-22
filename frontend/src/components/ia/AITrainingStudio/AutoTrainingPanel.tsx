@@ -1,10 +1,11 @@
-/**
+﻿/**
  * 🤖 AutoTrainingPanel - Interface de gestion de l'auto-entraînement IA
  * Affiche les suggestions d'entraînement et les métriques d'apprentissage
  */
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import logger from '@services/logger';
 import {
   Brain,
   TrendingUp,
@@ -24,8 +25,8 @@ import {
   learningMetricsService,
   type TrainingSuggestion,
   type LearningMetric,
-} from '../../../services/ai/autoTrainingSystem';
-import type { AIResponse } from '../../../services/ai/MissionSageService';
+} from '@services/ai/autoTrainingSystem';
+import type { AIResponse } from '@services/ai/MissionSageService';
 
 interface AutoTrainingPanelProps {
   canManageAI?: boolean;
@@ -60,7 +61,7 @@ export default function AutoTrainingPanel({ canManageAI = false }: AutoTrainingP
       setMetrics(weeklyMetrics);
       setLearningStatus(status);
     } catch (err) {
-      console.error('[AutoTrainingPanel] Failed to load data', err);
+      logger.error('[AutoTrainingPanel] Failed to load data', err);
     } finally {
       setLoading(false);
     }
@@ -112,7 +113,7 @@ export default function AutoTrainingPanel({ canManageAI = false }: AutoTrainingP
   const handleAcceptSuggestion = async (suggestion: TrainingSuggestion) => {
     if (!canManageAI) return;
     // TODO: Implémenter l'acceptation de la suggestion
-    console.log('Accept suggestion:', suggestion);
+    logger.log('Accept suggestion:', suggestion);
   };
 
   const handleRejectSuggestion = async (suggestionId: string) => {

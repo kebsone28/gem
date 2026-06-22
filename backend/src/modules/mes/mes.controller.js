@@ -1,3 +1,4 @@
+import logger from '../../utils/logger.js';
 import { mesService } from './mes.service.js';
 
 /**
@@ -18,7 +19,7 @@ export async function getMESRecords(req, res) {
     const records = await mesService.getMESRecords(filters, req.organization.id);
     res.json({ records });
   } catch (error) {
-    console.error('[MESController] Error fetching MES records:', error);
+    logger.error('[MESController] Error fetching MES records:', error);
     res.status(500).json({ error: 'Erreur lors de la récupération des enregistrements MES' });
   }
 }
@@ -37,7 +38,7 @@ export async function getMESRecordById(req, res) {
     
     res.json(record);
   } catch (error) {
-    console.error('[MESController] Error fetching MES record:', error);
+    logger.error('[MESController] Error fetching MES record:', error);
     res.status(500).json({ error: 'Erreur lors de la récupération de l\'enregistrement MES' });
   }
 }
@@ -50,7 +51,7 @@ export async function createMESRecord(req, res) {
     const record = await mesService.createMESRecord(req.body, req.organization.id, req.user.id);
     res.status(201).json(record);
   } catch (error) {
-    console.error('[MESController] Error creating MES record:', error);
+    logger.error('[MESController] Error creating MES record:', error);
     res.status(500).json({ error: 'Erreur lors de la création de l\'enregistrement MES' });
   }
 }
@@ -69,7 +70,7 @@ export async function updateMESRecord(req, res) {
     
     res.json(record);
   } catch (error) {
-    console.error('[MESController] Error updating MES record:', error);
+    logger.error('[MESController] Error updating MES record:', error);
     res.status(500).json({ error: 'Erreur lors de la mise à jour de l\'enregistrement MES' });
   }
 }
@@ -83,7 +84,7 @@ export async function deleteMESRecord(req, res) {
     await mesService.deleteMESRecord(id, req.organization.id);
     res.json({ success: true });
   } catch (error) {
-    console.error('[MESController] Error deleting MES record:', error);
+    logger.error('[MESController] Error deleting MES record:', error);
     res.status(500).json({ error: 'Erreur lors de la suppression de l\'enregistrement MES' });
   }
 }
@@ -103,7 +104,7 @@ export async function updateMESStatus(req, res) {
     
     res.json(record);
   } catch (error) {
-    console.error('[MESController] Error updating MES status:', error);
+    logger.error('[MESController] Error updating MES status:', error);
     res.status(500).json({ error: 'Erreur lors de la mise à jour du statut MES' });
   }
 }
@@ -123,7 +124,7 @@ export async function validateMESRecord(req, res) {
     
     res.json(record);
   } catch (error) {
-    console.error('[MESController] Error validating MES record:', error);
+    logger.error('[MESController] Error validating MES record:', error);
     res.status(500).json({ error: 'Erreur lors de la validation de l\'enregistrement MES' });
   }
 }
@@ -148,7 +149,7 @@ export async function controlMESRecord(req, res) {
     
     res.json(record);
   } catch (error) {
-    console.error('[MESController] Error controlling MES record:', error);
+    logger.error('[MESController] Error controlling MES record:', error);
     res.status(500).json({ error: 'Erreur lors du contrôle de l\'enregistrement MES' });
   }
 }
@@ -163,7 +164,7 @@ export async function getMESStats(req, res) {
     const stats = await mesService.getMESStats(filters, req.organization.id);
     res.json(stats);
   } catch (error) {
-    console.error('[MESController] Error fetching MES stats:', error);
+    logger.error('[MESController] Error fetching MES stats:', error);
     res.status(500).json({ error: 'Erreur lors de la récupération des statistiques MES' });
   }
 }
@@ -180,7 +181,7 @@ export async function importFromExcel(req, res) {
     const result = await mesService.importFromExcel(req.file, req.organization.id, req.user.id);
     res.json(result);
   } catch (error) {
-    console.error('[MESController] Error importing from Excel:', error);
+    logger.error('[MESController] Error importing from Excel:', error);
     res.status(500).json({ error: 'Erreur lors de l\'import Excel' });
   }
 }
@@ -198,7 +199,7 @@ export async function exportToExcel(req, res) {
     res.setHeader('Content-Disposition', 'attachment; filename=mes_export.xlsx');
     res.send(buffer);
   } catch (error) {
-    console.error('[MESController] Error exporting to Excel:', error);
+    logger.error('[MESController] Error exporting to Excel:', error);
     res.status(500).json({ error: 'Erreur lors de l\'export Excel' });
   }
 }
@@ -211,7 +212,7 @@ export async function getZones(req, res) {
     const zones = await mesService.getZones(req.organization.id);
     res.json({ zones });
   } catch (error) {
-    console.error('[MESController] Error fetching zones:', error);
+    logger.error('[MESController] Error fetching zones:', error);
     res.status(500).json({ error: 'Erreur lors de la récupération des zones' });
   }
 }
@@ -224,7 +225,7 @@ export async function getPostes(req, res) {
     const postes = await mesService.getPostes(req.organization.id);
     res.json({ postes });
   } catch (error) {
-    console.error('[MESController] Error fetching postes:', error);
+    logger.error('[MESController] Error fetching postes:', error);
     res.status(500).json({ error: 'Erreur lors de la récupération des postes' });
   }
 }
@@ -238,7 +239,7 @@ export async function getAgents(req, res) {
     const agents = await mesService.getAgents(req.organization.id, prestataire);
     res.json({ agents });
   } catch (error) {
-    console.error('[MESController] Error fetching agents:', error);
+    logger.error('[MESController] Error fetching agents:', error);
     res.status(500).json({ error: 'Erreur lors de la récupération des agents' });
   }
 }

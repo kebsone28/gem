@@ -204,6 +204,10 @@ export const PERMISSIONS = {
 
   // ── MODULES ──
   MODULES_MANAGE: 'modules.manage',
+
+  // ── SECTEURS AUTORISÉS ──
+  SECTOR_GEM: 'sector.gem',
+  SECTOR_MES: 'sector.mes',
 } as const;
 
 export const ROLES = AppRole;

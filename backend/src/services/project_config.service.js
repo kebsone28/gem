@@ -1,5 +1,6 @@
 import prisma from '../core/utils/prisma.js';
 import { generateDynamicGrappes } from '../utils/clustering.js';
+import logger from '../utils/logger.js';
 
 // In-memory debounce timers and locks per project
 const recalculationTimers = new Map();
@@ -16,7 +17,7 @@ export async function recalculateProjectGrappes(projectId, organizationId, force
 
     // 1. If currently executing, skip (it will be triggered by debounce after completion if needed)
     if (activeRecalculations.has(projectId)) {
-        console.log(`[PROJECT-CONFIG] ⏳ Recalculation in progress for ${projectId}. Batch skipped.`);
+        logger.info(`[PROJECT-CONFIG] ⏳ Recalculation in progress for ${projectId}. Batch skipped.`);
         return { success: true, message: 'Recalculation in progress' };
     }
 
@@ -42,7 +43,7 @@ export async function recalculateProjectGrappes(projectId, organizationId, force
                 const result = await _executeRecalculation(projectId, organizationId, force);
                 resolve(result);
             } catch (err) {
-                console.error(`[PROJECT-CONFIG] Fatal error during debounced recalculation:`, err);
+                logger.error(`[PROJECT-CONFIG] Fatal error during debounced recalculation:`, err);
                 reject(err);
             } finally {
                 activeRecalculations.delete(projectId);
@@ -58,7 +59,7 @@ export async function recalculateProjectGrappes(projectId, organizationId, force
  */
 async function _executeRecalculation(projectId, organizationId, force) {
     try {
-        console.log(`[PROJECT-CONFIG] 🤖 Automating grappe generation for project: ${projectId} (force: ${force})`);
+        logger.info(`[PROJECT-CONFIG] 🤖 Automating grappe generation for project: ${projectId} (force: ${force})`);
         
         // 0. Prevent auto-overwrite if grappes already exist, unless forced
         const projectCheck = await prisma.project.findFirst({
@@ -75,7 +76,7 @@ async function _executeRecalculation(projectId, organizationId, force) {
         
         const currentGrappesCount = projectCheck?.config?.grappesConfig?.grappes?.length || 0;
         if (currentGrappesCount > 0 && !force) {
-            console.log(`[PROJECT-CONFIG] ⏭️ Project ${projectId} already has ${currentGrappesCount} grappes. Auto-clustering skipped to preserve assignments. Use force=true to override.`);
+            logger.info(`[PROJECT-CONFIG] ⏭️ Project ${projectId} already has ${currentGrappesCount} grappes. Auto-clustering skipped to preserve assignments. Use force=true to override.`);
             return { success: true, grappesCount: currentGrappesCount, skipped: true };
         }
 
@@ -89,7 +90,7 @@ async function _executeRecalculation(projectId, organizationId, force) {
         });
 
         if (allHouseholds.length === 0) {
-            console.log('[PROJECT-CONFIG] No households found for this project. Skipping clustering.');
+            logger.info('[PROJECT-CONFIG] No households found for this project. Skipping clustering.');
             return { success: true, grappesCount: 0, message: 'No households' };
         }
 
@@ -124,7 +125,7 @@ async function _executeRecalculation(projectId, organizationId, force) {
 
         // --------------------------------------------
         // 3. UPSERT INTO PRISMA GRAPPE TABLE & LINK HOUSEHOLDS
-        console.log(`[PROJECT-CONFIG] 💽 Upserting ${grappes.length} grappes...`);
+        logger.info(`[PROJECT-CONFIG] 💽 Upserting ${grappes.length} grappes...`);
         for (let i = 0; i < grappes.length; i++) {
             const cluster = grappes[i];
             const regionName = cluster.region || 'Zone Inconnue';
@@ -176,7 +177,7 @@ async function _executeRecalculation(projectId, organizationId, force) {
                 });
             }
         }
-        console.log(`[PROJECT-CONFIG] 💽 Upsert and linking completed.`);
+        logger.info(`[PROJECT-CONFIG] 💽 Upsert and linking completed.`);
 
         const persistedSousGrappes = sous_grappes.map(sub => ({
             ...sub,
@@ -227,7 +228,7 @@ async function _executeRecalculation(projectId, organizationId, force) {
         config.zones = zones;
 
         // 5. MIGRATION DOUCE: Transfer team assignments from Zone to Grappe if matching by region
-        console.log(`[PROJECT-CONFIG] 🚚 Migrating team assignments (Zone -> Grappe)...`);
+        logger.info(`[PROJECT-CONFIG] 🚚 Migrating team assignments (Zone -> Grappe)...`);
         const teams = await prisma.team.findMany({
             where: { projectId, organizationId, deletedAt: null }
         });
@@ -262,7 +263,7 @@ async function _executeRecalculation(projectId, organizationId, force) {
                             where: { id: team.id },
                             data: { grappeId: targetGrappe.id, zoneId: null }
                         });
-                        console.log(`[PROJECT-CONFIG]   Mapped team ${team.name} to grappe ${targetGrappe.name}`);
+                        logger.info(`[PROJECT-CONFIG]   Mapped team ${team.name} to grappe ${targetGrappe.name}`);
                     }
                 }
             }
@@ -305,10 +306,10 @@ async function _executeRecalculation(projectId, organizationId, force) {
             data: { config }
         });
 
-        console.log(`[PROJECT-CONFIG] ✅ Project config updated with ${grappes.length} grappes.`);
+        logger.info(`[PROJECT-CONFIG] ✅ Project config updated with ${grappes.length} grappes.`);
         return { success: true, grappesCount: grappes.length };
     } catch (error) {
-        console.error(`[PROJECT-CONFIG] ❌ Error during grappe recalculation for project ${projectId}:`, error.message);
+        logger.error(`[PROJECT-CONFIG] ❌ Error during grappe recalculation for project ${projectId}:`, error.message);
         throw error;
     }
 }

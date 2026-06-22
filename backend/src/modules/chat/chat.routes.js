@@ -30,7 +30,7 @@ const chatCreateConversationSchema = {
     participantIds: {
       type: 'array',
       required: true,
-      validate: (value) => Array.isArray(value) && value.length >= 2 ? null : 'Need at least 2 participants'
+      validate: (value) => Array.isArray(value) && value.length >= 1 ? null : 'Sélectionnez au moins un autre membre'
     },
     name: { type: 'string', maxLength: 255 },
   },

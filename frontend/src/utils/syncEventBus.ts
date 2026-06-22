@@ -118,4 +118,7 @@ export const SYNC_EVENTS = {
   MISSION_SUBMITTED: 'mission:submitted',
   MISSION_UPDATED: 'mission:update',
   MISSION_CERTIFIED: 'mission:certified',
+
+  // Notification (alertes système)
+  NOTIFICATION: 'notification',
 } as const;

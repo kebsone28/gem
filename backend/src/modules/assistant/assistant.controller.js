@@ -9,8 +9,7 @@ import {
 
 export const handleQuery = async (req, res) => {
     try {
-        const { userId, message, context = {}, location = {}, offlineMode = false } = req.body;
-        const requester = req.user || {};
+        const { userId, message, context = {} } = req.body;
 
         if (!userId || !message) {
             return res.status(400).json({ error: 'userId and message are required.' });

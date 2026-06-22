@@ -1,4 +1,5 @@
 import { utils, writeFile, read } from 'xlsx';
+import logger from './logger';
 
 export const exportProjectConfig = async (project: any) => {
   try {
@@ -89,7 +90,7 @@ export const exportProjectConfig = async (project: any) => {
     writeFile(wb, `config_projet_${project?.name || 'export'}.xlsx`);
     return { success: true };
   } catch (err: any) {
-    console.error('Export error:', err);
+    logger.error('Export error:', err);
     throw new Error('Erreur export configuration.');
   }
 };
@@ -131,7 +132,7 @@ export const importProjectConfig = async (file: File, currentProjectConfig: any)
 
     return { success: true, newConfig };
   } catch (err: any) {
-    console.error('Import error:', err);
+    logger.error('Import error:', err);
     throw new Error('Format invalide');
   }
 };

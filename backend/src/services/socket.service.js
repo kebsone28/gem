@@ -1,5 +1,6 @@
 import { Server } from 'socket.io';
 import { config } from '../core/config/config.js';
+import logger from '../utils/logger.js';
 
 class SocketService {
     constructor() {
@@ -14,14 +15,14 @@ class SocketService {
         });
 
         this.io.on('connection', (socket) => {
-            console.log(`🔌 New client connected: ${socket.id}`);
+            logger.info(`🔌 New client connected: ${socket.id}`);
 
             // The client explicitly identifies itself
             socket.on('authenticate', (data) => {
                 const { userId, role, organizationId } = data || {};
                 if (userId) {
                     socket.join(`user_${userId}`);
-                    console.log(`👤 Socket ${socket.id} authenticated as user_${userId}`);
+                    logger.info(`👤 Socket ${socket.id} authenticated as user_${userId}`);
                 }
                 if (role) {
                     socket.join(`role_${role}`);
@@ -36,16 +37,16 @@ class SocketService {
 
             socket.on('join_room', (room) => {
                 socket.join(room);
-                console.log(`👤 Socket ${socket.id} joined room ${room}`);
+                logger.info(`👤 Socket ${socket.id} joined room ${room}`);
             });
 
             socket.on('disconnect', () => {
                 this.unregisterPresence(socket.id);
-                console.log(`🔌 Client disconnected: ${socket.id}`);
+                logger.info(`🔌 Client disconnected: ${socket.id}`);
             });
         });
 
-        console.log('✅ WebSockets initialized successfully');
+        logger.info('✅ WebSockets initialized successfully');
     }
 
     /**
@@ -53,7 +54,7 @@ class SocketService {
      */
     emit(event, data, room = null) {
         if (!this.io) {
-            console.warn('⚠️ Cannot emit event: Socket.io not initialized');
+            logger.warn('⚠️ Cannot emit event: Socket.io not initialized');
             return;
         }
 

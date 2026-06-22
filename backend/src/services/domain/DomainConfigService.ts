@@ -27,7 +27,7 @@ export interface DomainConfig {
  * Default configurations per domain
  */
 const DEFAULT_CONFIGS: Record<string, Partial<DomainConfig>> = {
-  electricity: {
+  gem: {
     statusEnum: ['planning', 'connected', 'maintenance', 'disconnected'],
     entityFields: {
       fields: [
@@ -49,57 +49,24 @@ const DEFAULT_CONFIGS: Record<string, Partial<DomainConfig>> = {
       warning_threshold: 0.6,
     },
   },
-  agriculture: {
-    statusEnum: ['idle', 'planted', 'growing', 'harvested', 'alert'],
+  mes: {
+    statusEnum: ['en_attente', 'en_cours', 'termine', 'valide', 'controle', 'rejete'],
     entityFields: {
-      fields: ['name', 'crop', 'area', 'soilType', 'waterSource', 'status', 'yield'],
+      fields: [
+        'name',
+        'prestataire',
+        'client',
+        'status',
+        'zone',
+        'poste',
+        'agent',
+        'phase',
+        'branchement',
+        'compteur',
+      ],
     },
     priorityRules: {
-      pest_detection: 'critical',
-      water_shortage: 'high',
-      soil_degradation: 'medium',
-    },
-  },
-  health: {
-    statusEnum: ['operational', 'understaffed', 'closed', 'alert'],
-    entityFields: {
-      fields: ['name', 'type', 'beds', 'staff', 'status', 'equipment'],
-    },
-    priorityRules: {
-      stock_critical: 'critical',
-      staff_shortage: 'high',
-      equipment_failure: 'high',
-    },
-  },
-  logistics: {
-    statusEnum: ['operational', 'understocked', 'full', 'delayed'],
-    entityFields: {
-      fields: ['name', 'location', 'capacity', 'stock', 'status'],
-    },
-    priorityRules: {
-      stock_below_min: 'high',
-      delivery_delayed: 'high',
-      capacity_exceeded: 'critical',
-    },
-  },
-  high_voltage: {
-    statusEnum: ['operational', 'maintenance_overdue', 'overloaded', 'alert'],
-    entityFields: {
-      fields: ['name', 'type', 'voltageCapacity', 'currentLoad', 'maxLoad', 'status'],
-    },
-    priorityRules: {
-      load_critical: 'critical',
-      maintenance_overdue: 'high',
-    },
-  },
-  solar: {
-    statusEnum: ['active', 'degraded', 'faulty'],
-    entityFields: {
-      fields: ['name', 'systemType', 'capacityWp', 'batteryHealth', 'dailyGenerationWh', 'status'],
-    },
-    priorityRules: {
-      battery_critical: 'critical',
-      generation_zero: 'high',
+      validation_required: 'high',
     },
   },
   targeting: {
@@ -178,7 +145,7 @@ export class DomainConfigService {
     organizationId: string,
     domainType: string
   ): Promise<any> {
-    const defaults = DEFAULT_CONFIGS[domainType] || DEFAULT_CONFIGS.electricity;
+    const defaults = DEFAULT_CONFIGS[domainType] || DEFAULT_CONFIGS.gem;
 
     const config = await prisma.domainConfig.create({
       data: {

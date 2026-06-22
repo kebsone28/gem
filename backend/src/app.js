@@ -1,6 +1,7 @@
+import 'express-async-errors';
 import express from 'express';
 import path from 'path';
-import prisma, { basePrisma } from './core/utils/prisma.js';
+import prisma from './core/utils/prisma.js';
 import { redisConnection } from './core/utils/queueManager.js';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -9,14 +10,32 @@ import cookieParser from 'cookie-parser';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import { config } from './core/config/config.js';
+import { jsonBigIntReplacer } from './utils/commonUtils.js';
 import sharedocRoutes from './modules/sharedoc/sharedoc.routes.js';
 import { setupSwagger } from './core/config/swagger.js';
 
 const app = express();
 
 app.set('trust proxy', 1);
+app.set('json replacer', jsonBigIntReplacer);
 
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "https://puter.com"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "https://tiles.openfreemap.org", "https://kf.kobotoolbox.org"],
+      connectSrc: ["'self'", "https://kf.kobotoolbox.org", "wss://*.proquelec.sn"],
+      fontSrc: ["'self'"],
+      objectSrc: ["'none'"],
+      frameAncestors: ["'none'"],
+      upgradeInsecureRequests: [],
+    },
+  },
+  crossOriginEmbedderPolicy: false,
+  referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+}));
 app.use(cors(config.cors));
 
 app.get('/api/ping', async (req, res) => {
@@ -51,15 +70,28 @@ app.use(cookieParser());
 app.use(compression());
 app.use('/api/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
-// 3. Rate Limiting (désactivé en DEV pour éviter les faux positifs)
+// 3. Rate Limiting global (désactivé en DEV pour éviter les faux positifs)
+const isDev = config.env === 'development';
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: config.env === 'development' || !config.env ? 0 : 1000, // 0 = illimité en DEV ou si env non défini
-  skip: () => config.env === 'development' || !config.env,
+  max: 1000,
+  skip: () => isDev,
   standardHeaders: true,
   legacyHeaders: false,
 });
 app.use('/api/', limiter);
+
+// Rate limiting spécifique pour l'authentification (prévention brute force)
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { error: 'Trop de tentatives de connexion. Réessayez dans 15 minutes.', code: 'AUTH_RATE_LIMIT' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: () => process.env.NODE_ENV === 'development',
+});
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/register', authLimiter);
 
 // 4. Logging
 if (config.env === 'development') {
@@ -72,8 +104,6 @@ import syncRoutes from './api/routes/sync.routes.js';
 import projectRoutes from './api/routes/project.routes.js';
 import projectTemplateRoutes from './api/routes/projectTemplate.routes.js';
 import householdRoutes from './api/routes/household.routes.js';
-import fieldsRoutes from './api/routes/fields.routes.js';
-import healthRoutes from './api/routes/health.routes.js';
 import logisticsRoutes from './api/routes/logistics.routes.js';
 import zoneRoutes from './api/routes/zone.routes.js';
 import kpiRoutes from './api/routes/kpi.routes.js';
@@ -97,7 +127,7 @@ import internalKoboRoutes from './modules/internalKobo/internalKobo.routes.js';
 import debugRoutes from './api/routes/debug.routes.js';
 import adminPermissionRoutes from './api/routes/admin.permissions.routes.js';
 import mesRoutes from './api/routes/mes.routes.js';
-import { notFoundHandler } from './middleware/errorHandler.js';
+import { notFoundHandler, errorHandler } from './middleware/errorHandler.js';
 import { tenantResolver } from './middleware/tenantResolver.js';
 import { domainContext } from './middleware/domainContext.js';
 import { paginationMiddleware } from './utils/paginationHelper.js';
@@ -120,8 +150,6 @@ app.use('/api/sync', syncRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/project-templates', projectTemplateRoutes);
 app.use('/api/households', householdRoutes);
-app.use('/api/fields', fieldsRoutes);
-app.use('/api/health', healthRoutes);
 app.use('/api/logistics', logisticsRoutes);
 app.use('/api/zones', zoneRoutes);
 app.use('/api/kpi', kpiRoutes);
@@ -176,8 +204,7 @@ app.get('/health', async (req, res) => {
   try {
     const ping = await redisConnection.ping();
     if (ping === 'PONG') health.services.redis = 'UP';
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  } catch (_err) {
+  } catch {
     health.status = 'PARTIAL';
   }
 
@@ -189,50 +216,6 @@ app.get('/health', async (req, res) => {
 app.use(notFoundHandler);
 
 // 7. Global Error Handler
-app.use((err, req, res, _next) => {
-  const status = err.status || 500;
-  const message = err.message || 'Internal Server Error';
-
-  console.error('🔥 GLOBAL ERROR:', err.stack);
-
-  // 🛡️ PERSISTENCE DE L'ERREUR POUR DIAGNOSTIC
-  // On ne loggue pas en DB si l'erreur est déjà une erreur de connexion DB (boucle infinie sinon)
-  const isDbError = err.message?.includes("Can't reach database server") || err.code?.startsWith('P');
-
-  if (status >= 500 && !isDbError) {
-    const { organizationId, userId, projectId } = req.user || {};
-    // 🛡️ [SECURITY sec_002] Utiliser basePrisma pour éviter les boucles de middleware ou l'isolation erronée
-    basePrisma.systemError.create({
-      data: {
-        organizationId,
-        userId,
-        projectId,
-        code: err.code || 'UNEXPECTED_ERROR',
-        message: String(message).substring(0, 1000),
-        stack: String(err.stack).substring(0, 5000),
-        context: {
-          url: req.originalUrl,
-          method: req.method,
-          userAgent: req.headers['user-agent']
-        }
-      }
-    }).catch(e => console.error('[SYSTEM_ERROR_LOGGER] Persistence failed:', e.message));
-  }
-
-  // Specific handling for DB errors in the global handler
-  if (err.message?.includes("Can't reach database server")) {
-    return res.status(503).json({
-      error: 'Database Connection Error',
-      message: 'Le serveur ne parvient pas à contacter PostgreSQL. Vérifiez Docker Desktop.',
-      code: 'DB_CONNECTION_ERROR',
-    });
-  }
-
-  res.status(status).json({
-    error: status === 500 ? 'Internal Server Error' : 'Request Error',
-    message: message,
-    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
-  });
-});
+app.use(errorHandler);
 
 export default app;

@@ -1,4 +1,3 @@
-import { config } from '../../core/config/config.js';
 import logger from '../../utils/logger.js';
 
 /**

@@ -13,6 +13,7 @@ import {
 } from './autoTrainingSystem';
 import { mentorTrainingService } from './mentorTrainingService';
 import type { DomaineTechnique } from './referentialTypes';
+import logger from '../../services/logger';
 
 // Réexport des types depuis autoTrainingSystem
 export type { TrainingSuggestion, LearningMetric, UserFeedback };
@@ -105,7 +106,7 @@ export class GedOsAiCore {
 
       this.initialized = true;
     } catch (err) {
-      console.error('[GedOsAiCore] Initialization failed', err);
+      logger.error('[GedOsAiCore] Initialization failed', err);
     }
   }
 
@@ -168,7 +169,7 @@ export class GedOsAiCore {
       };
     } catch (err) {
       this.state.isThinking = false;
-      console.error('[GedOsAiCore] Request processing failed', err);
+      logger.error('[GedOsAiCore] Request processing failed', err);
       throw err;
     }
   }
@@ -240,7 +241,7 @@ export class GedOsAiCore {
         (s) => s.id !== suggestion.id
       );
     } catch (err) {
-      console.error('[GedOsAiCore] Failed to accept training suggestion', err);
+      logger.error('[GedOsAiCore] Failed to accept training suggestion', err);
       throw err;
     }
   }

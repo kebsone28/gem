@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { DollarSign, Trash2, Wrench } from 'lucide-react';
-import { useTeams } from '../../../../hooks/useTeams';
-import type { CatalogItem } from '../../../../utils/types';
+import { useTeams } from '@hooks/useTeams';
+import type { CatalogItem } from '@utils/types';
 
 export default function CostsTab({ project, onUpdate }: { project: any; onUpdate: any }) {
   const { regions, fetchRegions, teams, fetchTeams } = useTeams(project?.id);

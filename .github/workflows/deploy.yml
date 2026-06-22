@@ -39,7 +39,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
           cache: 'npm'
 
       - name: Install backend dependencies
@@ -57,6 +57,26 @@ jobs:
           DB_USER: test_user
           DB_PASSWORD: test_password
           DB_NAME: proquelec_test
+
+      # ============ FRONTEND ============
+      - name: Install frontend dependencies
+        run: npm ci --prefix frontend
+
+      - name: TypeScript check (frontend)
+        run: npx tsc --noEmit --project frontend/tsconfig.app.json
+        continue-on-error: true
+
+      - name: Lint frontend
+        run: npm run lint --prefix frontend
+        continue-on-error: true
+
+      - name: Build frontend
+        run: npm run build --prefix frontend
+        env:
+          NODE_OPTIONS: '--max-old-space-size=4096'
+
+      - name: Run frontend unit tests
+        run: npm run test:unit --prefix frontend
 
   # ============ DEPLOY TO WANEKOO ============
   deploy:
@@ -82,13 +102,14 @@ jobs:
             exit 1
           fi
 
-          mkdir -p ~/.ssh
-          echo "${{ secrets.WANEKOO_SSH_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
+          # Use ssh-agent for secure key handling (avoids writing key to disk)
+          which ssh-agent || apt-get update -qq && apt-get install -qq -y openssh-client
+          eval $(ssh-agent -s)
+          echo "${{ secrets.WANEKOO_SSH_KEY }}" | ssh-add -
 
           ssh-keyscan -H $WANEKOO_HOST >> ~/.ssh/known_hosts 2>/dev/null
 
-          ssh -i ~/.ssh/id_rsa $WANEKOO_USER@$WANEKOO_HOST "
+          ssh -A $WANEKOO_USER@$WANEKOO_HOST "
             set -e
             cd $WANEKOO_DEPLOY_PATH
             git fetch --all

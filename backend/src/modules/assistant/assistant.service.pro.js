@@ -152,7 +152,7 @@ function buildPrompt(message, memory, intent, emotion) {
   return `Message: ${message}\nIntent: ${intent}\nEmotion: ${emotion}\nUser memory: ${JSON.stringify(memory || {})}`;
 }
 
-function buildOllamaPrompt(message, memory, intent, emotion) {
+function buildOllamaPrompt(message, memory, _intent, _emotion) {
   return `Tu es un assistant technique spécialisé.
 
 Réponds de manière claire, structurée et concise.
@@ -383,7 +383,7 @@ export const assistantService = {
     });
   },
 
-  async saveUserMemory(userId, memory, organizationId) {
+  async saveUserMemory(userId, memory, _organizationId) {
     if (!userId || typeof memory !== 'object') return null;
     return prisma.userMemory.upsert({
       where: { userId },

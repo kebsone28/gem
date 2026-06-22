@@ -18,31 +18,31 @@ import {
   Activity,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import api from '../../../api/client';
+import api from '@/api/client';
 import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
-import { generateGrappePDF, generateGrappeExcel } from '../../../services/bordereauGenerator';
-import { useProject } from '../../../contexts/ProjectContext';
-import { db } from '../../../store/db';
-import { useSyncListener } from '../../../hooks/useSyncListener';
-import { useGrappes } from '../../../hooks/useGrappes';
-import { fmtNum } from '../../../utils/format';
-import logger from '../../../utils/logger';
-import type { Household } from '../../../utils/types';
-import { HouseholdListView } from '../../../components/terrain/HouseholdListView';
-import { useTerrainUIStore } from '../../../store/terrainUIStore';
+import { generateGrappePDF, generateGrappeExcel } from '@services/bordereauGenerator';
+import { useProject } from '@contexts/ProjectContext';
+import { db } from '@/store/db';
+import { useSyncListener } from '@hooks/useSyncListener';
+import { useGrappes } from '@hooks/useGrappes';
+import { fmtNum } from '@utils/format';
+import logger from '@utils/logger';
+import type { Household } from '@utils/types';
+import { HouseholdListView } from '@modules/terrain/components/HouseholdListView';
+import { useTerrainUIStore } from '@/store/terrainUIStore';
 import { List } from 'react-window';
 import { AutoSizer } from 'react-virtualized-auto-sizer';
 
 // Import centralized design system
-import { PageContainer, PageHeader, ContentArea, ActionBar } from '../../../components';
+import { PageContainer, PageHeader, ContentArea, ActionBar } from '@components';
 import {
   DASHBOARD_ACCENT_SURFACE,
   DASHBOARD_INPUT,
   DASHBOARD_MINI_STAT_CARD,
   DASHBOARD_PRIMARY_BUTTON,
   DASHBOARD_SECTION_SURFACE,
-} from '../../../components/dashboards/DashboardComponents';
+} from '@components/dashboards/DashboardComponents';
 
 // ---------------------------------------------------------------------------
 // Helpers et composants au niveau MODULE
@@ -190,7 +190,7 @@ const Bordereau = () => {
 
   useEffect(() => {
     // Initialize Worker
-    workerRef.current = new Worker(new URL('../../../services/bordereauWorker.ts', import.meta.url), {
+    workerRef.current = new Worker(new URL('@services/bordereauWorker.ts', import.meta.url), {
       type: 'module',
     });
 
@@ -433,7 +433,7 @@ const Bordereau = () => {
 
   const handleSelectHousehold = (household: Household) => {
     setSelectedHouseholdId(household.id);
-    navigate('/terrain');
+    navigate('/operations/map');
   };
 
   const handleExportGrappe = (grappe: any, format: string) => {

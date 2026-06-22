@@ -1,7 +1,7 @@
 ﻿ 
 import { useState } from 'react';
 import { TrendingUp, TrendingDown, Calendar } from 'lucide-react';
-import { useTheme } from '../../contexts/ThemeContext';
+import { useTheme } from '@contexts/ThemeContext';
 
 interface DataPoint {
   week: string;

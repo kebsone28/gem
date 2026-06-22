@@ -1,8 +1,8 @@
-import React from 'react';
+﻿import React from 'react';
 import { LayoutGrid, Box, Activity } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { ProgressBar } from '../../../../../../components/dashboards/DashboardComponents';
-import { fmtNum } from '../../../../../../utils/format';
+import { ProgressBar } from '@components/dashboards/DashboardComponents';
+import { fmtNum } from '@utils/format';
 import { useNavigate } from 'react-router-dom';
 import type { DashboardMetrics } from '../types';
 

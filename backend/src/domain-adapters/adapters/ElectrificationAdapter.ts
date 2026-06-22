@@ -11,7 +11,7 @@
 import { DomainAdapter, ValidationError, Alert, NormalizedEntity } from '../DomainAdapter';
 
 export class ElectrificationAdapter implements DomainAdapter {
-  domainType = 'electricity';
+  domainType = 'gem';
 
   /**
    * Normalize raw household data to standard format

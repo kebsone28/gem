@@ -1,8 +1,9 @@
-import React, { useContext, useEffect, useRef, useState } from 'react'
+﻿import React, { useContext, useEffect, useRef, useState } from 'react'
 import { Map, Popup } from 'maplibre-gl'
 import { MapContext } from '../MapLibreVectorMap'
-import useHouseholdSync from '../../../services/households/useHouseholdSync'
-import { useCluster } from '../../../services/cluster/useCluster'
+import useHouseholdSync from '@services/households/useHouseholdSync'
+import { useCluster } from '@services/cluster/useCluster'
+import logger from '@services/logger'
 
 type Props = { id?: string }
 
@@ -56,7 +57,7 @@ export default function HouseholdLayer({ id = 'households' }: Props){
     if (!map) return
     if (!clusters) return
     const fc = { type: 'FeatureCollection', features: clusters as any[] }
-    try{ const src = map.getSource(id) as any; if (src) src.setData(fc) }catch(e){ console.warn('household setData failed', e) }
+    try{ const src = map.getSource(id) as any; if (src) src.setData(fc) }catch(e){ logger.warn('household setData failed', e) }
   }, [clusters, map, id])
 
   // request clusters on moveend
@@ -113,7 +114,7 @@ export default function HouseholdLayer({ id = 'households' }: Props){
           }
           const summaryHtml = `<div style=\"min-width:200px;padding:10px;border-radius:12px;backdrop-filter:blur(6px);background:rgba(0,0,0,0.75);color:#fff\">Cluster: <strong>${props.point_count||props.count||''}</strong></div>`
           new Popup({ offset:12 }).setLngLat(coords).setHTML(summaryHtml).addTo(map)
-        }catch(err){ console.warn('household cluster expand', err) }
+        }catch(err){ logger.warn('household cluster expand', err) }
       }else{
         const html = `<div style=\"min-width:180px;padding:10px;border-radius:12px;backdrop-filter:blur(6px);background:rgba(0,0,0,0.6);color:#fff\">${props.name||props.id||'Household'}<div style=\"opacity:.85;font-size:12px\">${props.info||''}</div></div>`
         new Popup({ offset:12 }).setLngLat(coords).setHTML(html).addTo(map)

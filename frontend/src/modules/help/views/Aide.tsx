@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+﻿/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState } from 'react';
 import {
   Map as MapIcon,
@@ -25,7 +25,7 @@ import {
   ShieldAlert,
   Globe,
 } from 'lucide-react';
-import { useTheme } from '../../../contexts/ThemeContext';
+import { useTheme } from '@contexts/ThemeContext';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // Import centralized design system
@@ -36,7 +36,7 @@ import {
   ContentArea,
   DESIGN_TOKENS,
   COMMON_CLASSES,
-} from '../../../components';
+} from '@components';
 
 /* ─── Screenshot gallery data ─────────────────────────────────────── */
 const SCREENSHOTS = [
@@ -173,7 +173,7 @@ export default function Aide() {
       content: [
         'Plateforme intelligente multidomaine pour créer, piloter et automatiser des écosystèmes métiers.',
         'Système d’Exploitation Métier : orchestrateur de workflows et centralisateur de données souveraines.',
-        'Secteurs : Infrastructures, Énergie, Agriculture, Santé, Gouvernance, Logistique.',
+        'Secteurs : Infrastructures, Énergie, Gouvernance, Logistique.',
         'Supervision en temps réel avec traçabilité, IA et automatisation native.',
       ],
       utility: "GED OS permet aux États, entreprises et institutions de déployer rapidement des solutions souveraines adaptées à leurs réalités locales.",

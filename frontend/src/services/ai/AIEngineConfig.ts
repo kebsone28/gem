@@ -38,6 +38,7 @@ export interface AIEngineSettings {
 }
 
 const CONFIG_KEY = 'ged_os_ai_engine_config';
+const API_KEY_STORAGE_KEY = 'ged_os_ai_api_key';
 
 const DEFAULT_CONFIG: AIEngineSettings = {
   mode: 'HYBRID_AI_FIRST',
@@ -63,11 +64,13 @@ export function getAIEngineConfig(): AIEngineSettings {
     const raw = localStorage.getItem(CONFIG_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as Partial<AIEngineSettings>;
-      // Map old modes to new ones if necessary
       if ((parsed as any).mode === 'CLAUDE_ONLY') parsed.mode = 'PRIVATE_AI_ONLY';
       if ((parsed as any).provider === 'OLLAMA' || (parsed as any).provider === 'OLLAMA_LOCAL') {
         parsed.provider = 'LOCAL_OLLAMA';
       }
+      // Restore apiKey from sessionStorage (never stored in localStorage)
+      const sessionKey = sessionStorage.getItem(API_KEY_STORAGE_KEY);
+      if (sessionKey) parsed.apiKey = sessionKey;
       return { ...DEFAULT_CONFIG, ...parsed };
     }
   } catch (e) {
@@ -88,7 +91,17 @@ export function saveAIEngineConfig(
     lastUpdatedBy: adminEmail,
     lastUpdatedAt: Date.now(),
   };
-  localStorage.setItem(CONFIG_KEY, JSON.stringify(updated));
+  // Store apiKey separately in sessionStorage (cleared on tab close)
+  if (config.apiKey !== undefined) {
+    if (config.apiKey) {
+      sessionStorage.setItem(API_KEY_STORAGE_KEY, config.apiKey);
+    } else {
+      sessionStorage.removeItem(API_KEY_STORAGE_KEY);
+    }
+  }
+  // Persist config WITHOUT the apiKey to localStorage
+  const { apiKey, ...persistedConfig } = updated;
+  localStorage.setItem(CONFIG_KEY, JSON.stringify(persistedConfig));
   logger.debug(`[AIEngine] Configuration mise à jour par ${adminEmail}:`, updated);
   return updated;
 }

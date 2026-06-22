@@ -3,7 +3,7 @@
  * Tests complets pour le système d'alertes (SMS, Email, Escalation, KPI)
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import prisma from '../../../core/utils/prisma.js';
 import { sendSMSAlert, sendEmailAlert, handleEscalation, createIGPPAlerts } from '../alerts.service';
 import * as notificationProviders from '../../../services/notificationProviders.js';
@@ -272,7 +272,7 @@ describe('Alerts Service - IGPP KPI', () => {
         severity: 'high',
       });
 
-      const result = await createIGPPAlerts({
+      await createIGPPAlerts({
         projectId: 'proj-123',
         organizationId: 'org-123',
         kpiData: mockData,
@@ -295,7 +295,7 @@ describe('Alerts Service - IGPP KPI', () => {
         status: 'OPEN',
       });
 
-      const result = await createIGPPAlerts({
+      await createIGPPAlerts({
         projectId: 'proj-123',
         organizationId: 'org-123',
         kpiData: {

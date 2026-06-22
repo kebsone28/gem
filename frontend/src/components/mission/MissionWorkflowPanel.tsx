@@ -5,12 +5,12 @@ import { CheckCircle2, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react'
 import type {
   MissionApprovalWorkflow,
   MissionApprovalStep,
-} from '../../constants/approvalConstants';
+} from '@/constants/approvalConstants';
 import {
   calculateApprovalProgress,
   getNextPendingStep,
   ROLE_LABELS,
-} from '../../constants/approvalConstants';
+} from '@/constants/approvalConstants';
 
 interface MissionWorkflowPanelProps {
   workflow: MissionApprovalWorkflow | null;

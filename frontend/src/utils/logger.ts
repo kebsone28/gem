@@ -1,43 +1,21 @@
- 
-// simple abstraction over console with quiet-by-default dev mode
-const isProd = import.meta.env?.PROD;
+  
+/**
+ * @deprecated Utilisez `import { logger } from '../services/logger'` à la place.
+ * Ce fichier est conservé pour la compatibilité ascendante.
+ * Il réexporte le logger structuré depuis services/logger.ts.
+ */
+import { logger as _structured, default as _legacy } from '../services/logger';
 
-function isVerboseDevEnabled() {
-  if (isProd || typeof window === 'undefined') return false;
+// Backward-compat: default export uses legacy variadic API (GENERAL category),
+// plus .info() from the structured API (which legacy doesn't have).
+export const logger: Record<string, unknown> = {
+  log: _legacy.log,
+  info: _structured.info,
+  warn: _legacy.warn,
+  error: _legacy.error,
+  debug: _legacy.debug,
+  getBuffer: _structured.getBuffer,
+  clearBuffer: _structured.clearBuffer,
+} as any;
 
-  try {
-    return (
-      localStorage.getItem('ged-os:verbose-logs') === '1' ||
-      localStorage.getItem('debug') === '1' ||
-      (window as Window & { __GED_OS_VERBOSE_LOGS__?: boolean }).__GED_OS_VERBOSE_LOGS__ === true
-    );
-  } catch {
-    return false;
-  }
-}
-
-function log(...args: unknown[]) {
-  if (!isProd && isVerboseDevEnabled()) console.log(...args);
-}
-function warn(...args: unknown[]) {
-  if (!isProd) console.warn(...args);
-}
-function error(...args: unknown[]) {
-  if (!isProd) console.error(...args);
-}
-
-function debug(...args: unknown[]) {
-  if (!isProd && isVerboseDevEnabled()) console.debug(...args);
-}
-
-function info(...args: unknown[]) {
-  if (!isProd && isVerboseDevEnabled()) console.info(...args);
-}
-
-export default {
-  log,
-  warn,
-  error,
-  debug,
-  info,
-};
+export default logger;

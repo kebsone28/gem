@@ -63,3 +63,52 @@ export const updateModulesConfig = async (req, res) => {
     });
   }
 };
+
+/**
+ * Récupère la configuration des modules par domaine.
+ * @route GET /api/admin/modules/domain-config
+ */
+export const getDomainModulesConfig = async (req, res) => {
+  try {
+    const config = await prisma.systemConfig.findUnique({
+      where: { key: 'domain_modules_config' },
+    });
+    return res.json({
+      success: true,
+      config: config?.value || {},
+    });
+  } catch (error) {
+    logger.error('[SYSTEM-CONTROLLER] Error getting domain modules config:', error);
+    return res.status(500).json({
+      error: 'Erreur lors de la récupération de la configuration des modules par domaine',
+    });
+  }
+};
+
+/**
+ * Met à jour la configuration des modules par domaine.
+ * @route POST /api/admin/modules/domain-config
+ */
+export const updateDomainModulesConfig = async (req, res) => {
+  try {
+    const { config } = req.body;
+    if (!config || typeof config !== 'object') {
+      return res.status(400).json({ error: 'Configuration invalide' });
+    }
+    const updatedConfig = await prisma.systemConfig.upsert({
+      where: { key: 'domain_modules_config' },
+      update: { value: config, updatedAt: new Date() },
+      create: { key: 'domain_modules_config', value: config },
+    });
+    logger.info(`[SYSTEM-CONTROLLER] Domain modules config updated by user ${req.user.id}`);
+    return res.json({
+      success: true,
+      config: updatedConfig.value,
+    });
+  } catch (error) {
+    logger.error('[SYSTEM-CONTROLLER] Error updating domain modules config:', error);
+    return res.status(500).json({
+      error: 'Erreur lors de la mise à jour de la configuration des modules par domaine',
+    });
+  }
+};

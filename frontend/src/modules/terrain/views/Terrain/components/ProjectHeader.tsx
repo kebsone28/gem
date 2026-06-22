@@ -1,7 +1,7 @@
-import React from 'react';
+﻿import React from 'react';
 import { MapPin, RefreshCw, X, Wifi, WifiOff } from 'lucide-react';
-import type { Project } from '../../../../../utils/types';
-import { useOfflineStore } from '../../../../../store/offlineStore';
+import type { Project } from '@utils/types';
+import { useOfflineStore } from '@/store/offlineStore';
 
 interface ProjectHeaderProps {
   project: Project | null;

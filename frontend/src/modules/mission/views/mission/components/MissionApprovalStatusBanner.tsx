@@ -1,7 +1,7 @@
-import React from 'react';
+﻿import React from 'react';
 import { XCircle, Clock, MessageSquare, ShieldCheck, User, AlertCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { useLabels } from '../../../../../contexts/LabelsContext';
+import { useLabels } from '@contexts/LabelsContext';
 
 interface MissionApprovalStatusBannerProps {
   workflow: any;

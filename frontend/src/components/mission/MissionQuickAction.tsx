@@ -6,9 +6,9 @@ import {
   createMissionFromTemplate,
   exportMissionAsJSON,
   importMissionFromJSON,
-} from '../../services/missionTemplates';
+} from '@services/missionTemplates';
 import type { MissionOrderData, MissionMember } from '../../modules/mission/views/mission/core/missionTypes';
-import logger from '../../utils/logger';
+import logger from '@utils/logger';
 
 interface MissionQuickActionProps {
   currentData: Partial<MissionOrderData>;

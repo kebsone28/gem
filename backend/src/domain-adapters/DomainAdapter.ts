@@ -36,7 +36,7 @@ export interface NormalizedEntity {
 export abstract class DomainAdapter {
   /**
    * Unique domain identifier
-   * "electricity" | "agriculture" | "health" | "logistics"
+   * "gem" | "mes" | "targeting" | "data_collection"
    */
   abstract domainType: string;
 

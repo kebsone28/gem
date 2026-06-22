@@ -400,7 +400,7 @@ export default function DataHubSection({ project, onUpdate }: DataHubSectionProp
         }
     } catch (e: any) {
         logger.error('Maintenance error', e);
-        toast.error(e?.response?.data?.error || 'Erreur maintenance');
+        toast.error(String(e?.response?.data?.error || 'Erreur maintenance'));
     } finally {
         setIsProcessing(false);
     }

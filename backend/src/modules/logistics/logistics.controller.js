@@ -7,7 +7,7 @@ export const getWarehouses = async (req, res) => {
     const { organizationId } = req.user;
     const { projectId, status } = req.query;
 
-    const adapter = DomainAdapterFactory.getAdapter('logistics');
+    const adapter = DomainAdapterFactory.getAdapter('gem');
     const shape = adapter.getOptimalQueryShape();
 
     const where = { organizationId };

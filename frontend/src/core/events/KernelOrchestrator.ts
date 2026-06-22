@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 🔀 GED OS Kernel — KernelOrchestrator
  * Orchestre les flux d'événements critiques entre modules.
  * Permet de définir des règles de type : "quand X se produit → faire Y dans le module Z".
@@ -8,7 +8,7 @@
  */
 
 import { EventBus, KERNEL_EVENTS } from './EventBus';
-import logger from '../../utils/logger';
+import logger from '@utils/logger';
 
 let initialized = false;
 

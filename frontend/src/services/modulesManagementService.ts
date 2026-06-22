@@ -307,6 +307,41 @@ class ModulesManagementService {
     }
   }
 
+  // Récupérer la configuration des modules par domaine
+  async getDomainModulesConfig(): Promise<Record<string, Record<string, ModuleConfig>>> {
+    try {
+      const response = await apiClient.get('admin/modules/domain-config');
+      return response.data?.config || {};
+    } catch (err) {
+      logger.warn('[ModulesManagementService] Failed to load domain modules config', err);
+      return {};
+    }
+  }
+
+  // Sauvegarder la configuration des modules par domaine
+  async setDomainModulesConfig(config: Record<string, Record<string, ModuleConfig>>): Promise<void> {
+    await apiClient.post('admin/modules/domain-config', { config });
+  }
+
+  // Vérifier si un module est activé pour un domaine donné
+  async isModuleEnabledForDomain(domain: string, moduleId: string): Promise<boolean> {
+    const domainConfig = await this.getDomainModulesConfig();
+    return domainConfig[domain]?.[moduleId]?.enabled ?? true;
+  }
+
+  // Récupérer les modules activés pour un domaine donné
+  async getEnabledModulesForDomain(domain: string): Promise<string[]> {
+    const domainConfig = await this.getDomainModulesConfig();
+    const domainModules = domainConfig[domain];
+    if (!domainModules) {
+      const globalConfig = await this.getGlobalModulesConfig();
+      return Object.keys(globalConfig);
+    }
+    return Object.entries(domainModules)
+      .filter(([, config]) => config.enabled)
+      .map(([id]) => id);
+  }
+
   // Obtenir les statistiques d'utilisation des modules
   async getModulesUsageStats(): Promise<Record<string, any>> {
     try {

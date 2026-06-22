@@ -1,4 +1,5 @@
 import express from 'express';
+import rateLimit from 'express-rate-limit';
 import {
     registerOrganization,
     login,
@@ -27,6 +28,16 @@ import {
 } from '../../modules/auth/auth.validation.js';
 
 const router = express.Router();
+
+// Strict rate limiter for auth endpoints (5 attempts per minute per IP)
+const authLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Trop de tentatives. Réessayez dans une minute.' },
+    skip: () => process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test'
+});
 
 /**
  * @swagger
@@ -58,7 +69,7 @@ const router = express.Router();
  *       201:
  *         description: Organisation inscrite avec succès
  */
-router.post('/register', validate(registerOrganizationSchema), registerOrganization);
+router.post('/register', authLimiter, validate(registerOrganizationSchema), registerOrganization);
 
 /**
  * @swagger
@@ -83,19 +94,9 @@ router.post('/register', validate(registerOrganizationSchema), registerOrganizat
  *       401:
  *         description: Non autorisé
  */
-router.post('/login', validate(loginSchema), login);
+router.post('/login', authLimiter, validate(loginSchema), login);
 
-/**
- * @swagger
- * /api/auth/verify-2fa:
- *   post:
- *     summary: Vérifier le token 2FA
- *     tags: [Auth]
- *     responses:
- *       200:
- *         description: 2FA vérifié avec succès
- */
-router.post('/verify-2fa', validate(verify2FASchema), verify2FA);
+router.post('/verify-2fa', authLimiter, validate(verify2FASchema), verify2FA);
 
 /**
  * @swagger

@@ -1,7 +1,7 @@
 ﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 import React, { useState } from 'react';
 import { Camera, MapPin, Mic, CheckCircle2, ChevronRight, Menu, X, Plus, Image } from 'lucide-react';
-import logger from '../../utils/logger';
+import logger from '@utils/logger';
 import type {
   MissionOrderData,
   MissionMember,

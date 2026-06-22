@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
-import { MapToolbar } from '../../../../../components/terrain/MapToolbar';
+import { MapToolbar } from '../../../components/MapToolbar';
 
 interface MobileActionsProps {
   viewMode: 'map' | 'list';

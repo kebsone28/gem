@@ -10,6 +10,7 @@ import {
   canApproveMissionStep,
 } from '../services/missionApprovalService';
 import logger from '../utils/logger';
+import { syncEventBus, SYNC_EVENTS } from '../utils/syncEventBus';
 import './MissionApprovalHistory.css';
 
 interface ApprovalStep {
@@ -54,8 +55,16 @@ const MissionApprovalHistory: React.FC<MissionApprovalHistoryProps> = ({
 
   useEffect(() => {
     fetchApprovalHistory();
-    const interval = setInterval(fetchApprovalHistory, 5000);
-    return () => clearInterval(interval);
+    const unsub1 = syncEventBus.subscribe(SYNC_EVENTS.MISSION_UPDATED, () => {
+      if (missionId) fetchApprovalHistory();
+    });
+    const unsub2 = syncEventBus.subscribe(SYNC_EVENTS.MISSION_CERTIFIED, () => {
+      if (missionId) fetchApprovalHistory();
+    });
+    return () => {
+      unsub1();
+      unsub2();
+    };
   }, [missionId]);
 
   const fetchApprovalHistory = async () => {
@@ -82,7 +91,7 @@ const MissionApprovalHistory: React.FC<MissionApprovalHistoryProps> = ({
       if (updated) {
         setWorkflow(updated);
         if (role === 'DIRECTEUR' && updated.orderNumber) {
-          logger.log(
+          logger.info('GENERAL', 
             `✅ Mission validated. Official order number generated: ${updated.orderNumber}`
           );
         }
@@ -102,7 +111,7 @@ const MissionApprovalHistory: React.FC<MissionApprovalHistoryProps> = ({
       const updated = await approveMissionStep(missionId, 'ADMIN');
       if (updated) {
         setWorkflow(updated);
-        logger.log(
+        logger.info('GENERAL', 
           `✅ Mission approved by Admin (all steps). Order number: ${updated.orderNumber}`
         );
         onApprovalChanged?.();
@@ -154,7 +163,7 @@ const MissionApprovalHistory: React.FC<MissionApprovalHistoryProps> = ({
       if (updated) {
         setWorkflow(updated);
         setError(null);
-        logger.log(`✅ Numéro de mission overridé à ${newOrderNumber.trim()}`);
+        logger.info('GENERAL', `✅ Numéro de mission overridé à ${newOrderNumber.trim()}`);
       }
     } catch (err) {
       logger.error('Override order number failed:', err);
@@ -207,19 +216,19 @@ const MissionApprovalHistory: React.FC<MissionApprovalHistoryProps> = ({
     );
   }
 
-  if (!workflow) {
-    return (
-      <div className="mission-approval-container">
-        <p className="text-gray-500">Aucune information d'approbation disponible</p>
-      </div>
-    );
-  }
-
-  const isApproved = workflow.overallStatus === 'approved';
-  const isRejected = workflow.overallStatus === 'rejected';
-
   return (
     <div className="mission-approval-container">
+      {error && (
+        <div className="approval-error">
+          <AlertCircle className="w-5 h-5" />
+          <span>{error}</span>
+        </div>
+      )}
+
+      {!workflow ? (
+        <p className="text-gray-500">Aucune information d'approbation disponible</p>
+      ) : (
+        <>
       <div className="approval-header">
         <h3>📋 HISTORIQUE APPROBATIONS</h3>
         {workflow.orderNumber && (
@@ -235,15 +244,8 @@ const MissionApprovalHistory: React.FC<MissionApprovalHistoryProps> = ({
         </div>
       )}
 
-      {error && (
-        <div className="approval-error">
-          <AlertCircle className="w-5 h-5" />
-          <span>{error}</span>
-        </div>
-      )}
-
       {/* ADMIN SUPER-POWER BUTTON */}
-      {isAdmin && !isApproved && !isRejected && (
+      {isAdmin && workflow.overallStatus !== 'approved' && workflow.overallStatus !== 'rejected' && (
         <div className="admin-super-power">
           <button
             onClick={handleAdminApproveAll}
@@ -344,7 +346,7 @@ const MissionApprovalHistory: React.FC<MissionApprovalHistoryProps> = ({
 
       {/* FINAL STATUS */}
       <div className="approval-footer">
-        {isApproved && (
+        {workflow.overallStatus === 'approved' && (
           <div className="status-approved">
             <CheckCircle2 className="w-6 h-6" />
             <div>
@@ -364,7 +366,7 @@ const MissionApprovalHistory: React.FC<MissionApprovalHistoryProps> = ({
           </div>
         )}
 
-        {isRejected && (
+        {workflow.overallStatus === 'rejected' && (
           <div className="status-rejected">
             <AlertCircle className="w-6 h-6" />
             <div>
@@ -374,7 +376,7 @@ const MissionApprovalHistory: React.FC<MissionApprovalHistoryProps> = ({
           </div>
         )}
 
-        {!isApproved && !isRejected && (
+        {workflow.overallStatus !== 'approved' && workflow.overallStatus !== 'rejected' && (
           <div className="status-pending">
             <Hourglass className="w-6 h-6" />
             <div>
@@ -446,6 +448,7 @@ const MissionApprovalHistory: React.FC<MissionApprovalHistoryProps> = ({
           </div>
         </div>
       )}
+      </>)}
     </div>
   );
 };

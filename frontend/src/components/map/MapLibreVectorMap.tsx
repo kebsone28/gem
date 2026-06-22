@@ -1,7 +1,8 @@
-import React, {useEffect, useRef, useState, createContext, useCallback, useMemo} from 'react'
+﻿import React, {useEffect, useRef, useState, createContext, useCallback, useMemo} from 'react'
 import maplibregl, {Map} from 'maplibre-gl'
 import {getStyleForMode} from './mapConfig'
 import 'maplibre-gl/dist/maplibre-gl.css'
+import logger from '@services/logger'
 
 type Mode = 'light' | 'dark' | 'satellite' | 'hybrid' | 'terrain'
 
@@ -56,19 +57,19 @@ export default function MapLibreVectorMap({
       // mark ref and signal readiness
       mapRef.current = map
       setReady(true)
-      try{ onMapReady?.(map) }catch(e){ console.error('onMapReady callback error', e) }
+      try{ onMapReady?.(map) }catch(e){ logger.error('onMapReady callback error', e) }
     }
 
     const onStyleData = ()=>{
       // when style changes, ensure consumers can re-register sources/layers safely
-      try{ onMapReady?.(map) }catch(e){ console.error('onMapReady callback error', e) }
+      try{ onMapReady?.(map) }catch(e){ logger.error('onMapReady callback error', e) }
     }
 
     map.once('load', onLoad)
     map.on('styledata', onStyleData)
 
     // defensive error handling
-    map.on('error', (e)=>console.warn('maplibre error', e))
+    map.on('error', (e)=>logger.warn('maplibre error', e))
 
     return ()=>{
       try{
@@ -88,16 +89,16 @@ export default function MapLibreVectorMap({
     // if style not loaded yet, wait for load
     if (!map.isStyleLoaded()){
       const handler = ()=>{
-        try{ map.setStyle(getStyleForMode(mode)) }catch(e){ console.error('setStyle error', e) }
-        map.once('styledata', ()=>{ try{ onMapReady?.(map) }catch(e){console.error(e)} })
+        try{ map.setStyle(getStyleForMode(mode)) }catch(e){ logger.error('setStyle error', e) }
+        map.once('styledata', ()=>{ try{ onMapReady?.(map) }catch(e){logger.error(e)} })
       }
       map.once('load', handler)
       return ()=>{ map.off('load', handler) }
     }
     try{
       map.setStyle(getStyleForMode(mode))
-      map.once('styledata', ()=>{ try{ onMapReady?.(map) }catch(e){console.error(e)} })
-    }catch(e){ console.error('Failed to set style', e) }
+      map.once('styledata', ()=>{ try{ onMapReady?.(map) }catch(e){logger.error(e)} })
+    }catch(e){ logger.error('Failed to set style', e) }
   }, [mode, onMapReady])
 
   const contextValue = useMemo<MapContextValue>(() => ({ map: mapRef.current, isStyleLoaded }), [isStyleLoaded, ready])

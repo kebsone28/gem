@@ -2,20 +2,20 @@
  * Phase 2: Caching Tests
  */
 
-import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
-import { cacheService } from '../services/cacheService.js';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { cacheService } from '../src/services/cacheService.js';
 import {
   checkPermissionWithCache,
   invalidateUserPermissions,
-} from '../middleware/permissionCache.js';
+} from '../src/middleware/permissionCache.js';
 import {
   getOrgConfigCached,
   invalidateOrgConfig,
-} from '../middleware/configCache.js';
+} from '../src/middleware/configCache.js';
 import {
   invalidateCache,
   invalidateOrgCache,
-} from '../middleware/cacheInvalidation.js';
+} from '../src/middleware/cacheInvalidation.js';
 
 describe('Phase 2: Caching', () => {
 
@@ -122,7 +122,7 @@ describe('Phase 2: Caching', () => {
     it('should handle cache failures gracefully', async () => {
       // Mock cache failure
       const originalGet = cacheService.get;
-      cacheService.get = jest.fn().mockRejectedOnce(new Error('Cache unavailable'));
+      cacheService.get = vi.fn().mockRejectedValueOnce(new Error('Cache unavailable'));
 
       // Should still return a value (from DB)
       const result = await checkPermissionWithCache('user-1', 'READ', 'org-1');

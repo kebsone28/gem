@@ -58,8 +58,9 @@ import {
   Video,
   X,
 } from 'lucide-react';
-import { PageContainer, PageHeader, ContentArea } from '../../../components';
+import { PageContainer, PageHeader, ContentArea } from '@components';
 import {
+  downloadInternalKoboMediaExport,
   fetchInternalKoboDiagnostics,
   fetchInternalKoboFormDefinition,
   fetchInternalKoboFormDefinitions,
@@ -72,20 +73,22 @@ import {
   type InternalKoboImportedFormSummary,
   type InternalKoboSubmissionDiagnostics,
   type InternalKoboSubmissionRecord,
-} from '../../../services/internalKoboSubmissionService';
+} from '@services/internalKoboSubmissionService';
 import {
   formatInternalGemValue,
+  formatInternalGedOsValue,
   INTERNAL_GED_OS_CHOICES,
   INTERNAL_GED_OS_FORM_SETTINGS,
   INTERNAL_GED_OS_SECTIONS,
-} from '../../../components/terrain/internalKoboFormDefinition';
+} from '@modules/terrain/components/internalKoboFormDefinition';
 import {
   formatKoboSourceColumnLabel,
   KOBO_SOURCE_RUBRICS,
   KOBO_SOURCE_SNAPSHOT,
-} from '../../../components/terrain/koboSourceSnapshot';
+} from '@modules/terrain/components/koboSourceSnapshot';
 import toast from 'react-hot-toast';
-import apiClient from '../../../api/client';
+import apiClient from '@/api/client';
+import logger from '@services/logger';
 
 type Filters = {
   q: string;
@@ -692,6 +695,16 @@ const auditBuilderProject = (
   const issues: BuilderAuditIssue[] = [];
   const names = questions.map((question) => question.name.trim()).filter(Boolean);
   const duplicateNames = names.filter((name, index) => names.indexOf(name) !== index);
+  
+  // Report duplicate field names as warnings since buildBuilderSurvey auto-renames them
+  Array.from(new Set(duplicateNames)).forEach((name) => {
+    issues.push({
+      level: 'warning',
+      title: `Champ duplique: ${name}`,
+      detail: 'Ce champ sera automatiquement renomme avant sauvegarde pour eviter les collisions.',
+    });
+  });
+  
   const normalizedRoleNames = new Set(INTERNAL_GED_OS_CHOICES.roles.map((role) => role.name));
 
   if (!projectDraft.title.trim()) {
@@ -725,15 +738,6 @@ const auditBuilderProject = (
       detail: 'La langue par defaut doit faire partie des langues XLSForm activees.',
     });
   }
-
-  Array.from(new Set(duplicateNames)).forEach((name) => {
-    issues.push({
-      level: 'error',
-      title: `Champ duplique: ${name}`,
-      detail:
-        'Chaque colonne XLSForm doit avoir un nom unique pour eviter les collisions de soumission.',
-    });
-  });
 
   questions.forEach((question, index) => {
     const label = question.label.trim();
@@ -1519,11 +1523,11 @@ export default function InternalKoboSubmissions() {
       };
       const [report, diagnostics] = await Promise.all([
         fetchInternalKoboSubmissionsReport(cleanFilters).catch((err) => {
-          console.error('Error fetching submissions report:', err);
+          logger.error('Error fetching submissions report:', err);
           return { submissions: [], count: 0, diagnostics: null };
         }),
         fetchInternalKoboDiagnostics().catch((err) => {
-          console.error('Error fetching diagnostics:', err);
+          logger.error('Error fetching diagnostics:', err);
           return null;
         }),
       ]);
@@ -1714,7 +1718,7 @@ export default function InternalKoboSubmissions() {
       setSubmissions((prev) => prev.filter((s) => s.id !== submissionId));
       if (selectedId === submissionId) setSelectedId('');
     } catch (err) {
-      console.error('[InternalKobo] Delete failed:', err);
+      logger.error('[InternalKobo] Delete failed:', err);
       setError(
         err instanceof Error ? err.message : 'Erreur lors de la suppression de la soumission.'
       );
@@ -2216,6 +2220,16 @@ export default function InternalKoboSubmissions() {
       { type: 'begin_group', name: 'TYPE_DE_VISITE', label: 'Menage' },
     ];
     let openSection = null as { type: 'begin_group' | 'begin_repeat'; name: string } | null;
+    const usedNames = new Set<string>();
+
+    const processQuestion = (q: BuilderQuestion) => {
+      const baseName = normalizeBuilderName(q.name || q.label, 'field');
+      const fieldName = usedNames.has(baseName)
+        ? `${baseName}_${q.relevant?.match(/\$\{role\}\s*=\s*'(\w+)'/)?.[1] || usedNames.size}`
+        : baseName;
+      usedNames.add(fieldName);
+      return { ...q, name: fieldName };
+    };
 
     builderQuestions.forEach((question) => {
       if (question.type === 'begin_group' || question.type === 'begin_repeat') {
@@ -2224,14 +2238,16 @@ export default function InternalKoboSubmissions() {
             type: openSection.type === 'begin_group' ? 'end_group' : 'end_repeat',
           });
         }
-        rows.push(buildSurveyRowFromQuestion(question));
+        const sectionQuestion = processQuestion(question);
+        rows.push(buildSurveyRowFromQuestion(sectionQuestion));
         openSection = {
           type: question.type,
-          name: normalizeBuilderName(question.name || question.label, 'section'),
+          name: sectionQuestion.name,
         };
         return;
       }
-      rows.push(buildSurveyRowFromQuestion(question));
+      const processed = processQuestion(question);
+      rows.push(buildSurveyRowFromQuestion(processed));
     });
 
     if (openSection) {
@@ -2246,6 +2262,7 @@ export default function InternalKoboSubmissions() {
   const buildBuilderChoices = (questions: BuilderQuestion[] = builderQuestions) => {
     const choices: Array<Record<string, string>> = [];
     const seen = new Set<string>();
+    const usedNames = new Set<string>();
 
     // IMPORTANT: The backend already injects these base lists via getBuilderBaseChoices().
     // Sending them again causes duplicate list_name/name entries → XLSForm parser crash → 500.
@@ -2253,13 +2270,19 @@ export default function InternalKoboSubmissions() {
 
     questions.forEach((question) => {
       (question.choices || []).forEach((choice) => {
-        const listName = question.listName || `${question.name}_choices`;
+        // Apply same renaming logic as buildBuilderSurvey for consistency
+        const baseName = normalizeBuilderName(question.name || question.label, 'field');
+        const listName = usedNames.has(baseName)
+          ? `${baseName}_${question.relevant?.match(/\$\{role\}\s*=\s*'(\w+)'/)?.[1] || usedNames.size}`
+          : baseName;
+        usedNames.add(listName);
+        const finalListName = question.listName || `${listName}_choices`;
 
         // Skip any list the backend already manages
-        if (BACKEND_MANAGED_LISTS.has(listName)) return;
+        if (BACKEND_MANAGED_LISTS.has(finalListName)) return;
 
         const name = normalizeBuilderName(choice.name || choice.label, 'choice');
-        const key = `${listName}|${name}`;
+        const key = `${finalListName}|${name}`;
 
         if (!seen.has(key)) {
           seen.add(key);
@@ -3932,7 +3955,7 @@ export default function InternalKoboSubmissions() {
                     </button>
                     <button
                       type="button"
-                      onClick={handleDeployInternalGedOsForm}
+                      onClick={handleDeployInternalGemForm}
                       disabled={isSavingBuilder}
                       className="inline-flex items-center justify-center gap-2 rounded-full border border-emerald-300/25 bg-emerald-400/10 px-4 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-100 hover:bg-emerald-400/15 disabled:opacity-50"
                     >

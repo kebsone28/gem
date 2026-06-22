@@ -17,7 +17,6 @@ import {
 } from '../../modules/mes/mes.controller.js';
 import { authProtect } from '../middlewares/auth.js';
 import { verifierPermission } from '../../middleware/verifierPermission.js';
-import { PERMISSIONS } from '../../core/config/permissions.js';
 
 const router = express.Router();
 

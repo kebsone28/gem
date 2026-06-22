@@ -1,10 +1,10 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+﻿/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useMemo } from 'react';
 import { Plus, Trash2, Wrench } from 'lucide-react';
-import { useFinances } from '../../hooks/useFinances';
-import { useProject } from '../../contexts/ProjectContext';
-import { useTeams } from '../../hooks/useTeams';
-import { fmtFCFA } from '../../utils/format';
+import { useFinances } from '@hooks/useFinances';
+import { useProject } from '@contexts/ProjectContext';
+import { useTeams } from '@hooks/useTeams';
+import { fmtFCFA } from '@utils/format';
 
 const makeAllocationId = () =>
   `alloc_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;

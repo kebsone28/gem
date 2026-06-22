@@ -1,4 +1,4 @@
-import {
+﻿import {
   AlertTriangle,
   Bot,
   CheckCircle2,
@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import type React from 'react';
 import type { LucideIcon } from 'lucide-react';
-import { PageContainer, PageHeader, Section, ContentArea, COMMON_CLASSES } from '../../../components';
+import { PageContainer, PageHeader, Section, ContentArea, COMMON_CLASSES } from '@components';
 
 const stackItems = [
   {

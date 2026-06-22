@@ -1,11 +1,11 @@
-/**
+﻿/**
  * ✏️ TrainingEditor - Composant d'édition pour l'entraînement IA
  * Zone de travail principale avec question, réponse et actions
  */
 
 import React from 'react';
 import { BookOpen, Copy, Loader2, Save, Search } from 'lucide-react';
-import type { AIResponse } from '../../../services/ai/MissionSageService';
+import type { AIResponse } from '@services/ai/MissionSageService';
 import WorkflowStepper from './WorkflowStepper';
 
 interface TrainingEditorProps {

@@ -1,15 +1,15 @@
 import { useState, useEffect, useMemo } from 'react';
-import { projectService } from '../../../services/projectService';
-import { buildProjectCreationPayload, validateProjectCreation } from '../../../utils/projectValidators';
+import { projectService } from '@services/projectService';
+import { buildProjectCreationPayload, validateProjectCreation } from '@utils/projectValidators';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../../contexts/AuthContext';
-import { useProject } from '../../../contexts/ProjectContext';
-import { normalizeRole, ROLES } from '../../../core/security/permissions';
-import { db } from '../../../store/db';
-import logger from '../../../utils/logger';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useAuth } from '@contexts/AuthContext';
+import { useProject } from '@contexts/ProjectContext';
+import { normalizeRole, ROLES } from '@core/security/permissions';
+import { db } from '@/store/db';
+import logger from '@services/logger';
 import toast from 'react-hot-toast';
-import { PageContainer, PageHeader, ContentArea } from '../../../components';
+import { PageContainer, PageHeader, ContentArea } from '@components';
 import * as LucideIcons from 'lucide-react';
 import {
   Building2,
@@ -58,9 +58,9 @@ import {
   ArrowLeft,
   HelpCircle,
 } from 'lucide-react';
-import { COUNTRY_PACKS } from '../../../config/packs/countryPacks';
-import { SECTOR_PACKS } from '../../../config/packs/sectorPacks';
-import { MODULE_REGISTRY, getAllModules } from '../../../core/kernel/registry';
+import { COUNTRY_PACKS } from '@/config/packs/countryPacks';
+import { MODULE_REGISTRY, getAllModules } from '@core/kernel/registry';
+import { modulesManagementService, type ModuleConfig } from '@services/modulesManagementService';
 
 interface ProjectTemplate {
   id: string;
@@ -73,7 +73,7 @@ interface ProjectTemplate {
   defaultLabels?: Record<string, any>;
   defaultFields?: { id: string; label: string; type: string }[];
   icon: string;
-  category: 'energy' | 'infrastructure' | 'agriculture' | 'health' | 'governance' | 'supply_chain';
+  category: 'energy';
   entities: string[];
 }
 
@@ -89,83 +89,37 @@ interface ProjectFeature {
 }
 
 const DEFAULT_PROJECT_TEMPLATES: ProjectTemplate[] = [
-  // --- ÉNERGIE ---
   {
-    id: 'elec_bt',
-    name: "GED Énergie BT",
-    description: "Raccordements clients, compteurs et maintenance basse tension.",
+    id: 'gem_electrification',
+    name: "GEM — Électrification de Masse",
+    description: "Gestionnaire d'Électrification Massive — terrain, raccordements, logistique et pilotage.",
     client: 'SOCIÉTÉ ÉLEC / AGER',
-    defaultModules: ['dashboard', 'terrain', 'mission', 'logistique', 'approbation'],
+    defaultModules: ['dashboard', 'terrain', 'mission', 'logistique', 'approval'],
     defaultUsers: ['ADMIN', 'INGENIEUR_BT'],
-    defaultSettings: { sector: 'elec_bt' },
+    defaultSettings: { sector: 'gem_electrification' },
     icon: 'Zap',
     category: 'energy',
     entities: ['Abonnés', 'Compteurs', 'Postes BT'],
   },
   {
-    id: 'agri',
-    name: "GED Agro",
-    description: "Parcelles agricoles, irrigation et coopératives villageoises.",
-    client: 'MINISTÈRE AGRI / ONG',
-    defaultModules: ['dashboard', 'terrain', 'mission', 'planning'],
-    defaultSettings: { sector: 'agri' },
-    icon: 'Leaf',
-    category: 'agriculture',
-    entities: ['Parcelles', 'Producteurs', 'Coopératives'],
-  },
-  {
-    id: 'health',
-    name: "GED Santé",
-    description: "Campagnes de vaccination, dossiers patients et gestion district.",
-    client: 'MINISTÈRE SANTÉ / OMS',
-    defaultModules: ['dashboard', 'terrain', 'mission', 'communication'],
-    defaultSettings: { sector: 'health' },
-    icon: 'Heart',
-    category: 'health',
-    entities: ['Patients', 'Médecins', 'Centres Santé'],
-  },
-  {
-    id: 'gov',
-    name: "GED Gouvernance",
-    description: "Digitalisation administrative, workflows et reporting État.",
-    client: 'PRÉSIDENCE / MINISTÈRE',
-    defaultModules: ['dashboard', 'mission', 'approbation', 'communication'],
-    defaultSettings: { sector: 'gov', mode: 'gov' },
-    icon: 'Briefcase',
-    category: 'governance',
-    entities: ['Dossiers', 'Agents', 'Directions'],
-  },
-  // --- INFRASTRUCTURE & EAU ---
-  {
-    id: 'infra_eau',
-    name: "GED Eau & Assais.",
-    description: "Forages, réseaux d'adduction d'eau et assainissement rural.",
-    client: "MINISTÈRE DE L'EAU",
-    defaultModules: ['dashboard', 'terrain', 'mission', 'logistique', 'approbation'],
-    defaultUsers: ['ADMIN', 'INGENIEUR_HYDRAULIQUE'],
-    defaultSettings: { sector: 'infra_eau' },
-    icon: 'Droplets',
-    category: 'infrastructure',
-    entities: ['Forages', "Châteaux d'eau", 'Réseaux'],
-  },
-  {
-    id: 'infra_btp',
-    name: "GED BTP & Routes",
-    description: "Suivi de chantiers routiers, ouvrages d'art et bâtiments publics.",
-    client: 'MINISTÈRE DES INFRA. / AGEROUTE',
-    defaultModules: ['dashboard', 'terrain', 'mission', 'planning', 'logistique'],
-    defaultUsers: ['ADMIN', 'CHEF_CHANTIER'],
-    defaultSettings: { sector: 'infra_btp' },
-    icon: 'Building2',
-    category: 'infrastructure',
-    entities: ['Chantiers', 'Ouvrages', 'Engins'],
+    id: 'mes_service',
+    name: "MES — Mise En Service",
+    description: "Gestion des mises en service électriques — branchement, pose compteur, contrôle qualité.",
+    client: 'SOCIÉTÉ ÉLEC / AGER',
+    defaultModules: ['dashboard', 'mes', 'mission', 'approval'],
+    defaultUsers: ['ADMIN', 'TECHNICIEN'],
+    defaultSettings: { sector: 'mes_service' },
+    icon: 'Activity',
+    category: 'energy',
+    entities: ['Branchements', 'Compteurs', 'Contrôles'],
   },
 ];
 
 // Dynamically generate PROJECT_FEATURES from the core registry
 const GET_CORE_FEATURES = (): ProjectFeature[] => {
   return getAllModules()
-    .filter(m => m.category === 'PILOTAGE' || m.category === 'OPÉRATIONS')
+    .filter(m => m.isPackage)
+    .filter(m => m.category !== 'ADMIN' && m.category !== 'PROJECTS' && m.category !== 'UTILITAIRE')
     .filter(m => m.key !== 'home' && m.key !== 'help')
     .map(m => ({
       id: m.key,
@@ -183,6 +137,8 @@ const GET_CORE_FEATURES = (): ProjectFeature[] => {
 export default function AdminProjectCreation() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const domainTypeParam = searchParams.get('domainType');
 
   const { refreshProjects, setActiveProjectId } = useProject();
   const [loading, setLoading] = useState(false);
@@ -204,6 +160,36 @@ export default function AdminProjectCreation() {
   });
 
   const [selectedFeatures, setSelectedFeatures] = useState<ProjectFeature[]>(GET_CORE_FEATURES());
+  const [domainModulesConfig, setDomainModulesConfig] = useState<Record<string, Record<string, ModuleConfig>>>({});
+
+  // Charger la config des modules par domaine pour adapter les templates
+  useEffect(() => {
+    modulesManagementService.getDomainModulesConfig().then(setDomainModulesConfig).catch(() => {});
+  }, []);
+
+  // Adapter le template selon le domaine passé en paramètre
+  useEffect(() => {
+    if (!domainTypeParam || selectedTemplate) return;
+    const domain = domainTypeParam.replace('SECTOR_', '').toLowerCase();
+    const matching = DEFAULT_PROJECT_TEMPLATES.find(t => t.id.startsWith(domain));
+    if (matching) {
+      const domainCfg = domainModulesConfig[domain] || {};
+      setSelectedTemplate(matching);
+      setProjectData(prev => ({
+        ...prev,
+        name: matching.name,
+        description: matching.description,
+        client: matching.client,
+        labels: matching.defaultLabels || {},
+        customFields: matching.defaultFields || [],
+      }));
+      setSelectedFeatures(GET_CORE_FEATURES().map(f => ({
+        ...f,
+        enabled: (domainCfg[f.module]?.enabled !== false) && (matching.defaultModules.includes(f.module) || f.required)
+      })));
+      setStep(2);
+    }
+  }, [domainTypeParam, domainModulesConfig]);
 
   // 🧠 SCORE D'ARCHITECTURE & ANALYSE
   const architectureAnalysis = useMemo(() => {
@@ -257,9 +243,13 @@ export default function AdminProjectCreation() {
       customFields: template.defaultFields || [],
     }));
 
+    // Déterminer le domaine du template
+    const domain = template.id.startsWith('mes_') ? 'mes' : 'gem';
+    const domainCfg = domainModulesConfig[domain] || {};
+
     setSelectedFeatures(GET_CORE_FEATURES().map(f => ({
       ...f,
-      enabled: template.defaultModules.includes(f.module) || f.required
+      enabled: (domainCfg[f.module]?.enabled !== false) && (template.defaultModules.includes(f.module) || f.required)
     })));
     setStep(2);
   };
@@ -279,11 +269,18 @@ export default function AdminProjectCreation() {
       await refreshProjects(newProject.id);
       setActiveProjectId(newProject.id);
 
+      let targetRoute = '/dashboard';
+      if (selectedTemplate) {
+        const sector = selectedTemplate.id.startsWith('mes_') ? 'mes' : 'gem';
+        localStorage.setItem('selectedSector', sector);
+      }
+
       toast.success('Écosystème GED OS initialisé avec succès');
-      navigate('/dashboard');
+      navigate(targetRoute);
     } catch (err: any) {
       console.error('FULL CREATE PROJECT ERROR:', err);
-      const message = err?.response?.data?.error || err?.response?.data?.message || err?.message || 'Initialisation échouée';
+      const detail = err?.response?.data?.error || err?.response?.data?.message || '';
+      const message = detail || err?.message || 'Initialisation échouée';
       toast.error(`Erreur: ${message}`);
     } finally {
       setLoading(false);
@@ -324,11 +321,7 @@ export default function AdminProjectCreation() {
             <div className="flex flex-wrap gap-3">
               {[
                 { id: 'all', label: 'Tous les Domaines', icon: Layers },
-                { id: 'energy', label: 'Énergie', icon: Zap },
-                { id: 'infrastructure', label: 'Infrastructure & Eau', icon: Droplets },
-                { id: 'agriculture', label: 'Agriculture', icon: Leaf },
-                { id: 'health', label: 'Social & Santé', icon: Heart },
-                { id: 'governance', label: 'Gouvernance & État', icon: Briefcase },
+                { id: 'energy', label: 'GEM & MES', icon: Zap },
               ].map(cat => (
                 <button
                   key={cat.id}
@@ -617,21 +610,37 @@ export default function AdminProjectCreation() {
                 <div className="space-y-4 pt-10 border-t border-white/5">
                   <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Modules Actifs</h3>
                   <div className="space-y-2">
-                    {selectedFeatures.map(feature => (
-                      <button
-                        key={feature.id}
-                        onClick={() => !feature.required && setSelectedFeatures(prev => prev.map(f => f.id === feature.id ? { ...f, enabled: !f.enabled } : f))}
-                        className={`w-full p-4 rounded-2xl border transition-all flex items-center justify-between ${
-                          feature.enabled ? 'bg-white/10 border-white/10 text-white' : 'bg-transparent border-transparent text-slate-600 grayscale'
-                        }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <feature.icon size={18} />
-                          <span className="text-[11px] font-black uppercase tracking-tighter">{feature.name}</span>
-                        </div>
-                        {feature.tags?.includes('IA') && <Zap size={12} className="text-blue-500" />}
-                      </button>
-                    ))}
+                    {(() => {
+                      const domain = selectedTemplate?.id?.startsWith('mes_') ? 'mes' : 'gem';
+                      const domainCfg = domainModulesConfig[domain] || {};
+                      return selectedFeatures.map(feature => {
+                        const domainDisabled = domainCfg[feature.module]?.enabled === false;
+                        const canToggle = !feature.required && !domainDisabled;
+                        return (
+                          <button
+                            key={feature.id}
+                            onClick={() => canToggle && setSelectedFeatures(prev => prev.map(f => f.id === feature.id ? { ...f, enabled: !f.enabled } : f))}
+                            className={`w-full p-4 rounded-2xl border transition-all flex items-center justify-between ${
+                              domainDisabled
+                                ? 'bg-slate-900/50 border-slate-800/50 text-slate-700 cursor-not-allowed'
+                                : feature.enabled
+                                  ? 'bg-white/10 border-white/10 text-white'
+                                  : 'bg-transparent border-transparent text-slate-600 grayscale hover:border-white/5'
+                            }`}
+                            title={domainDisabled ? `Désactivé pour le domaine ${domain.toUpperCase()}` : feature.name}
+                          >
+                            <div className="flex items-center gap-3">
+                              <feature.icon size={18} />
+                              <span className="text-[11px] font-black uppercase tracking-tighter">{feature.name}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {feature.tags?.includes('IA') && !domainDisabled && <Zap size={12} className="text-blue-500" />}
+                              {domainDisabled && <span className="text-[8px] font-black uppercase text-slate-600">Verrouillé</span>}
+                            </div>
+                          </button>
+                        );
+                      });
+                    })()}
                   </div>
                 </div>
 

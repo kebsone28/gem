@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, no-empty */
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { db } from '../../../store/db';
-import type { UserRole, User } from '../../../utils/types';
-import type { Team, Project } from '../../../utils/types';
+import { db } from '@/store/db';
+import type { UserRole, User } from '@utils/types';
+import type { Team, Project } from '@utils/types';
 import {
   Users,
   Plus,
@@ -27,10 +27,10 @@ import {
   Layout,
   FileText,
 } from 'lucide-react';
-import { appSecurity } from '../../../services/appSecurity';
-import { useAuth } from '../../../contexts/AuthContext';
-import { useProject } from '../../../contexts/ProjectContext';
-import { PageContainer, PageHeader, ContentArea, Modal } from '../../../components';
+import { appSecurity } from '@services/appSecurity';
+import { useAuth } from '@contexts/AuthContext';
+import { useProject } from '@contexts/ProjectContext';
+import { PageContainer, PageHeader, ContentArea, Modal } from '@components';
 // Import des icônes pour le tableau
 import { 
   MoreVertical, 
@@ -52,18 +52,18 @@ import {
   ROLE_PERMISSIONS,
   normalizeRole,
   invalidatePermissionsCache,
-} from '../../../core/security/permissions';
-import { AppRole } from '../../../core/security/types';
-import type { UserRole as PermissionUserRole } from '../../../core/security/types';
+} from '@core/security/permissions';
+import { AppRole } from '@core/security/types';
+import type { UserRole as PermissionUserRole } from '@core/security/types';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { userService } from '../../../services/userService';
-import { organizationService } from '../../../services/organizationService';
-import { auditService } from '../../../services/auditService';
-import projectService from '../../../services/projectService';
-import adminPermissionsService from '../../../services/adminPermissionsService';
-import logger from '../../../utils/logger';
-import { isMasterAdminEmail } from '../../../core/security/roleUtils';
+import { userService } from '@services/userService';
+import { organizationService } from '@services/organizationService';
+import { auditService } from '@services/auditService';
+import projectService from '@services/projectService';
+import adminPermissionsService from '@services/adminPermissionsService';
+import logger from '@utils/logger';
+import { isMasterAdminEmail } from '@core/security/roleUtils';
 
 // Les constantes statiques de sécurité sont gérées par appSecurity
 
@@ -932,7 +932,11 @@ export default function AdminUsers() {
     normalizeRole(deleteTarget?.role) === AppRole.ADMIN || isMasterAdminEmail(deleteTarget?.email ?? '');
 
   return (
-    <PageContainer className="min-h-screen bg-slate-950 py-8">
+    <PageContainer className="min-h-screen bg-slate-950 py-8 relative">
+      {/* 🌟 Premium Background Glow */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-indigo-500/10 via-slate-950/0 to-slate-950/0 pointer-events-none z-0" />
+      
+      <div className="relative z-10">
       {/* Delete Confirmation Modal */}
       <AnimatePresence>
         {deleteTarget && (
@@ -1258,8 +1262,51 @@ export default function AdminUsers() {
         subtitle="Gestion des comptes et des accès"
         icon={<Users size={24} />}
       />
-      <ContentArea className="space-y-8 p-8 bg-slate-950 border-slate-800">
+      <ContentArea className="space-y-8 p-8 bg-transparent border-transparent">
         <div className="max-w-7xl mx-auto space-y-8">
+          {/* 📊 KPI Stats Row */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-slate-900/50 backdrop-blur-md border border-slate-800/80 rounded-3xl p-5 flex items-center gap-4 shadow-xl shadow-black/10 transition-all duration-300 hover:scale-[1.02] hover:border-indigo-500/30">
+              <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center">
+                <Users size={24} />
+              </div>
+              <div>
+                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Utilisateurs</p>
+                <p className="text-2xl font-black text-white">{users.length}</p>
+              </div>
+            </div>
+            
+            <div className="bg-slate-900/50 backdrop-blur-md border border-slate-800/80 rounded-3xl p-5 flex items-center gap-4 shadow-xl shadow-black/10 transition-all duration-300 hover:scale-[1.02] hover:border-emerald-500/30">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
+                <Activity size={24} />
+              </div>
+              <div>
+                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Comptes Actifs</p>
+                <p className="text-2xl font-black text-white">{users.filter(u => u.active !== false).length}</p>
+              </div>
+            </div>
+
+            <div className="bg-slate-900/50 backdrop-blur-md border border-slate-800/80 rounded-3xl p-5 flex items-center gap-4 shadow-xl shadow-black/10 transition-all duration-300 hover:scale-[1.02] hover:border-amber-500/30">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-400 flex items-center justify-center">
+                <ShieldCheck size={24} />
+              </div>
+              <div>
+                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Superviseurs</p>
+                <p className="text-2xl font-black text-white">{users.filter(u => normalizeRole(u.role) === AppRole.SUPERVISEUR).length}</p>
+              </div>
+            </div>
+
+            <div className="bg-slate-900/50 backdrop-blur-md border border-slate-800/80 rounded-3xl p-5 flex items-center gap-4 shadow-xl shadow-black/10 transition-all duration-300 hover:scale-[1.02] hover:border-blue-500/30">
+              <div className="w-12 h-12 rounded-2xl bg-blue-500/10 text-blue-400 flex items-center justify-center">
+                <Globe size={24} />
+              </div>
+              <div>
+                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Réseau / Accès</p>
+                <p className="text-2xl font-black text-white">{users.filter(u => u.permissions && u.permissions.length > 0).length}</p>
+              </div>
+            </div>
+          </div>
+
           {/* Header Section */}
           <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-2">
             <div className="space-y-1 min-w-0">
@@ -1449,25 +1496,30 @@ export default function AdminUsers() {
               </div>
 
               <div className="relative z-10 space-y-6">
-                <div className="w-12 h-12 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/20">
-                  <SettingsIcon size={24} />
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/20 text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-black/20">
+                  <ShieldCheck size={14} className="text-indigo-300" />
+                  Administration Centrale
                 </div>
-                <div className="space-y-2">
-                  <h3 className="text-xl font-black uppercase tracking-tight">Guide Admin</h3>
-                  <p className="text-indigo-100 text-sm font-medium leading-relaxed opacity-80">
-                    Ici, vous pilotez ce que la Direction voit sur le terrain. Utile pour simplifier
-                    leur vue et se concentrer sur l'essentiel.
+                <div className="space-y-3">
+                  <h3 className="text-2xl font-black tracking-tight text-white flex items-center gap-3">
+                    <div className="w-10 h-10 bg-indigo-500/20 backdrop-blur-md rounded-2xl flex items-center justify-center border border-indigo-500/30">
+                      <SettingsIcon size={20} className="text-indigo-300" />
+                    </div>
+                    Guide Admin
+                  </h3>
+                  <p className="text-slate-300 text-sm font-medium leading-relaxed">
+                    Configurez les accès, contrôlez les rôles utilisateurs et simplifiez l'expérience terrain pour chaque équipe.
                   </p>
                 </div>
 
-                <div className="pt-4 flex flex-col gap-2">
-                  <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-indigo-200">
-                    <div className="w-1 h-1 bg-white rounded-full" />
-                    Effet Immédiat après reco
+                <div className="pt-4 flex gap-4">
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-[10px] font-black uppercase tracking-widest text-indigo-200 transition-all duration-300 hover:scale-[1.02] hover:border-indigo-400/40 hover:shadow-[0_0_20px_rgba(99,102,241,0.15)] hover:bg-white/10">
+                    <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+                    Effet Immédiat
                   </div>
-                  <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-indigo-200">
-                    <div className="w-1 h-1 bg-white rounded-full" />
-                    Sauvegarde auto sur le Cloud
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-[10px] font-black uppercase tracking-widest text-indigo-200 transition-all duration-300 hover:scale-[1.02] hover:border-indigo-400/40 hover:shadow-[0_0_20px_rgba(99,102,241,0.15)] hover:bg-white/10">
+                    <div className="w-1.5 h-1.5 bg-blue-400 rounded-full shadow-[0_0_8px_rgba(96,165,250,0.8)]" />
+                    Sauvegarde Cloud
                   </div>
                 </div>
               </div>
@@ -1486,7 +1538,9 @@ export default function AdminUsers() {
             onEdit={openEdit}
             onDelete={openDelete}
             onImpersonate={(u) => {
+              const targetIsAdmin = normalizeRole(u.role) === AppRole.ADMIN || isMasterAdminEmail(u.email);
               const uProjects = projects.filter((p) => {
+                if (targetIsAdmin) return true;
                 const assigned = (p.config as any)?.assignedUsers || [];
                 return assigned.includes(u.id);
               });
@@ -1498,16 +1552,19 @@ export default function AdminUsers() {
 
         {/* ── Create / Edit Form Drawer ── */}
         {showForm && (
-          <div className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-            <div className="bg-slate-900 border border-slate-700 rounded-3xl p-8 max-w-lg w-full shadow-2xl max-h-[90vh] overflow-y-auto">
-              <div className="flex items-center justify-between mb-8">
-                <h2 className="text-2xl font-black text-white">
-                  {editId ? '✏️ Modifier le compte' : '➕ Nouveau compte'}
+          <div className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-md animate-in fade-in duration-300">
+            <div className="bg-slate-900/95 border border-slate-700/80 rounded-3xl p-8 max-w-2xl w-full shadow-[0_0_50px_rgba(0,0,0,0.5)] shadow-indigo-950/40 max-h-[90vh] overflow-y-auto custom-scrollbar animate-in zoom-in-95 duration-200">
+              <div className="flex items-center justify-between mb-8 border-b border-white/5 pb-6">
+                <h2 className="text-2xl font-black text-white flex items-center gap-3">
+                  <div className="w-10 h-10 bg-indigo-500/20 backdrop-blur-md rounded-2xl flex items-center justify-center border border-indigo-500/30">
+                    {editId ? <UserIcon size={20} className="text-indigo-400" /> : <UserPlus size={20} className="text-emerald-400" />}
+                  </div>
+                  {editId ? 'Modifier le compte' : 'Nouveau compte'}
                 </h2>
                 <button
                   onClick={() => setShowForm(false)}
                   aria-label="Fermer le formulaire"
-                  className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-all"
+                  className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-all hover:scale-105"
                 >
                   <X size={20} />
                 </button>
@@ -1522,75 +1579,86 @@ export default function AdminUsers() {
               >
                 {/* Nom complet */}
                 <div>
-                  <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2">
+                  <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest block mb-2">
                     Nom complet *
                   </label>
-                  <input
-                    type="text"
-                    value={form.name}
-                    onChange={(e) => setForm((f: UserForm) => ({ ...f, name: e.target.value }))}
-                    placeholder="ex: Chef Maçons"
-                    title="Nom complet"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white font-medium placeholder:text-slate-600 dark:text-slate-400 focus:ring-2 focus:ring-indigo-500 outline-none"
-                  />
+                  <div className="relative group">
+                    <UserIcon size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-400 transition-colors" />
+                    <input
+                      type="text"
+                      value={form.name}
+                      onChange={(e) => setForm((f: UserForm) => ({ ...f, name: e.target.value }))}
+                      placeholder="ex: Chef Maçons"
+                      title="Nom complet"
+                      className="w-full bg-slate-950/70 border border-slate-700/60 rounded-2xl pl-11 pr-4 py-3.5 text-white font-medium placeholder:text-slate-600 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-400/50 transition-all outline-none hover:border-slate-600 shadow-inner"
+                    />
+                  </div>
                 </div>
 
                 {/* Email / Username */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   <div>
-                    <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2">
+                    <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest block mb-2">
                       Identifiant (Login) *
                     </label>
-                    <input
-                      type="text"
-                      value={form.email}
-                      onChange={(e) => setForm((f: UserForm) => ({ ...f, email: e.target.value }))}
-                      placeholder="ex: maçongem"
-                      title="Identifiant de connexion"
-                      autoComplete="username"
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white font-mono font-medium placeholder:text-slate-600 dark:text-slate-400 focus:ring-2 focus:ring-indigo-500 outline-none"
-                    />
+                    <div className="relative group">
+                      <ShieldIcon size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-400 transition-colors" />
+                      <input
+                        type="text"
+                        value={form.email}
+                        onChange={(e) => setForm((f: UserForm) => ({ ...f, email: e.target.value }))}
+                        placeholder="ex: maçongem"
+                        title="Identifiant de connexion"
+                        autoComplete="username"
+                        className="w-full bg-slate-950/70 border border-slate-700/60 rounded-2xl pl-11 pr-4 py-3.5 text-white font-mono font-medium placeholder:text-slate-600 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-400/50 transition-all outline-none hover:border-slate-600 shadow-inner"
+                      />
+                    </div>
                   </div>
                   <div>
-                    <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2">
+                    <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest block mb-2">
                       Email Notification *
                     </label>
-                    <input
-                      type="email"
-                      autoComplete="email"
-                      value={form.notificationEmail}
-                      onChange={(e) =>
-                        setForm((f: UserForm) => ({ ...f, notificationEmail: e.target.value }))
-                      }
-                      placeholder="user@wanekoo.com"
-                      title="Email pour les notifications (Missions, etc.)"
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white font-mono font-medium placeholder:text-slate-600 dark:text-slate-400 focus:ring-2 focus:ring-indigo-500 outline-none"
-                    />
+                    <div className="relative group">
+                      <Mail size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-400 transition-colors" />
+                      <input
+                        type="email"
+                        autoComplete="email"
+                        value={form.notificationEmail}
+                        onChange={(e) =>
+                          setForm((f: UserForm) => ({ ...f, notificationEmail: e.target.value }))
+                        }
+                        placeholder="user@wanekoo.com"
+                        title="Email pour les notifications (Missions, etc.)"
+                        className="w-full bg-slate-950/70 border border-slate-700/60 rounded-2xl pl-11 pr-4 py-3.5 text-white font-mono font-medium placeholder:text-slate-600 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-400/50 transition-all outline-none hover:border-slate-600 shadow-inner"
+                      />
+                    </div>
                   </div>
                 </div>
 
                 {/* Password */}
                 <div>
-                  <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2">
-                    Mot de passe {editId ? <span className="text-slate-600 normal-case font-normal">(laisser vide pour ne pas changer)</span> : '*'}
+                  <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest block mb-2 flex items-center justify-between">
+                    <span>Mot de passe {editId && <span className="text-slate-500 normal-case font-normal ml-1">(optionnel)</span>}</span>
+                    {!editId && <span className="text-emerald-400 normal-case font-normal">* Requis</span>}
                   </label>
-                  <div className="relative">
+                  <div className="relative group">
+                    <Key size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-400 transition-colors" />
                     <input
                       type={showPass ? 'text' : 'password'}
                       value={form.password}
                       onChange={(e) =>
                         setForm((f: UserForm) => ({ ...f, password: e.target.value }))
                       }
-                      placeholder={editId ? 'Nouveau mot de passe (optionnel)' : 'Min. 6 caractères'}
+                      placeholder={editId ? 'Laisser vide pour ne pas modifier' : 'Min. 6 caractères'}
                       title="Mot de passe"
                       autoComplete="new-password"
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 pr-12 text-white font-mono font-medium placeholder:text-slate-600 dark:text-slate-400 focus:ring-2 focus:ring-indigo-500 outline-none"
+                      className="w-full bg-slate-950/70 border border-slate-700/60 rounded-2xl pl-11 pr-12 py-3.5 text-white font-mono font-medium placeholder:text-slate-600 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-400/50 transition-all outline-none hover:border-slate-600 shadow-inner"
                     />
                     <button
                       type="button"
                       aria-label="Afficher/masquer le mot de passe"
                       onClick={() => setShowPass((s) => !s)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-200"
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors bg-white/5 p-1.5 rounded-lg hover:bg-white/10"
                     >
                       {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
@@ -1599,10 +1667,10 @@ export default function AdminUsers() {
 
                 {/* Role */}
                 <div>
-                  <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2">
+                  <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest block mb-2">
                     Rôle *
                   </label>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {Object.entries(ROLE_CONFIG).map(([role, cfg]) => {
                       const isImmutable =
                         normalizeRole(form.role) === AppRole.ADMIN || isMasterAdminEmail(form.email);
@@ -1618,16 +1686,16 @@ export default function AdminUsers() {
                               teamId: role !== AppRole.SUPERVISEUR ? undefined : f.teamId,
                             }))
                           }
-                          className={`flex items-center gap-2 p-3 rounded-xl border font-bold text-xs transition-all ${
+                          className={`flex items-center gap-3 p-3.5 rounded-2xl border font-bold text-xs transition-all duration-300 ${
                             form.role === role
-                              ? `${cfg.color} ${cfg.textColor}`
-                              : 'bg-slate-950 border-slate-800 text-slate-500 hover:border-slate-700'
-                          } ${isImmutable ? 'cursor-not-allowed opacity-80' : ''}`}
+                              ? `${cfg.color} ${cfg.textColor} shadow-[0_0_20px_rgba(99,102,241,0.15)] ring-1 ring-indigo-500/20 scale-[1.02]`
+                              : 'bg-slate-950/70 border-slate-700/60 text-slate-400 hover:border-slate-500 hover:bg-slate-900/80 hover:text-slate-200'
+                          } ${isImmutable ? 'cursor-not-allowed opacity-60' : ''}`}
                         >
                           {(() => {
                             const Icon = cfg.icon;
-                            return <Icon size={14} />;
-                          })()}{' '}
+                            return <Icon size={18} className={form.role === role ? cfg.textColor : 'text-slate-500'} />;
+                          })()}
                           {cfg.label}
                         </button>
                       );
@@ -1643,95 +1711,135 @@ export default function AdminUsers() {
                 {/* Team (Chef Équipe only) */}
                 {form.role === AppRole.SUPERVISEUR && (
                   <div>
-                    <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2">
+                    <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest block mb-2">
                       Équipe assignée
                     </label>
-                    <select
-                      aria-label="Choisir l'équipe"
-                      value={form.teamId ?? ''}
-                      onChange={(e) =>
-                        setForm((f: UserForm) => ({ ...f, teamId: e.target.value || undefined }))
-                      }
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white font-medium focus:ring-2 focus:ring-indigo-500 outline-none appearance-none"
-                    >
-                      <option value="">— Sélectionner une équipe —</option>
-                      {teams.map((t: Team) => (
-                        <option key={t.id} value={t.id}>
-                          {t.name}
-                        </option>
-                      ))}
-                    </select>
+                    <div className="relative group">
+                      <Users size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-400 transition-colors" />
+                      <select
+                        aria-label="Choisir l'équipe"
+                        value={form.teamId ?? ''}
+                        onChange={(e) =>
+                          setForm((f: UserForm) => ({ ...f, teamId: e.target.value || undefined }))
+                        }
+                        className="w-full bg-slate-950/70 border border-slate-700/60 rounded-2xl pl-11 pr-4 py-3.5 text-white font-medium focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-400/50 transition-all outline-none appearance-none hover:border-slate-600 shadow-inner"
+                      >
+                        <option value="">— Sélectionner une équipe —</option>
+                        {teams.map((t: Team) => (
+                          <option key={t.id} value={t.id}>
+                            {t.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
                 )}
 
                 {/* 📂 Projets assignés */}
-                <div className="space-y-3">
-                  <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2">
+                <div className="space-y-3 pt-2">
+                  <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest block mb-2">
                     Projets assignés *
                   </label>
-                  <div className="grid grid-cols-1 gap-2 bg-slate-950 p-4 rounded-2xl border border-slate-800">
-                    {projects.length === 0 ? (
-                      <p className="text-slate-600 text-[10px] italic">Aucun projet disponible</p>
-                    ) : (
-                      projects.map((p) => {
-                        const isAssigned = (form.assignedProjectIds || []).includes(p.id);
-                        return (
-                          <label
-                            key={p.id}
-                            className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${
-                              isAssigned
-                                ? 'bg-indigo-500/10 border-indigo-500/30'
-                                : 'bg-slate-900/50 border-slate-800/50 hover:border-slate-700'
-                            }`}
-                          >
-                            <div className="flex items-center gap-3">
-                              <input
-                                type="checkbox"
-                                className="hidden"
-                                checked={isAssigned}
-                                onChange={() => {
-                                  setForm((f: UserForm) => {
-                                    const current = f.assignedProjectIds || [];
-                                    const next = current.includes(p.id)
-                                      ? current.filter((id: string) => id !== p.id)
-                                      : [...current, p.id];
-                                    return { ...f, assignedProjectIds: next };
-                                  });
-                                }}
-                              />
-                              <div
-                                className={`w-4 h-4 flex items-center justify-center rounded border transition-all ${
-                                  isAssigned
-                                    ? 'bg-indigo-500 border-indigo-500 text-white'
-                                    : 'border-slate-600'
-                                }`}
-                              >
-                                {isAssigned && <CheckIcon size={12} />}
+                  {(() => {
+                    const getProjectDomain = (p: Project): string => {
+                      const sector = (p.config as any)?.sector || '';
+                      if (sector.startsWith('mes_')) return 'MES';
+                      if (sector.startsWith('gem_') || sector.startsWith('elec_')) return 'GEM';
+                      return 'AUTRE';
+                    };
+                    const domainProjects: Record<string, Project[]> = {};
+                    projects.forEach(p => {
+                      const domain = getProjectDomain(p);
+                      if (!domainProjects[domain]) domainProjects[domain] = [];
+                      domainProjects[domain].push(p);
+                    });
+                    const domainOrder = ['GEM', 'MES', 'AUTRE'];
+                    const domainLabelClass = (d: string) => d === 'GEM' ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' : d === 'MES' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 'bg-slate-500/10 text-slate-400 border-slate-500/20';
+                    const cardAssignedClass = (d: string) => d === 'GEM' ? 'bg-indigo-500/10 border-indigo-500/40' : d === 'MES' ? 'bg-blue-500/10 border-blue-500/40' : 'bg-slate-500/10 border-slate-500/40';
+                    const checkAssignedClass = (d: string) => d === 'GEM' ? 'bg-indigo-500 border-indigo-500' : d === 'MES' ? 'bg-blue-500 border-blue-500' : 'bg-slate-500 border-slate-500';
+                    const textAssignedClass = (d: string) => d === 'GEM' ? 'text-indigo-400' : d === 'MES' ? 'text-blue-400' : 'text-slate-400';
+                    const badgeAssignedClass = (d: string) => d === 'GEM' ? 'bg-indigo-500/10 border-indigo-500/30 text-indigo-400' : d === 'MES' ? 'bg-blue-500/10 border-blue-500/30 text-blue-400' : 'bg-slate-500/10 border-slate-500/30 text-slate-400';
+                    return (
+                      <div className="bg-slate-950/40 p-5 rounded-[2rem] border border-slate-800/80 shadow-inner space-y-6">
+                        {projects.length === 0 ? (
+                          <div className="text-center py-6">
+                            <Briefcase size={24} className="mx-auto text-slate-600 mb-2" />
+                            <p className="text-slate-500 text-sm font-medium">Aucun projet disponible</p>
+                          </div>
+                        ) : (
+                          domainOrder.filter(d => domainProjects[d]?.length).map(domain => (
+                            <div key={domain}>
+                              <div className="flex items-center gap-2 mb-3">
+                                <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border ${domainLabelClass(domain)}`}>
+                                  {domain}
+                                </span>
+                                <span className="text-[10px] text-slate-600">{domainProjects[domain].length} projet(s)</span>
                               </div>
-                              <div className="flex flex-col">
-                                <span
-                                  className={`text-xs font-bold ${isAssigned ? 'text-indigo-400' : 'text-slate-400'}`}
-                                >
-                                  {p.name}
-                                </span>
-                                <span className="text-[8px] text-slate-600 uppercase font-bold tracking-widest">
-                                  {(p as any).client || 'Sans Client'}
-                                </span>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                {domainProjects[domain].map((p) => {
+                                  const isAssigned = (form.assignedProjectIds || []).includes(p.id);
+                                  return (
+                                    <label
+                                      key={p.id}
+                                      className={`flex items-center justify-between p-3.5 rounded-2xl border cursor-pointer transition-all duration-300 hover:scale-[1.02] ${
+                                        isAssigned
+                                          ? `${cardAssignedClass(domain)} shadow-[0_0_20px_rgba(99,102,241,0.1)]`
+                                          : 'bg-slate-900/60 border-slate-700/50 hover:border-slate-500/80 hover:bg-slate-800/80'
+                                      }`}
+                                    >
+                                      <div className="flex items-center gap-3">
+                                        <input
+                                          type="checkbox"
+                                          className="hidden"
+                                          checked={isAssigned}
+                                          onChange={() => {
+                                            setForm((f: UserForm) => {
+                                              const current = f.assignedProjectIds || [];
+                                              const next = current.includes(p.id)
+                                                ? current.filter((id: string) => id !== p.id)
+                                                : [...current, p.id];
+                                              return { ...f, assignedProjectIds: next };
+                                            });
+                                          }}
+                                        />
+                                        <div
+                                          className={`w-4 h-4 flex items-center justify-center rounded border transition-all ${
+                                            isAssigned
+                                              ? `${checkAssignedClass(domain)} text-white`
+                                              : 'border-slate-600'
+                                          }`}
+                                        >
+                                          {isAssigned && <CheckIcon size={12} />}
+                                        </div>
+                                        <div className="flex flex-col">
+                                          <span
+                                            className={`text-xs font-bold ${isAssigned ? textAssignedClass(domain) : 'text-slate-400'}`}
+                                          >
+                                            {p.name}
+                                          </span>
+                                          <span className="text-[8px] text-slate-600 uppercase font-bold tracking-widest">
+                                            {(p as any).client || 'Sans Client'}
+                                          </span>
+                                        </div>
+                                      </div>
+
+                                      {isAssigned && (
+                                        <span className={`text-[8px] px-2 py-0.5 rounded-full border font-black uppercase tracking-widest ${badgeAssignedClass(domain)}`}>
+                                          Accès Activé
+                                        </span>
+                                      )}
+                                    </label>
+                                  );
+                                })}
                               </div>
                             </div>
-
-                            {isAssigned && (
-                              <span className="text-[8px] px-2 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 font-black uppercase tracking-widest">
-                                Accès Activé
-                              </span>
-                            )}
-                          </label>
-                        );
-                      })
-                    )}
-                  </div>
+                          ))
+                        )}
+                      </div>
+                    );
+                  })()}
                   <p className="mt-1 text-[10px] text-slate-500 italic">
-                    L'utilisateur ne pourra voir que les projets sélectionnés ici.
+                    L'utilisateur ne pourra voir que les projets sélectionnés ici, quel que soit le domaine.
                   </p>
                 </div>
 
@@ -1757,6 +1865,13 @@ export default function AdminUsers() {
                 <div className="col-span-1 mt-6 pt-6 border-t border-slate-200 dark:border-slate-800">
                   {(() => {
                     const permissionGroups = [
+                      {
+                        title: '💼 Secteurs Autorisés (Portail Accueil)',
+                        keys: [
+                          'SECTOR_GEM',
+                          'SECTOR_MES',
+                        ],
+                      },
                       {
                         title: '🛡️ Administration & Sécurité',
                         keys: [
@@ -2217,6 +2332,7 @@ export default function AdminUsers() {
           </Modal>
         )}
       </ContentArea>
+      </div>
     </PageContainer>
   );
 }
