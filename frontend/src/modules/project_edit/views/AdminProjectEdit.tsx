@@ -16,7 +16,8 @@ import { MODULE_REGISTRY } from '@core/kernel/registry';
 import projectService from '@services/projectService';
 import toast from 'react-hot-toast';
 import { extractApiError } from '@utils/format';
-import { PageContainer, PageHeader, ContentArea } from '@components';
+import { PageContainer, PageHeader, ContentArea, Modal } from '@components';
+import { Button } from '@components/UI';
 
 // ─── Module definition ──────────────────────────────────
 interface ProjectModule {
@@ -88,6 +89,9 @@ export default function AdminProjectEdit() {
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState<'active' | 'planning' | 'completed' | 'paused'>('active');
   const [modules, setModules] = useState<ProjectModule[]>([]);
+  const [deleteModal, setDeleteModal] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteNameConfirm, setDeleteNameConfirm] = useState('');
 
   // ── Guard ──────────────────────────────────────────────────────────────────
   const nRole = normalizeRole(user?.role || '');
@@ -158,27 +162,18 @@ export default function AdminProjectEdit() {
   };
 
   const handleDelete = async () => {
-    if (!window.confirm(`Êtes-vous sûr de vouloir supprimer définitivement le projet "${name}" ? Cette action est irréversible.`)) {
-      return;
-    }
-    
-    // Double confirmation de sécurité
-    const confirmName = window.prompt(`Pour confirmer, veuillez taper le nom du projet : "${name}"`);
-    if (confirmName !== name) {
+    if (deleteNameConfirm !== name) {
       toast.error('Le nom saisi ne correspond pas. Suppression annulée.');
       return;
     }
-
-    // Demande du mot de passe (requis par le backend)
-    const password = window.prompt(`Par mesure de sécurité, veuillez entrer votre mot de passe pour supprimer ce projet :`);
-    if (!password) {
-      toast.error('Le mot de passe est requis. Suppression annulée.');
+    if (!deletePassword.trim()) {
+      toast.error('Mot de passe requis pour confirmer la suppression.');
       return;
     }
 
     setDeleting(true);
     try {
-      await projectService.deleteProject(id!, password);
+      await projectService.deleteProject(id!, deletePassword.trim());
       toast.success(`✅ Projet supprimé avec succès`);
       navigate('/projects');
     } catch (err: any) {
@@ -361,7 +356,7 @@ export default function AdminProjectEdit() {
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                onClick={handleDelete}
+                onClick={() => { setDeleteModal(true); setDeletePassword(''); setDeleteNameConfirm(''); }}
                 disabled={saving || deleting}
                 className="flex items-center gap-2 px-6 py-3 bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 rounded-xl font-bold transition-all shadow-xl shadow-red-500/10 disabled:opacity-50"
               >
@@ -385,6 +380,62 @@ export default function AdminProjectEdit() {
             </div>
           </div>
       </ContentArea>
+
+      {/* Delete confirmation modal */}
+      <Modal
+        isOpen={deleteModal}
+        onClose={() => { setDeleteModal(false); setDeletePassword(''); setDeleteNameConfirm(''); }}
+        title="Supprimer le projet"
+        aria-describedby="delete-desc"
+      >
+        <p id="delete-desc" className="text-slate-300 mb-4">
+          Êtes-vous sûr de vouloir supprimer <strong className="text-white">{name}</strong>&nbsp;? Cette action est irréversible.
+        </p>
+        <div className="space-y-3">
+          <div>
+            <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">
+              Tapez le nom du projet pour confirmer
+            </label>
+            <input
+              type="text"
+              value={deleteNameConfirm}
+              onChange={(e) => setDeleteNameConfirm(e.target.value)}
+              placeholder={name}
+              className="w-full bg-white/[0.03] border border-white/5 rounded-2xl px-5 py-4 text-[13px] font-bold text-white placeholder:text-slate-700 outline-none focus:border-red-500/40 focus:ring-4 focus:ring-red-500/5 transition-all"
+            />
+          </div>
+          <div>
+            <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">
+              Mot de passe
+            </label>
+            <input
+              type="password"
+              autoFocus
+              value={deletePassword}
+              onChange={(e) => setDeletePassword(e.target.value)}
+              placeholder="••••••••"
+              className="w-full bg-white/[0.03] border border-white/5 rounded-2xl px-5 py-4 text-[13px] font-bold text-white placeholder:text-slate-700 outline-none focus:border-red-500/40 focus:ring-4 focus:ring-red-500/5 transition-all"
+              onKeyDown={(e) => { if (e.key === 'Enter') handleDelete(); }}
+            />
+          </div>
+        </div>
+        <div className="flex gap-2 justify-end pt-4">
+          <Button
+            variant="ghost"
+            onClick={() => { setDeleteModal(false); setDeletePassword(''); setDeleteNameConfirm(''); }}
+            disabled={deleting}
+          >
+            Annuler
+          </Button>
+          <Button
+            variant="danger"
+            onClick={handleDelete}
+            isLoading={deleting}
+          >
+            Supprimer
+          </Button>
+        </div>
+      </Modal>
     </PageContainer>
   );
 }

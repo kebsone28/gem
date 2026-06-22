@@ -19,8 +19,9 @@ import {
 
 export function useGedOsAiCore(config?: Partial<GedOsAiCoreConfig>) {
   const { user } = useAuth();
-  const coreRef = useRef(getGedOsAiCore(config));
-  const [state, setState] = useState<GedOsAiState>(() => coreRef.current.getState());
+  const core = getGedOsAiCore(config);
+  const [state, setState] = useState<GedOsAiState>(core.getState());
+  const coreRef = useRef(core);
   const [initialized, setInitialized] = useState(false);
 
   // Initialisation du cerveau IA
@@ -147,7 +148,7 @@ export function useGedOsAiCore(config?: Partial<GedOsAiCoreConfig>) {
     reset,
 
     // Accès direct au core
-    core: coreRef,
+    core,
   };
 }
 
