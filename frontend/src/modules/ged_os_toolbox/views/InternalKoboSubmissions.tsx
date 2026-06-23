@@ -12,6 +12,7 @@ import {
   BookOpen,
   Calculator,
   CalendarDays,
+  ChevronRight,
   Camera,
   CheckCircle2,
   CheckSquare,
@@ -1393,6 +1394,7 @@ const projectStatusMeta: Record<ProjectStatus, { label: string; className: strin
 };
 
 export default function InternalKoboSubmissions() {
+  const [projectView, setProjectView] = useState(false);
   const [mainTab, setMainTab] = useState<MainTab>('data');
   const [dataTab, setDataTab] = useState<DataTab>('table');
   const [workspaceSection, setWorkspaceSection] = useState<WorkspaceSection>('deployed');
@@ -1780,6 +1782,10 @@ export default function InternalKoboSubmissions() {
   };
 
   const openWorkspaceSection = (section: WorkspaceSection) => {
+    if (!projectView) {
+      setProjectView(true);
+      setSelectedProjectFormKey(importedForms.find((f) => getProjectStatus(f) === 'deployed')?.formKey || '');
+    }
     setWorkspaceSection(section);
     if (section === 'new') {
       setNewProjectStep('source');
@@ -2920,9 +2926,10 @@ export default function InternalKoboSubmissions() {
   return (
     <>
       <PageContainer className="min-h-screen bg-slate-950 py-8">
-        <PageHeader backLink={{ to: '/admin/hub', label: 'Retour au Centre de Contrôle' }}
-          title="GED OS Toolbox"
-          subtitle="Console d'administration pour vérifier, exporter et auditer les fiches terrain GED OS"
+        <PageHeader
+          backLink={projectView ? undefined : { to: '/admin/hub', label: 'Retour au Centre de Contrôle' }}
+          title={projectView && selectedProjectForm ? selectedProjectForm.title || selectedProjectForm.formKey : 'GED OS Toolbox'}
+          subtitle={projectView && selectedProjectForm ? `Formulaire · ${(selectedProjectForm as any).formKey}` : "Console d'administration pour vérifier, exporter et auditer les fiches terrain GED OS"}
           icon={<ClipboardCheck size={24} />}
           actions={
             <div className="flex flex-wrap gap-2">
@@ -2983,6 +2990,164 @@ export default function InternalKoboSubmissions() {
           }
         />
 
+        {!projectView ? (
+          <section className="overflow-hidden rounded-3xl border border-white/10 bg-slate-900/55 p-4 sm:p-6">
+            <div className="mb-6 flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-100">Projets</p>
+                <h2 className="mt-1 text-2xl font-black text-white">Mes formulaires</h2>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="flex gap-1 rounded-2xl border border-white/10 bg-slate-800/60 p-1">
+                  {(['deployed', 'drafts', 'archives'] as const).map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => openWorkspaceSection(s)}
+                      className={`rounded-xl px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.1em] transition ${
+                        workspaceSection === s
+                          ? 'bg-cyan-400/20 text-cyan-300'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      {s === 'deployed' ? 'Déployés' : s === 'drafts' ? 'Brouillons' : 'Archives'}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  onClick={() => openWorkspaceSection('new')}
+                  className="inline-flex items-center gap-2 rounded-2xl bg-cyan-600 px-4 py-2 text-[11px] font-black uppercase tracking-[0.12em] text-white hover:bg-cyan-700"
+                >
+                  <Plus size={14} />
+                  Nouveau
+                </button>
+              </div>
+            </div>
+
+            {importedForms.length === 0 && !isLoadingForms ? (
+              <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 py-16">
+                <ClipboardCheck size={48} className="mb-4 text-slate-700" />
+                <p className="text-sm font-bold text-slate-400">Aucun formulaire déployé</p>
+                <p className="mt-1 text-xs text-slate-500">Importez un XLSForm ou créez un nouveau projet</p>
+                <div className="mt-6 flex gap-3">
+                  <label className="inline-flex cursor-pointer items-center gap-2 rounded-2xl bg-cyan-600 px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-white hover:bg-cyan-700">
+                    <Upload size={14} />
+                    Importer XLSForm
+                    <input
+                      type="file"
+                      accept=".xlsx,.xls"
+                      className="hidden"
+                      disabled={isImporting}
+                      onChange={(event) => {
+                        handleImportXlsForm(event.target.files?.[0]);
+                        event.target.value = '';
+                      }}
+                    />
+                  </label>
+                  <button
+                    onClick={() => openWorkspaceSection('new')}
+                    className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-slate-100 hover:bg-white/[0.08]"
+                  >
+                    <Plus size={14} />
+                    Nouveau projet
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                {(workspaceSection === 'new'
+                  ? [{ label: 'Nouveau projet vierge', formKey: '__new__' }]
+                  : importedForms
+                      .filter((f) => {
+                        if (workspaceSection === 'deployed') return f.status === 'deployed';
+                        if (workspaceSection === 'drafts') return f.status === 'draft';
+                        if (workspaceSection === 'archives') return f.status === 'archived';
+                        return true;
+                      })
+                      .slice(0, 50)
+                ).map((form: any) => {
+                  if (form.formKey === '__new__') {
+                    return (
+                      <button
+                        key="__new__"
+                        onClick={() => openWorkspaceSection('new')}
+                        className="group flex min-h-[180px] flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-white/10 bg-white/[0.02] p-6 text-center transition hover:border-cyan-400/40 hover:bg-cyan-400/5"
+                      >
+                        <Plus size={36} className="text-slate-600 transition-colors group-hover:text-cyan-400" />
+                        <div>
+                          <p className="text-sm font-bold text-slate-400 group-hover:text-cyan-300">Nouveau projet</p>
+                          <p className="mt-1 text-[10px] text-slate-500">Formulaire vierge ou XLSForm</p>
+                        </div>
+                      </button>
+                    );
+                  }
+                  const submissionCount = (form as any).diagnostics?.total ?? 0;
+                  const lastSubmission = (form as any).diagnostics?.lastSubmissionTime || form.updatedAt;
+                  const health = (form as any).diagnostics?.health;
+                  return (
+                    <button
+                      key={form.formKey}
+                      onClick={() => {
+                        setSelectedProjectFormKey(form.formKey);
+                        setProjectView(true);
+                        setMainTab('summary');
+                      }}
+                      className="group relative flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-5 text-left transition hover:border-cyan-400/30 hover:bg-cyan-400/5 hover:shadow-lg hover:shadow-cyan-950/20"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-black text-white group-hover:text-cyan-200">
+                            {form.title || form.formKey}
+                          </p>
+                          <p className="mt-0.5 text-[10px] font-semibold text-slate-500">
+                            {form.formKey}
+                          </p>
+                        </div>
+                        <span className={`shrink-0 rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.1em] ${
+                          form.status === 'deployed'
+                            ? 'bg-emerald-400/10 text-emerald-100'
+                            : form.status === 'draft'
+                            ? 'bg-amber-400/10 text-amber-100'
+                            : 'bg-slate-400/10 text-slate-400'
+                        }`}>
+                          {form.status === 'deployed' ? 'Actif' : form.status === 'draft' ? 'Brouillon' : 'Archivé'}
+                        </span>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-3 text-[10px] text-slate-500">
+                        <span className="inline-flex items-center gap-1">
+                          <Database size={11} />
+                          {submissionCount} soumission{(submissionCount > 1 || submissionCount === 0) ? 's' : ''}
+                        </span>
+                        {lastSubmission ? (
+                          <span className="inline-flex items-center gap-1">
+                            <CalendarDays size={11} />
+                            {formatDateTime(lastSubmission)}
+                          </span>
+                        ) : null}
+                        {form.formVersion ? (
+                          <span className="inline-flex items-center gap-1 font-mono text-[9px]">
+                            v{form.formVersion.slice(0, 8)}
+                          </span>
+                        ) : null}
+                      </div>
+
+                      {(form as any).diagnostics?.fieldCount != null ? (
+                        <p className="text-[10px] text-slate-600">
+                          {(form as any).diagnostics.fieldCount} champs
+                          {(form as any).diagnostics.choiceCount ? ` · ${(form as any).diagnostics.choiceCount} choix` : ''}
+                        </p>
+                      ) : null}
+
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-700 opacity-0 transition group-hover:opacity-100">
+                        <ChevronRight size={18} />
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        ) : (
         <ContentArea
           padding="none"
           className="border-slate-800 bg-slate-950/40 shadow-2xl shadow-blue-950/20"
@@ -3135,7 +3300,13 @@ export default function InternalKoboSubmissions() {
                             ? ` (${filteredTableSubmissions.length} apres filtres colonnes)`
                             : ''}
                         </span>
-                        {deployedProjectForms.length > 0 ? (
+                        {projectView && selectedProjectForm ? (
+                          <span className="inline-flex items-center gap-2 rounded-lg bg-slate-100 px-3 py-2 text-xs font-bold text-slate-700">
+                            <Server size={14} />
+                            {selectedProjectForm.title || selectedProjectForm.formKey}
+                          </span>
+                        ) : null}
+                        {deployedProjectForms.length > 0 && !projectView ? (
                           <label className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.08em] text-slate-500">
                             Projet
                             <select
@@ -7076,6 +7247,7 @@ export default function InternalKoboSubmissions() {
             ) : null}
           </div>
         </ContentArea>
+        )}
 
         {previewForm ? (
           <div className="fixed inset-0 z-50 bg-slate-950/65 p-2 backdrop-blur-sm sm:p-5">
