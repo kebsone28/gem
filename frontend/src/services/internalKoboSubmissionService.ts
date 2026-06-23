@@ -184,6 +184,7 @@ export interface InternalKoboSubmissionFilters {
   to?: string;
   limit?: number;
   offset?: number;
+  mobileOnly?: string;
 }
 
 export interface InternalKoboSubmissionsReport {

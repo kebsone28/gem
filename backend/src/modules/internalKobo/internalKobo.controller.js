@@ -1672,6 +1672,7 @@ function buildSubmissionWhere(user, query = {}) {
     q,
     from,
     to,
+    mobileOnly,
   } = query;
   const numeroVariants = normalizeNumeroVariants(numeroOrdre);
   const filters = [{ organizationId }];
@@ -1696,6 +1697,9 @@ function buildSubmissionWhere(user, query = {}) {
   if (role) filters.push({ role: String(role) });
   if (formKey) filters.push({ formKey: String(formKey) });
   if (submittedById) filters.push({ submittedById: String(submittedById) });
+  if (mobileOnly === 'true') {
+    filters.push({ submittedBy: { is: { phoneActivated: true } } });
+  }
   if (agent) {
     const agentSearch = String(agent).trim();
     if (agentSearch) {

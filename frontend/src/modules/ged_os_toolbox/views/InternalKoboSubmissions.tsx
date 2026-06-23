@@ -51,6 +51,7 @@ import {
   Settings,
   Share2,
   ShieldCheck,
+  Smartphone,
   Table2,
   Trash2,
   Type,
@@ -91,7 +92,7 @@ import apiClient from '@/api/client';
 import logger from '@services/logger';
 import GedcollectUserManager from './GedcollectUserManager';
 import GedcollectDashboard from './GedcollectDashboard';
-import GedcollectSubmissionsView from './GedcollectSubmissionsView';
+
 
 type Filters = {
   q: string;
@@ -101,6 +102,7 @@ type Filters = {
   formKey: string;
   limit: number;
   offset: number;
+  mobileOnly: string;
 };
 
 type MainTab = 'summary' | 'form' | 'data' | 'settings';
@@ -1443,6 +1445,7 @@ export default function InternalKoboSubmissions() {
       formKey: '',
       limit: 100,
       offset: 0,
+      mobileOnly: '',
     };
     const saved = localStorage.getItem(STORAGE_KEY_FILTERS);
     if (saved) {
@@ -1523,6 +1526,7 @@ export default function InternalKoboSubmissions() {
         formKey: selectedProjectFormKey || filters.formKey || undefined,
         limit: filters.limit,
         offset: filters.offset,
+        mobileOnly: filters.mobileOnly || undefined,
       };
       const [report, diagnostics] = await Promise.all([
         fetchInternalKoboSubmissionsReport(cleanFilters).catch((err) => {
@@ -3591,9 +3595,14 @@ export default function InternalKoboSubmissions() {
               </section>
             ) : null}
 
-            <div className="mt-4">
-              <GedcollectSubmissionsView />
-            </div>
+            {filters.mobileOnly === 'true' ? (
+              <div className="mt-4 rounded-2xl border border-cyan-400/20 bg-cyan-400/5 px-4 py-3">
+                <p className="flex items-center gap-2 text-[11px] font-bold text-cyan-300">
+                  <Smartphone size={14} />
+                  Filtre Mobile actif — seules les soumissions GedCollect (applicateurs terrain) sont affichées.
+                </p>
+              </div>
+            ) : null}
 
             {showLegacyKoboTable && mainTab === 'data' && dataTab === 'table' ? (
               <>
@@ -3705,6 +3714,23 @@ export default function InternalKoboSubmissions() {
                     <option value={250}>250</option>
                     <option value={500}>500</option>
                   </select>
+                  <button
+                    onClick={() =>
+                      setFilters((current) => ({
+                        ...current,
+                        mobileOnly: current.mobileOnly === 'true' ? '' : 'true',
+                        offset: 0,
+                      }))
+                    }
+                    className={`inline-flex h-12 items-center gap-2 rounded-2xl border px-4 text-[10px] font-black uppercase tracking-[0.12em] transition ${
+                      filters.mobileOnly === 'true'
+                        ? 'border-cyan-400/50 bg-cyan-400/20 text-cyan-300'
+                        : 'border-white/10 bg-slate-900 text-white/60 hover:border-white/20 hover:text-white'
+                    }`}
+                  >
+                    <Smartphone size={14} />
+                    Mobile
+                  </button>
                 </div>
               </>
             ) : null}
