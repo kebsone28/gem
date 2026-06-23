@@ -6,7 +6,7 @@ export const listUsers = async (req, res) => {
   try {
     const { organizationId } = req.user;
     const users = await prisma.user.findMany({
-      where: { organizationId },
+      where: { organizationId, phone: { not: null } },
       select: {
         id: true,
         name: true,
