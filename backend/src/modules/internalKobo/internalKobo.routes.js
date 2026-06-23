@@ -9,6 +9,7 @@ import {
   exportInternalKoboMedia,
   getInternalKoboDiagnostics,
   getInternalKoboFormDefinition,
+  getInternalKoboFormStats,
   getInternalKoboImportedFormDefinition,
   getInternalKoboSubmission,
   deleteInternalKoboSubmission,
@@ -40,6 +41,7 @@ router.post('/form-definition/import', upload.single('file'), importInternalKobo
 router.post('/form-definition/import-url', importInternalKoboXlsFormFromUrl);
 router.get('/form-definitions/:formKey', getInternalKoboImportedFormDefinition);
 router.get('/diagnostics', getInternalKoboDiagnostics);
+router.get('/form-stats', getInternalKoboFormStats);
 router.post('/client-queue-report', reportInternalKoboClientQueue);
 router.get('/submissions', listInternalKoboSubmissions);
 router.get('/submissions/export', exportInternalKoboSubmissions);

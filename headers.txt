@@ -1,0 +1,16 @@
+HTTP/1.1 403 Forbidden
+Date: Tue, 23 Jun 2026 23:12:36 GMT
+Content-Type: text/html; charset=utf-8
+Content-Length: 1852
+Connection: keep-alive
+Server: nginx
+Content-Security-Policy: default-src 'self' https://kc.kobotoolbox.org https://ee.kobotoolbox.org; frame-src 'self' https://kc.kobotoolbox.org https://ee.kobotoolbox.org https://js.stripe.com; style-src 'self' https://kc.kobotoolbox.org https://ee.kobotoolbox.org 'unsafe-inline'; img-src 'self' https://kc.kobotoolbox.org https://ee.kobotoolbox.org data: https://*.openstreetmap.org https://*.openstreetmap.fr https://*.opentopomap.org https://*.arcgisonline.com https://*.google-analytics.com https://*.googletagmanager.com; connect-src 'self' https://kc.kobotoolbox.org https://ee.kobotoolbox.org https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://sentry.kbtdev.org; script-src 'self' https://kc.kobotoolbox.org https://ee.kobotoolbox.org https://*.googletagmanager.com https://sentry.kbtdev.org https://js.stripe.com; report-uri https://sentry.kbtdev.org/api/38/security/?glitchtip_key=dc86d21184204750950f9c3bf34b8cb4
+X-Frame-Options: DENY
+Vary: origin, Accept-Language, Cookie
+Content-Language: en
+X-Content-Type-Options: nosniff
+Referrer-Policy: strict-origin-when-cross-origin
+Cross-Origin-Opener-Policy: same-origin
+Set-Cookie: django_language=en; expires=Tue, 30 Jun 2026 23:12:36 GMT; Max-Age=604800; Path=/
+Strict-Transport-Security: max-age=15780000
+

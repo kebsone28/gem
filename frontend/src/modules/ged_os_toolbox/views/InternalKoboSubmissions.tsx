@@ -1475,6 +1475,7 @@ export default function InternalKoboSubmissions() {
   );
   const [globalDiagnostics, setGlobalDiagnostics] =
     useState<InternalKoboSubmissionDiagnostics | null>(null);
+  const [formStats, setFormStats] = useState<{ total: number; last7d: number; last31d: number; last3m: number; last12m: number; last7dDays: number[] } | null>(null);
   const [selectedId, setSelectedId] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -1565,6 +1566,13 @@ export default function InternalKoboSubmissions() {
   useEffect(() => {
     loadFormDefinitions();
   }, [loadFormDefinitions]);
+
+  useEffect(() => {
+    if (!selectedProjectFormKey) return;
+    apiClient.get('internal-kobo/form-stats', { params: { formKey: selectedProjectFormKey } })
+      .then(({ data }) => { if (data?.stats) setFormStats(data.stats); })
+      .catch(() => {});
+  }, [selectedProjectFormKey]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -5814,32 +5822,50 @@ export default function InternalKoboSubmissions() {
                     <p className="text-[11px] font-black uppercase tracking-[0.16em] text-blue-100">
                       Soumissions
                     </p>
-                    <div className="mt-6 flex items-center gap-4 border-b border-white/10 pb-4">
-                      <span className="text-xs font-bold text-white">7 derniers jours</span>
-                      <span className="text-xs font-semibold text-slate-500">
-                        31 derniers jours
-                      </span>
-                      <span className="text-xs font-semibold text-slate-500">
-                        Trois derniers mois
-                      </span>
-                      <span className="text-xs font-semibold text-slate-500">
-                        Douze derniers mois
-                      </span>
-                    </div>
-                    <div className="mt-8 flex h-40 items-end gap-2">
-                      {[2, 5, 1, 8, 3, 12, 4].map((val, i) => (
-                        <div key={i} className="group relative flex flex-1 flex-col justify-end">
-                          <div
-                            className="w-full rounded-t-sm bg-blue-500/80 transition group-hover:bg-blue-400"
-                            style={{ height: `${(val / 12) * 100}%` }}
-                          />
-                          <span className="mt-2 text-center text-[9px] font-semibold text-slate-500">
-                            J-{6 - i}
-                          </span>
+                    <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-5">
+                      {[
+                        { label: 'Total', key: 'total', value: formStats?.total ?? 0 },
+                        { label: '7 jours', key: 'last7d', value: formStats?.last7d ?? 0 },
+                        { label: '31 jours', key: 'last31d', value: formStats?.last31d ?? 0 },
+                        { label: '3 mois', key: 'last3m', value: formStats?.last3m ?? 0 },
+                        { label: '12 mois', key: 'last12m', value: formStats?.last12m ?? 0 },
+                      ].map((stat) => (
+                        <div key={stat.key} className="rounded-2xl border border-white/8 bg-slate-950/40 p-4">
+                          <p className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">
+                            {stat.label}
+                          </p>
+                          <p className="mt-2 text-2xl font-black text-white">
+                            {stat.value.toLocaleString('fr-FR')}
+                          </p>
                         </div>
                       ))}
                     </div>
+                    {formStats?.last7dDays ? (
+                      <div className="mt-6">
+                        <p className="mb-3 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">7 derniers jours</p>
+                        <div className="flex h-32 items-end gap-2">
+                          {formStats.last7dDays.map((val, i) => {
+                            const max = Math.max(...formStats.last7dDays, 1);
+                            return (
+                              <div key={i} className="group relative flex flex-1 flex-col justify-end">
+                                <div
+                                  className="w-full rounded-t-sm bg-cyan-500/70 transition group-hover:bg-cyan-400"
+                                  style={{ height: `${(val / max) * 100}%` }}
+                                />
+                                <span className="mt-1 text-center text-[8px] font-semibold text-slate-500">
+                                  J-{6 - i}
+                                </span>
+                                <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-[9px] font-bold text-cyan-300 opacity-0 transition group-hover:opacity-100">
+                                  {val}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
+                  <GedcollectDashboard />
                 </div>
               ) : (
                 <>

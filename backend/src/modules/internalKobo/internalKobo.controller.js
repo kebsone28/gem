@@ -2451,3 +2451,43 @@ export const exportInternalKoboMedia = async (req, res) => {
     }
   }
 };
+
+export const getInternalKoboFormStats = async (req, res) => {
+  try {
+    const { formKey } = req.query;
+    const { organizationId } = req.user;
+    if (!formKey) return res.status(400).json({ success: false, message: 'formKey requis' });
+
+    const baseWhere = { organizationId, formKey: String(formKey) };
+    const now = new Date();
+    const periods = {
+      last7d: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000),
+      last31d: new Date(now.getTime() - 31 * 24 * 60 * 60 * 1000),
+      last3m: new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000),
+      last12m: new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000),
+    };
+
+    const [total, last7d, last31d, last3m, last12m] = await Promise.all([
+      prisma.internalKoboSubmission.count({ where: baseWhere }),
+      prisma.internalKoboSubmission.count({ where: { ...baseWhere, savedAt: { gte: periods.last7d } } }),
+      prisma.internalKoboSubmission.count({ where: { ...baseWhere, savedAt: { gte: periods.last31d } } }),
+      prisma.internalKoboSubmission.count({ where: { ...baseWhere, savedAt: { gte: periods.last3m } } }),
+      prisma.internalKoboSubmission.count({ where: { ...baseWhere, savedAt: { gte: periods.last12m } } }),
+    ]);
+
+    const last7dDays = await Promise.all(
+      Array.from({ length: 7 }, (_, i) => {
+        const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
+        const dayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i + 1);
+        return prisma.internalKoboSubmission.count({
+          where: { ...baseWhere, savedAt: { gte: dayStart, lt: dayEnd } },
+        });
+      })
+    );
+
+    return res.json({ success: true, stats: { total, last7d, last31d, last3m, last12m, last7dDays: last7dDays.reverse() } });
+  } catch (err) {
+    logger.error('[INTERNAL-KOBO] formStats error:', err);
+    return res.status(500).json({ success: false, message: 'Erreur stats formulaire' });
+  }
+};
