@@ -9,7 +9,6 @@ import { isAuthenticated } from '@services/api';
 import LoginScreen from '@screens/LoginScreen';
 import FormListScreen from '@screens/FormListScreen';
 import FormScreen from '@screens/FormScreen';
-import SettingsScreen from '@screens/SettingsScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -48,11 +47,6 @@ const App: React.FC = () => {
       >
         <Stack.Screen name="FormList" component={FormListScreen} />
         <Stack.Screen name="Form" component={FormScreen} />
-        <Stack.Screen
-          name="Settings"
-          component={SettingsScreen}
-          options={{ animation: 'slide_from_bottom' }}
-        />
       </Stack.Navigator>
       <Toast />
     </NavigationContainer>
