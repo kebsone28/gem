@@ -1,3 +1,4 @@
+import bcrypt from 'bcryptjs';
 import prisma from '../../core/utils/prisma.js';
 import logger from '../../utils/logger.js';
 
@@ -141,10 +142,13 @@ export const createGedcollectUser = async (req, res) => {
       where: { name: 'USER' },
     });
 
+    const passwordHash = await bcrypt.hash(phone, 10);
+
     const user = await prisma.user.create({
       data: {
         name: name || `Mobile ${phone}`,
         email: `${phone}@gedcollect.local`,
+        passwordHash,
         phone,
         phoneActivated: true,
         active: true,
