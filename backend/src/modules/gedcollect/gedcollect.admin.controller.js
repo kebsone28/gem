@@ -138,7 +138,7 @@ export const createGedcollectUser = async (req, res) => {
     }
 
     const role = await prisma.role.findFirst({
-      where: { name: 'USER', organizationId },
+      where: { name: 'USER' },
     });
 
     const user = await prisma.user.create({
