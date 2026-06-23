@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Smartphone, Plus, X, CheckCircle, AlertCircle, Loader2, Edit3, FileText } from 'lucide-react';
+import { Smartphone, Plus, X, CheckCircle, AlertCircle, Loader2, Edit3, FileText, Trash2 } from 'lucide-react';
 import apiClient from '@/api/client';
 import toast from 'react-hot-toast';
 
@@ -39,6 +39,8 @@ const GedcollectUserManager: React.FC = () => {
   const [assignFormTo, setAssignFormTo] = useState<string | null>(null);
   const [selectedFormKey, setSelectedFormKey] = useState('');
   const [assigningForm, setAssigningForm] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -139,6 +141,21 @@ const GedcollectUserManager: React.FC = () => {
       toast.error(err?.response?.data?.error || 'Erreur assignation');
     } finally {
       setAssigningForm(false);
+    }
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    setDeleting(true);
+    try {
+      await apiClient.delete(`gedcollect-admin/users/${userId}`);
+      toast.success('Utilisateur supprimé');
+      setConfirmDelete(null);
+      fetchUsers();
+      fetchAssignments();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || 'Erreur suppression');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -299,6 +316,14 @@ const GedcollectUserManager: React.FC = () => {
                   >
                     {u.phoneActivated ? 'Désactiver' : 'Activer'}
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmDelete(confirmDelete === u.id ? null : u.id)}
+                    className="rounded-lg px-2 py-1.5 text-[9px] font-black uppercase tracking-[0.1em] bg-rose-500/10 text-rose-100 hover:bg-rose-500/20 transition"
+                    title="Supprimer"
+                  >
+                    <Trash2 size={12} />
+                  </button>
                 </div>
               </div>
               {assignFormTo === u.id && (
@@ -321,6 +346,31 @@ const GedcollectUserManager: React.FC = () => {
                   >
                     {assigningForm ? <Loader2 size={12} className="animate-spin" /> : 'Assigner'}
                   </button>
+                </div>
+              )}
+              {confirmDelete === u.id && (
+                <div className="ml-4 mb-2 rounded-xl border border-rose-500/20 bg-rose-500/5 p-3 flex items-center justify-between">
+                  <p className="text-xs font-semibold text-rose-200">
+                    Supprimer <span className="font-black">{u.name || u.phone}</span> ?
+                    Les assignations seront aussi supprimées.
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDelete(null)}
+                      className="rounded-lg px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.1em] text-slate-400 hover:text-white transition"
+                    >
+                      Annuler
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteUser(u.id)}
+                      disabled={deleting}
+                      className="rounded-lg bg-rose-500/20 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.1em] text-rose-100 hover:bg-rose-500/30 transition disabled:opacity-50"
+                    >
+                      {deleting ? <Loader2 size={12} className="animate-spin" /> : 'Confirmer'}
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

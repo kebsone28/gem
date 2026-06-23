@@ -172,6 +172,28 @@ export const createGedcollectUser = async (req, res) => {
   }
 };
 
+export const deleteGedcollectUser = async (req, res) => {
+  try {
+    const { organizationId } = req.user;
+    const { id } = req.params;
+
+    const user = await prisma.user.findFirst({ where: { id, organizationId } });
+    if (!user) return res.status(404).json({ error: 'Utilisateur introuvable' });
+
+    await prisma.gedcollectAssignment.deleteMany({ where: { userId: id, organizationId } });
+
+    await prisma.user.update({
+      where: { id },
+      data: { active: false, phoneActivated: false, phone: null },
+    });
+
+    res.json({ success: true });
+  } catch (err) {
+    logger.error('[GEDCOLLECT-ADMIN] deleteUser error:', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+};
+
 export const listForms = async (req, res) => {
   try {
     const { organizationId } = req.user;

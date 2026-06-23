@@ -6,6 +6,7 @@ import {
   setPhone,
   toggleActivation,
   createGedcollectUser,
+  deleteGedcollectUser,
   listAssignments,
   createAssignment,
   deleteAssignment,
@@ -21,6 +22,7 @@ router.get('/users', listUsers);
 router.post('/users/set-phone', setPhone);
 router.post('/users/toggle-activation', toggleActivation);
 router.post('/users', createGedcollectUser);
+router.delete('/users/:id', deleteGedcollectUser);
 
 router.get('/assignments', listAssignments);
 router.post('/assignments', createAssignment);
