@@ -5,6 +5,7 @@ import {
   listUsers,
   setPhone,
   toggleActivation,
+  createGedcollectUser,
   listAssignments,
   createAssignment,
   deleteAssignment,
@@ -19,6 +20,7 @@ router.use(authorize('ADMIN_PROQUELEC'));
 router.get('/users', listUsers);
 router.post('/users/set-phone', setPhone);
 router.post('/users/toggle-activation', toggleActivation);
+router.post('/users', createGedcollectUser);
 
 router.get('/assignments', listAssignments);
 router.post('/assignments', createAssignment);

@@ -89,6 +89,7 @@ import {
 import toast from 'react-hot-toast';
 import apiClient from '@/api/client';
 import logger from '@services/logger';
+import GedcollectUserManager from './GedcollectUserManager';
 
 type Filters = {
   q: string;
@@ -6598,6 +6599,7 @@ export default function InternalKoboSubmissions() {
                     </div>
                   </div>
                 </div>
+                <GedcollectUserManager />
                 <div className="rounded-3xl border border-white/10 bg-slate-900/45 p-4 lg:col-span-2">
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div>

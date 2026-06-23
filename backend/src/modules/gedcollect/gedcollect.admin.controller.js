@@ -122,6 +122,52 @@ export const deleteAssignment = async (req, res) => {
   }
 };
 
+export const createGedcollectUser = async (req, res) => {
+  try {
+    const { organizationId } = req.user;
+    const { name, phone } = req.body;
+    if (!phone || phone.length < 8) {
+      return res.status(400).json({ error: 'Numéro de téléphone invalide' });
+    }
+
+    const existing = await prisma.user.findFirst({
+      where: { phone, organizationId },
+    });
+    if (existing) {
+      return res.status(409).json({ error: 'Ce numéro existe déjà' });
+    }
+
+    const role = await prisma.role.findFirst({
+      where: { name: 'USER', organizationId },
+    });
+
+    const user = await prisma.user.create({
+      data: {
+        name: name || `Mobile ${phone}`,
+        email: `${phone}@gedcollect.local`,
+        phone,
+        phoneActivated: true,
+        active: true,
+        organizationId,
+        roleId: role?.id || undefined,
+      },
+      select: {
+        id: true,
+        name: true,
+        phone: true,
+        phoneActivated: true,
+        active: true,
+        createdAt: true,
+      },
+    });
+
+    res.status(201).json({ success: true, user });
+  } catch (err) {
+    logger.error('[GEDCOLLECT-ADMIN] createUser error:', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+};
+
 export const listForms = async (req, res) => {
   try {
     const { organizationId } = req.user;
