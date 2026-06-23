@@ -124,6 +124,8 @@ import formationRoutes from './modules/formation/formation.routes.js';
 import chatRoutes from './modules/chat/chat.routes.js';
 import pvRoutes from './api/routes/pv.routes.js';
 import internalKoboRoutes from './modules/internalKobo/internalKobo.routes.js';
+import gedcollectRoutes from './modules/gedcollect/gedcollect.routes.js';
+import gedcollectAdminRoutes from './modules/gedcollect/gedcollect.admin.routes.js';
 import debugRoutes from './api/routes/debug.routes.js';
 import adminPermissionRoutes from './api/routes/admin.permissions.routes.js';
 import mesRoutes from './api/routes/mes.routes.js';
@@ -169,6 +171,8 @@ app.use('/api/alerts', alertsRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/pvs', pvRoutes);
 app.use('/api/internal-kobo', internalKoboRoutes);
+app.use('/api/gedcollect', gedcollectRoutes);
+app.use('/api/gedcollect-admin', gedcollectAdminRoutes);
 app.use('/api/sharedoc', sharedocRoutes);
 app.use('/api/mes', mesRoutes);
 if (config.env !== 'production') {

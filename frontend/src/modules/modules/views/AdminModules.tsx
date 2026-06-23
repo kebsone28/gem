@@ -22,8 +22,10 @@ import {
   Globe,
   LayoutGrid,
   Building2,
+  FileText,
 } from 'lucide-react';
 import { PageContainer, PageHeader, ContentArea } from '@components';
+import { TemplateManager } from '@components/admin/TemplateManager';
 
 interface ModuleStats {
   moduleId: string;
@@ -48,6 +50,7 @@ export default function AdminModules() {
 
   const [stats, setStats] = useState<Record<string, ModuleStats>>({});
   const [showDisabled, setShowDisabled] = useState(false);
+  const [showTemplates, setShowTemplates] = useState(false);
   const [configMode, setConfigMode] = useState<'global' | 'domain'>('global');
   const [selectedDomain, setSelectedDomain] = useState<string | null>(null);
   const [domainModulesConfig, setDomainModulesConfig] = useState<Record<string, Record<string, ModuleConfig>>>({});
@@ -726,6 +729,15 @@ export default function AdminModules() {
               Gestion des utilisateurs
             </button>
             <button
+              onClick={() => setShowTemplates(!showTemplates)}
+              className={`px-6 py-3 rounded-xl transition-all flex items-center gap-2 ${
+                showTemplates ? 'bg-blue-600 text-white' : 'bg-slate-800/50 text-slate-400 hover:text-white'
+              }`}
+            >
+              <FileText size={16} />
+              {showTemplates ? 'Masquer les templates' : 'Gestion des templates'}
+            </button>
+            <button
               onClick={loadModules}
               disabled={loading}
               className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-500 transition-all flex items-center gap-2 disabled:opacity-50"
@@ -734,6 +746,13 @@ export default function AdminModules() {
               {loading ? 'Chargement...' : 'Actualiser'}
             </button>
           </div>
+
+          {/* Template Manager */}
+          {showTemplates && (
+            <div className="mt-8 p-6 rounded-2xl border border-white/8 bg-slate-900/40">
+              <TemplateManager />
+            </div>
+          )}
         </div>
       </ContentArea>
     </PageContainer>

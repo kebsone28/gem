@@ -60,6 +60,8 @@ export const createUser = async (req, res) => {
       requires2FA,
       teamId,
       permissions,
+      phone,
+      phoneActivated,
     } = req.body;
     const { organizationId } = req.user;
 
@@ -81,6 +83,15 @@ export const createUser = async (req, res) => {
     });
     if (userExists) {
       return res.status(400).json({ error: 'Cet email est déjà utilisé dans cette organisation' });
+    }
+
+    if (phone) {
+      const phoneExists = await prisma.user.findFirst({
+        where: { phone, organizationId },
+      });
+      if (phoneExists) {
+        return res.status(400).json({ error: 'Ce numéro est déjà utilisé dans cette organisation' });
+      }
     }
 
     // 🛡️ SECURITY: Force Admin permissions to always be complete
@@ -110,6 +121,8 @@ export const createUser = async (req, res) => {
         roleId: finalRoleId,
         requires2FA: !!requires2FA,
         permissions: finalPermissions,
+        phone: phone || null,
+        phoneActivated: !!phoneActivated,
         organizationId,
       },
       include: { role: true },
@@ -230,6 +243,8 @@ export const updateUser = async (req, res) => {
       ...(requires2FA !== undefined && { requires2FA }),
       ...(passwordHash !== undefined && { passwordHash }),
       ...(permissions !== undefined && { permissions }),
+      ...(req.body.phone !== undefined && { phone: req.body.phone }),
+      ...(req.body.phoneActivated !== undefined && { phoneActivated: req.body.phoneActivated }),
     };
 
     // 6. Update via updateMany (supports organizationId filter without needing composite unique index)

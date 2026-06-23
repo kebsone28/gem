@@ -1,0 +1,15 @@
+node_modules/
+.gradle/
+app/build/
+build/
+*.apk
+*.aab
+local.properties
+debug.keystore
+*.log
+.env
+.DS_Store
+Thumbs.db
+*.hprof
+*.jks
+

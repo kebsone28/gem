@@ -40,6 +40,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useSync } from '../hooks/useSync';
 import { usePermissions } from '../hooks/usePermissions';
+import { useNotificationBadges } from '../hooks/useNotificationBadges';
 import { motion } from 'framer-motion';
 import { normalizeRole, ROLES } from '../core/security/permissions';
 import { AppRole } from '../core/security/types';
@@ -105,6 +106,8 @@ export default function Sidebar() {
       return storedMode;
     return window.localStorage.getItem('ged-os-sidebar-density') === 'compact' ? 'compact' : 'wide';
   });
+
+  const notifBadges = useNotificationBadges();
 
   // 1️⃣ Normalisation et bypass sécurisé via helpers
   const nRole = useMemo(() => normalizeRole(user?.role), [user?.role]);
@@ -638,6 +641,16 @@ export default function Sidebar() {
                               className={`transition-transform duration-300 group-hover:scale-110 ${isActive ? 'text-blue-300' : 'text-slate-500'
                                 }`}
                             />
+                            {(item.id === 'mission' && notifBadges.approvalUnread + notifBadges.rejectionUnread > 0) && (
+                              <span className="absolute -top-1 -right-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-rose-500 px-1 text-[8px] font-bold text-white shadow-[0_4px_10px_rgba(244,63,94,0.4)]">
+                                {notifBadges.approvalUnread + notifBadges.rejectionUnread > 9 ? '9+' : notifBadges.approvalUnread + notifBadges.rejectionUnread}
+                              </span>
+                            )}
+                            {(item.id === 'approval' && notifBadges.approvalUnread > 0) && (
+                              <span className="absolute -top-1 -right-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-amber-500 px-1 text-[8px] font-bold text-white shadow-[0_4px_10px_rgba(251,191,36,0.4)]">
+                                {notifBadges.approvalUnread > 9 ? '9+' : notifBadges.approvalUnread}
+                              </span>
+                            )}
                           </div>
                           {isRailDesktop && (
                             <div className="pointer-events-none absolute left-[calc(100%+0.8rem)] top-1/2 z-30 hidden -translate-y-1/2 whitespace-nowrap rounded-xl border border-white/10 bg-slate-950/95 px-3 py-2 text-[11px] font-semibold tracking-[0.08em] text-white shadow-[0_18px_40px_rgba(2,6,23,0.45)] backdrop-blur-md group-hover:block">

@@ -14,6 +14,8 @@ import {
 import { isPrismaSchemaDriftError } from '../../core/utils/prismaCompat.js';
 import { jsonBigIntReplacer } from '../../utils/commonUtils.js';
 import logger from '../../utils/logger.js';
+// New service for GedCollect (GEDToolbox) synchronization
+import { syncGedCollectToDatabase } from '../../services/gedcollect.service.js';
 
 const DEBUG_LOG = path.join(process.cwd(), 'sync_debug.log');
 
@@ -716,6 +718,98 @@ export const syncKobo = async (req, res) => {
             error: errorType, 
             message: error.message 
         });
+    }
+};
+
+// @desc    Sync GedToolbox (placeholder – real implementation can be added later)
+// @route   POST /api/sync/gedtoolbox
+/**
+ * Sync GedToolbox (GEDcollect) – now mirrors the Kobo implementation.
+ * The endpoint receives an optional `projectId` and `force` flag.
+ * It delegates the heavy lifting to `syncGedCollectToDatabase` which:
+ *   1. récupère les soumissions depuis l’API GedCollect,
+ *   2. les transforme en objets ménage via `transformRowToHousehold`,
+ *   3. les upsert dans la base Prisma.
+ * Après la synchronisation, on renvoie les mêmes informations que le
+ * endpoint Kobo (résultat, dernier résultat, etc.) afin que le front‑end
+ * puisse afficher les toasts correctement.
+ */
+export const syncGedToolbox = async (req, res) => {
+    try {
+        const { organizationId, id: userId } = req.user;
+        const { projectId, force } = req.body;
+
+        // Resolve target project – même logique que dans syncKobo
+        let targetProject = null;
+        if (projectId) {
+            targetProject = await prisma.project.findUnique({ where: { id: projectId } });
+        }
+        if (!targetProject) {
+            targetProject = await prisma.project.findFirst({ where: { organizationId, deletedAt: null } });
+        }
+        if (!targetProject) {
+            // Crée un projet par défaut si aucun n'existe
+            targetProject = await prisma.project.create({
+                data: { name: 'Projet GedCollect Global', organizationId, status: 'active', budget: '0', duration: 0, totalHouses: 0, config: {} },
+            });
+        }
+
+        // Determine default zone (same heuristics que Kobo)
+        let defaultZoneId = req.body.zoneId || null;
+        if (!defaultZoneId) {
+            const existingZone = await prisma.zone.findFirst({ where: { projectId: targetProject.id, organizationId } });
+            if (existingZone) {
+                defaultZoneId = existingZone.id;
+            } else {
+                const newZone = await prisma.zone.create({ data: { name: 'Zone GedCollect A', projectId: targetProject.id, organizationId } });
+                defaultZoneId = newZone.id;
+            }
+        }
+
+        const lastSyncDate = force ? new Date(0) : null;
+
+        logger.info('[SYNC-GEDTOOLBOX] Starting GedCollect sync', {
+            organizationId,
+            projectId: targetProject.id,
+            defaultZoneId,
+            force,
+        });
+
+        const results = await syncGedCollectToDatabase(
+            organizationId,
+            defaultZoneId,
+            lastSyncDate,
+            targetProject.id,
+            userId
+        );
+
+        // Log the sync (mirroring Kobo sync log)
+        try {
+            await prisma.syncLog.create({
+                data: {
+                    organizationId,
+                    userId,
+                    action: 'GEDCOLLECT_PULL_SYNC',
+                    details: results,
+                    timestamp: new Date(),
+                    deviceId: 'SERVER_GEDCOLLECT_SYNC',
+                },
+            });
+        } catch (e) {
+            if (!isPrismaSchemaDriftError(e)) {
+                logger.warn('[SYNC-GEDTOOLBOX] SyncLog not available:', e.message);
+            }
+        }
+
+        res.json({
+            message: 'GedCollect synchronization successful',
+            result: results,
+            lastResult: { applied: results.applied, skipped: results.skipped, errors: results.errors },
+        });
+    } catch (error) {
+        logger.error('[SYNC-GEDTOOLBOX-ERROR]:', error.message);
+        const statusCode = error.statusCode || 500;
+        res.status(statusCode).json({ error: 'Failed to sync GedCollect', message: error.message });
     }
 };
 

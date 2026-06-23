@@ -256,6 +256,16 @@ export default defineConfig({
               return 'pdf';
             if (id.includes('framer-motion')) return 'animation';
             if (id.includes('dexie')) return 'dexie';
+            if (id.includes('docx')) return 'docx';
+            if (id.includes('xlsx')) return 'xlsx';
+            if (id.includes('qrcode')) return 'qrcode';
+            if (id.includes('axios')) return 'axios';
+            if (id.includes('socket.io-client')) return 'socketio';
+            if (id.includes('date-fns')) return 'date-fns';
+            if (id.includes('@turf')) return 'turf';
+            if (id.includes('supercluster')) return 'supercluster';
+            if (id.includes('dompurify')) return 'dompurify';
+            if (id.includes('react-window')) return 'virtual';
             return 'vendor';
           }
         },

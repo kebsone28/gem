@@ -62,6 +62,7 @@ import {
 import { COUNTRY_PACKS } from '@/config/packs/countryPacks';
 import { MODULE_REGISTRY, getAllModules } from '@core/kernel/registry';
 import { modulesManagementService, type ModuleConfig } from '@services/modulesManagementService';
+import { templateService } from '@services/templateService';
 
 interface ProjectTemplate {
   id: string;
@@ -89,7 +90,7 @@ interface ProjectFeature {
   tags?: string[];
 }
 
-const DEFAULT_PROJECT_TEMPLATES: ProjectTemplate[] = [
+const FALLBACK_TEMPLATES: ProjectTemplate[] = [
   {
     id: 'gem_electrification',
     name: "GEM — Électrification de Masse",
@@ -162,6 +163,12 @@ export default function AdminProjectCreation() {
 
   const [selectedFeatures, setSelectedFeatures] = useState<ProjectFeature[]>(GET_CORE_FEATURES());
   const [domainModulesConfig, setDomainModulesConfig] = useState<Record<string, Record<string, ModuleConfig>>>({});
+  const [templates, setTemplates] = useState<ProjectTemplate[]>(FALLBACK_TEMPLATES);
+
+  // Charger les templates depuis l'API
+  useEffect(() => {
+    templateService.list().then(setTemplates).catch(() => setTemplates(FALLBACK_TEMPLATES));
+  }, []);
 
   // Charger la config des modules par domaine pour adapter les templates
   useEffect(() => {
@@ -172,7 +179,7 @@ export default function AdminProjectCreation() {
   useEffect(() => {
     if (!domainTypeParam || selectedTemplate) return;
     const domain = domainTypeParam.replace('SECTOR_', '').toLowerCase();
-    const matching = DEFAULT_PROJECT_TEMPLATES.find(t => t.id.startsWith(domain));
+    const matching = templates.find(t => t.id.startsWith(domain));
     if (matching) {
       const domainCfg = domainModulesConfig[domain] || {};
       setSelectedTemplate(matching);
@@ -341,7 +348,7 @@ export default function AdminProjectCreation() {
 
             {/* Templates Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {DEFAULT_PROJECT_TEMPLATES
+              {templates
                 .filter(t => selectedCategory === 'all' || t.category === selectedCategory)
                 .map(template => {
                   const Icon = (LucideIcons as any)[template.icon] || Zap;

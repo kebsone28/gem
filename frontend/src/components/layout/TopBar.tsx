@@ -2,7 +2,7 @@ import React from 'react';
 import { Breadcrumbs } from './Breadcrumbs';
 import { useAuth } from '@contexts/AuthContext';
 import { useProject } from '@contexts/ProjectContext';
-import { Shield, Activity } from 'lucide-react';
+import { Shield, Activity, Search, Command } from 'lucide-react';
 import { normalizeRole } from '@core/security/permissions';
 import { AppRole } from '@core/security/types';
 
@@ -22,6 +22,18 @@ export function TopBar() {
 
       {/* Right Section: Badges & Profile Capsule */}
       <div className="flex items-center gap-3">
+        {/* Search Button */}
+        <button
+          onClick={() => window.dispatchEvent(new CustomEvent('ged-os:open-command-palette'))}
+          className="flex items-center gap-2 rounded-2xl border border-white/6 bg-white/[0.03] px-3.5 py-1.5 text-[11px] font-bold text-slate-400 hover:text-white hover:border-white/12 hover:bg-white/[0.06] transition-all"
+          title="Recherche globale (CTRL+K)"
+        >
+          <Search size={14} />
+          <span className="hidden sm:inline">Rechercher...</span>
+          <kbd className="hidden lg:inline-flex items-center gap-0.5 rounded-md border border-white/8 bg-white/5 px-1.5 py-0.5 text-[9px] text-slate-500">
+            <Command size={9} />K
+          </kbd>
+        </button>
         {/* Project Capsule */}
         {project && (
           <div className="hidden sm:flex items-center gap-2 rounded-full border border-blue-500/15 bg-blue-500/10 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-blue-300">

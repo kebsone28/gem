@@ -1,0 +1,144 @@
+import prisma from '../../core/utils/prisma.js';
+import logger from '../../utils/logger.js';
+
+export const listUsers = async (req, res) => {
+  try {
+    const { organizationId } = req.user;
+    const users = await prisma.user.findMany({
+      where: { organizationId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        phoneActivated: true,
+        active: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json({ users });
+  } catch (err) {
+    logger.error('[GEDCOLLECT-ADMIN] listUsers error:', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+};
+
+export const setPhone = async (req, res) => {
+  try {
+    const { organizationId } = req.user;
+    const { userId, phone } = req.body;
+    if (!userId || !phone) {
+      return res.status(400).json({ error: 'userId et phone requis' });
+    }
+    const user = await prisma.user.findFirst({ where: { id: userId, organizationId } });
+    if (!user) return res.status(404).json({ error: 'Utilisateur introuvable' });
+
+    const existing = await prisma.user.findFirst({ where: { phone, organizationId, id: { not: userId } } });
+    if (existing) return res.status(409).json({ error: 'Ce numéro est déjà utilisé' });
+
+    await prisma.user.update({ where: { id: userId }, data: { phone } });
+    res.json({ success: true });
+  } catch (err) {
+    logger.error('[GEDCOLLECT-ADMIN] setPhone error:', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+};
+
+export const toggleActivation = async (req, res) => {
+  try {
+    const { organizationId } = req.user;
+    const { userId, activated } = req.body;
+    const user = await prisma.user.findFirst({ where: { id: userId, organizationId } });
+    if (!user) return res.status(404).json({ error: 'Utilisateur introuvable' });
+
+    await prisma.user.update({ where: { id: userId }, data: { phoneActivated: !!activated } });
+    res.json({ success: true, phoneActivated: !!activated });
+  } catch (err) {
+    logger.error('[GEDCOLLECT-ADMIN] toggleActivation error:', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+};
+
+export const listAssignments = async (req, res) => {
+  try {
+    const { organizationId } = req.user;
+    const assignments = await prisma.gedcollectAssignment.findMany({
+      where: { organizationId },
+      include: {
+        user: { select: { id: true, name: true, phone: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json({ assignments });
+  } catch (err) {
+    logger.error('[GEDCOLLECT-ADMIN] listAssignments error:', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+};
+
+export const createAssignment = async (req, res) => {
+  try {
+    const { organizationId } = req.user;
+    const { userId, formKey } = req.body;
+    if (!userId || !formKey) {
+      return res.status(400).json({ error: 'userId et formKey requis' });
+    }
+
+    const user = await prisma.user.findFirst({ where: { id: userId, organizationId } });
+    if (!user) return res.status(404).json({ error: 'Utilisateur introuvable' });
+
+    const mapping = await prisma.koboFormMapping.findFirst({
+      where: { organizationId, koboAssetId: formKey },
+    });
+    if (!mapping) return res.status(404).json({ error: 'Formulaire introuvable' });
+
+    const existing = await prisma.gedcollectAssignment.findFirst({
+      where: { organizationId, userId, formKey },
+    });
+    if (existing) return res.status(409).json({ error: 'Déjà assigné' });
+
+    const assignment = await prisma.gedcollectAssignment.create({
+      data: { organizationId, userId, formKey },
+    });
+    res.status(201).json({ success: true, assignment });
+  } catch (err) {
+    logger.error('[GEDCOLLECT-ADMIN] createAssignment error:', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+};
+
+export const deleteAssignment = async (req, res) => {
+  try {
+    const { organizationId } = req.user;
+    const { id } = req.params;
+    await prisma.gedcollectAssignment.deleteMany({
+      where: { id, organizationId },
+    });
+    res.json({ success: true });
+  } catch (err) {
+    logger.error('[GEDCOLLECT-ADMIN] deleteAssignment error:', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+};
+
+export const listForms = async (req, res) => {
+  try {
+    const { organizationId } = req.user;
+    const forms = await prisma.koboFormMapping.findMany({
+      where: { organizationId },
+      select: { koboAssetId: true, version: true, mapping: true, updatedAt: true },
+      orderBy: { updatedAt: 'desc' },
+    });
+    const result = forms.map((f) => ({
+      formKey: f.koboAssetId,
+      version: f.version,
+      title: f.mapping?.settings?.[0]?.form_title || f.koboAssetId,
+      updatedAt: f.updatedAt,
+    }));
+    res.json({ forms: result });
+  } catch (err) {
+    logger.error('[GEDCOLLECT-ADMIN] listForms error:', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+};

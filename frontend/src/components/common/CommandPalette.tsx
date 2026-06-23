@@ -1,112 +1,235 @@
 ﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Search, 
-  Command, 
-  Map as MapIcon, 
-  FileText, 
-  Settings, 
-  Users, 
-  Bell, 
+import {
+  Search,
+  Command,
+  Map as MapIcon,
+  FileText,
+  Settings,
+  Users,
   ChevronRight,
-  ArrowRight,
-  Calculator,
-  ShieldCheck,
+  LayoutDashboard,
+  Briefcase,
+  Home,
+  Shield,
+  BarChart3,
+  Truck,
+  ClipboardCheck,
   Activity,
-  ServerCog
+  MessageSquare,
+  GraduationCap,
+  FolderOpen,
+  Database,
+  ShieldCheck,
+  AlertTriangle,
+  BookOpen,
+  Store,
+  Wrench,
+  Calculator,
+  Building2,
+  ServerCog,
+  Globe,
+  HelpCircle,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTerrainData } from '@hooks/useTerrainData';
 import { useAuth } from '@contexts/AuthContext';
+import { useProject } from '@contexts/ProjectContext';
 
-/**
- * CommandPalette (Axe 4 — Plan d'Amélioration Continue GEM-SAAS)
- * Interface de recherche globale ultra-rapide (CTRL+K / CMD+K).
- * Style Premium : Glassmorphism, animations fluides, indexation par worker.
- */
+const PAGE_REGISTRY = [
+  { title: 'Dashboard', to: '/executive/dashboard', icon: LayoutDashboard, category: 'Pages' },
+  { title: 'Projets', to: '/projects', icon: Briefcase, category: 'Pages' },
+  { title: 'Terrain', to: '/operations/map', icon: MapIcon, category: 'Pages' },
+  { title: 'Planning Missions', to: '/operations/missions', icon: ClipboardCheck, category: 'Pages' },
+  { title: 'Collecte Terrain', to: '/operations/collect', icon: Database, category: 'Pages' },
+  { title: 'Bordereau', to: '/operations/delivery', icon: Truck, category: 'Pages' },
+  { title: 'Communication', to: '/communication', icon: MessageSquare, category: 'Pages' },
+  { title: 'Formations', to: '/planning-formation', icon: GraduationCap, category: 'Pages' },
+  { title: 'Logistique', to: '/resources/inventory', icon: Store, category: 'Pages' },
+  { title: 'Atelier', to: '/resources/workshop', icon: Wrench, category: 'Pages' },
+  { title: 'PV Automatisation', to: '/quality/pv', icon: FileText, category: 'Pages' },
+  { title: 'Simulation', to: '/finance/simulation', icon: Calculator, category: 'Pages' },
+  { title: 'Charges', to: '/finance/budget', icon: BarChart3, category: 'Pages' },
+  { title: 'Approbations', to: '/governance/approvals', icon: ShieldCheck, category: 'Pages' },
+  { title: 'Documents', to: '/documents/library', icon: FolderOpen, category: 'Pages' },
+  { title: 'Cahier de Charge', to: '/documents/specifications', icon: BookOpen, category: 'Pages' },
+  { title: 'Administration', to: '/admin/hub', icon: Settings, category: 'Pages' },
+  { title: 'Utilisateurs', to: '/admin/users', icon: Users, category: 'Pages' },
+  { title: 'Diagnostic Santé', to: '/admin/diagnostic', icon: Activity, category: 'Pages' },
+  { title: 'Paramètres', to: '/admin/settings', icon: Settings, category: 'Pages' },
+  { title: 'Sécurité', to: '/admin/security', icon: Shield, category: 'Pages' },
+  { title: 'Aide', to: '/aide', icon: HelpCircle, category: 'Pages' },
+];
+
+const QUICK_ACTIONS = [
+  { icon: MapIcon, label: 'Ouvrir la Carte', to: '/operations/map' },
+  { icon: Activity, label: 'Diagnostic Santé', to: '/admin/diagnostic' },
+  { icon: ServerCog, label: 'Agent Local', to: '/admin/agent-local' },
+  { icon: BookOpen, label: 'Cahier de Charge', to: '/documents/specifications' },
+  { icon: Settings, label: 'Paramètres', to: '/admin/settings' },
+];
+
+interface SearchResult {
+  id: string;
+  label: string;
+  description: string;
+  type: 'page' | 'project' | 'household';
+  to?: string;
+  icon?: any;
+  data?: any;
+}
+
 export const CommandPalette = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<any[]>([]);
+  const [results, setResults] = useState<SearchResult[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { project, projects } = useProject();
   const { households } = useTerrainData({ enabled: Boolean(user) });
   const searchWorkerRef = useRef<Worker | null>(null);
 
   const [workerResults, setWorkerResults] = useState<any[]>([]);
-  const [staticResults, setStaticResults] = useState<any[]>([]);
 
-  // 1️⃣ Initialisation du Search Worker
+  // Keyboard shortcut
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setIsOpen((prev) => !prev);
+      }
+      if (e.key === 'Escape') setIsOpen(false);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Listen for external open event (from TopBar search button)
+  useEffect(() => {
+    const handler = () => setIsOpen(true);
+    window.addEventListener('ged-os:open-command-palette', handler);
+    return () => window.removeEventListener('ged-os:open-command-palette', handler);
+  }, []);
+
+  // Focus input when opened
+  useEffect(() => {
+    if (isOpen) {
+      setTimeout(() => inputRef.current?.focus(), 100);
+    } else {
+      setQuery('');
+      setResults([]);
+    }
+  }, [isOpen]);
+
+  // Initialize search worker and index households
   useEffect(() => {
     const worker = new Worker(new URL('@/workers/searchWorker.ts', import.meta.url), {
-      type: 'module'
+      type: 'module',
     });
-    
+
     worker.onmessage = (e) => {
       if (e.data.type === 'SEARCH_RESULTS') {
         setWorkerResults(Array.isArray(e.data.results) ? e.data.results : []);
       }
     };
-    
+
     searchWorkerRef.current = worker;
+
+    // Index households once loaded
+    if (households && households.length > 0) {
+      worker.postMessage({ type: 'INDEX', payload: households });
+    }
+
     return () => worker.terminate();
   }, []);
 
-  // ... (Indexation & Keyboard Shortcuts inchangés)
+  // Re-index when households change
+  useEffect(() => {
+    if (searchWorkerRef.current && households && households.length > 0) {
+      searchWorkerRef.current.postMessage({ type: 'INDEX', payload: households });
+    }
+  }, [households]);
 
-  // 4️⃣ Fusion des résultats (Source Unique de Vérité)
+  // Merge results
   useEffect(() => {
     if (!query.trim()) {
       setResults([]);
       return;
     }
-    // Fusionner les pages statiques et les résultats du worker (ménages)
-    // On met les pages statiques en premier pour un accès rapide
-    setResults([...staticResults, ...workerResults]);
-    setSelectedIndex(0);
-  }, [workerResults, staticResults, query]);
 
-  // 5️⃣ Recherche Multi-Sources
+    const q = query.toLowerCase();
+    const combined: SearchResult[] = [];
+
+    // 1. Pages
+    const pageResults = PAGE_REGISTRY.filter(
+      (p) => p.title.toLowerCase().includes(q) || p.category.toLowerCase().includes(q)
+    ).map((p) => ({
+      id: `page-${p.to}`,
+      label: p.title,
+      description: p.category,
+      type: 'page' as const,
+      to: p.to,
+      icon: p.icon,
+    }));
+    combined.push(...pageResults);
+
+    // 2. Projects (from context)
+    if (projects && projects.length > 0) {
+      const projectResults = projects
+        .filter((p: any) => p.name?.toLowerCase().includes(q))
+        .map((p: any) => ({
+          id: `project-${p.id}`,
+          label: p.name,
+          description: p.client ? `Projet • ${p.client}` : 'Projet',
+          type: 'project' as const,
+          to: `/projects/edit/${p.id}`,
+          icon: Briefcase,
+        }));
+      combined.push(...projectResults);
+    }
+
+    // 3. Current project detail
+    if (project && project.name?.toLowerCase().includes(q)) {
+      combined.push({
+        id: 'project-current',
+        label: project.name,
+        description: 'Projet actif',
+        type: 'project',
+        to: `/projects/edit/${project.id}`,
+        icon: Briefcase,
+      });
+    }
+
+    // 4. Households from worker
+    const householdResults = (workerResults || []).map((h: any) => ({
+      id: `household-${h.id}`,
+      label: h.name || h.numeroordre || `Ménage #${h.id}`,
+      description: `Ménage • ${h.data?.village || 'Village inconnu'}`,
+      type: 'household' as const,
+      to: `/operations/map?id=${h.id}`,
+      icon: Home,
+      data: h,
+    }));
+    combined.push(...householdResults);
+
+    setResults(combined);
+    setSelectedIndex(0);
+  }, [query, workerResults, projects, project]);
+
   const handleSearch = (q: string) => {
     setQuery(q);
-
     if (!q.trim()) {
       setWorkerResults([]);
-      setStaticResults([]);
       return;
     }
-
-    // Recherche dans le worker (Ménages) — Asynchrone
     searchWorkerRef.current?.postMessage({ type: 'SEARCH', payload: { query: q } });
-
-    // Recherche dans les pages statiques — Synchrone
-    const staticPages = [
-      { title: 'Dashboard', to: '/dashboard', type: 'page', id: 'page-dash' },
-      { title: 'Missions', to: '/missions', type: 'page', id: 'page-miss' },
-      { title: 'Terrain', to: '/operations/map', type: 'page', id: 'page-terr' },
-      { title: 'Planning', to: '/planning', type: 'page', id: 'page-plan' },
-      { title: 'Rapports', to: '/reports', type: 'page', id: 'page-rep' },
-      { title: 'Équipes', to: '/teams', type: 'page', id: 'page-teams' },
-      { title: 'Paramètres', to: '/settings', type: 'page', id: 'page-settings' },
-      { title: 'Agent Local GED OS', to: '/admin/agent-local', type: 'page', id: 'page-admin-agent' },
-    ];
-
-    setStaticResults(
-      staticPages
-        .filter((page) => page.title.toLowerCase().includes(q.toLowerCase()))
-        .map((p) => ({ ...p, label: p.title }))
-    );
   };
 
-  const handleSelect = (item: any) => {
-    if (item.type === 'household') {
-      navigate(`/terrain?id=${item.id}`);
-    } else if (item.type === 'page') {
-      navigate(item.to);
-    }
+  const handleSelect = (item: SearchResult) => {
+    if (item.to) navigate(item.to);
     setIsOpen(false);
   };
 
@@ -122,6 +245,37 @@ export const CommandPalette = () => {
     }
   };
 
+  // Group results by type for display
+  const groupedResults = useMemo(() => {
+    const groups: Record<string, SearchResult[]> = {};
+    for (const r of results) {
+      const key = r.type === 'page' ? 'Pages' : r.type === 'project' ? 'Projets' : 'Ménages';
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(r);
+    }
+    return groups;
+  }, [results]);
+
+  // Flatten groups for keyboard navigation
+  const flatResults = useMemo(() => {
+    const flat: { group: string; result: SearchResult }[] = [];
+    for (const [group, items] of Object.entries(groupedResults)) {
+      for (const item of items) {
+        flat.push({ group, result: item });
+      }
+    }
+    return flat;
+  }, [groupedResults]);
+
+  const getIconForType = (type: string) => {
+    switch (type) {
+      case 'page': return FileText;
+      case 'project': return Briefcase;
+      case 'household': return Home;
+      default: return Search;
+    }
+  };
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -133,7 +287,7 @@ export const CommandPalette = () => {
             onClick={() => setIsOpen(false)}
             className="fixed inset-0 z-[10000] bg-slate-950/40 backdrop-blur-md"
           />
-          
+
           <div className="fixed inset-0 z-[10001] flex items-start justify-center pt-[10vh] px-4 pointer-events-none">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: -20 }}
@@ -141,13 +295,13 @@ export const CommandPalette = () => {
               exit={{ opacity: 0, scale: 0.95, y: -20 }}
               className="w-full max-w-2xl bg-slate-900/90 backdrop-blur-2xl border border-white/10 rounded-[2rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] overflow-hidden flex flex-col pointer-events-auto"
             >
-              {/* Header / Search Input */}
+              {/* Search Input */}
               <div className="relative flex items-center p-6 border-b border-white/5">
                 <Search className="absolute left-8 text-slate-400" size={20} />
                 <input
                   ref={inputRef}
                   type="text"
-                  placeholder="Rechercher un ménage, une page, une action... (CTRL+K)"
+                  placeholder="Rechercher une page, un projet, un ménage... (CTRL+K)"
                   className="w-full pl-12 pr-4 bg-transparent border-none text-white text-lg font-medium placeholder:text-slate-500 focus:ring-0 outline-none"
                   value={query}
                   onChange={(e) => handleSearch(e.target.value)}
@@ -158,19 +312,13 @@ export const CommandPalette = () => {
                 </div>
               </div>
 
-              {/* Results Area */}
+              {/* Results */}
               <div className="max-h-[60vh] overflow-y-auto p-4 custom-scrollbar">
                 {query === '' ? (
                   <div className="p-4">
                     <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-4">Actions Rapides</h4>
                     <div className="grid grid-cols-2 gap-3">
-                      {[
-                        { icon: MapIcon, label: 'Ouvrir la Carte', to: '/operations/map' },
-                        { icon: Activity, label: 'Diagnostic Santé', to: '/admin/diagnostic' },
-                        { icon: ServerCog, label: 'Agent Local', to: '/admin/agent-local' },
-                        { icon: FileText, label: 'Cahier de Charge', to: '/documents/specifications' },
-                        { icon: Settings, label: 'Paramètres', to: '/settings' },
-                      ].map((action) => (
+                      {QUICK_ACTIONS.map((action) => (
                         <button
                           key={action.to}
                           onClick={() => { navigate(action.to); setIsOpen(false); }}
@@ -184,38 +332,53 @@ export const CommandPalette = () => {
                       ))}
                     </div>
                   </div>
-                ) : (
-                  <div className="space-y-1">
-                    {Array.isArray(results) && results.length > 0 ? (
-                      results.map((item, idx) => (
-                        <button
-                          key={item.id}
-                          onClick={() => handleSelect(item)}
-                          onMouseEnter={() => setSelectedIndex(idx)}
-                          className={`w-full flex items-center justify-between p-4 rounded-2xl transition-all ${
-                            idx === selectedIndex ? 'bg-blue-600 shadow-lg shadow-blue-500/20 text-white' : 'text-slate-400 hover:bg-white/5'
-                          }`}
-                        >
-                          <div className="flex items-center gap-4">
-                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${idx === selectedIndex ? 'bg-white/20' : 'bg-slate-800'}`}>
-                              {item.type === 'household' ? <Users size={18} /> : <FileText size={18} />}
-                            </div>
-                            <div className="text-left">
-                              <p className={`text-sm font-black ${idx === selectedIndex ? 'text-white' : 'text-slate-200'}`}>{item.label}</p>
-                              <p className={`text-[10px] uppercase tracking-widest ${idx === selectedIndex ? 'text-blue-100/70' : 'text-slate-500'}`}>
-                                {item.type === 'household' ? `MENAGE • ${item.data.village || 'Village Inconnu'}` : 'PAGE SYSTEME'}
-                              </p>
-                            </div>
-                          </div>
-                          <ChevronRight size={16} className={idx === selectedIndex ? 'opacity-100' : 'opacity-0'} />
-                        </button>
-                      ))
-                    ) : (
-                      <div className="py-12 text-center opacity-30">
-                        <Search size={48} className="mx-auto mb-4" />
-                        <p className="text-xs font-black uppercase tracking-widest">Aucun résultat trouvé pour "{query}"</p>
+                ) : flatResults.length > 0 ? (
+                  (() => {
+                    let globalIdx = 0;
+                    return Object.entries(groupedResults).map(([group, items]) => (
+                      <div key={group} className="mb-4 last:mb-0">
+                        <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-2 px-1">
+                          {group}
+                          <span className="ml-2 text-white/30">({items.length})</span>
+                        </div>
+                        <div className="space-y-1">
+                          {items.map((item) => {
+                            const idx = globalIdx++;
+                            const Icon = getIconForType(item.type);
+                            return (
+                              <button
+                                key={item.id}
+                                onClick={() => handleSelect(item)}
+                                onMouseEnter={() => setSelectedIndex(idx)}
+                                className={`w-full flex items-center justify-between p-4 rounded-2xl transition-all ${
+                                  idx === selectedIndex
+                                    ? 'bg-blue-600 shadow-lg shadow-blue-500/20 text-white'
+                                    : 'text-slate-400 hover:bg-white/5'
+                                }`}
+                              >
+                                <div className="flex items-center gap-4">
+                                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                                    idx === selectedIndex ? 'bg-white/20' : 'bg-slate-800'
+                                  }`}>
+                                    <Icon size={18} />
+                                  </div>
+                                  <div className="text-left">
+                                    <p className={`text-sm font-black ${idx === selectedIndex ? 'text-white' : 'text-slate-200'}`}>{item.label}</p>
+                                    <p className={`text-[10px] uppercase tracking-widest ${idx === selectedIndex ? 'text-blue-100/70' : 'text-slate-500'}`}>{item.description}</p>
+                                  </div>
+                                </div>
+                                <ChevronRight size={16} className={idx === selectedIndex ? 'opacity-100' : 'opacity-0'} />
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
-                    )}
+                    ));
+                  })()
+                ) : (
+                  <div className="py-12 text-center opacity-30">
+                    <Search size={48} className="mx-auto mb-4" />
+                    <p className="text-xs font-black uppercase tracking-widest">Aucun résultat trouvé pour "{query}"</p>
                   </div>
                 )}
               </div>
@@ -226,9 +389,6 @@ export const CommandPalette = () => {
                   <span className="flex items-center gap-1.5"><Command size={10} /> + K : Toggle</span>
                   <span className="flex items-center gap-1.5">↑↓ : Naviguer</span>
                   <span className="flex items-center gap-1.5">Enter : Sélectionner</span>
-                </div>
-                <div className="flex items-center gap-1 text-blue-500/50">
-                  GEM AI ENGINE <ArrowRight size={10} />
                 </div>
               </div>
             </motion.div>

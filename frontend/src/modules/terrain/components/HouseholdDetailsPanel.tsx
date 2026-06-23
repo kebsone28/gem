@@ -27,7 +27,9 @@ import {
   Activity,
   Info,
 } from 'lucide-react';
-import { AdminControlCenterModal } from './AdminControlCenterModal';
+const AdminControlCenterModal = React.lazy(() =>
+  import('./AdminControlCenterModal').then((m) => ({ default: m.AdminControlCenterModal }))
+);
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { getHouseholdDisplayName, stringifyHouseholdValue } from '@utils/householdDisplay';
@@ -48,7 +50,9 @@ import { useTerrainUIStore } from '@/store/terrainUIStore';
 import { useSyncStore } from '@/store/syncStore';
 import { useOfflineStore } from '@/store/offlineStore';
 import { TeamAllocationsBadge, HouseholdStatusTimeline } from './shared';
-import { InternalKoboForm } from './InternalKoboForm';
+const InternalKoboForm = React.lazy(() =>
+  import('./InternalKoboForm').then((m) => ({ default: m.InternalKoboForm }))
+);
 import {
   INTERNAL_GED_OS_CONTROL_FIELD_NAMES,
   INTERNAL_GED_OS_FIELD_NAMES,
@@ -2169,6 +2173,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
       )}
       {/* Formulaire GEM-Kobo natif */}
       {showInternalReportModal && createPortal(
+        <Suspense fallback={<div className="flex items-center justify-center p-12 text-slate-400"><div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" /></div>}>
         <InternalKoboForm
           values={nativeKoboAuditForm}
           onChange={updateNativeKoboAuditField}
@@ -2189,18 +2194,21 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
           isHistoryLoading={isInternalKoboHistoryLoading}
           historyError={internalKoboHistoryError}
           onRefreshHistory={() => loadInternalKoboHistory(nativeKoboTargetHousehold)}
-        />,
+        />
+        </Suspense>,
         document.body
       )}
 
       {/* Admin Control Center Modal */}
       {isAdmin && onUpdate && (
+        <Suspense fallback={<div className="flex items-center justify-center p-12 text-slate-400"><div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" /></div>}>
         <AdminControlCenterModal
           isOpen={showAdminModal}
           onClose={() => setShowAdminModal(false)}
           household={household}
           onUpdate={onUpdate}
         />
+        </Suspense>
       )}
     </motion.div>
   );

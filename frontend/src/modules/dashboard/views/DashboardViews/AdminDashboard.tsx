@@ -24,6 +24,7 @@ import { GlobalProgressCard } from './admin/components/GlobalProgressCard';
 import { UnifiedStatsTable } from './admin/components/UnifiedStatsTable';
 import { ControlPanel } from './admin/components/ControlPanel';
 import { TeamPerformance } from '@components/dashboards/TeamPerformance';
+import { loadWidgetOrder, CHANGE_EVENT, type WidgetItem } from '@modules/dashboard/widgets/widgetStore';
 
 import { useDashboardData } from './admin/hooks/useDashboardData';
 import { useMissionStats } from './admin/hooks/useMissionStats';
@@ -86,6 +87,15 @@ export default function AdminDashboard() {
     window.addEventListener('ged-os:console-settings-change', handleSettingsChange);
     return () => window.removeEventListener('ged-os:console-settings-change', handleSettingsChange);
   }, []);
+
+  const [widgetOrder, setWidgetOrder] = useState<WidgetItem[]>(loadWidgetOrder);
+
+  useEffect(() => {
+    const handleWidgetOrder = (e: any) => setWidgetOrder(e.detail.widgets);
+    window.addEventListener(CHANGE_EVENT, handleWidgetOrder);
+    return () => window.removeEventListener(CHANGE_EVENT, handleWidgetOrder);
+  }, []);
+
   useConsoleLayout(consoleSettings);
 
   const canViewReports = peut(PERMISSIONS.TERRAIN_READ) || peut(PERMISSIONS.FINANCE_READ);
@@ -232,171 +242,97 @@ export default function AdminDashboard() {
               exportAvailable={exportAvailable}
             />
 
-            {/* 🎯 DG QUICK ACCESS MODULES */}
-            {isDG && orgConfig?.mission_panels_dg && orgConfig.mission_panels_dg.length > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                {[
-                  {
-                    id: 'prep',
-                    label: 'Stratégie',
-                    desc: 'Planning & Cadrage',
-                    icon: FileText,
-                    color: 'text-sky-400',
-                    bg: 'bg-sky-400/10',
-                    border: 'border-sky-400/20',
-                    tab: 'prep',
-                  },
-                  {
-                    id: 'report',
-                    label: 'Exécution',
-                    desc: 'Rapports Terrain',
-                    icon: CheckCircle,
-                    color: 'text-emerald-400',
-                    bg: 'bg-emerald-400/10',
-                    border: 'border-emerald-400/20',
-                    tab: 'report',
-                  },
-                  {
-                    id: 'approval',
-                    label: 'Approbations',
-                    desc: 'Validations Métier',
-                    icon: Shield,
-                    color: 'text-purple-400',
-                    bg: 'bg-purple-400/10',
-                    border: 'border-purple-400/20',
-                    tab: 'approval',
-                  },
-                ]
-                  .filter((m) => orgConfig.mission_panels_dg.includes(m.id))
-                  .map((module) => (
-                    <button
-                      key={module.id}
-                      onClick={() => navigate(`/admin/mission?tab=${module.tab}`)}
-                      className={`flex flex-col items-start p-6 rounded-3xl border ${module.border} ${module.bg} transition-all hover:scale-[1.02] active:scale-[0.98] group relative overflow-hidden`}
-                    >
-                      <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-3xl group-hover:bg-white/10 transition-colors" />
-                      <div
-                        className={`p-3 rounded-2xl mb-4 ${module.bg} ${module.color} ring-1 ring-white/10`}
-                      >
-                        <module.icon size={24} />
-                      </div>
-                      <h3 className="text-lg font-black uppercase tracking-tight text-white">
-                        {module.label}
-                      </h3>
-                      <p className="text-sm text-slate-400 mt-1 font-medium">{module.desc}</p>
-                      <div
-                        className={`mt-4 text-[10px] font-black uppercase tracking-[0.2em] ${module.color} flex items-center gap-2`}
-                      >
-                        Accéder au module
-                        <span className="w-1 h-1 rounded-full bg-current animate-pulse" />
-                      </div>
-                    </button>
-                  ))}
-              </div>
-            )}
-
-            <section className="rounded-[1.55rem] border border-white/8 bg-[linear-gradient(180deg,rgba(15,23,42,0.76),rgba(2,6,23,0.88))] p-4 shadow-[0_18px_50px_rgba(2,6,23,0.22)] sm:rounded-[1.9rem] sm:p-5">
-              <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-                <div className="min-w-0 xl:max-w-[340px]">
-                  <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">
-                    Situation du jour
-                  </div>
-                  <h2 className="mt-2 text-lg font-black tracking-tight text-white sm:text-xl">
-                    Lecture executive du terrain
-                  </h2>
-                  <p className="mt-2 text-sm leading-relaxed text-slate-400">
-                    Vue compacte pour juger la tension operationnelle, la cadence mission et la
-                    conformite sans quitter la console.
-                  </p>
-                </div>
-
-                <div className="grid flex-1 gap-3 md:grid-cols-3">
-                  {situationItems.map(({ label, value, helper, tone, icon: Icon }) => (
-                    <div key={label} className={`rounded-[1.25rem] border p-4 ${tone}`}>
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <div className="text-[10px] font-black uppercase tracking-[0.16em] opacity-80">
-                            {label}
-                          </div>
-                          <div className="mt-2 text-2xl font-black tracking-tight text-white">
-                            {value}
-                          </div>
-                        </div>
-                        <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-black/10">
-                          <Icon size={18} />
-                        </div>
-                      </div>
-                      <p className="mt-3 text-xs leading-relaxed text-slate-300">{helper}</p>
+            {widgetOrder.map((w) => {
+              switch (w.id) {
+                case 'quick-access':
+                  return isDG && orgConfig?.mission_panels_dg && orgConfig.mission_panels_dg.length > 0 ? (
+                    <div key="quick-access" className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                      {[
+                        { id: 'prep', label: 'Stratégie', desc: 'Planning & Cadrage', icon: FileText, color: 'text-sky-400', bg: 'bg-sky-400/10', border: 'border-sky-400/20', tab: 'prep' },
+                        { id: 'report', label: 'Exécution', desc: 'Rapports Terrain', icon: CheckCircle, color: 'text-emerald-400', bg: 'bg-emerald-400/10', border: 'border-emerald-400/20', tab: 'report' },
+                        { id: 'approval', label: 'Approbations', desc: 'Validations Métier', icon: Shield, color: 'text-purple-400', bg: 'bg-purple-400/10', border: 'border-purple-400/20', tab: 'approval' },
+                      ]
+                        .filter((m) => orgConfig.mission_panels_dg.includes(m.id))
+                        .map((module) => (
+                          <button key={module.id} onClick={() => navigate(`/admin/mission?tab=${module.tab}`)} className={`flex flex-col items-start p-6 rounded-3xl border ${module.border} ${module.bg} transition-all hover:scale-[1.02] active:scale-[0.98] group relative overflow-hidden`}>
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-3xl group-hover:bg-white/10 transition-colors" />
+                            <div className={`p-3 rounded-2xl mb-4 ${module.bg} ${module.color} ring-1 ring-white/10`}><module.icon size={24} /></div>
+                            <h3 className="text-lg font-black uppercase tracking-tight text-white">{module.label}</h3>
+                            <p className="text-sm text-slate-400 mt-1 font-medium">{module.desc}</p>
+                            <div className={`mt-4 text-[10px] font-black uppercase tracking-[0.2em] ${module.color} flex items-center gap-2`}>Accéder au module<span className="w-1 h-1 rounded-full bg-current animate-pulse" /></div>
+                          </button>
+                        ))}
                     </div>
-                  ))}
-                </div>
-              </div>
+                  ) : null;
 
-              <div className="mt-4 border-t border-white/6 pt-4">
-                <div className="flex flex-wrap gap-2">
-                  {topPriorities.map((item) => (
-                    <span
-                      key={item}
-                      className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[11px] font-semibold text-slate-300"
-                    >
-                      {item}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </section>
+                case 'situation':
+                  return (
+                    <section key="situation" className="rounded-[1.55rem] border border-white/8 bg-[linear-gradient(180deg,rgba(15,23,42,0.76),rgba(2,6,23,0.88))] p-4 shadow-[0_18px_50px_rgba(2,6,23,0.22)] sm:rounded-[1.9rem] sm:p-5">
+                      <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                        <div className="min-w-0 xl:max-w-[340px]">
+                          <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Situation du jour</div>
+                          <h2 className="mt-2 text-lg font-black tracking-tight text-white sm:text-xl">Lecture executive du terrain</h2>
+                          <p className="mt-2 text-sm leading-relaxed text-slate-400">Vue compacte pour juger la tension operationnelle, la cadence mission et la conformite sans quitter la console.</p>
+                        </div>
+                        <div className="grid flex-1 gap-3 md:grid-cols-3">
+                          {situationItems.map(({ label, value, helper, tone, icon: Icon }) => (
+                            <div key={label} className={`rounded-[1.25rem] border p-4 ${tone}`}>
+                              <div className="flex items-start justify-between gap-3">
+                                <div>
+                                  <div className="text-[10px] font-black uppercase tracking-[0.16em] opacity-80">{label}</div>
+                                  <div className="mt-2 text-2xl font-black tracking-tight text-white">{value}</div>
+                                </div>
+                                <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-black/10"><Icon size={18} /></div>
+                              </div>
+                              <p className="mt-3 text-xs leading-relaxed text-slate-300">{helper}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="mt-4 border-t border-white/6 pt-4">
+                        <div className="flex flex-wrap gap-2">
+                          {topPriorities.map((item) => (
+                            <span key={item} className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[11px] font-semibold text-slate-300">{item}</span>
+                          ))}
+                        </div>
+                      </div>
+                    </section>
+                  );
 
-            {/* Level 1: Core Progress */}
-            {consoleSettings.showStats && (
-              <GlobalProgressCard metrics={metrics} isLoading={isMetricsLoading} />
-            )}
+                case 'global-progress':
+                  return consoleSettings.showStats ? (
+                    <GlobalProgressCard key="global-progress" metrics={metrics} isLoading={isMetricsLoading} />
+                  ) : null;
 
-            {/* Team Production Performance */}
-            {consoleSettings.showTeams && (
-              <div className="pt-1 sm:pt-4">
-                <TeamPerformance
-                  teamStats={metrics.breakdown.byTeam}
-                  productionRates={project?.config?.productionRates}
-                />
-              </div>
-            )}
+                case 'team-performance':
+                  return consoleSettings.showTeams ? (
+                    <div key="team-performance" className="pt-1 sm:pt-4">
+                      <TeamPerformance teamStats={metrics.breakdown.byTeam} productionRates={project?.config?.productionRates} />
+                    </div>
+                  ) : null;
 
-            {/* Strategic Unified Table (Compact Excel View) */}
-            {consoleSettings.showStats && (
-              <UnifiedStatsTable
-                metrics={metrics}
-                missionStats={missionStats}
-                householdLabel={getLabel('household.plural')}
-              />
-            )}
+                case 'unified-stats':
+                  return consoleSettings.showStats ? (
+                    <UnifiedStatsTable key="unified-stats" metrics={metrics} missionStats={missionStats} householdLabel={getLabel('household.plural')} />
+                  ) : null;
 
-            {/* Compliance & Regulation (Optional: We could also hide this if redundant) */}
-            {/* <ComplianceSection metrics={metrics} /> */}
+                case 'control-panel':
+                  return consoleSettings.showLogs ? (
+                    <ControlPanel key="control-panel" metrics={metrics} feedActivities={feedActivities} missions={missions} isLoading={isMetricsLoading} />
+                  ) : null;
 
-            {/* Infrastructure Control & Live Activity */}
-            {consoleSettings.showLogs && (
-              <ControlPanel
-                metrics={metrics}
-                feedActivities={feedActivities}
-                missions={missions}
-                isLoading={isMetricsLoading}
-              />
-            )}
+                case 'ai-chat':
+                  return null;
 
-            {/* Secondary Nav / Data Access */}
+                default:
+                  return null;
+              }
+            })}
+
+            {/* Footer */}
             <footer className="grid grid-cols-1 gap-4 border-t border-white/5 pt-6 sm:grid-cols-2 sm:gap-5 sm:pt-10 relative z-10">
-              <FooterButton
-                onClick={() => navigate('/rapports')}
-                label="CENTRE DE DONNÉES"
-                title="Exporter Rapport Global"
-                Icon={BarChart3}
-              />
-              <FooterButton
-                onClick={() => navigate('/admin/users')}
-                label="ACCÈS IDENTITÉS"
-                title="Console de Gestion Utilisateurs"
-                Icon={Users}
-              />
+              <FooterButton onClick={() => navigate('/rapports')} label="CENTRE DE DONNÉES" title="Exporter Rapport Global" Icon={BarChart3} />
+              <FooterButton onClick={() => navigate('/admin/users')} label="ACCÈS IDENTITÉS" title="Console de Gestion Utilisateurs" Icon={Users} />
             </footer>
           </div>
         </ContentArea>

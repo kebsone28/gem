@@ -23,7 +23,7 @@ import { PhotoLightbox } from '../components/PhotoLightbox';
 import { GrappeSelectorPanel } from '../components/GrappeSelectorPanel';
 import { MapGrappeAllocationPanel } from '../components/MapGrappeAllocationPanel';
 import { MapRegionDownload } from '../components/MapRegionDownload';
-import { HouseholdDetailsPanel } from '../components/HouseholdDetailsPanel';
+const HouseholdDetailsPanel = React.lazy(() => import('../components/HouseholdDetailsPanel'));
 import { TerrainSyncIssuesPanel } from '../components/TerrainSyncIssuesPanel';
 import { useFavorites } from '@hooks/useFavorites';
 import { useTerrainUIStore } from '@/store/terrainUIStore';
@@ -961,6 +961,7 @@ const Terrain: React.FC = () => {
       )}
 
       {selectedHousehold && (
+        <Suspense fallback={<div className="flex items-center justify-center p-12 text-slate-400"><div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" /></div>}>
         <TerrainErrorBoundary sectionName="Fiche Ménage" compact>
           <HouseholdDetailsPanel
             household={selectedHousehold}
@@ -987,6 +988,7 @@ const Terrain: React.FC = () => {
             })()}
           />
         </TerrainErrorBoundary>
+        </Suspense>
       )}
 
       <AnimatePresence>{lightboxPhotos.length > 0 && <PhotoLightbox />}</AnimatePresence>

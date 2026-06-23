@@ -16,7 +16,7 @@ import {
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/store/db';
 import { syncEventBus } from '@utils/syncEventBus';
-import { format } from 'date-fns';
+import { format, isToday, isYesterday, isThisWeek } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { audioService } from '@services/audioService';
 import { toast } from 'react-hot-toast';
@@ -89,6 +89,24 @@ const NotificationItem = memo(({ notif, onRead, onDelete, styles }: { notif: any
 /* ─────────────────────────────────────────────────────────────────────────────
    MAIN COMPONENT: NotificationCenter
    ───────────────────────────────────────────────────────────────────────────── */
+function getDateGroup(dateStr: string): string {
+  const date = new Date(dateStr);
+  if (isToday(date)) return "Aujourd'hui";
+  if (isYesterday(date)) return 'Hier';
+  if (isThisWeek(date)) return 'Cette semaine';
+  return format(date, 'MMMM yyyy', { locale: fr });
+}
+
+function groupByDate(notifs: any[]): Map<string, any[]> {
+  const groups = new Map<string, any[]>();
+  for (const n of notifs) {
+    const key = getDateGroup(n.createdAt);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(n);
+  }
+  return groups;
+}
+
 export default function NotificationCenter() {
   const [isOpen, setIsOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState<'all' | 'approval' | 'system'>('all');
@@ -342,17 +360,27 @@ export default function NotificationCenter() {
                 </div>
 
                 {/* Scroll Area */}
-                <div className="custom-scrollbar flex-1 min-h-0 space-y-3 overflow-y-auto p-4">
+                <div className="custom-scrollbar flex-1 min-h-0 overflow-y-auto p-4">
                   {filteredNotifs.length > 0 ? (
-                    filteredNotifs.map((notif) => (
-                      <NotificationItem 
-                        key={notif.id} 
-                        notif={notif} 
-                        onRead={handleMarkAsRead}
-                        onDelete={handleDelete}
-                        styles={getItemStyles(notif.type)}
-                      />
-                    ))
+                    (() => {
+                      const groups = groupByDate(filteredNotifs);
+                      return Array.from(groups.entries()).map(([groupLabel, groupNotifs]) => (
+                        <div key={groupLabel} className="mb-4 last:mb-0">
+                          <div className="mb-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 px-1">{groupLabel}</div>
+                          <div className="space-y-2">
+                            {groupNotifs.map((notif) => (
+                              <NotificationItem 
+                                key={notif.id} 
+                                notif={notif} 
+                                onRead={handleMarkAsRead}
+                                onDelete={handleDelete}
+                                styles={getItemStyles(notif.type)}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      ));
+                    })()
                   ) : (
                     <div className="flex flex-col items-center justify-center py-12 text-center opacity-40">
                       <Bell size={44} className="mb-4 text-slate-500" />

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, Suspense } from 'react';
 import {
   ClipboardList,
   Search,
@@ -12,7 +12,9 @@ import {
   Loader2,
   Trash2,
 } from 'lucide-react';
-import { InternalKoboForm } from '@modules/terrain/components/InternalKoboForm';
+const InternalKoboForm = React.lazy(() =>
+  import('@modules/terrain/components/InternalKoboForm').then((m) => ({ default: m.InternalKoboForm }))
+);
 import { PageContainer, PageHeader, ContentArea } from '@components/layout';
 import {
   clearInternalKoboLocalDraft,
@@ -220,6 +222,7 @@ const GedOsCollectPage: React.FC = () => {
           </button>
 
           <div className="flex-1 w-full bg-slate-900/50 rounded-[2.5rem] border border-white/10 overflow-hidden shadow-2xl backdrop-blur-md relative min-h-[750px]">
+            <Suspense fallback={<div className="flex items-center justify-center h-full min-h-[750px] text-slate-400"><div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" /></div>}>
             <InternalKoboForm
               initialFormKey={selectedFormKey}
               hideFormSelector={true}
@@ -238,6 +241,7 @@ const GedOsCollectPage: React.FC = () => {
                 return found || null;
               }}
             />
+            </Suspense>
           </div>
         </div>
       </PageContainer>

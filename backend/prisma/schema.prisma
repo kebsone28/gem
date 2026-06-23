@@ -28,6 +28,7 @@ model Organization {
   formationPlannerStates     FormationPlannerState?
   formationPlanningHistories FormationPlanningHistory[]
   formationSessions          FormationSession[]
+  gedcollectAssignments      GedcollectAssignment[]
   grappes                    Grappe[]
   healthCenters              HealthCenter[]
   highVoltageNetworks        HighVoltageNetwork[]
@@ -68,6 +69,8 @@ model User {
   createdAt                DateTime                 @default(now())
   chatStatus               String                   @default("ONLINE")
   chatStatusText           String?
+  phone                    String?
+  phoneActivated           Boolean                  @default(false)
   actionApprovals          ActionApproval[]
   auditLogs                AuditLog[]
   validatedActions         AutomatedAction[]
@@ -91,9 +94,11 @@ model User {
   mesRecordsControlled     MESRecord[]              @relation("MESController")
   mesRecordsValidated      MESRecord[]              @relation("MESValidator")
   mesControls              MESControl[]
+  gedcollectAssignments    GedcollectAssignment[]
 
   @@index([email])
   @@unique([email, organizationId])
+  @@index([phone])
 }
 
 model Project {
@@ -362,6 +367,22 @@ model KoboFormMapping {
   @@unique([organizationId, koboAssetId])
   @@index([organizationId])
   @@index([koboAssetId])
+}
+
+model GedcollectAssignment {
+  id             String         @id @default(uuid())
+  organizationId String
+  userId         String
+  formKey        String
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  user           User           @relation(fields: [userId], references: [id])
+  organization   Organization   @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId, userId, formKey])
+  @@index([organizationId])
+  @@index([userId])
+  @@index([formKey])
 }
 
 model InternalKoboSubmission {

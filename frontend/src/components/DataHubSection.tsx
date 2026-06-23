@@ -195,16 +195,20 @@ export default function DataHubSection({ project, onUpdate }: DataHubSectionProp
     setKoboStep(1);
     try {
       if (collectSource === 'kobo') {
+        // KoboToolbox – appel serveur dédié
         await apiClient.post('sync/kobo', {
           projectId: currentProjectId,
           force: force,
         });
         setKoboStep(2);
       } else {
-        // Mode GedToolbox : La synchro est déjà faite en temps réel, 
-        // on force juste un rafraîchissement global du contexte local
-        toast.loading("Calcul des données GedToolbox...", { id: 'ged-os-sync' });
-        await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate work
+        // GedToolbox – appel réel au nouveau endpoint backend
+        toast.loading("Synchronisation GedToolbox en cours…", { id: 'ged-os-sync' });
+        await apiClient.post('sync/gedtoolbox', {
+          // aucune payload nécessaire pour le moment, mais on transmet le projet au cas où
+          projectId: currentProjectId,
+        });
+        // Le endpoint renvoie déjà les données via pull, on passe directement à l'étape suivante
         setKoboStep(2);
       }
 

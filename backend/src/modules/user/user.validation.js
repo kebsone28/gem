@@ -12,6 +12,8 @@ export const createUserSchema = {
     requires2FA: Joi.boolean().optional(),
     teamId: Joi.string().uuid().optional().allow(null, ''),
     notificationEmail: Joi.string().email().optional().allow(null, ''),
+    phone: Joi.string().optional().allow(null, ''),
+    phoneActivated: Joi.boolean().optional(),
     permissions: Joi.array().items(Joi.string()).optional().allow(null),
     assignedProjectIds: Joi.array().items(Joi.string()).optional().allow(null)
   })
@@ -32,6 +34,8 @@ export const updateUserSchema = {
     requires2FA: Joi.boolean().optional(),
     teamId: Joi.string().uuid().optional().allow(null, ''),
     notificationEmail: Joi.string().email().optional().allow(null, ''),
+    phone: Joi.string().optional().allow(null, ''),
+    phoneActivated: Joi.boolean().optional(),
     permissions: Joi.array().items(Joi.string()).optional().allow(null),
     assignedProjectIds: Joi.array().items(Joi.string()).optional().allow(null)
   }).min(1)

@@ -6,12 +6,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { 
-  Settings, 
   X, 
   Eye, 
   Layout, 
   Palette, 
-  Columns, 
   PanelLeft, 
   BarChart3, 
   Users2, 
@@ -20,9 +18,15 @@ import {
   RefreshCw,
   Volume2,
   Sparkles,
-  Moon
+  Moon,
+  GripVertical,
+  Bell,
+  Zap,
+  ShieldCheck
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { SortableWidgetList } from '@modules/dashboard/widgets/SortableWidgetList';
+import { loadWidgetOrder, saveWidgetOrder, type WidgetItem } from '@modules/dashboard/widgets/widgetStore';
 
 interface ConsoleSettingsProps {
   onSettingsChange?: (settings: ConsoleSettingsConfig) => void;
@@ -38,6 +42,8 @@ export interface ConsoleSettingsConfig {
   showAI: boolean;
   autoRefresh: boolean;
   soundEnabled: boolean;
+  browserNotifications: boolean;
+  missionNotifications: boolean;
   animationsEnabled: boolean;
   theme: 'dark' | 'light';
   accentColor: 'blue' | 'purple' | 'green' | 'red';
@@ -54,6 +60,8 @@ const DEFAULT_SETTINGS: ConsoleSettingsConfig = {
   showAI: true,
   autoRefresh: true,
   soundEnabled: true,
+  browserNotifications: true,
+  missionNotifications: true,
   animationsEnabled: true,
   theme: 'dark',
   accentColor: 'blue',
@@ -72,6 +80,8 @@ export const ConsoleSettings: React.FC<ConsoleSettingsProps> = ({ onSettingsChan
       return DEFAULT_SETTINGS;
     }
   });
+
+  const [widgetOrder, setWidgetOrder] = useState<WidgetItem[]>(loadWidgetOrder);
 
   useEffect(() => {
     localStorage.setItem('console-settings', JSON.stringify(settings));
@@ -204,6 +214,44 @@ export const ConsoleSettings: React.FC<ConsoleSettingsProps> = ({ onSettingsChan
                       </button>
                     ))}
                   </div>
+                </section>
+
+                {/* 🔔 NOTIFICATIONS */}
+                <section>
+                  <SectionTitle icon={Bell} color="text-rose-400">Notifications</SectionTitle>
+                  <div className="space-y-4">
+                    {[
+                      { key: 'soundEnabled', label: 'Sons', desc: 'Son de notification à chaque alerte', icon: Volume2 },
+                      { key: 'browserNotifications', label: 'Notifications Bureau', desc: 'Envoyer des notifications Windows/macOS', icon: Zap },
+                      { key: 'missionNotifications', label: 'Alertes Missions', desc: 'Notifications pour les approbations et rejets', icon: ShieldCheck },
+                    ].map((item) => (
+                      <div
+                        key={item.key}
+                        onClick={() => toggleSetting(item.key as any)}
+                        className="flex items-center justify-between p-4 rounded-2xl bg-white/[0.03] border border-white/5 cursor-pointer hover:bg-white/[0.06] transition-all group"
+                      >
+                        <div className="flex items-center gap-4 flex-1 pr-4">
+                          <div className="p-2.5 rounded-xl bg-slate-800 text-slate-400 group-hover:text-rose-400 transition-colors shrink-0">
+                            <item.icon size={18} />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-sm font-bold text-slate-200">{item.label}</div>
+                            <div className="text-[10px] text-slate-500 leading-tight mt-0.5 group-hover:text-slate-400 transition-colors">{item.desc}</div>
+                          </div>
+                        </div>
+                        <div className={`w-11 h-5 rounded-full relative transition-all shrink-0 ${settings[item.key as keyof ConsoleSettingsConfig] ? accentClasses[settings.accentColor] : 'bg-slate-700'}`}>
+                          <motion.div animate={{ x: settings[item.key as keyof ConsoleSettingsConfig] ? 24 : 2 }} className="absolute top-1 w-3 h-3 bg-white rounded-full shadow-lg" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+
+                {/* 🔄 ORDRE DES WIDGETS */}
+                <section>
+                  <SectionTitle icon={GripVertical} color="text-amber-400">Ordre des Widgets</SectionTitle>
+                  <p className="text-[10px] text-slate-500 mb-4 leading-relaxed">Faites glisser les sections du dashboard pour réorganiser leur affichage.</p>
+                  <SortableWidgetList items={widgetOrder} onReorder={(items) => { setWidgetOrder(items); saveWidgetOrder(items); }} />
                 </section>
 
                 {/* 🎨 STYLE */}
