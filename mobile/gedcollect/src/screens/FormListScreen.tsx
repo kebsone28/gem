@@ -20,9 +20,10 @@ import OfflineBanner from '@components/OfflineBanner';
 
 type Props = {
   navigation: NativeStackNavigationProp<RootStackParamList, 'FormList'>;
+  onLogout: () => void;
 };
 
-const FormListScreen: React.FC<Props> = ({ navigation }) => {
+const FormListScreen: React.FC<Props> = ({ navigation, onLogout }) => {
   const [forms, setForms] = useState<any[]>([]);
   const [isOnline, setIsOnline] = useState(true);
   const [syncStatus] = useState<SyncStatus>('idle');
@@ -74,7 +75,7 @@ const FormListScreen: React.FC<Props> = ({ navigation }) => {
 
   const handleLogout = async () => {
     await logout();
-    navigation.reset({ index: 0, routes: [{ name: 'Login' as any }] });
+    onLogout();
   };
 
   const renderForm = ({ item }: { item: any }) => (

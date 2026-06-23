@@ -45,7 +45,9 @@ const App: React.FC = () => {
           contentStyle: { backgroundColor: '#0f172a' },
         }}
       >
-        <Stack.Screen name="FormList" component={FormListScreen} />
+        <Stack.Screen name="FormList">
+          {(props) => <FormListScreen {...props} onLogout={() => setLoggedIn(false)} />}
+        </Stack.Screen>
         <Stack.Screen name="Form" component={FormScreen} />
       </Stack.Navigator>
       <Toast />

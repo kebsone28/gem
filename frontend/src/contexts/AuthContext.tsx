@@ -83,8 +83,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } catch (err) {
       logger.debug('[AUTH] No active session found on startup');
-      // Only clear the user if there was no previously cached session
-      if (!useAuthStore.getState().user) setUser(null);
+      setUser(null);
+      useAuthStore.getState().logout();
+      safeStorage.removeItem('user');
     } finally {
       setIsLoading(false);
     }
