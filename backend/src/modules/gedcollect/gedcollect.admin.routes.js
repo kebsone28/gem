@@ -7,6 +7,8 @@ import {
   toggleActivation,
   createGedcollectUser,
   deleteGedcollectUser,
+  getGedcollectStats,
+  listGedcollectSubmissions,
   listAssignments,
   createAssignment,
   deleteAssignment,
@@ -27,6 +29,9 @@ router.delete('/users/:id', deleteGedcollectUser);
 router.get('/assignments', listAssignments);
 router.post('/assignments', createAssignment);
 router.delete('/assignments/:id', deleteAssignment);
+
+router.get('/stats', getGedcollectStats);
+router.get('/submissions', listGedcollectSubmissions);
 
 router.get('/forms', listForms);
 

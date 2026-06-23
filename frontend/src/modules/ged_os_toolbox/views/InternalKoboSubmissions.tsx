@@ -90,6 +90,8 @@ import toast from 'react-hot-toast';
 import apiClient from '@/api/client';
 import logger from '@services/logger';
 import GedcollectUserManager from './GedcollectUserManager';
+import GedcollectDashboard from './GedcollectDashboard';
+import GedcollectSubmissionsView from './GedcollectSubmissionsView';
 
 type Filters = {
   q: string;
@@ -3589,6 +3591,10 @@ export default function InternalKoboSubmissions() {
               </section>
             ) : null}
 
+            <div className="mt-4">
+              <GedcollectSubmissionsView />
+            </div>
+
             {showLegacyKoboTable && mainTab === 'data' && dataTab === 'table' ? (
               <>
                 <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -5715,6 +5721,8 @@ export default function InternalKoboSubmissions() {
                       );
                     })}
                   </div>
+
+                  <GedcollectDashboard />
 
                   <section className="grid grid-cols-1 gap-4 xl:grid-cols-3">
                     <div className="rounded-3xl border border-blue-300/15 bg-blue-500/[0.055] p-4">

@@ -194,6 +194,98 @@ export const deleteGedcollectUser = async (req, res) => {
   }
 };
 
+export const getGedcollectStats = async (req, res) => {
+  try {
+    const { organizationId } = req.user;
+
+    const totalUsers = await prisma.user.count({
+      where: { organizationId, phone: { not: null } },
+    });
+    const activeUsers = await prisma.user.count({
+      where: { organizationId, phone: { not: null }, phoneActivated: true },
+    });
+    const assignedForms = await prisma.gedcollectAssignment.count({
+      where: { organizationId },
+    });
+    const totalSubmissions = await prisma.internalKoboSubmission.count({
+      where: {
+        organizationId,
+        submittedBy: { phone: { not: null } },
+      },
+    });
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todaySubmissions = await prisma.internalKoboSubmission.count({
+      where: {
+        organizationId,
+        submittedBy: { phone: { not: null } },
+        submittedAt: { gte: todayStart },
+      },
+    });
+
+    res.json({
+      totalUsers,
+      activeUsers,
+      assignedForms,
+      totalSubmissions,
+      todaySubmissions,
+    });
+  } catch (err) {
+    logger.error('[GEDCOLLECT-ADMIN] stats error:', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+};
+
+export const listGedcollectSubmissions = async (req, res) => {
+  try {
+    const { organizationId } = req.user;
+    const { offset = 0, limit = 50, format } = req.query;
+
+    const where = {
+      organizationId,
+      submittedBy: { phone: { not: null } },
+    };
+
+    if (format === 'csv') {
+      const submissions = await prisma.internalKoboSubmission.findMany({
+        where,
+        include: {
+          submittedBy: { select: { name: true, phone: true } },
+        },
+        orderBy: { submittedAt: 'desc' },
+      });
+
+      const header = 'Date,FormKey,Version,Statut,Valeurs,SoumisPar,Téléphone\n';
+      const rows = submissions.map((s) => {
+        const values = JSON.stringify(s.values || {}).replace(/"/g, '""');
+        return `${s.submittedAt?.toISOString() || ''},${s.formKey},${s.formVersion},${s.status},"${values}",${s.submittedBy?.name || ''},${s.submittedBy?.phone || ''}`;
+      }).join('\n');
+
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', 'attachment; filename=gedcollect-submissions.csv');
+      return res.send(header + rows);
+    }
+
+    const [submissions, count] = await Promise.all([
+      prisma.internalKoboSubmission.findMany({
+        where,
+        include: {
+          submittedBy: { select: { name: true, phone: true } },
+        },
+        orderBy: { submittedAt: 'desc' },
+        skip: Number(offset),
+        take: Number(limit),
+      }),
+      prisma.internalKoboSubmission.count({ where }),
+    ]);
+
+    res.json({ submissions, count, offset: Number(offset), limit: Number(limit) });
+  } catch (err) {
+    logger.error('[GEDCOLLECT-ADMIN] submissions error:', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+};
+
 export const listForms = async (req, res) => {
   try {
     const { organizationId } = req.user;
