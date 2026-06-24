@@ -1,5 +1,7 @@
 ## Documentation GED OS
 
+*Dernière mise à jour du README*
+
 GED OS est une plateforme intelligente multidomaine pour piloter des écosystèmes métiers dans les infrastructures, l'énergie, l'agriculture, la santé, la gouvernance, la logistique et le développement territorial.
 
 ### 📚 Documentation Référence
