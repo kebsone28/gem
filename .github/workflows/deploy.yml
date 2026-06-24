@@ -69,6 +69,7 @@ jobs:
           DB_USER: test_user
           DB_PASSWORD: test_password
           DB_NAME: proquelec_test
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/proquelec_test
 
       # ============ FRONTEND ============
       - name: Install frontend dependencies
