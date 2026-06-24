@@ -72,7 +72,7 @@ NODE_OPTIONS='--max-old-space-size=4096' npm run build --prefix frontend
 
 # – 6. Redémarrer le service backend (pm2)
 echo "→ Redémarrage du backend avec pm2"
-pm --prefix backend run pm2-restart || pm2 restart all --update-env
+npx pm2 restart all
 
 # – 7. Health‑check
 echo "→ Health‑check"
