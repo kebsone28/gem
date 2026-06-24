@@ -45,12 +45,24 @@ jobs:
       - name: Install backend dependencies
         run: npm ci --prefix backend
 
+      - name: Prisma generate
+        run: npx prisma generate
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/proquelec_test
+
+      - name: Prisma db push (create tables)
+        run: npx prisma db push
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/proquelec_test
+
       - name: Lint backend
         run: npm run lint --prefix backend
         continue-on-error: true
 
       - name: Run backend tests
-        run: npm test --prefix backend
+        run: npm test --prefix backend -- --run
         env:
           DB_HOST: localhost
           DB_PORT: 5432
