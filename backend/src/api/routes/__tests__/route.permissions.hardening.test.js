@@ -43,6 +43,7 @@ vi.mock('../../../modules/sync/sync.controller.js', () => ({
   pullChanges: (_req, res) => res.json({ ok: true }),
   pushChanges: (_req, res) => res.json({ ok: true }),
   syncKobo: (req, res) => res.json({ ok: true, requiredPermission: req.requiredPermission }),
+  syncGedToolbox: (req, res) => res.json({ ok: true, requiredPermission: req.requiredPermission }),
   clearEntityData: (req, res) => res.json({ ok: true, requiredPermission: req.requiredPermission, entity: req.params.entity }),
   bulkImportHouseholds: (req, res) => res.json({ ok: true, requiredPermission: req.requiredPermission }),
 }));
