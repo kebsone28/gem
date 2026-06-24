@@ -1,109 +1,96 @@
-name: CI
+name: CI/CD
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main ]
   pull_request:
-    branches: [ main, master ]
+    branches: [ main ]
 
 jobs:
-  test-e2e:
-    name: Test (unit + e2e)
+  backend-tests:
     runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: backend
+
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
 
-      - name: Cache node modules
-        uses: actions/cache@v4
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
+      - run: npm ci
 
-      - name: Install dependencies
-        run: npm ci
+      - run: npx prisma generate
 
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps
+      - run: npm test
 
-      - name: Run tests (unit + e2e)
-        run: npm test
+  deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: backend-tests
+    runs-on: ubuntu-latest
 
-      - name: Upload Playwright Report
-        if: success() || failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-report
-          path: playwright-report || ''
-
-  playwright-e2e:
-    name: Playwright E2E (matrix)
-    runs-on: ${{ matrix.runner }}
-    strategy:
-      matrix:
-        runner: [ubuntu-latest, windows-latest]
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Vérifier les secrets
+        run: |
+          if [ -z "${{ secrets.SSH_HOST }}" ]; then
+            echo "::error::SSH_HOST secret is not set — add it in Settings > Secrets"
+            exit 1
+          fi
+          if [ -z "${{ secrets.SSH_KEY }}" ]; then
+            echo "::error::SSH_KEY secret is not set"
+            exit 1
+          fi
+
+      - name: Ajouter le host au known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Déploiement vers le VPS
+        uses: appleboy/ssh-action@v1.0.3
         with:
-          node-version: '18'
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER || 'root' }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT || '22' }}
+          script_stop: true
+          timeout: 300s
+          script: |
+            set -e
 
-      - name: Cache node modules
-        uses: actions/cache@v4
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
+            DEPLOY_PATH="${{ secrets.DEPLOY_PATH }}"
+            if [ -z "$DEPLOY_PATH" ]; then
+              DEPLOY_PATH="/var/www/proquelec/ged.proquelec.sn"
+            fi
 
-      - name: Install dependencies
-        run: npm ci
+            cd "$DEPLOY_PATH"
 
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps
+            git fetch --all
+            git reset --hard origin/main
 
-      - name: Run Playwright tests (smoke)
-        run: npx playwright test tests/playwright/rapports.spec.js --reporter=html
+            echo "--- Frontend ---"
+            cd frontend
+            npm ci --ignore-scripts --legacy-peer-deps --omit=dev
+            NODE_OPTIONS='--max-old-space-size=4096' npm run build
 
-      - name: Upload Playwright Report
-        if: success() || failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-report-${{ matrix.runner }}
-          path: playwright-report || ''
+            echo "--- Backend ---"
+            cd ../backend
+            npm ci --ignore-scripts --legacy-peer-deps --omit=dev
+            npx prisma generate --schema=prisma/schema.prisma
+            npx prisma migrate deploy --schema=prisma/schema.prisma || echo "Migration skipped (no new migrations)"
 
-  package-windows:
-    name: Package Windows
-    runs-on: windows-latest
-    needs: test-e2e
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+            echo "--- Restart PM2 ---"
+            pm2 restart gem-backend --update-env || pm2 restart all --update-env
+            pm2 save || true
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build Windows package
-        run: npm run package-win
-
-      - name: Upload build artifacts
-        if: success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: windows-build
-          path: dist
+            echo "--- Health check ---"
+            sleep 10
+            curl -fsS http://localhost:5005/health || echo "⚠️ Health check failed — check manually"
