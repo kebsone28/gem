@@ -73,7 +73,7 @@ jobs:
 
       # ============ FRONTEND ============
       - name: Install frontend dependencies
-        run: npm ci --prefix frontend
+        run: npm install --prefix frontend --legacy-peer-deps
 
       - name: TypeScript check (frontend)
         run: npx tsc --noEmit --project frontend/tsconfig.app.json
