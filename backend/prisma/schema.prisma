@@ -32,7 +32,8 @@ model Organization {
   grappes                    Grappe[]
   healthCenters              HealthCenter[]
   highVoltageNetworks        HighVoltageNetwork[]
-  internalKoboSubmissions    InternalKoboSubmission[]
+  toolboxSubmissions    ToolboxSubmission[]
+  toolboxFormHooks           ToolboxFormHook[]
   koboFormMappings           KoboFormMapping[]
   livestocks                 Livestock[]
   missions                   Mission[]
@@ -82,7 +83,7 @@ model User {
   uploadedDocuments        Document[]               @relation("DocumentUploader")
   uploadedDocumentVersions DocumentVersion[]        @relation("DocumentVersionUploader")
   eventLogs                EventLog[]
-  internalKoboSubmissions  InternalKoboSubmission[]
+  toolboxSubmissions  ToolboxSubmission[]
   missions                 Mission[]
   performanceLogs          PerformanceLog[]
   projectsUpdated          Project[]                @relation("UpdatedBy")
@@ -239,7 +240,7 @@ model Household {
   grappe                  Grappe?                  @relation(fields: [grappeId], references: [id])
   project                 Project?                 @relation(fields: [projectId], references: [id], onDelete: Cascade)
   zone                    Zone?                    @relation(fields: [zoneId], references: [id])
-  internalKoboSubmissions InternalKoboSubmission[]
+  toolboxSubmissions ToolboxSubmission[]
   performanceLogs         PerformanceLog[]
 
   @@unique([numeroordre, organizationId])
@@ -369,6 +370,26 @@ model KoboFormMapping {
   @@index([koboAssetId])
 }
 
+model ToolboxFormHook {
+  id             String       @id @default(uuid())
+  organizationId String
+  formKey        String
+  name           String
+  url            String
+  method         String       @default("POST")
+  headers        Json         @default("{}")
+  active         Boolean      @default(true)
+  lastTriggeredAt DateTime?
+  lastStatus     Int?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId, formKey, url])
+  @@index([organizationId, formKey])
+  @@index([organizationId])
+}
+
 model GedcollectAssignment {
   id             String         @id @default(uuid())
   organizationId String
@@ -385,7 +406,7 @@ model GedcollectAssignment {
   @@index([formKey])
 }
 
-model InternalKoboSubmission {
+model ToolboxSubmission {
   id                 String       @id @default(uuid())
   organizationId     String
   householdId        String?

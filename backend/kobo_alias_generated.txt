@@ -1,4 +1,4 @@
-const INTERNAL_KOBO_FIELD_ALIASES: Record<string, string[]> = {
+const TOOLBOX_FIELD_ALIASES: Record<string, string[]> = {
   Longueur_Cable_2_5mm_Int_rieure: ["Longueur_câble_2_5mm_Int_rieure","group_wu8kv54/group_sy9vj14/Longueur_Cable_2_5mm_Int_rieure"],
   Longueur_Cable_1_5mm_Int_rieure: ["Longueur_câble_1_5mm_Int_rieure","group_wu8kv54/group_sy9vj14/Longueur_Cable_1_5mm_Int_rieure"],
   Longueur_Tranch_e_Cable_arm_4mm: ["Longueur_Tranch_e_câble_arm_4mm","group_wu8kv54/group_sy9vj14/Longueur_Tranch_e_Cable_arm_4mm"],

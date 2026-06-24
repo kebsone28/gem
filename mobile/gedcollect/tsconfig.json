@@ -20,7 +20,8 @@
       "@screens/*": ["src/screens/*"],
       "@components/*": ["src/components/*"],
       "@types/*": ["src/types/*"],
-      "@utils/*": ["src/utils/*"]
+      "@utils/*": ["src/utils/*"],
+      "@theme/*": ["src/theme/*"]
     }
   },
   "include": ["src/**/*", "App.tsx", "index.js"],

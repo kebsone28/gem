@@ -262,7 +262,7 @@ async function fetchKoboRecords() {
 
 async function existsInGem(clientSubmissionId) {
   if (!skipExisting || dryRun) return false;
-  const response = await gemRequest(`/internal-kobo/submissions?clientSubmissionId=${encodeURIComponent(clientSubmissionId)}&limit=1`);
+  const response = await gemRequest(`/toolbox/submissions?clientSubmissionId=${encodeURIComponent(clientSubmissionId)}&limit=1`);
   return Array.isArray(response?.submissions) && response.submissions.length > 0;
 }
 
@@ -291,7 +291,7 @@ async function main() {
     }
 
     try {
-      await gemRequest('/internal-kobo/submissions', {
+      await gemRequest('/toolbox/submissions', {
         method: 'POST',
         body: JSON.stringify(payload),
       });

@@ -1,9 +1,9 @@
 import apiClient from '../api/client';
 import { db, type SyncQueueItem } from '../store/db';
 
-export type InternalKoboSubmissionStatus = 'draft' | 'submitted' | 'validated' | 'rejected';
+export type ToolboxSubmissionstatus = 'draft' | 'submitted' | 'validated' | 'rejected';
 
-export interface InternalKoboAttachment {
+export interface toolboxAttachment {
   id?: string;
   fieldName: string;
   fieldCode?: string;
@@ -22,29 +22,29 @@ export interface InternalKoboAttachment {
   dataUrl?: string;
 }
 
-export interface InternalKoboSubmissionPayload {
+export interface toolboxSubmissionPayload {
   clientSubmissionId: string;
   householdId?: string | null;
   numeroOrdre?: string | null;
   formKey: string;
   formVersion: string;
   role?: string | null;
-  status: InternalKoboSubmissionStatus;
+  status: ToolboxSubmissionstatus;
   values: Record<string, unknown>;
-  attachments?: InternalKoboAttachment[];
+  attachments?: toolboxAttachment[];
   metadata?: Record<string, unknown>;
   requiredMissing: string[];
   householdPatch?: Record<string, unknown>;
 }
 
-export interface InternalKoboSubmissionResponse {
+export interface toolboxSubmissionResponse {
   success: boolean;
   submission?: Record<string, unknown>;
   household?: Record<string, unknown> | null;
   message?: string;
 }
 
-export interface InternalKoboImportedFormSummary {
+export interface ToolboxImportedFormSummary {
   id: string;
   formKey: string;
   formVersion: string;
@@ -66,7 +66,7 @@ export interface InternalKoboImportedFormSummary {
   updatedAt?: string;
 }
 
-export interface InternalKoboFormComparison {
+export interface ToolboxFormComparison {
   previous?: Record<string, unknown>;
   current?: Record<string, unknown>;
   summary?: Record<string, number>;
@@ -75,7 +75,7 @@ export interface InternalKoboFormComparison {
   diagnosticsDelta?: Record<string, unknown>;
 }
 
-export interface InternalKoboFormDefinitionInfo {
+export interface toolboxFormDefinitionInfo {
   formKey: string;
   formVersion: string;
   engine: string;
@@ -86,11 +86,11 @@ export interface InternalKoboFormDefinitionInfo {
     engine: string;
     engineVersion: string;
     capabilities: string[];
-    importedForms: InternalKoboImportedFormSummary[];
+    importedForms: ToolboxImportedFormSummary[];
   };
 }
 
-export interface InternalKoboSubmissionRecord {
+export interface toolboxSubmissionRecord {
   id: string;
   householdId?: string | null;
   numeroOrdre?: string | null;
@@ -98,11 +98,11 @@ export interface InternalKoboSubmissionRecord {
   formVersion: string;
   clientSubmissionId: string;
   role?: string | null;
-  status: InternalKoboSubmissionStatus;
+  status: ToolboxSubmissionstatus;
   syncStatus: string;
   values: Record<string, unknown>;
   metadata?: Record<string, unknown>;
-  attachments?: InternalKoboAttachment[];
+  attachments?: toolboxAttachment[];
   requiredMissing: string[];
   submittedAt?: string | null;
   savedAt: string;
@@ -125,7 +125,7 @@ export interface InternalKoboSubmissionRecord {
   } | null;
 }
 
-export interface InternalKoboSubmissionDiagnostics {
+export interface toolboxSubmissionDiagnostics {
   scope?: string;
   health?: 'ok' | 'warning' | 'critical' | string;
   total?: number;
@@ -146,8 +146,8 @@ export interface InternalKoboSubmissionDiagnostics {
   unresolvedHouseholdCount?: number;
   activeFormCount?: number;
   inactiveFormCount?: number;
-  activeForms?: InternalKoboImportedFormSummary[];
-  inactiveForms?: InternalKoboImportedFormSummary[];
+  activeForms?: ToolboxImportedFormSummary[];
+  inactiveForms?: ToolboxImportedFormSummary[];
   mediaStats?: {
     attachmentCount?: number;
     serverStoredCount?: number;
@@ -169,10 +169,10 @@ export interface InternalKoboSubmissionDiagnostics {
   generatedAt?: string;
 }
 
-export interface InternalKoboSubmissionFilters {
+export interface toolboxSubmissionFilters {
   householdId?: string;
   numeroOrdre?: string;
-  status?: InternalKoboSubmissionStatus;
+  status?: ToolboxSubmissionstatus;
   syncStatus?: string;
   role?: string;
   formKey?: string;
@@ -187,23 +187,23 @@ export interface InternalKoboSubmissionFilters {
   mobileOnly?: string;
 }
 
-export interface InternalKoboSubmissionsReport {
-  submissions: InternalKoboSubmissionRecord[];
-  diagnostics: InternalKoboSubmissionDiagnostics | null;
+export interface ToolboxSubmissionsReport {
+  submissions: toolboxSubmissionRecord[];
+  diagnostics: toolboxSubmissionDiagnostics | null;
   count: number;
   pageCount?: number;
   offset?: number;
   limit?: number;
 }
 
-export interface InternalKoboQueuedSubmission {
+export interface toolboxQueuedSubmission {
   id?: number;
   clientSubmissionId: string;
   householdId?: string | null;
   numeroOrdre?: string | null;
   role?: string | null;
   status: 'pending' | 'failed';
-  submissionStatus: InternalKoboSubmissionStatus;
+  submissionStatus: ToolboxSubmissionstatus;
   formKey?: string;
   formVersion: string;
   attachmentCount: number;
@@ -217,7 +217,7 @@ export interface InternalKoboQueuedSubmission {
   timestamp: number;
 }
 
-export interface InternalKoboLocalDraft {
+export interface toolboxLocalDraft {
   key: string;
   householdId?: string | null;
   numeroOrdre?: string | null;
@@ -228,19 +228,19 @@ export interface InternalKoboLocalDraft {
   updatedAt: string;
 }
 
-const INTERNAL_KOBO_OUTBOX_ACTION = 'internal-kobo-submit';
-const INTERNAL_KOBO_SUBMISSION_ENDPOINT = '/internal-kobo/submissions';
-const INTERNAL_KOBO_FORM_DEFINITION_ENDPOINT = '/internal-kobo/form-definition';
-const INTERNAL_KOBO_FORM_DEFINITIONS_ENDPOINT = '/internal-kobo/form-definitions';
-const INTERNAL_KOBO_FORM_CREATE_ENDPOINT = '/internal-kobo/form-definition/create';
-const INTERNAL_KOBO_FORM_IMPORT_ENDPOINT = '/internal-kobo/form-definition/import';
-const INTERNAL_KOBO_FORM_IMPORT_URL_ENDPOINT = '/internal-kobo/form-definition/import-url';
-const INTERNAL_KOBO_DIAGNOSTICS_ENDPOINT = '/internal-kobo/diagnostics';
-const INTERNAL_KOBO_CLIENT_QUEUE_ENDPOINT = '/internal-kobo/client-queue-report';
-const INTERNAL_KOBO_DRAFT_PREFIX = 'ged-os-internal-kobo-draft:';
-const MAX_INTERNAL_KOBO_RETRIES = 6;
-const INTERNAL_KOBO_BASE_RETRY_DELAY_MS = 5000;
-const INTERNAL_KOBO_MAX_RETRY_DELAY_MS = 15 * 60 * 1000;
+const TOOLBOX_OUTBOX_ACTION = 'toolbox-submit';
+const TOOLBOX_SUBMISSION_ENDPOINT = '/toolbox/submissions';
+const TOOLBOX_FORM_DEFINITION_ENDPOINT = '/toolbox/form-definition';
+const TOOLBOX_FORM_DEFINITIONS_ENDPOINT = '/toolbox/form-definitions';
+const TOOLBOX_FORM_CREATE_ENDPOINT = '/toolbox/form-definition/create';
+const TOOLBOX_FORM_IMPORT_ENDPOINT = '/toolbox/form-definition/import';
+const TOOLBOX_FORM_IMPORT_URL_ENDPOINT = '/toolbox/form-definition/import-url';
+const TOOLBOX_DIAGNOSTICS_ENDPOINT = '/toolbox/diagnostics';
+const TOOLBOX_CLIENT_QUEUE_ENDPOINT = '/toolbox/client-queue-report';
+const TOOLBOX_DRAFT_PREFIX = 'ged-os-toolbox-draft:';
+const MAX_TOOLBOX_RETRIES = 6;
+const TOOLBOX_BASE_RETRY_DELAY_MS = 5000;
+const TOOLBOX_MAX_RETRY_DELAY_MS = 15 * 60 * 1000;
 
 const getFilenameFromDisposition = (disposition?: string, fallback = 'soumissions-kobo-interne.csv') => {
   if (!disposition) return fallback;
@@ -250,18 +250,18 @@ const getFilenameFromDisposition = (disposition?: string, fallback = 'soumission
   return match?.[1] || fallback;
 };
 
-export function getInternalKoboErrorStatus(error: unknown): number | null {
+export function getToolboxErrorStatus(error: unknown): number | null {
   const status = (error as any)?.response?.status;
   return typeof status === 'number' ? status : null;
 }
 
-export function isRetriableInternalKoboError(error: unknown): boolean {
-  const status = getInternalKoboErrorStatus(error);
+export function isRetriableToolboxError(error: unknown): boolean {
+  const status = getToolboxErrorStatus(error);
   if (!status) return true;
   return status === 408 || status === 429 || status >= 500;
 }
 
-export function getInternalKoboErrorMessage(error: unknown): string {
+export function getToolboxErrorMessage(error: unknown): string {
   const responseMessage = (error as any)?.response?.data?.message;
   if (typeof responseMessage === 'string' && responseMessage.trim()) return responseMessage;
   if (error instanceof Error && error.message) return error.message;
@@ -269,8 +269,8 @@ export function getInternalKoboErrorMessage(error: unknown): string {
   return 'Erreur reseau inconnue';
 }
 
-function getInternalKoboErrorType(error: unknown): NonNullable<SyncQueueItem['errorType']> {
-  const status = getInternalKoboErrorStatus(error);
+function getToolboxErrorType(error: unknown): NonNullable<SyncQueueItem['errorType']> {
+  const status = getToolboxErrorStatus(error);
   if (!status) return 'network';
   if (status === 409) return 'version';
   if (status === 400 || status === 422) return 'validation';
@@ -278,31 +278,31 @@ function getInternalKoboErrorType(error: unknown): NonNullable<SyncQueueItem['er
   return 'unknown';
 }
 
-function getInternalKoboNextRetryAt(retryCount: number): number {
+function getToolboxNextRetryAt(retryCount: number): number {
   const exponentialDelay = Math.min(
-    INTERNAL_KOBO_MAX_RETRY_DELAY_MS,
-    INTERNAL_KOBO_BASE_RETRY_DELAY_MS * 2 ** Math.max(retryCount, 0)
+    TOOLBOX_MAX_RETRY_DELAY_MS,
+    TOOLBOX_BASE_RETRY_DELAY_MS * 2 ** Math.max(retryCount, 0)
   );
   const jitter = Math.round(exponentialDelay * (0.15 + Math.random() * 0.25));
   return Date.now() + exponentialDelay + jitter;
 }
 
-function getAttachmentBytes(payload: InternalKoboSubmissionPayload): number {
+function getAttachmentBytes(payload: toolboxSubmissionPayload): number {
   return (payload.attachments || []).reduce((total, attachment) => total + Number(attachment.storedBytes || attachment.originalBytes || 0), 0);
 }
 
-function isInternalKoboQueueItem(item: SyncQueueItem): item is SyncQueueItem & {
-  payload: InternalKoboSubmissionPayload;
+function isToolboxQueueItem(item: SyncQueueItem): item is SyncQueueItem & {
+  payload: toolboxSubmissionPayload;
 } {
-  const payload = item.payload as Partial<InternalKoboSubmissionPayload>;
-  return item.action === INTERNAL_KOBO_OUTBOX_ACTION && Boolean(payload?.clientSubmissionId);
+  const payload = item.payload as Partial<toolboxSubmissionPayload>;
+  return item.action === TOOLBOX_OUTBOX_ACTION && Boolean(payload?.clientSubmissionId);
 }
 
 function canUseLocalStorage(): boolean {
   return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
 }
 
-function getInternalKoboDraftKeys(params: {
+function getToolboxDraftKeys(params: {
   householdId?: string | null;
   numeroOrdre?: string | null;
   formKey?: string | null;
@@ -320,37 +320,37 @@ function getInternalKoboDraftKeys(params: {
   ].filter(Boolean);
   const scopedSuffix = scopeParts.length ? `:${scopeParts.join(':')}` : '';
 
-  if (householdId) keys.push(`${INTERNAL_KOBO_DRAFT_PREFIX}household:${householdId}${scopedSuffix}`);
-  if (numeroOrdre) keys.push(`${INTERNAL_KOBO_DRAFT_PREFIX}numero:${numeroOrdre}${scopedSuffix}`);
+  if (householdId) keys.push(`${TOOLBOX_DRAFT_PREFIX}household:${householdId}${scopedSuffix}`);
+  if (numeroOrdre) keys.push(`${TOOLBOX_DRAFT_PREFIX}numero:${numeroOrdre}${scopedSuffix}`);
 
   if (scopedSuffix && params.includeLegacy !== false) {
-    if (householdId) keys.push(`${INTERNAL_KOBO_DRAFT_PREFIX}household:${householdId}`);
-    if (numeroOrdre) keys.push(`${INTERNAL_KOBO_DRAFT_PREFIX}numero:${numeroOrdre}`);
+    if (householdId) keys.push(`${TOOLBOX_DRAFT_PREFIX}household:${householdId}`);
+    if (numeroOrdre) keys.push(`${TOOLBOX_DRAFT_PREFIX}numero:${numeroOrdre}`);
   }
 
   return keys;
 }
 
-function findInternalKoboLocalDraftFallback(params: {
+function findtoolboxLocalDraftFallback(params: {
   householdId?: string | null;
   numeroOrdre?: string | null;
   formKey?: string | null;
   role?: string | null;
-}): InternalKoboLocalDraft | null {
+}): toolboxLocalDraft | null {
   if (!canUseLocalStorage()) return null;
 
   const householdId = String(params.householdId || '').trim();
   const numeroOrdre = String(params.numeroOrdre || '').trim();
   const formKey = String(params.formKey || '').trim();
   const role = String(params.role || '').trim();
-  const matches: InternalKoboLocalDraft[] = [];
+  const matches: toolboxLocalDraft[] = [];
 
   for (let index = 0; index < window.localStorage.length; index += 1) {
     const key = window.localStorage.key(index) || '';
-    if (!key.startsWith(INTERNAL_KOBO_DRAFT_PREFIX)) continue;
+    if (!key.startsWith(TOOLBOX_DRAFT_PREFIX)) continue;
 
     try {
-      const draft = JSON.parse(window.localStorage.getItem(key) || '') as InternalKoboLocalDraft;
+      const draft = JSON.parse(window.localStorage.getItem(key) || '') as toolboxLocalDraft;
       if (!draft?.values || typeof draft.values !== 'object') continue;
       const draftHouseholdId = String(draft.householdId || '').trim();
       const draftNumeroOrdre = String(draft.numeroOrdre || '').trim();
@@ -376,7 +376,7 @@ function findInternalKoboLocalDraftFallback(params: {
 
 function compactDraftValues(value: unknown, key = ''): unknown {
   if (key.startsWith('_ged_os_attachment_') && value && typeof value === 'object' && !Array.isArray(value)) {
-    const attachment = value as InternalKoboAttachment;
+    const attachment = value as toolboxAttachment;
     const compactAttachment = { ...attachment };
     delete compactAttachment.dataUrl;
     return { ...compactAttachment, status: attachment.status || 'queued' };
@@ -396,92 +396,92 @@ function compactDraftValues(value: unknown, key = ''): unknown {
   return value;
 }
 
-export async function submitInternalKoboSubmission(
-  payload: InternalKoboSubmissionPayload
-): Promise<InternalKoboSubmissionResponse> {
-  const response = await apiClient.post<InternalKoboSubmissionResponse>(
-    INTERNAL_KOBO_SUBMISSION_ENDPOINT,
+export async function submittoolboxSubmission(
+  payload: toolboxSubmissionPayload
+): Promise<toolboxSubmissionResponse> {
+  const response = await apiClient.post<toolboxSubmissionResponse>(
+    TOOLBOX_SUBMISSION_ENDPOINT,
     payload
   );
   return response.data;
 }
 
-export async function fetchInternalKoboFormDefinition(): Promise<InternalKoboFormDefinitionInfo | null> {
+export async function fetchtoolboxFormDefinition(): Promise<toolboxFormDefinitionInfo | null> {
   const response = await apiClient.get<{
     success: boolean;
-    form?: InternalKoboFormDefinitionInfo;
-  }>(INTERNAL_KOBO_FORM_DEFINITION_ENDPOINT);
+    form?: toolboxFormDefinitionInfo;
+  }>(TOOLBOX_FORM_DEFINITION_ENDPOINT);
 
   return response.data.form || null;
 }
 
-export async function fetchInternalKoboFormDefinitions(): Promise<NonNullable<InternalKoboFormDefinitionInfo['universalEngine']>['importedForms']> {
+export async function fetchtoolboxFormDefinitions(): Promise<NonNullable<toolboxFormDefinitionInfo['universalEngine']>['importedForms']> {
   const response = await apiClient.get<{
     success: boolean;
-    forms?: NonNullable<InternalKoboFormDefinitionInfo['universalEngine']>['importedForms'];
-  }>(INTERNAL_KOBO_FORM_DEFINITIONS_ENDPOINT);
+    forms?: NonNullable<toolboxFormDefinitionInfo['universalEngine']>['importedForms'];
+  }>(TOOLBOX_FORM_DEFINITIONS_ENDPOINT);
 
   return response.data.forms || [];
 }
 
-export async function fetchInternalKoboImportedFormDefinition(formKey: string): Promise<Record<string, unknown> | null> {
+export async function fetchToolboxImportedFormDefinition(formKey: string): Promise<Record<string, unknown> | null> {
   const response = await apiClient.get<{
     success: boolean;
     form?: Record<string, unknown>;
-  }>(`${INTERNAL_KOBO_FORM_DEFINITIONS_ENDPOINT}/${encodeURIComponent(formKey)}`);
+  }>(`${TOOLBOX_FORM_DEFINITIONS_ENDPOINT}/${encodeURIComponent(formKey)}`);
 
   return response.data.form || null;
 }
 
-export async function updateInternalKoboFormDefinitionStatus(
+export async function updatetoolboxFormDefinitionStatus(
   formKey: string,
   active: boolean
-): Promise<InternalKoboImportedFormSummary | null> {
+): Promise<ToolboxImportedFormSummary | null> {
   const response = await apiClient.patch<{
     success: boolean;
-    form?: InternalKoboImportedFormSummary;
-  }>(`${INTERNAL_KOBO_FORM_DEFINITIONS_ENDPOINT}/${encodeURIComponent(formKey)}/status`, { active });
+    form?: ToolboxImportedFormSummary;
+  }>(`${TOOLBOX_FORM_DEFINITIONS_ENDPOINT}/${encodeURIComponent(formKey)}/status`, { active });
 
   return response.data.form || null;
 }
 
-export async function deleteInternalKoboFormDefinition(
+export async function deletetoolboxFormDefinition(
   formKey: string
-): Promise<InternalKoboImportedFormSummary | null> {
+): Promise<ToolboxImportedFormSummary | null> {
   const response = await apiClient.delete<{
     success: boolean;
-    form?: InternalKoboImportedFormSummary;
-  }>(`${INTERNAL_KOBO_FORM_DEFINITIONS_ENDPOINT}/${encodeURIComponent(formKey)}`);
+    form?: ToolboxImportedFormSummary;
+  }>(`${TOOLBOX_FORM_DEFINITIONS_ENDPOINT}/${encodeURIComponent(formKey)}`);
 
   return response.data.form || null;
 }
 
-export async function compareInternalKoboFormDefinitions(
+export async function comparetoolboxFormDefinitions(
   formKey: string,
   targetFormKey: string
-): Promise<InternalKoboFormComparison | null> {
+): Promise<ToolboxFormComparison | null> {
   const response = await apiClient.get<{
     success: boolean;
-    comparison?: InternalKoboFormComparison;
+    comparison?: ToolboxFormComparison;
   }>(
-    `${INTERNAL_KOBO_FORM_DEFINITIONS_ENDPOINT}/${encodeURIComponent(formKey)}/compare/${encodeURIComponent(targetFormKey)}`
+    `${TOOLBOX_FORM_DEFINITIONS_ENDPOINT}/${encodeURIComponent(formKey)}/compare/${encodeURIComponent(targetFormKey)}`
   );
 
   return response.data.comparison || null;
 }
 
-export async function fetchInternalKoboSubmissionsReport(
-  params: InternalKoboSubmissionFilters = {}
-): Promise<InternalKoboSubmissionsReport> {
+export async function fetchToolboxSubmissionsReport(
+  params: toolboxSubmissionFilters = {}
+): Promise<ToolboxSubmissionsReport> {
   const response = await apiClient.get<{
     success: boolean;
     count?: number;
     pageCount?: number;
     offset?: number;
     limit?: number;
-    submissions?: InternalKoboSubmissionRecord[];
-    diagnostics?: InternalKoboSubmissionDiagnostics;
-  }>(INTERNAL_KOBO_SUBMISSION_ENDPOINT, { params });
+    submissions?: toolboxSubmissionRecord[];
+    diagnostics?: toolboxSubmissionDiagnostics;
+  }>(TOOLBOX_SUBMISSION_ENDPOINT, { params });
 
   return {
     submissions: response.data.submissions || [],
@@ -493,40 +493,40 @@ export async function fetchInternalKoboSubmissionsReport(
   };
 }
 
-export async function fetchInternalKoboSubmissions(
-  params: InternalKoboSubmissionFilters = {}
-): Promise<InternalKoboSubmissionRecord[]> {
-  const report = await fetchInternalKoboSubmissionsReport(params);
+export async function fetchToolboxSubmissions(
+  params: toolboxSubmissionFilters = {}
+): Promise<toolboxSubmissionRecord[]> {
+  const report = await fetchToolboxSubmissionsReport(params);
   return report.submissions;
 }
 
-export async function fetchInternalKoboDiagnostics(): Promise<InternalKoboSubmissionDiagnostics | null> {
+export async function fetchToolboxDiagnostics(): Promise<toolboxSubmissionDiagnostics | null> {
   const response = await apiClient.get<{
     success: boolean;
-    diagnostics?: InternalKoboSubmissionDiagnostics;
-  }>(INTERNAL_KOBO_DIAGNOSTICS_ENDPOINT);
+    diagnostics?: toolboxSubmissionDiagnostics;
+  }>(TOOLBOX_DIAGNOSTICS_ENDPOINT);
 
   return response.data.diagnostics || null;
 }
 
-export async function reviewInternalKoboSubmission(
+export async function reviewtoolboxSubmission(
   id: string,
-  status: Exclude<InternalKoboSubmissionStatus, 'draft'>,
+  status: Exclude<ToolboxSubmissionstatus, 'draft'>,
   note = ''
-): Promise<InternalKoboSubmissionRecord | null> {
+): Promise<toolboxSubmissionRecord | null> {
   const response = await apiClient.patch<{
     success: boolean;
-    submission?: InternalKoboSubmissionRecord;
-  }>(`${INTERNAL_KOBO_SUBMISSION_ENDPOINT}/${id}/review`, { status, note });
+    submission?: toolboxSubmissionRecord;
+  }>(`${TOOLBOX_SUBMISSION_ENDPOINT}/${id}/review`, { status, note });
 
   return response.data.submission || null;
 }
 
-export async function downloadInternalKoboSubmissionsExport(
-  params: InternalKoboSubmissionFilters = {},
+export async function downloadToolboxSubmissionsExport(
+  params: toolboxSubmissionFilters = {},
   format: 'csv' | 'json' | 'xlsx' = 'csv'
 ): Promise<{ blob: Blob; filename: string }> {
-  const response = await apiClient.get<Blob>(`${INTERNAL_KOBO_SUBMISSION_ENDPOINT}/export`, {
+  const response = await apiClient.get<Blob>(`${TOOLBOX_SUBMISSION_ENDPOINT}/export`, {
     params: { ...params, format },
     responseType: 'blob',
   });
@@ -539,10 +539,10 @@ export async function downloadInternalKoboSubmissionsExport(
   };
 }
 
-export async function downloadInternalKoboMediaExport(
-  params: InternalKoboSubmissionFilters = {}
+export async function downloadToolboxMediaExport(
+  params: toolboxSubmissionFilters = {}
 ): Promise<{ blob: Blob; filename: string }> {
-  const response = await apiClient.get<Blob>(`${INTERNAL_KOBO_SUBMISSION_ENDPOINT}/export-media`, {
+  const response = await apiClient.get<Blob>(`${TOOLBOX_SUBMISSION_ENDPOINT}/export-media`, {
     params,
     responseType: 'blob',
   });
@@ -554,37 +554,37 @@ export async function downloadInternalKoboMediaExport(
   };
 }
 
-export async function importInternalKoboXlsForm(file: File): Promise<{
+export async function importToolboxXlsForm(file: File): Promise<{
   success: boolean;
   importId?: string;
   storageKey?: string;
-  comparison?: InternalKoboFormComparison;
-  form?: InternalKoboImportedFormSummary;
+  comparison?: ToolboxFormComparison;
+  form?: ToolboxImportedFormSummary;
   message?: string;
 }> {
   const formData = new FormData();
   formData.append('file', file);
 
-  const response = await apiClient.post(INTERNAL_KOBO_FORM_IMPORT_ENDPOINT, formData, {
+  const response = await apiClient.post(TOOLBOX_FORM_IMPORT_ENDPOINT, formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
 
   return response.data;
 }
 
-export async function importInternalKoboXlsFormFromUrl(url: string): Promise<{
+export async function importToolboxXlsFormFromUrl(url: string): Promise<{
   success: boolean;
   importId?: string;
   storageKey?: string;
-  comparison?: InternalKoboFormComparison;
-  form?: InternalKoboImportedFormSummary;
+  comparison?: ToolboxFormComparison;
+  form?: ToolboxImportedFormSummary;
   message?: string;
 }> {
-  const response = await apiClient.post(INTERNAL_KOBO_FORM_IMPORT_URL_ENDPOINT, { url });
+  const response = await apiClient.post(TOOLBOX_FORM_IMPORT_URL_ENDPOINT, { url });
   return response.data;
 }
 
-export async function createInternalKoboFormDefinition(payload: {
+export async function createtoolboxFormDefinition(payload: {
   title: string;
   description?: string;
   sector?: string;
@@ -599,23 +599,23 @@ export async function createInternalKoboFormDefinition(payload: {
   success: boolean;
   importId?: string;
   storageKey?: string;
-  comparison?: InternalKoboFormComparison;
-  form?: InternalKoboImportedFormSummary;
+  comparison?: ToolboxFormComparison;
+  form?: ToolboxImportedFormSummary;
   message?: string;
 }> {
-  const response = await apiClient.post(INTERNAL_KOBO_FORM_CREATE_ENDPOINT, payload);
+  const response = await apiClient.post(TOOLBOX_FORM_CREATE_ENDPOINT, payload);
   return response.data;
 }
 
-export async function queueInternalKoboSubmission(
-  payload: InternalKoboSubmissionPayload,
+export async function queuetoolboxSubmission(
+  payload: toolboxSubmissionPayload,
   reason?: string
 ): Promise<number | undefined> {
   const timestamp = Date.now();
   const queuedItems = await db.syncOutbox.where('status').anyOf('pending', 'failed').toArray();
   const existing = queuedItems.find(
     (item) =>
-      isInternalKoboQueueItem(item) &&
+      isToolboxQueueItem(item) &&
       item.payload.clientSubmissionId === payload.clientSubmissionId
   );
 
@@ -632,8 +632,8 @@ export async function queueInternalKoboSubmission(
   }
 
   return db.syncOutbox.add({
-    action: INTERNAL_KOBO_OUTBOX_ACTION,
-    endpoint: INTERNAL_KOBO_SUBMISSION_ENDPOINT,
+    action: TOOLBOX_OUTBOX_ACTION,
+    endpoint: TOOLBOX_SUBMISSION_ENDPOINT,
     method: 'POST',
     payload: payload as unknown as Record<string, unknown>,
     timestamp,
@@ -645,7 +645,7 @@ export async function queueInternalKoboSubmission(
   });
 }
 
-export async function flushInternalKoboSubmissionQueue(): Promise<{
+export async function flushtoolboxSubmissionQueue(): Promise<{
   flushed: number;
   failed: number;
   pending: number;
@@ -653,8 +653,8 @@ export async function flushInternalKoboSubmissionQueue(): Promise<{
   const queuedItems = await db.syncOutbox.where('status').anyOf('pending', 'failed').toArray();
   const now = Date.now();
   const internalItems = queuedItems
-    .filter(isInternalKoboQueueItem)
-    .filter((item) => (item.retryCount || 0) < MAX_INTERNAL_KOBO_RETRIES)
+    .filter(isToolboxQueueItem)
+    .filter((item) => (item.retryCount || 0) < MAX_TOOLBOX_RETRIES)
     .filter((item) => !item.nextRetryAt || item.nextRetryAt <= now)
     .sort((a, b) => a.timestamp - b.timestamp);
 
@@ -678,18 +678,18 @@ export async function flushInternalKoboSubmissionQueue(): Promise<{
     } catch (error) {
       failed += 1;
       if (item.id) {
-        const canRetry = isRetriableInternalKoboError(error);
-        const nextRetryCount = canRetry ? (item.retryCount || 0) + 1 : MAX_INTERNAL_KOBO_RETRIES;
+        const canRetry = isRetriableToolboxError(error);
+        const nextRetryCount = canRetry ? (item.retryCount || 0) + 1 : MAX_TOOLBOX_RETRIES;
         await db.syncOutbox.update(item.id, {
           status: 'failed',
           retryCount: nextRetryCount,
           lastError: canRetry
-            ? getInternalKoboErrorMessage(error)
-            : `Validation serveur: ${getInternalKoboErrorMessage(error)}`,
-          errorType: getInternalKoboErrorType(error),
+            ? getToolboxErrorMessage(error)
+            : `Validation serveur: ${getToolboxErrorMessage(error)}`,
+          errorType: getToolboxErrorType(error),
           lastAttemptAt: Date.now(),
-          nextRetryAt: canRetry && nextRetryCount < MAX_INTERNAL_KOBO_RETRIES
-            ? getInternalKoboNextRetryAt(nextRetryCount)
+          nextRetryAt: canRetry && nextRetryCount < MAX_TOOLBOX_RETRIES
+            ? getToolboxNextRetryAt(nextRetryCount)
             : undefined,
           timestamp: Date.now(),
         });
@@ -698,16 +698,16 @@ export async function flushInternalKoboSubmissionQueue(): Promise<{
   }
 
   const remaining = await db.syncOutbox.where('status').anyOf('pending', 'failed').toArray();
-  const pending = remaining.filter(isInternalKoboQueueItem).length;
+  const pending = remaining.filter(isToolboxQueueItem).length;
 
   return { flushed, failed, pending };
 }
 
-export async function getInternalKoboQueueItems(): Promise<InternalKoboQueuedSubmission[]> {
+export async function gettoolboxQueueItems(): Promise<toolboxQueuedSubmission[]> {
   const queuedItems = await db.syncOutbox.where('status').anyOf('pending', 'failed').toArray();
 
   return queuedItems
-    .filter(isInternalKoboQueueItem)
+    .filter(isToolboxQueueItem)
     .map((item) => {
       const mediaBytes = getAttachmentBytes(item.payload);
       return {
@@ -734,24 +734,24 @@ export async function getInternalKoboQueueItems(): Promise<InternalKoboQueuedSub
     .sort((a, b) => b.timestamp - a.timestamp);
 }
 
-export async function getInternalKoboQueueCount(): Promise<number> {
-  return getInternalKoboQueueItems().then((items) => items.length);
+export async function gettoolboxQueueCount(): Promise<number> {
+  return gettoolboxQueueItems().then((items) => items.length);
 }
 
-export function saveInternalKoboLocalDraft(params: {
+export function savetoolboxLocalDraft(params: {
   householdId?: string | null;
   numeroOrdre?: string | null;
   formKey?: string | null;
   role?: string | null;
   formVersion: string;
   values: Record<string, unknown>;
-}): InternalKoboLocalDraft | null {
+}): toolboxLocalDraft | null {
   if (!canUseLocalStorage()) return null;
 
-  const [key] = getInternalKoboDraftKeys(params);
+  const [key] = getToolboxDraftKeys(params);
   if (!key) return null;
 
-  const draft: InternalKoboLocalDraft = {
+  const draft: toolboxLocalDraft = {
     key,
     householdId: params.householdId,
     numeroOrdre: params.numeroOrdre,
@@ -779,20 +779,20 @@ export function saveInternalKoboLocalDraft(params: {
   }
 }
 
-export function loadInternalKoboLocalDraft(params: {
+export function loadtoolboxLocalDraft(params: {
   householdId?: string | null;
   numeroOrdre?: string | null;
   formKey?: string | null;
   role?: string | null;
-}): InternalKoboLocalDraft | null {
+}): toolboxLocalDraft | null {
   if (!canUseLocalStorage()) return null;
 
-  for (const key of getInternalKoboDraftKeys(params)) {
+  for (const key of getToolboxDraftKeys(params)) {
     const rawDraft = window.localStorage.getItem(key);
     if (!rawDraft) continue;
 
     try {
-      const draft = JSON.parse(rawDraft) as InternalKoboLocalDraft;
+      const draft = JSON.parse(rawDraft) as toolboxLocalDraft;
       if (draft?.values && typeof draft.values === 'object') {
         return { ...draft, key };
       }
@@ -801,10 +801,10 @@ export function loadInternalKoboLocalDraft(params: {
     }
   }
 
-  return findInternalKoboLocalDraftFallback(params);
+  return findtoolboxLocalDraftFallback(params);
 }
 
-export function clearInternalKoboLocalDraft(params: {
+export function cleartoolboxLocalDraft(params: {
   householdId?: string | null;
   numeroOrdre?: string | null;
   formKey?: string | null;
@@ -812,26 +812,26 @@ export function clearInternalKoboLocalDraft(params: {
 }): void {
   if (!canUseLocalStorage()) return;
 
-  getInternalKoboDraftKeys(params).forEach((key) => {
+  getToolboxDraftKeys(params).forEach((key) => {
     window.localStorage.removeItem(key);
   });
 
-  const fallback = findInternalKoboLocalDraftFallback(params);
+  const fallback = findtoolboxLocalDraftFallback(params);
   if (fallback?.key) {
     window.localStorage.removeItem(fallback.key);
   }
 }
 
-export async function reportInternalKoboClientQueue(): Promise<void> {
-  const queueItems = await getInternalKoboQueueItems();
+export async function reportToolboxClientQueue(): Promise<void> {
+  const queueItems = await gettoolboxQueueItems();
   const pending = queueItems.filter((item) => item.status === 'pending').length;
-  const failed = queueItems.filter((item) => item.status === 'failed' && item.retryCount < MAX_INTERNAL_KOBO_RETRIES).length;
-  const blocked = queueItems.filter((item) => item.retryCount >= MAX_INTERNAL_KOBO_RETRIES).length;
+  const failed = queueItems.filter((item) => item.status === 'failed' && item.retryCount < MAX_TOOLBOX_RETRIES).length;
+  const blocked = queueItems.filter((item) => item.retryCount >= MAX_TOOLBOX_RETRIES).length;
   const mediaBytes = queueItems.reduce((total, item) => total + Number(item.mediaBytes || 0), 0);
   const nav = typeof navigator !== 'undefined' ? navigator : null;
   const connection = nav ? (nav as Navigator & { connection?: { effectiveType?: string; type?: string } }).connection : null;
 
-  await apiClient.post(INTERNAL_KOBO_CLIENT_QUEUE_ENDPOINT, {
+  await apiClient.post(TOOLBOX_CLIENT_QUEUE_ENDPOINT, {
     reportedAt: new Date().toISOString(),
     pending,
     failed,

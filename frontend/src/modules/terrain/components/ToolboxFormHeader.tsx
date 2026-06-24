@@ -1,9 +1,9 @@
 import React from 'react';
 import { AlertCircle, CheckCircle2, ChevronRight, LockKeyhole } from 'lucide-react';
-import type { InternalGemField } from './internalKoboFormDefinition';
+import type { InternalGemField } from './toolboxFormDefinition';
 import type { XlsFormPage } from './xlsFormMobileRuntime';
 
-type InternalKoboFormHeaderProps = {
+type ToolboxFormHeaderProps = {
   activeSectionId: string;
   setActiveSectionId: (id: string) => void;
   query: string;
@@ -45,7 +45,7 @@ type InternalKoboFormHeaderProps = {
   normalizeQuery: string;
 };
 
-export const InternalKoboFormHeader: React.FC<InternalKoboFormHeaderProps> = ({
+export const ToolboxFormHeader: React.FC<ToolboxFormHeaderProps> = ({
   activeSectionId,
   setActiveSectionId,
   query,

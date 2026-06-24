@@ -52,6 +52,13 @@ export const PERMISSIONS = {
     MES_CONTROL: "mes.control",
     MES_IMPORT: "mes.import",
     MES_EXPORT: "mes.export",
+    // Permissions Toolbox (GED OS Toolbox)
+    TOOLBOX_SUBMISSION_CREATE: "toolbox.submission.create",
+    TOOLBOX_SUBMISSION_EDIT: "toolbox.submission.edit",
+    TOOLBOX_SUBMISSION_VALIDATE: "toolbox.submission.validate",
+    TOOLBOX_SUBMISSION_DELETE: "toolbox.submission.delete",
+    TOOLBOX_SETTINGS_READ: "toolbox.settings.read",
+    TOOLBOX_SETTINGS_MANAGE: "toolbox.settings.manage",
 };
 
 export const ROLE_PERMISSIONS = {
@@ -77,7 +84,13 @@ export const ROLE_PERMISSIONS = {
         PERMISSIONS.ACCES_TERMINAL_KOBO,
         PERMISSIONS.GERER_PV,
         PERMISSIONS.VOIR_MISSIONS,
-        PERMISSIONS.MODIFIER_MISSIONS
+        PERMISSIONS.MODIFIER_MISSIONS,
+        PERMISSIONS.TOOLBOX_SUBMISSION_CREATE,
+        PERMISSIONS.TOOLBOX_SUBMISSION_EDIT,
+        PERMISSIONS.TOOLBOX_SUBMISSION_VALIDATE,
+        PERMISSIONS.TOOLBOX_SUBMISSION_DELETE,
+        PERMISSIONS.TOOLBOX_SETTINGS_READ,
+        PERMISSIONS.TOOLBOX_SETTINGS_MANAGE,
     ],
 
     // 📈 FINANCES & AUDIT
@@ -98,6 +111,8 @@ export const ROLE_PERMISSIONS = {
         PERMISSIONS.VOIR_RAPPORTS,
         PERMISSIONS.VOIR_MISSIONS
     ],
+
+    // 🚀 OPÉRATIONNELS: peuvent aussi valider les soumissions terrain
     [ROLES.SUPERVISEUR]: [
         PERMISSIONS.VOIR_CARTE,
         PERMISSIONS.VOIR_RAPPORTS,
@@ -107,6 +122,7 @@ export const ROLE_PERMISSIONS = {
         PERMISSIONS.MES_VALIDATE,
         PERMISSIONS.MES_CONTROL,
         PERMISSIONS.MES_EXPORT,
+        PERMISSIONS.TOOLBOX_SUBMISSION_VALIDATE,
     ],
     [ROLES.CONTROLEUR]: [
         PERMISSIONS.VOIR_CARTE,
@@ -115,6 +131,7 @@ export const ROLE_PERMISSIONS = {
         // [FIX C-2] Contrôleur peut contrôler les MES
         PERMISSIONS.MES_CONTROL,
         PERMISSIONS.MES_EXPORT,
+        PERMISSIONS.TOOLBOX_SUBMISSION_VALIDATE,
     ],
 
     // 🔨 TERRAIN
@@ -127,6 +144,8 @@ export const ROLE_PERMISSIONS = {
         // [FIX C-2] Chef d'équipe peut créer et modifier des MES
         PERMISSIONS.MES_CREATE,
         PERMISSIONS.MES_UPDATE,
+        PERMISSIONS.TOOLBOX_SUBMISSION_CREATE,
+        PERMISSIONS.TOOLBOX_SUBMISSION_EDIT,
     ],
     [ROLES.EMPLOYE]: [
         PERMISSIONS.VOIR_CARTE,

@@ -13,15 +13,26 @@ import {
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '@types/index';
 import { loadSettings, saveSettings, getSettings } from '@config/settings';
-import { logout, updateServerUrl } from '@services/api';
+import { updateServerUrl } from '@services/api';
+import { exportSubmissionsJson, exportSubmissionsCsv } from '@services/exportService';
+import { useTheme } from '@theme/ThemeContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const PIN_KEY = '@gedcollect/pin';
 import Toast from 'react-native-toast-message';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Settings'>;
+type Props = NativeStackScreenProps<RootStackParamList, 'Settings'> & {
+  onLogout: () => void;
+};
 
-const SettingsScreen: React.FC<Props> = ({ navigation }) => {
+const SettingsScreen: React.FC<Props> = ({ navigation, onLogout }) => {
+  const { theme, isDark, toggleTheme, setThemeMode, themeMode } = useTheme();
   const [autoSync, setAutoSync] = useState(true);
   const [wifiOnly, setWifiOnly] = useState(false);
   const [serverUrl, setServerUrl] = useState('');
+  const [pin, setPin] = useState('');
+  const [hasPin, setHasPin] = useState(false);
+  const [pinInput, setPinInput] = useState('');
 
   useEffect(() => {
     loadSettings().then((s) => {
@@ -29,6 +40,7 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
       setWifiOnly(s.wifiOnly);
       setServerUrl(s.serverUrl);
     });
+    AsyncStorage.getItem(PIN_KEY).then((v) => setHasPin(!!v));
   }, []);
 
   const handleToggleAutoSync = async (v: boolean) => {
@@ -42,8 +54,7 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const handleLogout = () => {
-    logout();
-    navigation.reset({ index: 0, routes: [{ name: 'Login' as any }] });
+    onLogout();
   };
 
   return (
@@ -81,6 +92,28 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
         </View>
 
         <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Affichage</Text>
+          <View style={styles.row}>
+            <Text style={styles.rowLabel}>Thème {isDark ? 'sombre' : 'clair'}</Text>
+            <Switch
+              value={!isDark}
+              onValueChange={toggleTheme}
+              trackColor={{ false: '#1e2a4a', true: '#4f8cff66' }}
+              thumbColor={!isDark ? '#4f8cff' : '#475569'}
+            />
+          </View>
+          {themeMode !== 'system' ? (
+            <TouchableOpacity style={styles.saveBtn} onPress={() => setThemeMode('system')}>
+              <Text style={styles.saveBtnText}>Suivre le thème système</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity style={styles.saveBtn} onPress={() => setThemeMode(isDark ? 'light' : 'dark')}>
+              <Text style={styles.saveBtnText}>Forcer le mode {isDark ? 'clair' : 'sombre'}</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        <View style={styles.section}>
           <Text style={styles.sectionTitle}>Serveur</Text>
           <View style={styles.row}>
             <Text style={styles.rowLabel}>URL du serveur</Text>
@@ -104,6 +137,52 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
             }}
           >
             <Text style={styles.saveBtnText}>Enregistrer</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Sécurité</Text>
+          <View style={styles.row}>
+            <Text style={styles.rowLabel}>{hasPin ? 'Code PIN actif' : 'Code PIN'}</Text>
+            {hasPin ? (
+              <TouchableOpacity onPress={async () => { await AsyncStorage.removeItem(PIN_KEY); setHasPin(false); Toast.show({ type: 'success', text1: 'PIN désactivé' }); }}>
+                <Text style={{ color: '#ff4757', fontSize: 14, fontWeight: '700' }}>Désactiver</Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+          {!hasPin ? (
+            <View>
+              <TextInput style={styles.input} value={pinInput} onChangeText={setPinInput} placeholder="Nouveau PIN (4 chiffres)" placeholderTextColor="#475569" keyboardType="number-pad" maxLength={4} secureTextEntry />
+              {pinInput.length === 4 ? (
+                <TouchableOpacity style={styles.saveBtn} onPress={async () => { await AsyncStorage.setItem(PIN_KEY, pinInput); setHasPin(true); setPinInput(''); Toast.show({ type: 'success', text1: 'PIN activé' }); }}>
+                  <Text style={styles.saveBtnText}>Activer le verrouillage</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+          ) : null}
+          <Text style={{ color: '#64748b', fontSize: 12, marginTop: 8 }}>L'écran se verrouille après 5 min d'inactivité</Text>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Export des données</Text>
+          <TouchableOpacity
+            style={styles.saveBtn}
+            onPress={async () => {
+              const json = await exportSubmissionsJson();
+              Toast.show({ type: 'success', text1: 'JSON exporté', text2: `${json.length} caractères` });
+            }}
+          >
+            <Text style={styles.saveBtnText}>📄 Exporter en JSON</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.saveBtn, { marginTop: 8 }]}
+            onPress={async () => {
+              const csv = await exportSubmissionsCsv();
+              if (!csv) { Toast.show({ type: 'info', text1: 'Aucune soumission synchro' }); return; }
+              Toast.show({ type: 'success', text1: 'CSV exporté', text2: `${csv.length} caractères` });
+            }}
+          >
+            <Text style={styles.saveBtnText}>📊 Exporter en CSV</Text>
           </TouchableOpacity>
         </View>
 

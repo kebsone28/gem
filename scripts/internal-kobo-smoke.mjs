@@ -78,7 +78,7 @@ async function main() {
 
   await loginIfNeeded();
 
-  const form = await request('/internal-kobo/form-definition');
+  const form = await request('/toolbox/form-definition');
   console.log(`[SMOKE] Form definition OK: ${form?.form?.formKey} ${form?.form?.formVersion}`);
 
   let household = null;
@@ -90,7 +90,7 @@ async function main() {
     console.log('[SMOKE] GEM_TEST_NUMERO_ORDRE not provided, household lookup skipped.');
   }
 
-  const clientSubmissionId = `smoke-internal-kobo-${Date.now()}`;
+  const clientSubmissionId = `smoke-toolbox-${Date.now()}`;
   const payload = {
     clientSubmissionId,
     householdId: household?.id || null,
@@ -110,25 +110,25 @@ async function main() {
     },
     metadata: {
       smokeTest: true,
-      source: 'scripts/internal-kobo-smoke.mjs',
+      source: 'scripts/toolbox-smoke.mjs',
       startedAt,
     },
     requiredMissing: ['smoke_test_draft_not_final'],
   };
 
-  const saved = await request('/internal-kobo/submissions', {
+  const saved = await request('/toolbox/submissions', {
     method: 'POST',
     body: JSON.stringify(payload),
   });
   console.log(`[SMOKE] Draft saved OK: ${saved?.submission?.id || clientSubmissionId}`);
 
-  const lookup = await request(`/internal-kobo/submissions?clientSubmissionId=${encodeURIComponent(clientSubmissionId)}&limit=1`);
+  const lookup = await request(`/toolbox/submissions?clientSubmissionId=${encodeURIComponent(clientSubmissionId)}&limit=1`);
   if (!lookup?.submissions?.length) {
     throw new Error('Saved draft not found through submissions endpoint.');
   }
   console.log('[SMOKE] Submission lookup OK');
 
-  const diagnostics = await request('/internal-kobo/diagnostics');
+  const diagnostics = await request('/toolbox/diagnostics');
   console.log(
     `[SMOKE] Diagnostics OK: health=${diagnostics?.diagnostics?.health || 'unknown'} total=${diagnostics?.diagnostics?.total ?? 'n/a'}`
   );

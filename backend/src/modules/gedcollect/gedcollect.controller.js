@@ -163,7 +163,7 @@ export const submitForm = async (req, res) => {
       return res.status(403).json({ error: 'Ce formulaire ne vous est pas assigné' });
     }
 
-    const submission = await prisma.internalKoboSubmission.upsert({
+    const submission = await prisma.toolboxSubmission.upsert({
       where: {
         organizationId_clientSubmissionId: {
           organizationId,

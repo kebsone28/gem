@@ -1,5 +1,5 @@
-﻿import type { XlsFormField } from '../xlsFormMobileRuntime';
-import type { InternalKoboAttachment } from '@services/internalKoboSubmissionService';
+import type { XlsFormField } from '../xlsFormMobileRuntime';
+import type { toolboxAttachment } from '@services/toolboxSubmissionService';
 
 /**
  * Utilitaires pour le formulaire interne Kobo (GedOs Collect)
@@ -64,7 +64,7 @@ export const hashFileSha256 = async (file: File): Promise<string> => {
     .join('');
 };
 
-export const getImagePreviewSource = (fieldValue: unknown, attachment: InternalKoboAttachment | null) => {
+export const getImagePreviewSource = (fieldValue: unknown, attachment: toolboxAttachment | null) => {
   const value = String(fieldValue || '');
   if (value.startsWith('data:image/')) return value;
   if (/^(https?:)?\/\//i.test(value) || value.startsWith('/api/')) return value;

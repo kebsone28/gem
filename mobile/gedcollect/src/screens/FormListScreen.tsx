@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -15,8 +15,11 @@ import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList, SyncStatus } from '@types/index';
 import { fetchAssignedForms, logout } from '@services/api';
-import { getPendingSubmissions } from '@services/storage';
+import { loadSubmissions, getSubmissionsForForm } from '@services/storage';
 import OfflineBanner from '@components/OfflineBanner';
+import HelpOverlay from '@components/HelpOverlay';
+import { useTheme } from '@theme/ThemeContext';
+import type { ThemeColors } from '@theme/themes';
 
 type Props = {
   navigation: NativeStackNavigationProp<RootStackParamList, 'FormList'>;
@@ -24,11 +27,32 @@ type Props = {
 };
 
 const FormListScreen: React.FC<Props> = ({ navigation, onLogout }) => {
+  const { theme } = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const [forms, setForms] = useState<any[]>([]);
   const [isOnline, setIsOnline] = useState(true);
   const [syncStatus] = useState<SyncStatus>('idle');
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [pendingCounts, setPendingCounts] = useState<Record<string, { pending: number; draft: number }>>({});
+  const [showHelp, setShowHelp] = useState(false);
+  const [dashboardStats, setDashboardStats] = useState({ drafts: 0, pending: 0, synced: 0, total: 0 });
+
+  const loadPendingCounts = useCallback(async () => {
+    try {
+      const subs = await loadSubmissions();
+      const counts: Record<string, { pending: number; draft: number }> = {};
+      let drafts = 0, pending = 0, synced = 0;
+      for (const s of subs) {
+        if (!counts[s.formKey]) counts[s.formKey] = { pending: 0, draft: 0 };
+        if (s.status === 'pending' || s.status === 'error') { counts[s.formKey].pending++; pending++; }
+        if (s.status === 'draft') { counts[s.formKey].draft++; drafts++; }
+        if (s.status === 'synced') synced++;
+      }
+      setPendingCounts(counts);
+      setDashboardStats({ drafts, pending, synced, total: subs.length });
+    } catch {}
+  }, []);
 
   const loadData = useCallback(async () => {
     try {
@@ -43,12 +67,14 @@ const FormListScreen: React.FC<Props> = ({ navigation, onLogout }) => {
 
   useEffect(() => {
     loadData();
-  }, [loadData]);
+    loadPendingCounts();
+  }, [loadData, loadPendingCounts]);
 
   useFocusEffect(
     useCallback(() => {
       loadData();
-    }, [loadData]),
+      loadPendingCounts();
+    }, [loadData, loadPendingCounts]),
   );
 
   useEffect(() => {
@@ -60,7 +86,7 @@ const FormListScreen: React.FC<Props> = ({ navigation, onLogout }) => {
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await loadData();
+    await Promise.all([loadData(), loadPendingCounts()]);
     setRefreshing(false);
   };
 
@@ -70,7 +96,33 @@ const FormListScreen: React.FC<Props> = ({ navigation, onLogout }) => {
       formTitle: form.title,
       survey: form.survey || [],
       choices: form.choices || [],
+      serverVersion: form.version,
     });
+  };
+
+  const handlePressDraft = async (form: any) => {
+    try {
+      const subs = await getSubmissionsForForm(form.formKey);
+      const draftSub = subs.find((s) => s.status === 'draft');
+      if (!draftSub) {
+        Toast.show({ type: 'error', text1: 'Aucun brouillon trouvé' });
+        return;
+      }
+      navigation.navigate('Form', {
+        formKey: form.formKey,
+        formTitle: `${form.title} (brouillon)`,
+        survey: form.survey || [],
+        choices: form.choices || [],
+        serverVersion: form.version,
+        draft: { id: draftSub.id, values: draftSub.values, photos: (draftSub as any).photos || {} },
+      });
+    } catch {
+      Toast.show({ type: 'error', text1: 'Erreur chargement brouillon' });
+    }
+  };
+
+  const handleViewSubmissions = (form: any) => {
+    navigation.navigate('Submissions', { formKey: form.formKey });
   };
 
   const handleLogout = async () => {
@@ -78,24 +130,44 @@ const FormListScreen: React.FC<Props> = ({ navigation, onLogout }) => {
     onLogout();
   };
 
-  const renderForm = ({ item }: { item: any }) => (
-    <TouchableOpacity
-      style={styles.card}
-      onPress={() => handlePressForm(item)}
-      activeOpacity={0.7}
-    >
-      <View style={styles.cardHeader}>
-        <Text style={styles.cardTitle}>{item.title}</Text>
-        <Text style={styles.cardVersion}>v{item.version}</Text>
-      </View>
-      {item.description ? (
-        <Text style={styles.cardDesc}>{item.description}</Text>
-      ) : null}
-      <Text style={styles.cardFields}>
-        {item.survey?.length || 0} champ(s)
-      </Text>
-    </TouchableOpacity>
-  );
+  const renderForm = ({ item }: { item: any }) => {
+    const counts = pendingCounts[item.formKey];
+    return (
+      <TouchableOpacity
+        style={styles.card}
+        onPress={() => handlePressForm(item)}
+        activeOpacity={0.7}
+      >
+        <View style={styles.cardHeader}>
+          <Text style={styles.cardTitle}>{item.title}</Text>
+          <View style={styles.cardBadgeRow}>
+            {counts?.draft ? (
+              <TouchableOpacity style={styles.badgeDraft} onPress={() => handlePressDraft(item)}>
+                <Text style={styles.badgeDraftText}>{counts.draft} brouillon{counts.draft > 1 ? 's' : ''}</Text>
+              </TouchableOpacity>
+            ) : null}
+            {counts?.pending ? (
+              <View style={styles.badgePending}>
+                <Text style={styles.badgePendingText}>{counts.pending} en attente</Text>
+              </View>
+            ) : null}
+            <Text style={styles.cardVersion}>v{item.version}</Text>
+          </View>
+        </View>
+        {item.description ? (
+          <Text style={styles.cardDesc}>{item.description}</Text>
+        ) : null}
+        <Text style={styles.cardFields}>
+          {item.survey?.length || 0} champ(s)
+        </Text>
+        {counts && (counts.pending > 0 || counts.draft > 0) ? (
+          <TouchableOpacity style={styles.viewSubBtn} onPress={() => handleViewSubmissions(item)}>
+            <Text style={styles.viewSubText}>Voir les soumissions →</Text>
+          </TouchableOpacity>
+        ) : null}
+      </TouchableOpacity>
+    );
+  };
 
   const renderEmpty = () => {
     if (loading) return null;
@@ -131,9 +203,37 @@ const FormListScreen: React.FC<Props> = ({ navigation, onLogout }) => {
               {forms.length} formulaire(s) assigné(s)
             </Text>
           </View>
-          <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn}>
-            <Text style={styles.logoutText}>Déconnexion</Text>
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            <TouchableOpacity onPress={() => setShowHelp(true)} style={styles.settingsBtn}>
+              <Text style={styles.helpText}>?</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => navigation.navigate('Settings')} style={styles.settingsBtn}>
+              <Text style={styles.settingsText}>⚙️</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn}>
+              <Text style={styles.logoutText}>Déconnexion</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+
+      {/* Dashboard */}
+      <View style={styles.dashboard}>
+        <View style={styles.dashItem}>
+          <Text style={styles.dashValue}>{forms.length}</Text>
+          <Text style={styles.dashLabel}>📋 Formulaires</Text>
+        </View>
+        <View style={styles.dashItem}>
+          <Text style={[styles.dashValue, { color: '#f59e0b' }]}>{dashboardStats.drafts}</Text>
+          <Text style={styles.dashLabel}>📝 Brouillons</Text>
+        </View>
+        <View style={styles.dashItem}>
+          <Text style={[styles.dashValue, { color: '#4f8cff' }]}>{dashboardStats.pending}</Text>
+          <Text style={styles.dashLabel}>📤 En attente</Text>
+        </View>
+        <View style={styles.dashItem}>
+          <Text style={[styles.dashValue, { color: '#22c55e' }]}>{dashboardStats.synced}</Text>
+          <Text style={styles.dashLabel}>✅ Synchro</Text>
         </View>
       </View>
 
@@ -153,57 +253,73 @@ const FormListScreen: React.FC<Props> = ({ navigation, onLogout }) => {
         }
         showsVerticalScrollIndicator={false}
       />
+
+      <HelpOverlay visible={showHelp} onClose={() => setShowHelp(false)} />
     </View>
   );
 };
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0a0e27' },
+const makeStyles = (theme: ThemeColors) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: theme.bg },
   centered: { justifyContent: 'center', alignItems: 'center' },
-  loadingText: { color: '#8899aa', marginTop: 12, fontWeight: '600' },
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 16,
+  loadingText: { color: theme.textMuted, marginTop: 12, fontWeight: '600' },
+  header: { paddingHorizontal: 20, paddingTop: 60, paddingBottom: 16 },
+  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  headerTitle: { color: theme.text, fontSize: 28, fontWeight: '800' },
+  headerSubtitle: { color: theme.textMuted, fontSize: 14, fontWeight: '500', marginTop: 4 },
+  dashboard: {
+    flexDirection: 'row', marginHorizontal: 16, marginBottom: 16,
+    backgroundColor: theme.bgCard, borderRadius: 14, padding: 12,
+    borderWidth: 1, borderColor: theme.border,
   },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+  dashItem: { flex: 1, alignItems: 'center' },
+  dashValue: { color: theme.text, fontSize: 22, fontWeight: '800' },
+  dashLabel: { color: theme.textMuted, fontSize: 10, fontWeight: '600', marginTop: 2 },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  settingsBtn: {
+    backgroundColor: theme.bgCard,
+    width: 36, height: 36, borderRadius: 10,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: theme.border,
   },
-  headerTitle: { color: '#e8edf5', fontSize: 28, fontWeight: '800' },
-  headerSubtitle: { color: '#64748b', fontSize: 14, fontWeight: '500', marginTop: 4 },
+  helpText: { color: theme.accent, fontSize: 18, fontWeight: '800' },
+  settingsText: { fontSize: 16 },
   logoutBtn: {
-    backgroundColor: '#1e2a4a',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#2a3a5a',
+    backgroundColor: theme.bgCard,
+    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10,
+    borderWidth: 1, borderColor: theme.border,
   },
-  logoutText: { color: '#8899aa', fontSize: 13, fontWeight: '600' },
+  logoutText: { color: theme.textMuted, fontSize: 13, fontWeight: '600' },
   list: { paddingHorizontal: 16, paddingBottom: 100 },
   card: {
-    backgroundColor: '#141832',
-    borderRadius: 14,
-    padding: 18,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#1e2a4a',
+    backgroundColor: theme.bgCard,
+    borderRadius: 14, padding: 18, marginBottom: 12,
+    borderWidth: 1, borderColor: theme.border,
   },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  cardTitle: { color: theme.text, fontSize: 16, fontWeight: '700', flex: 1 },
+  cardBadgeRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  cardVersion: { color: theme.accent, fontSize: 12, fontWeight: '600' },
+  badgeDraft: {
+    backgroundColor: theme.warning + '22',
+    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8,
+    borderWidth: 1, borderColor: theme.warning + '44',
   },
-  cardTitle: { color: '#e8edf5', fontSize: 16, fontWeight: '700', flex: 1 },
-  cardVersion: { color: '#4f8cff', fontSize: 12, fontWeight: '600' },
-  cardDesc: { color: '#64748b', fontSize: 13, marginTop: 6 },
-  cardFields: { color: '#4f8cff', fontSize: 12, marginTop: 8, fontWeight: '500' },
+  badgeDraftText: { color: theme.warning, fontSize: 10, fontWeight: '700' },
+  badgePending: {
+    backgroundColor: theme.accent + '22',
+    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8,
+    borderWidth: 1, borderColor: theme.accent + '44',
+  },
+  badgePendingText: { color: theme.accent, fontSize: 10, fontWeight: '700' },
+  cardDesc: { color: theme.textMuted, fontSize: 13, marginTop: 6 },
+  cardFields: { color: theme.accent, fontSize: 12, marginTop: 8, fontWeight: '500' },
+  viewSubBtn: { marginTop: 10, alignItems: 'flex-end' },
+  viewSubText: { color: theme.accent, fontSize: 13, fontWeight: '600' },
   emptyContainer: { flex: 1, justifyContent: 'center' },
   empty: { alignItems: 'center', paddingHorizontal: 40 },
-  emptyTitle: { color: '#e8edf5', fontSize: 18, fontWeight: '700', marginBottom: 8 },
-  emptySubtitle: { color: '#64748b', fontSize: 14, textAlign: 'center' },
+  emptyTitle: { color: theme.text, fontSize: 18, fontWeight: '700', marginBottom: 8 },
+  emptySubtitle: { color: theme.textMuted, fontSize: 14, textAlign: 'center' },
 });
 
 export default FormListScreen;

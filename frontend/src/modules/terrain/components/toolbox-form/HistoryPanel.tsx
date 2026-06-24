@@ -1,17 +1,17 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { ChevronRight, Download, RefreshCcw } from 'lucide-react';
-import type { InternalKoboSubmissionRecord } from '@services/internalKoboSubmissionService';
-import { formatInternalGedOsValue } from '../internalKoboFormDefinition';
+import type { toolboxSubmissionRecord } from '@services/toolboxSubmissionService';
+import { formatInternalGedOsValue } from '../toolboxFormDefinition';
 import { formatHistoryDate, submissionStatusClass, submissionStatusLabel } from './utils';
 
 type HistoryPanelProps = {
-  submissions: InternalKoboSubmissionRecord[];
+  submissions: toolboxSubmissionRecord[];
   compact?: boolean;
   isHistoryLoading?: boolean;
   historyError?: string;
   onRefreshHistory?: () => void;
   onDownloadHistory?: () => void;
-  onViewReceipt: (submission: InternalKoboSubmissionRecord) => void;
+  onViewReceipt: (submission: toolboxSubmissionRecord) => void;
 };
 
 export const HistoryPanel: React.FC<HistoryPanelProps> = ({

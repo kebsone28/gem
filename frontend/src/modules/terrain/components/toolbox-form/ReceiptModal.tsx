@@ -1,14 +1,14 @@
-﻿import React from 'react';
+import React from 'react';
 import { Copy, Download, X } from 'lucide-react';
-import type { InternalKoboSubmissionRecord } from '@services/internalKoboSubmissionService';
-import { formatInternalGedOsValue } from '../internalKoboFormDefinition';
+import type { toolboxSubmissionRecord } from '@services/toolboxSubmissionService';
+import { formatInternalGedOsValue } from '../toolboxFormDefinition';
 import { formatHistoryDate, submissionStatusLabel, formatMetadataLabel } from './utils';
 
 type ReceiptModalProps = {
-  receiptSubmission: InternalKoboSubmissionRecord;
+  receiptSubmission: toolboxSubmissionRecord;
   copiedReceiptId: string;
-  copyReceiptId: (submission: InternalKoboSubmissionRecord) => void;
-  downloadReceiptJson: (submission: InternalKoboSubmissionRecord) => void;
+  copyReceiptId: (submission: toolboxSubmissionRecord) => void;
+  downloadReceiptJson: (submission: toolboxSubmissionRecord) => void;
   onClose: () => void;
   fieldLabelByName: Map<string, string>;
 };

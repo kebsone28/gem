@@ -2,7 +2,7 @@ import fs from 'fs';
 
 const mapped = JSON.parse(fs.readFileSync('kobo_fields_mapped.json', 'utf8'));
 
-let aliasCode = 'const INTERNAL_KOBO_FIELD_ALIASES: Record<string, string[]> = {\n';
+let aliasCode = 'const TOOLBOX_FIELD_ALIASES: Record<string, string[]> = {\n';
 
 // Pour chaque champ dans GEM, s'il correspond à un originalName dans kobo, on ajoute son fullName en alias
 // On veut aussi conserver les alias existants

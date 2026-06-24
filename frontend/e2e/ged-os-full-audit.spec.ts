@@ -167,7 +167,7 @@ test.describe('📄 Toutes les pages — chargement sans crash', () => {
     { route: '/admin/mission', label: 'Ordres de Mission' },
     { route: '/admin/approval', label: 'Approbation' },
     { route: '/admin/kobo-terminal', label: 'Terminal Kobo' },
-    { route: '/admin/internal-kobo', label: 'GEM Toolbox' },
+    { route: '/admin/toolbox', label: 'GEM Toolbox' },
     { route: '/admin/gem-collect', label: 'GEM Collect' },
     { route: '/admin/kobo-mapping', label: 'Mapping Kobo' },
     { route: '/admin/organization', label: 'Organisation' },

@@ -207,7 +207,7 @@ export const getGedcollectStats = async (req, res) => {
     const assignedForms = await prisma.gedcollectAssignment.count({
       where: { organizationId },
     });
-    const totalSubmissions = await prisma.internalKoboSubmission.count({
+    const totalSubmissions = await prisma.toolboxSubmission.count({
       where: {
         organizationId,
         submittedBy: { phone: { not: null } },
@@ -215,7 +215,7 @@ export const getGedcollectStats = async (req, res) => {
     });
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
-    const todaySubmissions = await prisma.internalKoboSubmission.count({
+    const todaySubmissions = await prisma.toolboxSubmission.count({
       where: {
         organizationId,
         submittedBy: { phone: { not: null } },
@@ -247,7 +247,7 @@ export const listGedcollectSubmissions = async (req, res) => {
     };
 
     if (format === 'csv') {
-      const submissions = await prisma.internalKoboSubmission.findMany({
+      const submissions = await prisma.toolboxSubmission.findMany({
         where,
         include: {
           submittedBy: { select: { name: true, phone: true } },
@@ -267,7 +267,7 @@ export const listGedcollectSubmissions = async (req, res) => {
     }
 
     const [submissions, count] = await Promise.all([
-      prisma.internalKoboSubmission.findMany({
+      prisma.toolboxSubmission.findMany({
         where,
         include: {
           submittedBy: { select: { name: true, phone: true } },
@@ -276,7 +276,7 @@ export const listGedcollectSubmissions = async (req, res) => {
         skip: Number(offset),
         take: Number(limit),
       }),
-      prisma.internalKoboSubmission.count({ where }),
+      prisma.toolboxSubmission.count({ where }),
     ]);
 
     res.json({ submissions, count, offset: Number(offset), limit: Number(limit) });

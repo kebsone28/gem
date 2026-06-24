@@ -69,7 +69,7 @@ function extractLanguages(rows) {
     rows.forEach((row) => {
         Object.keys(row).forEach((key) => {
             const match = key.match(/^(label|hint|constraint_message|media::image)::(.+)$/i);
-            if (match?.[2]) languages.add(match[2].trim());
+            if (match?.[2]) languages.add(match[1].trim());
         });
     });
     return Array.from(languages);

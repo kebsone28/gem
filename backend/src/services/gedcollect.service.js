@@ -5,7 +5,7 @@
  * Fonctionne de façon analogue à kobo.service.js mais utilise les
  * variables d'environnement GED_API_URL, GED_TOKEN et GED_FORM_ID.
  *
- * Le service expose deux fonctions principales :
+ * Le service expose deux fonctions principales :
  *   - fetchGedCollectSubmissions(token, assetUid, since?) → récupère les
  *     soumissions depuis le serveur GedCollect.
  *   - syncGedCollectToDatabase(organizationId, defaultZoneId, since, projectId,
@@ -94,7 +94,7 @@ export async function fetchGedCollectSubmissions(token, assetUid, since = null) 
 
 /**
  * Synchronise les soumissions GedCollect vers la base Prisma.
- * Le processus est très similaire à syncKoboToDatabase : on récupère les
+ * Le processus est très similaire à syncKoboToDatabase : on récupère les
  * soumissions, on les transforme en objet ménage via `transformRowToHousehold`
  * (les champs Kobo et GedCollect sont compatibles) et on effectue un upsert.
  */

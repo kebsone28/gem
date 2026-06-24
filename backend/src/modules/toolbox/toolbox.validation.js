@@ -1,7 +1,7 @@
-export const INTERNAL_KOBO_FORM_KEY = 'terrain_internal';
-export const INTERNAL_KOBO_FORM_VERSION = '8 (2021-07-24 19:48:35)';
+export const TOOLBOX_FORM_KEY = 'terrain_internal';
+export const TOOLBOX_FORM_VERSION = '8 (2021-07-24 19:48:35)';
 
-export const INTERNAL_KOBO_ALLOWED_ROLES = new Set([
+export const TOOLBOX_ALLOWED_ROLES = new Set([
     'livreur',
     'macon',
     'reseau',

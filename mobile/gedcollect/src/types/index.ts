@@ -35,18 +35,20 @@ export interface GedSubmission {
   id: string;
   formKey: string;
   formVersion: string;
+  clientSubmissionId: string;
   values: Record<string, unknown>;
-  metadata: {
+  photos?: Record<string, string>;
+  metadata?: {
     deviceId: string;
     startTime: string;
     endTime: string;
     submittedAt?: string;
   };
-  status: 'pending' | 'syncing' | 'synced' | 'error';
-  createdAt: string;
-  updatedAt: string;
+  status: 'draft' | 'pending' | 'syncing' | 'synced' | 'error';
+  createdAt?: string;
+  updatedAt?: string;
   errorMessage?: string;
-  retryCount: number;
+  retryCount?: number;
 }
 
 export interface GedSettings {
@@ -78,9 +80,16 @@ export interface AuthUser {
   organization: string;
 }
 
+export interface DraftInfo {
+  id: string;
+  values?: Record<string, string>;
+  photos?: Record<string, string>;
+}
+
 export type RootStackParamList = {
   Login: undefined;
   FormList: undefined;
-  Form: { formKey: string; formTitle: string; survey: any[]; choices: any[] };
+  Form: { formKey: string; formTitle: string; survey: any[]; choices: any[]; draft?: DraftInfo; viewOnly?: boolean; serverVersion?: string };
   Settings: undefined;
+  Submissions: { formKey?: string };
 };

@@ -1,10 +1,10 @@
 // Minimal implementation to satisfy unit tests for internal Kobo form definition
-export const INTERNAL_KOBO_FORM_SETTINGS = {
+export const TOOLBOX_FORM_SETTINGS = {
   version: '8 (2021-07-24 19:48:35)',
 };
 
 // Core required field names (kept in sync with tests expectations)
-export const INTERNAL_KOBO_FIELD_NAMES = [
+export const TOOLBOX_FIELD_NAMES = [
   'Numero_ordre',
   'nom_key',
   'telephone_key',
@@ -70,7 +70,7 @@ export const INTERNAL_KOBO_FIELD_NAMES = [
 ];
 
 // Internal choice lists sizes expected by tests — we provide arrays with correct lengths
-export const INTERNAL_KOBO_CHOICES: Record<string, string[]> = {
+export const TOOLBOX_CHOICES: Record<string, string[]> = {
   roles: new Array(6).fill('x'),
   cj3rh91: new Array(3).fill('x'),
   pr4rq21: new Array(4).fill('x'),
@@ -115,8 +115,8 @@ export const INTERNAL_KOBO_CHOICES: Record<string, string[]> = {
 };
 
 // Return visible fields depending on role/context. Minimal for tests.
-export const getVisibleInternalKoboFields = (ctx: { role?: string }) => {
-  const common = INTERNAL_KOBO_FIELD_NAMES.map((n) => ({ name: n }));
+export const getVisibleToolboxFields = (ctx: { role?: string }) => {
+  const common = TOOLBOX_FIELD_NAMES.map((n) => ({ name: n }));
   if (ctx.role === '__pr_parateur') {
     // preparateur sees certain kit fields and notes
     const extra = [
@@ -133,7 +133,7 @@ export const getVisibleInternalKoboFields = (ctx: { role?: string }) => {
 };
 
 // Required fields logic for controller final validation chain (minimal emulation)
-export const validateInternalKoboRequiredFields = (values: Record<string, unknown>) => {
+export const validateToolboxRequiredFields = (values: Record<string, unknown>) => {
   const missing: { name: string }[] = [];
   // If controller path conditions met, require VALEUR_DE_LA_RESISTANCE_DE_TER
   if (
@@ -157,7 +157,7 @@ export const validateInternalKoboRequiredFields = (values: Record<string, unknow
 };
 
 // General validation: numeric, gps, integer checks
-export const validateInternalKoboFields = (values: Record<string, unknown>) => {
+export const validateToolboxFields = (values: Record<string, unknown>) => {
   const issues: { field: { name: string }; type: string }[] = [];
 
   const num = String(values.Numero_ordre ?? '');

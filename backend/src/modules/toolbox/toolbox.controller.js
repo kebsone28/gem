@@ -9,10 +9,10 @@ import archiver from 'archiver';
 import {
   getServerRequiredMissing,
   getServerValidationIssues,
-  INTERNAL_KOBO_ALLOWED_ROLES,
-  INTERNAL_KOBO_FORM_KEY,
-  INTERNAL_KOBO_FORM_VERSION,
-} from './internalKobo.validation.js';
+  TOOLBOX_ALLOWED_ROLES,
+  TOOLBOX_FORM_KEY,
+  TOOLBOX_FORM_VERSION,
+} from './toolbox.validation.js';
 import {
   buildXlsFormDefinition,
   compareXlsFormDefinitions,
@@ -313,7 +313,7 @@ async function normalizeSubmissionAttachments({
       originalBytes: Number(rawAttachment.originalBytes || rawAttachment.size || 0) || null,
       storedBytes: Number(rawAttachment.storedBytes || rawAttachment.size || 0) || null,
       capturedAt,
-      source: rawAttachment.source || 'ged-os-internal-kobo',
+      source: rawAttachment.source || 'ged-os-toolbox',
       status: 'stored',
     };
 
@@ -361,7 +361,7 @@ async function normalizeSubmissionAttachments({
     }
     const duplicate = seenHashes.has(sha256);
     seenHashes.add(sha256);
-    const key = `${organizationId}/internal-kobo/media/${sha256}.${extension}`;
+    const key = `${organizationId}/toolbox/media/${sha256}.${extension}`;
     await uploadFile(key, parsed.buffer, parsed.mimeType || mimeType);
     const url = await getFileUrl(key);
 
@@ -490,7 +490,7 @@ function flattenSubmissionForExport(submission, valueKeys = []) {
 async function normalizeSubmissionPayload(body, req) {
   const clientSubmissionId = String(body.clientSubmissionId || '').trim();
   const formVersion = String(body.formVersion || '').trim();
-  const formKey = String(body.formKey || INTERNAL_KOBO_FORM_KEY).trim() || INTERNAL_KOBO_FORM_KEY;
+  const formKey = String(body.formKey || TOOLBOX_FORM_KEY).trim() || TOOLBOX_FORM_KEY;
 
   if (!clientSubmissionId) {
     return { error: { status: 400, message: 'clientSubmissionId is required' } };
@@ -505,11 +505,11 @@ async function normalizeSubmissionPayload(body, req) {
   }
 
   const universalMapping =
-    formKey === INTERNAL_KOBO_FORM_KEY
+    formKey === TOOLBOX_FORM_KEY
       ? null
       : await findUniversalXlsFormDefinition(req.user.organizationId, formKey);
 
-  if (formKey !== INTERNAL_KOBO_FORM_KEY && !universalMapping) {
+  if (formKey !== TOOLBOX_FORM_KEY && !universalMapping) {
     return { error: { status: 400, message: `Unsupported formKey: ${formKey}` } };
   }
 
@@ -520,7 +520,7 @@ async function normalizeSubmissionPayload(body, req) {
   const requestedStatus = String(body.status || '')
     .trim()
     .toLowerCase();
-  const serverFormVersion = universalMapping?.definition?.formVersion || INTERNAL_KOBO_FORM_VERSION;
+  const serverFormVersion = universalMapping?.definition?.formVersion || TOOLBOX_FORM_VERSION;
 
   if (
     universalMapping &&
@@ -552,7 +552,7 @@ async function normalizeSubmissionPayload(body, req) {
 
   const roleSource = body.role ?? values.role;
   const role = roleSource ? String(roleSource).trim() : null;
-  if (formKey === INTERNAL_KOBO_FORM_KEY && role && !INTERNAL_KOBO_ALLOWED_ROLES.has(role)) {
+  if (formKey === TOOLBOX_FORM_KEY && role && !TOOLBOX_ALLOWED_ROLES.has(role)) {
     return { error: { status: 400, message: `Unsupported role: ${role}` } };
   }
 
@@ -604,9 +604,9 @@ async function normalizeSubmissionPayload(body, req) {
       metadata: {
         ...(isPlainObject(body.metadata) ? body.metadata : {}),
         serverFormKey: formKey,
-        serverEngine: universalMapping ? 'ged-os-xlsform-universal' : 'ged-os-internal-kobo',
+        serverEngine: universalMapping ? 'ged-os-xlsform-universal' : 'ged-os-toolbox',
         serverEngineVersion: universalMapping?.definition?.engineVersion || XLSFORM_ENGINE_VERSION,
-        serverFormKeyResolved: universalMapping?.definition?.formKey || INTERNAL_KOBO_FORM_KEY,
+        serverFormKeyResolved: universalMapping?.definition?.formKey || TOOLBOX_FORM_KEY,
         serverFormVersion,
         formVersionMismatch: formVersion !== serverFormVersion,
         universalFormDiagnostics: universalMapping?.definition?.diagnostics || null,
@@ -633,7 +633,7 @@ async function normalizeSubmissionPayload(body, req) {
   };
 }
 
-export const submitInternalKoboSubmission = async (req, res) => {
+export const submitToolboxSubmission = async (req, res) => {
   const { organizationId, id: userId } = req.user;
   let normalized;
   try {
@@ -678,14 +678,14 @@ export const submitInternalKoboSubmission = async (req, res) => {
       }
 
       if (
-        payload.formKey === INTERNAL_KOBO_FORM_KEY &&
+        payload.formKey === TOOLBOX_FORM_KEY &&
         ['submitted', 'validated'].includes(payload.status) &&
         !resolvedHousehold
       ) {
         throw makeHttpError(404, 'Submitted internal Kobo form must target an existing household');
       }
 
-      const existingSubmission = await tx.internalKoboSubmission.findFirst({
+      const existingSubmission = await tx.toolboxSubmission.findFirst({
         where: {
           organizationId,
           clientSubmissionId: payload.clientSubmissionId,
@@ -707,7 +707,7 @@ export const submitInternalKoboSubmission = async (req, res) => {
         );
       }
 
-      const submissionRecord = await tx.internalKoboSubmission.upsert({
+      const submissionRecord = await tx.toolboxSubmission.upsert({
         where: {
           organizationId_clientSubmissionId: {
             organizationId,
@@ -762,8 +762,8 @@ export const submitInternalKoboSubmission = async (req, res) => {
         data: {
           userId,
           organizationId,
-          deviceId: String(payload.metadata?.deviceId || 'ged-os-internal-kobo'),
-          action: 'INTERNAL_KOBO_SUBMISSION',
+          deviceId: String(payload.metadata?.deviceId || 'ged-os-toolbox'),
+          action: 'TOOLBOX_SUBMISSION',
           details: {
             submissionId: submissionRecord.id,
             clientSubmissionId: payload.clientSubmissionId,
@@ -790,7 +790,7 @@ export const submitInternalKoboSubmission = async (req, res) => {
           household: sanitizeBigIntForJson(updatedHousehold),
         });
       } catch (eventError) {
-        logger.error('[INTERNAL-KOBO] event emit error:', eventError.message);
+        logger.error('[TOOLBOX] event emit error:', eventError.message);
       }
     }
 
@@ -799,7 +799,7 @@ export const submitInternalKoboSubmission = async (req, res) => {
         userId,
         organizationId,
         action: 'SOUMISSION_KOBO_INTERNE',
-        resource: 'InternalKoboSubmission',
+        resource: 'ToolboxSubmission',
         resourceId: submission.id,
         details: {
           clientSubmissionId: payload.clientSubmissionId,
@@ -813,7 +813,38 @@ export const submitInternalKoboSubmission = async (req, res) => {
         req,
       });
     } catch (auditError) {
-      logger.error('[INTERNAL-KOBO] audit log error:', auditError.message);
+      logger.error('[TOOLBOX] audit log error:', auditError.message);
+    }
+
+    try {
+      const hooks = await prisma.toolboxFormHook.findMany({
+        where: { organizationId, formKey: payload.formKey, active: true },
+      });
+      if (hooks.length > 0) {
+        const submissionData = sanitizeBigIntForJson(submission);
+        for (const hook of hooks) {
+          fetch(hook.url, {
+            method: hook.method,
+            headers: { 'Content-Type': 'application/json', ...(hook.headers || {}) },
+            body: JSON.stringify({ event: 'submission.create', submission: submissionData }),
+            signal: AbortSignal.timeout(10000),
+          })
+            .then(async (resp) => {
+              await prisma.toolboxFormHook.update({
+                where: { id: hook.id },
+                data: { lastTriggeredAt: new Date(), lastStatus: resp.status },
+              });
+            })
+            .catch(async () => {
+              await prisma.toolboxFormHook.update({
+                where: { id: hook.id },
+                data: { lastTriggeredAt: new Date(), lastStatus: 0 },
+              }).catch(() => {});
+            });
+        }
+      }
+    } catch (hookError) {
+      logger.error('[TOOLBOX] hook trigger error:', hookError.message);
     }
 
     return res.status(201).json({
@@ -822,7 +853,7 @@ export const submitInternalKoboSubmission = async (req, res) => {
       household: updatedHousehold ? sanitizeBigIntForJson(updatedHousehold) : null,
     });
   } catch (err) {
-    logger.error('[INTERNAL-KOBO] submit error:', err?.message || err, err?.stack || 'no-stack');
+    logger.error('[TOOLBOX] submit error:', err?.message || err, err?.stack || 'no-stack');
     const statusCode = err.statusCode || 500;
     return res.status(statusCode).json({
       success: false,
@@ -832,7 +863,7 @@ export const submitInternalKoboSubmission = async (req, res) => {
   }
 };
 
-export const getInternalKoboFormDefinition = async (req, res) => {
+export const getToolboxFormDefinition = async (req, res) => {
   try {
     const importedMappings = await prisma.koboFormMapping.findMany({
       where: { organizationId: req.user.organizationId },
@@ -846,10 +877,10 @@ export const getInternalKoboFormDefinition = async (req, res) => {
     return res.json({
       success: true,
       form: {
-        formKey: INTERNAL_KOBO_FORM_KEY,
-        formVersion: INTERNAL_KOBO_FORM_VERSION,
-        engine: 'ged-os-internal-kobo',
-        allowedRoles: Array.from(INTERNAL_KOBO_ALLOWED_ROLES),
+        formKey: TOOLBOX_FORM_KEY,
+        formVersion: TOOLBOX_FORM_VERSION,
+        engine: 'ged-os-toolbox',
+        allowedRoles: Array.from(TOOLBOX_ALLOWED_ROLES),
         serverValidation: true,
         xlsFormImport: true,
         universalEngine: {
@@ -880,7 +911,7 @@ export const getInternalKoboFormDefinition = async (req, res) => {
     });
   } catch (err) {
     logger.error(
-      '[INTERNAL-KOBO] form-definition error:',
+      '[TOOLBOX] form-definition error:',
       err?.message || err,
       err?.stack || 'no-stack'
     );
@@ -891,7 +922,7 @@ export const getInternalKoboFormDefinition = async (req, res) => {
   }
 };
 
-export const listInternalKoboFormDefinitions = async (req, res) => {
+export const listToolboxFormDefinitions = async (req, res) => {
   try {
     const mappings = await prisma.koboFormMapping.findMany({
       where: { organizationId: req.user.organizationId },
@@ -905,7 +936,7 @@ export const listInternalKoboFormDefinitions = async (req, res) => {
       forms: visibleMappings.map(summarizeUniversalXlsFormMapping),
     });
   } catch (err) {
-    logger.error('[INTERNAL-KOBO] form-definitions list error:', err);
+    logger.error('[TOOLBOX] form-definitions list error:', err);
     return res.status(500).json({
       success: false,
       message: 'Server error while listing XLSForm definitions',
@@ -913,7 +944,7 @@ export const listInternalKoboFormDefinitions = async (req, res) => {
   }
 };
 
-export const reportInternalKoboClientQueue = async (req, res) => {
+export const reportToolboxClientQueue = async (req, res) => {
   try {
     const { organizationId, id: userId } = req.user;
     const pending = Math.max(0, Number(req.body?.pending || 0));
@@ -928,11 +959,11 @@ export const reportInternalKoboClientQueue = async (req, res) => {
       data: {
         userId,
         organizationId,
-        deviceId: String(device.userAgent || device.platform || 'ged-os-internal-kobo-client').slice(
+        deviceId: String(device.userAgent || device.platform || 'ged-os-toolbox-client').slice(
           0,
           160
         ),
-        action: 'INTERNAL_KOBO_CLIENT_QUEUE_REPORT',
+        action: 'TOOLBOX_CLIENT_QUEUE_REPORT',
         details: {
           reportedAt,
           pending,
@@ -951,7 +982,7 @@ export const reportInternalKoboClientQueue = async (req, res) => {
       summary: { pending, failed, blocked, mediaBytes, count: queue.length },
     });
   } catch (err) {
-    logger.error('[INTERNAL-KOBO] client queue report error:', err);
+    logger.error('[TOOLBOX] client queue report error:', err);
     return res.status(500).json({
       success: false,
       message: 'Server error while reporting internal Kobo client queue',
@@ -959,7 +990,7 @@ export const reportInternalKoboClientQueue = async (req, res) => {
   }
 };
 
-export const getInternalKoboImportedFormDefinition = async (req, res) => {
+export const getToolboxImportedFormDefinition = async (req, res) => {
   try {
     const formKey = String(req.params.formKey || '').trim();
     const mapping = await findUniversalXlsFormDefinition(req.user.organizationId, formKey);
@@ -975,7 +1006,7 @@ export const getInternalKoboImportedFormDefinition = async (req, res) => {
       form: sanitizeBigIntForJson(mapping.definition),
     });
   } catch (err) {
-    logger.error('[INTERNAL-KOBO] form-definition get error:', err);
+    logger.error('[TOOLBOX] form-definition get error:', err);
     return res.status(500).json({
       success: false,
       message: 'Server error while loading XLSForm definition',
@@ -983,7 +1014,7 @@ export const getInternalKoboImportedFormDefinition = async (req, res) => {
   }
 };
 
-export const updateInternalKoboFormDefinitionStatus = async (req, res) => {
+export const updateToolboxFormDefinitionStatus = async (req, res) => {
   try {
     const { organizationId, id: userId } = req.user;
     const formKey = String(req.params.formKey || '').trim();
@@ -1036,8 +1067,8 @@ export const updateInternalKoboFormDefinitionStatus = async (req, res) => {
       data: {
         userId,
         organizationId,
-        deviceId: 'ged-os-internal-kobo-admin',
-        action: 'INTERNAL_KOBO_XLSFORM_STATUS',
+        deviceId: 'ged-os-toolbox-admin',
+        action: 'TOOLBOX_XLSFORM_STATUS',
         details: {
           formKey,
           previousActive,
@@ -1052,7 +1083,7 @@ export const updateInternalKoboFormDefinitionStatus = async (req, res) => {
       form: summarizeUniversalXlsFormMapping(updatedMapping),
     });
   } catch (err) {
-    logger.error('[INTERNAL-KOBO] form-definition status error:', err);
+    logger.error('[TOOLBOX] form-definition status error:', err);
     return res.status(500).json({
       success: false,
       message: 'Server error while updating XLSForm status',
@@ -1060,7 +1091,7 @@ export const updateInternalKoboFormDefinitionStatus = async (req, res) => {
   }
 };
 
-export const deleteInternalKoboFormDefinition = async (req, res) => {
+export const deleteToolboxFormDefinition = async (req, res) => {
   try {
     const { organizationId, id: userId } = req.user;
     const formKey = String(req.params.formKey || '').trim();
@@ -1110,8 +1141,8 @@ export const deleteInternalKoboFormDefinition = async (req, res) => {
       data: {
         userId,
         organizationId,
-        deviceId: 'ged-os-internal-kobo-admin',
-        action: 'INTERNAL_KOBO_XLSFORM_DELETE',
+        deviceId: 'ged-os-toolbox-admin',
+        action: 'TOOLBOX_XLSFORM_DELETE',
         details: {
           formKey,
           title: mapping.mapping.title || formKey,
@@ -1125,7 +1156,7 @@ export const deleteInternalKoboFormDefinition = async (req, res) => {
       form: summarizeUniversalXlsFormMapping(updatedMapping),
     });
   } catch (err) {
-    logger.error('[INTERNAL-KOBO] form-definition delete error:', err);
+    logger.error('[TOOLBOX] form-definition delete error:', err);
     return res.status(500).json({
       success: false,
       message: 'Server error while deleting XLSForm definition',
@@ -1133,7 +1164,7 @@ export const deleteInternalKoboFormDefinition = async (req, res) => {
   }
 };
 
-export const compareInternalKoboFormDefinitions = async (req, res) => {
+export const compareToolboxFormDefinitions = async (req, res) => {
   try {
     const { organizationId } = req.user;
     const formKey = String(req.params.formKey || '').trim();
@@ -1155,7 +1186,7 @@ export const compareInternalKoboFormDefinitions = async (req, res) => {
       comparison: compareXlsFormDefinitions(previousMapping.definition, currentMapping.definition),
     });
   } catch (err) {
-    logger.error('[INTERNAL-KOBO] form-definition compare error:', err);
+    logger.error('[TOOLBOX] form-definition compare error:', err);
     return res.status(500).json({
       success: false,
       message: 'Server error while comparing XLSForm definitions',
@@ -1340,7 +1371,7 @@ function buildDefinitionPayload({
   };
 }
 
-export const createInternalKoboFormDefinition = async (req, res) => {
+export const createToolboxFormDefinition = async (req, res) => {
   try {
     const { organizationId, id: userId } = req.user;
     const title = String(req.body?.title || '').trim();
@@ -1367,7 +1398,7 @@ export const createInternalKoboFormDefinition = async (req, res) => {
       .createHash('sha256')
       .update(JSON.stringify({ settings, survey, choices }))
       .digest('hex');
-    const baseKey = `${organizationId}/internal-kobo/forms/${importId}`;
+    const baseKey = `${organizationId}/toolbox/forms/${importId}`;
     const parsedDefinition = buildXlsFormDefinition({
       survey,
       choices,
@@ -1438,8 +1469,8 @@ export const createInternalKoboFormDefinition = async (req, res) => {
       data: {
         userId,
         organizationId,
-        deviceId: 'gem-internal-kobo-admin',
-        action: 'INTERNAL_KOBO_FORM_BUILDER_SAVE',
+        deviceId: 'gem-toolbox-admin',
+        action: 'TOOLBOX_FORM_BUILDER_SAVE',
         details: {
           importId,
           formKey: nextDefinition.formKey,
@@ -1461,7 +1492,7 @@ export const createInternalKoboFormDefinition = async (req, res) => {
     });
   } catch (err) {
     logger.error(
-      '[INTERNAL-KOBO] form builder create error:',
+      '[TOOLBOX] form builder create error:',
       err?.message || err,
       err?.stack || 'no-stack'
     );
@@ -1472,7 +1503,7 @@ export const createInternalKoboFormDefinition = async (req, res) => {
   }
 };
 
-export const importInternalKoboXlsFormFromUrl = async (req, res) => {
+export const importToolboxXlsFormFromUrl = async (req, res) => {
   try {
     const url = String(req.body?.url || '').trim();
     if (!/^https?:\/\//i.test(url)) {
@@ -1509,10 +1540,10 @@ export const importInternalKoboXlsFormFromUrl = async (req, res) => {
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     };
     req.body = { ...req.body, sourceUrl: url };
-    return importInternalKoboXlsForm(req, res);
+    return importToolboxXlsForm(req, res);
   } catch (err) {
     logger.error(
-      '[INTERNAL-KOBO] XLSForm URL import error:',
+      '[TOOLBOX] XLSForm URL import error:',
       err?.message || err,
       err?.stack || 'no-stack'
     );
@@ -1523,7 +1554,7 @@ export const importInternalKoboXlsFormFromUrl = async (req, res) => {
   }
 };
 
-export const importInternalKoboXlsForm = async (req, res) => {
+export const importToolboxXlsForm = async (req, res) => {
   try {
     if (!req.file?.buffer) {
       return res.status(400).json({ success: false, message: 'XLSForm file is required' });
@@ -1531,7 +1562,7 @@ export const importInternalKoboXlsForm = async (req, res) => {
 
     const { organizationId, id: userId } = req.user;
     const importId = crypto.randomUUID();
-    const baseKey = `${organizationId}/internal-kobo/forms/${importId}`;
+    const baseKey = `${organizationId}/toolbox/forms/${importId}`;
     const sourceHash = crypto.createHash('sha256').update(req.file.buffer).digest('hex');
     const parsedDefinition = await parseXlsFormBuffer(req.file.buffer, {
       fileName: req.file.originalname,
@@ -1620,8 +1651,8 @@ export const importInternalKoboXlsForm = async (req, res) => {
       data: {
         userId,
         organizationId,
-        deviceId: 'gem-internal-kobo-admin',
-        action: 'INTERNAL_KOBO_XLSFORM_IMPORT',
+        deviceId: 'gem-toolbox-admin',
+        action: 'TOOLBOX_XLSFORM_IMPORT',
         details: {
           importId,
           fileName: req.file.originalname,
@@ -1645,7 +1676,7 @@ export const importInternalKoboXlsForm = async (req, res) => {
       form: summarizeUniversalXlsFormMapping(storedMapping),
     });
   } catch (err) {
-    logger.error('[INTERNAL-KOBO] XLSForm import error:', err);
+    logger.error('[TOOLBOX] XLSForm import error:', err);
     return res.status(500).json({
       success: false,
       message: 'Server error while importing XLSForm',
@@ -1753,7 +1784,7 @@ function buildSubmissionWhere(user, query = {}) {
   return filters.length === 1 ? filters[0] : { AND: filters };
 }
 
-function internalKoboSubmissionInclude() {
+function toolboxSubmissionInclude() {
   return {
     household: {
       select: {
@@ -1777,15 +1808,15 @@ function internalKoboSubmissionInclude() {
   };
 }
 
-export const exportInternalKoboSubmissions = async (req, res) => {
+export const exportToolboxSubmissions = async (req, res) => {
   try {
     const { organizationId } = req.user;
     const format = String(req.query.format || 'csv').toLowerCase();
     const take = Math.min(Math.max(parseInt(req.query.limit, 10) || 500, 1), 5000);
     const where = buildSubmissionWhere(req.user, req.query);
-    const submissions = await prisma.internalKoboSubmission.findMany({
+    const submissions = await prisma.toolboxSubmission.findMany({
       where,
-      include: internalKoboSubmissionInclude(),
+      include: toolboxSubmissionInclude(),
       orderBy: { savedAt: 'desc' },
       take,
     });
@@ -1849,7 +1880,7 @@ export const exportInternalKoboSubmissions = async (req, res) => {
     res.setHeader('Content-Disposition', `attachment; filename="${baseFilename}.csv"`);
     return res.send(csv);
   } catch (err) {
-    logger.error('[INTERNAL-KOBO] export error:', err);
+    logger.error('[TOOLBOX] export error:', err);
     return res.status(500).json({
       success: false,
       message: 'Server error while exporting internal Kobo submissions',
@@ -1857,12 +1888,12 @@ export const exportInternalKoboSubmissions = async (req, res) => {
   }
 };
 
-export const deleteInternalKoboSubmission = async (req, res) => {
+export const deleteToolboxSubmission = async (req, res) => {
   try {
     const { organizationId, id: userId } = req.user;
     const { id } = req.params;
 
-    const submission = await prisma.internalKoboSubmission.findFirst({
+    const submission = await prisma.toolboxSubmission.findFirst({
       where: { id, organizationId },
     });
 
@@ -1873,13 +1904,13 @@ export const deleteInternalKoboSubmission = async (req, res) => {
       });
     }
 
-    await prisma.internalKoboSubmission.delete({ where: { id } });
+    await prisma.toolboxSubmission.delete({ where: { id } });
 
     await tracerAction({
       userId,
       organizationId,
       action: 'SUPPRESSION_KOBO_INTERNE',
-      resource: 'InternalKoboSubmission',
+      resource: 'ToolboxSubmission',
       resourceId: id,
       details: {
         clientSubmissionId: submission.clientSubmissionId,
@@ -1887,17 +1918,17 @@ export const deleteInternalKoboSubmission = async (req, res) => {
         status: submission.status,
       },
     }).catch((err) => {
-      logger.warn('[InternalKobo] Audit delete failed:', err?.message || err);
+      logger.warn('[Toolbox] Audit delete failed:', err?.message || err);
     });
 
     return res.json({ success: true, message: 'Soumission supprimée.' });
   } catch (err) {
-    logger.error('[InternalKobo] Delete submission error:', err);
+    logger.error('[Toolbox] Delete submission error:', err);
     return res.status(500).json({ success: false, message: 'Erreur lors de la suppression.' });
   }
 };
 
-export const reviewInternalKoboSubmission = async (req, res) => {
+export const reviewToolboxSubmission = async (req, res) => {
   try {
     const { organizationId, id: userId, role: rawUserRole } = req.user;
     const userRole = (rawUserRole || '').toUpperCase();
@@ -1914,7 +1945,7 @@ export const reviewInternalKoboSubmission = async (req, res) => {
       });
     }
 
-    const current = await prisma.internalKoboSubmission.findFirst({
+    const current = await prisma.toolboxSubmission.findFirst({
       where: {
         id,
         organizationId,
@@ -1960,7 +1991,7 @@ export const reviewInternalKoboSubmission = async (req, res) => {
       },
     };
 
-    const submission = await prisma.internalKoboSubmission.update({
+    const submission = await prisma.toolboxSubmission.update({
       where: { id: current.id },
       data: {
         status: nextStatus,
@@ -1968,15 +1999,15 @@ export const reviewInternalKoboSubmission = async (req, res) => {
         syncStatus: 'synced',
         savedAt: new Date(),
       },
-      include: internalKoboSubmissionInclude(),
+      include: toolboxSubmissionInclude(),
     });
 
     await prisma.syncLog.create({
       data: {
         userId,
         organizationId,
-        deviceId: 'gem-internal-kobo-admin',
-        action: 'INTERNAL_KOBO_REVIEW',
+        deviceId: 'gem-toolbox-admin',
+        action: 'TOOLBOX_REVIEW',
         details: {
           submissionId: current.id,
           clientSubmissionId: current.clientSubmissionId,
@@ -1994,7 +2025,7 @@ export const reviewInternalKoboSubmission = async (req, res) => {
         userId,
         organizationId,
         action: 'REVUE_KOBO_INTERNE',
-        resource: 'InternalKoboSubmission',
+        resource: 'ToolboxSubmission',
         resourceId: submission.id,
         details: {
           clientSubmissionId: current.clientSubmissionId,
@@ -2007,12 +2038,12 @@ export const reviewInternalKoboSubmission = async (req, res) => {
         req,
       });
     } catch (auditError) {
-      logger.error('[INTERNAL-KOBO] review audit log error:', auditError.message);
+      logger.error('[TOOLBOX] review audit log error:', auditError.message);
     }
 
     return res.json({ success: true, submission: sanitizeBigIntForJson(submission) });
   } catch (err) {
-    logger.error('[INTERNAL-KOBO] review error:', err);
+    logger.error('[TOOLBOX] review error:', err);
     return res.status(500).json({
       success: false,
       message: 'Server error while reviewing internal Kobo submission',
@@ -2020,7 +2051,7 @@ export const reviewInternalKoboSubmission = async (req, res) => {
   }
 };
 
-export const listInternalKoboSubmissions = async (req, res) => {
+export const listToolboxSubmissions = async (req, res) => {
   try {
     const { limit = '100', offset = '0' } = req.query;
     const take = Math.min(Math.max(parseInt(limit, 10) || 100, 1), 500);
@@ -2029,7 +2060,7 @@ export const listInternalKoboSubmissions = async (req, res) => {
     const where = buildSubmissionWhere(req.user, req.query);
 
     const [submissions, totalCount] = await Promise.all([
-      prisma.internalKoboSubmission.findMany({
+      prisma.toolboxSubmission.findMany({
         where,
         include: {
           household: {
@@ -2056,7 +2087,7 @@ export const listInternalKoboSubmissions = async (req, res) => {
         skip,
         take,
       }),
-      prisma.internalKoboSubmission.count({ where }),
+      prisma.toolboxSubmission.count({ where }),
     ]);
 
     const countBy = (key) =>
@@ -2108,7 +2139,7 @@ export const listInternalKoboSubmissions = async (req, res) => {
       ).length,
       mediaStats: filteredMediaStats,
       latestSavedAt: submissions[0]?.savedAt || null,
-      serverFormVersion: INTERNAL_KOBO_FORM_VERSION,
+      serverFormVersion: TOOLBOX_FORM_VERSION,
       generatedAt: new Date().toISOString(),
     };
 
@@ -2122,7 +2153,7 @@ export const listInternalKoboSubmissions = async (req, res) => {
       submissions: sanitizeBigIntForJson(submissions),
     });
   } catch (err) {
-    logger.error('[INTERNAL-KOBO] list error:', err);
+    logger.error('[TOOLBOX] list error:', err);
     return res.status(500).json({
       success: false,
       message: 'Server error while fetching internal Kobo submissions',
@@ -2130,7 +2161,7 @@ export const listInternalKoboSubmissions = async (req, res) => {
   }
 };
 
-export const getInternalKoboDiagnostics = async (req, res) => {
+export const getToolboxDiagnostics = async (req, res) => {
   try {
     const { organizationId } = req.user; // ← was missing — caused 500 on koboFormMapping queries
     const where = buildSubmissionWhere(req.user, req.query);
@@ -2138,11 +2169,11 @@ export const getInternalKoboDiagnostics = async (req, res) => {
     const last24hDate = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
     const [total, last24h, latestSubmissions, mappings, queueReports] = await Promise.all([
-      prisma.internalKoboSubmission.count({ where }),
-      prisma.internalKoboSubmission.count({
+      prisma.toolboxSubmission.count({ where }),
+      prisma.toolboxSubmission.count({
         where: { ...where, savedAt: { gte: last24hDate } },
       }),
-      prisma.internalKoboSubmission.findMany({
+      prisma.toolboxSubmission.findMany({
         where,
         orderBy: { savedAt: 'desc' },
         take: 1000,
@@ -2169,7 +2200,7 @@ export const getInternalKoboDiagnostics = async (req, res) => {
       prisma.syncLog.findMany({
         where: {
           organizationId,
-          action: 'INTERNAL_KOBO_CLIENT_QUEUE_REPORT',
+          action: 'TOOLBOX_CLIENT_QUEUE_REPORT',
           timestamp: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
         },
         orderBy: { timestamp: 'desc' },
@@ -2193,7 +2224,7 @@ export const getInternalKoboDiagnostics = async (req, res) => {
     const getExpectedFormVersion = (submission) => {
       if (activeVersionByFormKey.has(submission.formKey))
         return activeVersionByFormKey.get(submission.formKey);
-      if (submission.formKey === INTERNAL_KOBO_FORM_KEY) return INTERNAL_KOBO_FORM_VERSION;
+      if (submission.formKey === TOOLBOX_FORM_KEY) return TOOLBOX_FORM_VERSION;
       return null;
     };
     const versionMismatchCount = latestSubmissions.filter((submission) => {
@@ -2317,15 +2348,15 @@ export const getInternalKoboDiagnostics = async (req, res) => {
         },
         latestSavedAt: latestSubmissions[0]?.savedAt || null,
         serverFormVersion:
-          activeVersionByFormKey.get(INTERNAL_KOBO_FORM_KEY) ||
+          activeVersionByFormKey.get(TOOLBOX_FORM_KEY) ||
           activeForms[0]?.formVersion ||
-          INTERNAL_KOBO_FORM_VERSION,
+          TOOLBOX_FORM_VERSION,
         warnings: warningMessages,
         generatedAt: new Date().toISOString(),
       }),
     });
   } catch (err) {
-    logger.error('[INTERNAL-KOBO] diagnostics error:', err);
+    logger.error('[TOOLBOX] diagnostics error:', err);
     return res.status(500).json({
       success: false,
       message: 'Server error while fetching internal Kobo diagnostics',
@@ -2333,13 +2364,13 @@ export const getInternalKoboDiagnostics = async (req, res) => {
   }
 };
 
-export const getInternalKoboSubmission = async (req, res) => {
+export const getToolboxSubmission = async (req, res) => {
   try {
     const { organizationId, id: userId, role: rawUserRole } = req.user;
     const userRole = (rawUserRole || '').toUpperCase();
     const { id } = req.params;
 
-    const submission = await prisma.internalKoboSubmission.findFirst({
+    const submission = await prisma.toolboxSubmission.findFirst({
       where: {
         id,
         organizationId,
@@ -2384,7 +2415,7 @@ export const getInternalKoboSubmission = async (req, res) => {
       submission: sanitizeBigIntForJson(submission),
     });
   } catch (err) {
-    logger.error('[INTERNAL-KOBO] get error:', err);
+    logger.error('[TOOLBOX] get error:', err);
     return res.status(500).json({
       success: false,
       message: 'Server error while fetching internal Kobo submission',
@@ -2392,12 +2423,12 @@ export const getInternalKoboSubmission = async (req, res) => {
   }
 };
 
-export const exportInternalKoboMedia = async (req, res) => {
+export const exportToolboxMedia = async (req, res) => {
   const { organizationId } = req.user;
   const { formKey, status } = req.query;
 
   try {
-    const submissions = await prisma.internalKoboSubmission.findMany({
+    const submissions = await prisma.toolboxSubmission.findMany({
       where: {
         organizationId,
         ...(formKey ? { formKey } : {}),
@@ -2445,14 +2476,14 @@ export const exportInternalKoboMedia = async (req, res) => {
 
     await archive.finalize();
   } catch (err) {
-    logger.error('[INTERNAL-KOBO] Media export error:', err);
+    logger.error('[TOOLBOX] Media export error:', err);
     if (!res.headersSent) {
       res.status(500).json({ success: false, message: 'Erreur lors de la génération du ZIP' });
     }
   }
 };
 
-export const getInternalKoboFormStats = async (req, res) => {
+export const getToolboxFormStats = async (req, res) => {
   try {
     const { formKey } = req.query;
     const { organizationId } = req.user;
@@ -2467,27 +2498,74 @@ export const getInternalKoboFormStats = async (req, res) => {
       last12m: new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000),
     };
 
-    const [total, last7d, last31d, last3m, last12m] = await Promise.all([
-      prisma.internalKoboSubmission.count({ where: baseWhere }),
-      prisma.internalKoboSubmission.count({ where: { ...baseWhere, savedAt: { gte: periods.last7d } } }),
-      prisma.internalKoboSubmission.count({ where: { ...baseWhere, savedAt: { gte: periods.last31d } } }),
-      prisma.internalKoboSubmission.count({ where: { ...baseWhere, savedAt: { gte: periods.last3m } } }),
-      prisma.internalKoboSubmission.count({ where: { ...baseWhere, savedAt: { gte: periods.last12m } } }),
+    const [total, last7d, last31d, last3m, last12m, statusBreakdown, roleBreakdown, topSubmitters, weeklyTrend] = await Promise.all([
+      prisma.toolboxSubmission.count({ where: baseWhere }),
+      prisma.toolboxSubmission.count({ where: { ...baseWhere, savedAt: { gte: periods.last7d } } }),
+      prisma.toolboxSubmission.count({ where: { ...baseWhere, savedAt: { gte: periods.last31d } } }),
+      prisma.toolboxSubmission.count({ where: { ...baseWhere, savedAt: { gte: periods.last3m } } }),
+      prisma.toolboxSubmission.count({ where: { ...baseWhere, savedAt: { gte: periods.last12m } } }),
+      prisma.toolboxSubmission.groupBy({
+        by: ['status'],
+        where: baseWhere,
+        _count: { id: true },
+      }),
+      prisma.toolboxSubmission.groupBy({
+        by: ['role'],
+        where: { ...baseWhere, role: { not: null } },
+        _count: { id: true },
+      }),
+      prisma.toolboxSubmission.groupBy({
+        by: ['submittedById'],
+        where: { ...baseWhere, submittedById: { not: null } },
+        _count: { id: true },
+        orderBy: { _count: { id: 'desc' } },
+        take: 10,
+      }),
+      Promise.all(
+        Array.from({ length: 12 }, (_, i) => {
+          const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (7 * i) - 6);
+          const weekEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (7 * i) + 1);
+          return prisma.toolboxSubmission.count({
+            where: { ...baseWhere, savedAt: { gte: weekStart, lt: weekEnd } },
+          });
+        })
+      ),
     ]);
 
     const last7dDays = await Promise.all(
       Array.from({ length: 7 }, (_, i) => {
         const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
         const dayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i + 1);
-        return prisma.internalKoboSubmission.count({
+        return prisma.toolboxSubmission.count({
           where: { ...baseWhere, savedAt: { gte: dayStart, lt: dayEnd } },
         });
       })
     );
 
-    return res.json({ success: true, stats: { total, last7d, last31d, last3m, last12m, last7dDays: last7dDays.reverse() } });
+    const submittersWithNames = await Promise.all(
+      topSubmitters.map(async (s) => {
+        let name = `Utilisateur ${s.submittedById?.slice(0, 8)}`;
+        if (s.submittedById) {
+          const user = await prisma.user.findUnique({ where: { id: s.submittedById }, select: { name: true, email: true } });
+          if (user) name = user.name || user.email || name;
+        }
+        return { userId: s.submittedById, name, count: s._count.id };
+      })
+    );
+
+    return res.json({
+      success: true,
+      stats: {
+        total, last7d, last31d, last3m, last12m,
+        last7dDays: last7dDays.reverse(),
+        statusBreakdown: statusBreakdown.map((s) => ({ status: s.status, count: s._count.id })),
+        roleBreakdown: roleBreakdown.map((r) => ({ role: r.role, count: r._count.id })),
+        topSubmitters: submittersWithNames,
+        weeklyTrend: weeklyTrend.reverse(),
+      },
+    });
   } catch (err) {
-    logger.error('[INTERNAL-KOBO] formStats error:', err);
+    logger.error('[TOOLBOX] formStats error:', err);
     return res.status(500).json({ success: false, message: 'Erreur stats formulaire' });
   }
 };

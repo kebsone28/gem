@@ -23,22 +23,22 @@ import {
 } from 'lucide-react';
 import apiClient from '@/api/client';
 import SignatureModal from '@components/common/SignatureModal';
-import { HistoryPanel } from './internal-kobo-form/HistoryPanel';
-import { LocalQueuePanel } from './internal-kobo-form/LocalQueuePanel';
-import { ValidationAssistantPanel, type RuntimeIssueView } from './internal-kobo-form/ValidationAssistantPanel';
-import { ReceiptModal } from './internal-kobo-form/ReceiptModal';
+import { HistoryPanel } from './toolbox-form/HistoryPanel';
+import { LocalQueuePanel } from './toolbox-form/LocalQueuePanel';
+import { ValidationAssistantPanel, type RuntimeIssueView } from './toolbox-form/ValidationAssistantPanel';
+import { ReceiptModal } from './toolbox-form/ReceiptModal';
 import { useKoboFormLogic } from './hooks/useKoboFormLogic';
 import {
-  fetchInternalKoboFormDefinition,
-  fetchInternalKoboImportedFormDefinition,
-  type InternalKoboImportedFormSummary,
-} from '@services/internalKoboSubmissionService';
+  fetchtoolboxFormDefinition,
+  fetchToolboxImportedFormDefinition,
+  type ToolboxImportedFormSummary,
+} from '@services/toolboxSubmissionService';
 import type {
-  InternalKoboAttachment,
-  InternalKoboLocalDraft,
-  InternalKoboQueuedSubmission,
-  InternalKoboSubmissionRecord,
-} from '@services/internalKoboSubmissionService';
+  toolboxAttachment,
+  toolboxLocalDraft,
+  toolboxQueuedSubmission,
+  toolboxSubmissionRecord,
+} from '@services/toolboxSubmissionService';
 import {
   formatInternalGemValue,
   getInternalGemFieldValue,
@@ -51,8 +51,8 @@ import {
   isInternalGemFieldVisible,
   isTruthyGemValue,
   validateInternalGemFields,
-} from './internalKoboFormDefinition';
-import type { InternalGemField } from './internalKoboFormDefinition';
+} from './toolboxFormDefinition';
+import type { InternalGemField } from './toolboxFormDefinition';
 import {
   applyXlsFormRuntimeCalculations,
   buildXlsFormRuntimePages,
@@ -82,15 +82,15 @@ import {
   queueStatusClass,
   queueStatusLabel,
   formatMetadataLabel,
-} from './internal-kobo-form/utils';
+} from './toolbox-form/utils';
 import {
   ROLE_SECTION_BY_VALUE,
   GEM_RUNTIME_MEDIA_TYPES,
   GEM_RUNTIME_FILLABLE_SKIP_TYPES,
-} from './internal-kobo-form/constants';
+} from './toolbox-form/constants';
 import { stringifyHouseholdValue } from '@utils/householdDisplay';
 
-type InternalKoboFormProps = {
+type ToolboxFormProps = {
   values: Record<string, unknown>;
   onChange: (name: string, value: unknown) => void;
   onSave: () => void;
@@ -100,13 +100,13 @@ type InternalKoboFormProps = {
   onResolvedHousehold?: (household: Record<string, any> | null) => void;
   resolveHouseholdByNumero?: (numeroOrdre: string) => Record<string, any> | null;
   queueCount?: number;
-  queueItems?: InternalKoboQueuedSubmission[];
+  queueItems?: toolboxQueuedSubmission[];
   isQueueFlushing?: boolean;
   onFlushQueue?: () => void;
-  localDraft?: InternalKoboLocalDraft | null;
+  localDraft?: toolboxLocalDraft | null;
   onClearLocalDraft?: () => void;
   isOnline?: boolean;
-  submissions?: InternalKoboSubmissionRecord[];
+  submissions?: toolboxSubmissionRecord[];
   isHistoryLoading?: boolean;
   historyError?: string;
   onRefreshHistory?: () => void;
@@ -177,10 +177,10 @@ const isRuntimeDefinition = (value: unknown): value is XlsFormDefinition =>
   typeof value.formKey === 'string' &&
   typeof value.formVersion === 'string';
 
-const isDeployedImportedForm = (form: InternalKoboImportedFormSummary) =>
+const isDeployedImportedForm = (form: ToolboxImportedFormSummary) =>
   form.active !== false && form.status !== 'draft' && form.status !== 'inactive';
 
-const pickActiveImportedForm = (forms: InternalKoboImportedFormSummary[] = []) =>
+const pickActiveImportedForm = (forms: ToolboxImportedFormSummary[] = []) =>
   forms.find(isDeployedImportedForm) || null;
 
 const isRecord = (value: unknown): value is Record<string, any> =>
@@ -189,9 +189,9 @@ const isRecord = (value: unknown): value is Record<string, any> =>
 const makeAttachmentId = () =>
   globalThis.crypto?.randomUUID?.() || `attachment-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
-const getAttachmentMeta = (values: Record<string, unknown>, fieldName: string): InternalKoboAttachment | null => {
+const getAttachmentMeta = (values: Record<string, unknown>, fieldName: string): toolboxAttachment | null => {
   const value = values[`_ged_os_attachment_${fieldName}`] || values[`_ged_os_attachment_${fieldName}`];
-  return isRecord(value) ? (value as InternalKoboAttachment) : null;
+  return isRecord(value) ? (value as toolboxAttachment) : null;
 };
 
 const normalizeAutofillFieldName = (value: string) =>
@@ -295,7 +295,7 @@ const normalizeNumeroOrdreValue = (value: unknown) => {
   return normalized.endsWith('.0') ? normalized.slice(0, -2) : normalized;
 };
 
-export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
+export const ToolboxForm: React.FC<ToolboxFormProps> = ({
   values,
   onChange,
   onSave,
@@ -329,7 +329,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
   const [pendingRuntimeDefinition, setPendingRuntimeDefinition] = useState<XlsFormDefinition | null>(null);
   const [activeRuntimePageId, setActiveRuntimePageId] = useState('');
   const [activeRepeatIndexByPage, setActiveRepeatIndexByPage] = useState<Record<string, number>>({});
-  const [availableRuntimeForms, setAvailableRuntimeForms] = useState<InternalKoboImportedFormSummary[]>([]);
+  const [availableRuntimeForms, setAvailableRuntimeForms] = useState<ToolboxImportedFormSummary[]>([]);
   const [selectedRuntimeFormKey, setSelectedRuntimeFormKey] = useState(() => {
     if (initialFormKey) return initialFormKey;
     const runtimeKey = String(values._ged_os_runtime_form_key || values._ged_os_runtime_form_key || '').trim();
@@ -337,7 +337,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
   });
   const [isRuntimeFormListLoading, setIsRuntimeFormListLoading] = useState(false);
   const [signatureTarget, setSignatureTarget] = useState<SignatureTarget | null>(null);
-  const [receiptSubmission, setReceiptSubmission] = useState<InternalKoboSubmissionRecord | null>(null);
+  const [receiptSubmission, setReceiptSubmission] = useState<toolboxSubmissionRecord | null>(null);
   const [copiedReceiptId, setCopiedReceiptId] = useState('');
   const [isHistoryExpanded, setIsHistoryExpanded] = useState(false);
   const [householdLookup, setHouseholdLookup] = useState<{
@@ -487,7 +487,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
 
     (async () => {
       try {
-        const form = await fetchInternalKoboFormDefinition();
+        const form = await fetchtoolboxFormDefinition();
         if (cancelled) return;
         if (!form) {
           setAvailableRuntimeForms([]);
@@ -511,7 +511,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
         setXlsFormDefinition(null);
         onChangeRef.current('_ged_os_runtime_form_key', 'terrain_internal');
         onChangeRef.current('_ged_os_runtime_form_version', INTERNAL_GED_OS_FORM_SETTINGS.version);
-        onChangeRef.current('_ged_os_runtime_engine', 'gem-internal-kobo');
+        onChangeRef.current('_ged_os_runtime_engine', 'gem-toolbox');
         onChangeRef.current('_ged_os_runtime_title', 'Formulaire terrain interne');
         setServerFormStatus({
           status: form.formVersion === INTERNAL_GED_OS_FORM_SETTINGS.version ? 'ok' : 'mismatch',
@@ -552,7 +552,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
 
     (async () => {
       try {
-        const importedDefinition = await fetchInternalKoboImportedFormDefinition(selectedRuntimeFormKey);
+        const importedDefinition = await fetchToolboxImportedFormDefinition(selectedRuntimeFormKey);
         if (cancelled) return;
         if (!isRuntimeDefinition(importedDefinition)) {
           throw new Error('Definition XLSForm active invalide');
@@ -597,14 +597,14 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
     let cancelled = false;
     const checkActiveVersion = async () => {
       try {
-        const form = await fetchInternalKoboFormDefinition();
+        const form = await fetchtoolboxFormDefinition();
         if (cancelled) return;
         const deployedForms = form?.universalEngine?.importedForms || [];
         const activeImportedForm =
           deployedForms.find((entry) => entry.formKey === selectedRuntimeFormKey && isDeployedImportedForm(entry)) ||
           pickActiveImportedForm(deployedForms);
         if (!activeImportedForm?.formKey) return;
-        const importedDefinition = await fetchInternalKoboImportedFormDefinition(activeImportedForm.formKey);
+        const importedDefinition = await fetchToolboxImportedFormDefinition(activeImportedForm.formKey);
         if (cancelled || !isRuntimeDefinition(importedDefinition)) return;
 
         if (isDifferentRuntimeVersion(importedDefinition)) {
@@ -1050,7 +1050,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
     if (runtimePageId) setActiveRuntimePageId(runtimePageId);
     else if (sectionId) setActiveSectionId(sectionId);
     window.setTimeout(() => {
-      document.getElementById(`internal-kobo-field-${fieldName}`)?.scrollIntoView({
+      document.getElementById(`toolbox-field-${fieldName}`)?.scrollIntoView({
         behavior: 'smooth',
         block: 'center',
       });
@@ -1089,14 +1089,14 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
     onSave();
   };
 
-  const copyReceiptId = async (submission: InternalKoboSubmissionRecord) => {
+  const copyReceiptId = async (submission: toolboxSubmissionRecord) => {
     if (typeof navigator === 'undefined' || !navigator.clipboard) return;
     await navigator.clipboard.writeText(submission.clientSubmissionId);
     setCopiedReceiptId(submission.clientSubmissionId);
     window.setTimeout(() => setCopiedReceiptId(''), 1400);
   };
 
-  const downloadReceiptJson = (submission: InternalKoboSubmissionRecord) => {
+  const downloadReceiptJson = (submission: toolboxSubmissionRecord) => {
     const safeNumero = String(submission.numeroOrdre || 'menage').replace(/[^a-z0-9_-]+/gi, '-');
     const blob = new Blob([JSON.stringify(submission, null, 2)], { type: 'application/json' });
     const url = window.URL.createObjectURL(blob);
@@ -1147,7 +1147,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
       const capturedAt = new Date().toISOString();
       const dataUrl = await fileToDataUrl(uploadFile);
       const sha256 = await hashFileSha256(uploadFile);
-      const baseAttachment: InternalKoboAttachment = {
+      const baseAttachment: toolboxAttachment = {
         id: makeAttachmentId(),
         fieldName: field.name,
         fieldCode: field.name,
@@ -1158,10 +1158,10 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
         storedBytes: uploadFile.size,
         sha256,
         capturedAt,
-        source: 'gem-internal-kobo',
+        source: 'gem-toolbox',
       };
       let fieldValue = dataUrl;
-      let attachment: InternalKoboAttachment = {
+      let attachment: toolboxAttachment = {
         ...baseAttachment,
         dataUrl,
         storage: isOnline ? 'embedded-fallback' : 'embedded-offline',
@@ -1265,7 +1265,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
       const capturedAt = new Date().toISOString();
       const dataUrl = await fileToDataUrl(uploadFile);
       const sha256 = await hashFileSha256(uploadFile);
-      const baseAttachment: InternalKoboAttachment = {
+      const baseAttachment: toolboxAttachment = {
         id: makeAttachmentId(),
         fieldName: attachmentKey,
         fieldCode: field.name,
@@ -1279,7 +1279,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
         source: repeatContext ? 'gem-xlsform-repeat-runtime' : 'gem-xlsform-runtime',
       };
       let fieldValue = dataUrl;
-      let attachment: InternalKoboAttachment = {
+      let attachment: toolboxAttachment = {
         ...baseAttachment,
         dataUrl,
         storage: isOnline ? 'embedded-fallback' : 'embedded-offline',
@@ -1511,8 +1511,8 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
     const missing = fieldIssues.some((issue) => issue.type === 'required');
     const invalid = fieldIssues.some((issue) => issue.type === 'constraint');
     const fieldId = repeatContext
-      ? `internal-kobo-field-${field.name}-${repeatContext.repeatName}-${repeatContext.repeatIndex}`
-      : `internal-kobo-field-${field.name}`;
+      ? `toolbox-field-${field.name}-${repeatContext.repeatName}-${repeatContext.repeatIndex}`
+      : `toolbox-field-${field.name}`;
     const label = field.label || field.name;
     const required = field.required || Boolean(field.requiredExpression);
     const readOnly = Boolean(field.readOnly || (field.calculation && field.type !== 'calculate'));
@@ -1885,7 +1885,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
       status: 'queued',
       storage: 'embedded-offline',
       dataUrl: signatureBase64,
-    } satisfies InternalKoboAttachment);
+    } satisfies toolboxAttachment);
     onChange(`_ged_os_photo_${attachmentKey}_original_name`, `${attachmentKey}.png`);
     onChange(`_ged_os_photo_${attachmentKey}_mime`, 'image/png');
     onChange(`_ged_os_photo_${attachmentKey}_captured_at`, capturedAt);
@@ -1917,7 +1917,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
       return (
         <button
           key={field.name}
-          id={`internal-kobo-field-${field.name}`}
+          id={`toolbox-field-${field.name}`}
           type="button"
           onClick={() => onChange(field.name, !checked)}
           className={`${shellClass} flex w-full items-center justify-between gap-4 text-left transition-all active:scale-[0.99]`}
@@ -1936,7 +1936,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
     }
 
     return (
-      <div key={field.name} id={`internal-kobo-field-${field.name}`} className={shellClass}>
+      <div key={field.name} id={`toolbox-field-${field.name}`} className={shellClass}>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="text-[14px] font-black leading-snug text-white">{field.label}</p>

@@ -5,8 +5,8 @@ import {
   validateXlsFormRuntime,
   type XlsFormDefinition,
 } from '../xlsFormMobileRuntime';
-import { validateInternalGemFields, type InternalGemField } from '../internalKoboFormDefinition';
-import type { RuntimeIssueView } from '../internal-kobo-form/ValidationAssistantPanel';
+import { validateInternalGemFields, type InternalGemField } from '../toolboxFormDefinition';
+import type { RuntimeIssueView } from '../toolbox-form/ValidationAssistantPanel';
 
 export const useKoboFormLogic = (
   xlsFormDefinition: XlsFormDefinition | null,

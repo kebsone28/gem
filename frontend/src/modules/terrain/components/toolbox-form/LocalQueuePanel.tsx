@@ -1,11 +1,11 @@
-﻿import React from 'react';
+import React from 'react';
 import { RefreshCcw } from 'lucide-react';
-import type { InternalKoboQueuedSubmission } from '@services/internalKoboSubmissionService';
-import { formatInternalGedOsValue } from '../internalKoboFormDefinition';
+import type { toolboxQueuedSubmission } from '@services/toolboxSubmissionService';
+import { formatInternalGedOsValue } from '../toolboxFormDefinition';
 import { formatHistoryDate, queueStatusClass, queueStatusLabel, submissionStatusLabel } from './utils';
 
 type LocalQueuePanelProps = {
-  queueItems: InternalKoboQueuedSubmission[];
+  queueItems: toolboxQueuedSubmission[];
   compact?: boolean;
   onFlushQueue?: () => void;
   isQueueFlushing?: boolean;

@@ -4,8 +4,8 @@ import fs from 'fs';
 const data = JSON.parse(fs.readFileSync('kobo_form.json', 'utf8'));
 const koboFields = data.content?.survey?.map(f => f.name).filter(Boolean) || [];
 
-// 2. Extraire les champs de internalKoboFormDefinition.ts
-const tsContent = fs.readFileSync('../frontend/src/components/terrain/internalKoboFormDefinition.ts', 'utf8');
+// 2. Extraire les champs de toolboxFormDefinition.ts
+const tsContent = fs.readFileSync('../frontend/src/modules/terrain/components/toolboxFormDefinition.ts', 'utf8');
 
 // Regex pour extraire les "name: '...'"
 const gemFields = [];

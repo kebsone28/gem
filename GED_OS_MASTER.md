@@ -265,7 +265,7 @@ Toutes les routes sont préfixées par `/api`.
 | `/api/alerts` | `alerts` | Système d'alertes |
 | `/api/chat` | `chat` | Messagerie temps réel (Socket.IO) |
 | `/api/pvs` | `pv` | Procès-verbaux |
-| `/api/internal-kobo` | `internalKobo` | Formulaires Kobo intégrés |
+| `/api/toolbox` | `toolbox` | Formulaires GED OS Toolbox |
 | `/api/sharedoc` | `sharedoc` | Gestion documentaire |
 | `/api/mes` | `mes` | Mise en service (MES) |
 | `/api/sync` | `sync` | Synchronisation offline |
@@ -315,7 +315,7 @@ Formulaire KoboToolbox (mobile, hors-ligne)
         ↓
   Webhook KoboToolbox → POST /api/kobo/webhook
         ↓
-  internalKobo.controller.js — traitement + matching ménages
+  toolbox.controller.js — traitement + matching ménages
         ↓
   PostgreSQL + PostGIS (coordonnées GPS des ménages)
         ↓

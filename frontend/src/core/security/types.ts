@@ -208,6 +208,14 @@ export const PERMISSIONS = {
   // ── SECTEURS AUTORISÉS ──
   SECTOR_GEM: 'sector.gem',
   SECTOR_MES: 'sector.mes',
+
+  // ── TOOLBOX (GED OS Toolbox) ──
+  TOOLBOX_SUBMISSION_CREATE: 'toolbox.submission.create',
+  TOOLBOX_SUBMISSION_EDIT: 'toolbox.submission.edit',
+  TOOLBOX_SUBMISSION_VALIDATE: 'toolbox.submission.validate',
+  TOOLBOX_SUBMISSION_DELETE: 'toolbox.submission.delete',
+  TOOLBOX_SETTINGS_READ: 'toolbox.settings.read',
+  TOOLBOX_SETTINGS_MANAGE: 'toolbox.settings.manage',
 } as const;
 
 export const ROLES = AppRole;

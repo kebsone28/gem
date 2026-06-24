@@ -12,25 +12,25 @@ import {
   Loader2,
   Trash2,
 } from 'lucide-react';
-const InternalKoboForm = React.lazy(() =>
-  import('@modules/terrain/components/InternalKoboForm').then((m) => ({ default: m.InternalKoboForm }))
+const ToolboxForm = React.lazy(() =>
+  import('@modules/terrain/components/ToolboxForm').then((m) => ({ default: m.ToolboxForm }))
 );
 import { PageContainer, PageHeader, ContentArea } from '@components/layout';
 import {
-  clearInternalKoboLocalDraft,
-  deleteInternalKoboFormDefinition,
-  fetchInternalKoboFormDefinitions,
-  loadInternalKoboLocalDraft,
-  queueInternalKoboSubmission,
-  type InternalKoboImportedFormSummary,
-  type InternalKoboLocalDraft,
-} from '@services/internalKoboSubmissionService';
+  cleartoolboxLocalDraft,
+  deletetoolboxFormDefinition,
+  fetchtoolboxFormDefinitions,
+  loadtoolboxLocalDraft,
+  queuetoolboxSubmission,
+  type ToolboxImportedFormSummary,
+  type toolboxLocalDraft,
+} from '@services/toolboxSubmissionService';
 // Import service to fetch households for auto‑remplissage
 import { householdService } from '@services/householdService';
 import toast from 'react-hot-toast';
 
 const GedOsCollectPage: React.FC = () => {
-  const [availableForms, setAvailableForms] = useState<InternalKoboImportedFormSummary[]>([]);
+  const [availableForms, setAvailableForms] = useState<ToolboxImportedFormSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedFormKey, setSelectedFormKey] = useState<string | null>(null);
   const [values, setValues] = useState<Record<string, unknown>>({});
@@ -40,7 +40,7 @@ const GedOsCollectPage: React.FC = () => {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [households, setHouseholds] = useState<any[]>([]);
   const [deletingFormKey, setDeletingFormKey] = useState('');
-  const [drafts, setDrafts] = useState<InternalKoboLocalDraft[]>([]);
+  const [drafts, setDrafts] = useState<toolboxLocalDraft[]>([]);
 
   useEffect(() => {
     loadForms();
@@ -77,7 +77,7 @@ const GedOsCollectPage: React.FC = () => {
   const loadForms = async () => {
     setIsLoading(true);
     try {
-      const forms = await fetchInternalKoboFormDefinitions();
+      const forms = await fetchtoolboxFormDefinitions();
       setAvailableForms(forms.filter((f) => f.active !== false));
     } catch {
       toast.error('Erreur lors du chargement des formulaires');
@@ -87,12 +87,12 @@ const GedOsCollectPage: React.FC = () => {
   };
 
   const loadDrafts = () => {
-    const allDrafts: InternalKoboLocalDraft[] = [];
+    const allDrafts: toolboxLocalDraft[] = [];
     for (let i = 0; i < window.localStorage.length; i++) {
       const key = window.localStorage.key(i);
       if (key && key.startsWith('ged-os-draft:')) {
         try {
-          const draft = JSON.parse(window.localStorage.getItem(key) || '') as InternalKoboLocalDraft;
+          const draft = JSON.parse(window.localStorage.getItem(key) || '') as toolboxLocalDraft;
           if (draft?.values && typeof draft.values === 'object') {
             allDrafts.push(draft);
           }
@@ -104,7 +104,7 @@ const GedOsCollectPage: React.FC = () => {
     setDrafts(allDrafts.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()));
   };
 
-  const handleRestoreDraft = (draft: InternalKoboLocalDraft) => {
+  const handleRestoreDraft = (draft: toolboxLocalDraft) => {
     if (draft.formKey) {
       setSelectedFormKey(draft.formKey);
       setValues(draft.values);
@@ -112,9 +112,9 @@ const GedOsCollectPage: React.FC = () => {
     }
   };
 
-  const handleDeleteDraft = (draft: InternalKoboLocalDraft) => {
+  const handleDeleteDraft = (draft: toolboxLocalDraft) => {
     if (window.confirm('Supprimer ce brouillon ?')) {
-      clearInternalKoboLocalDraft({
+      cleartoolboxLocalDraft({
         householdId: draft.householdId,
         numeroOrdre: draft.numeroOrdre,
         formKey: draft.formKey,
@@ -133,7 +133,7 @@ const GedOsCollectPage: React.FC = () => {
     setIsSaving(true);
     try {
       const selectedForm = availableForms.find((f) => f.formKey === selectedFormKey);
-      await queueInternalKoboSubmission({
+      await queuetoolboxSubmission({
         clientSubmissionId: `${selectedFormKey}-${Date.now()}`,
         formKey: selectedFormKey,
         formVersion: (selectedForm?.formVersion || '1.0') as string,
@@ -174,7 +174,7 @@ const GedOsCollectPage: React.FC = () => {
 
   const handleDeleteForm = async (
     event: React.MouseEvent<HTMLButtonElement>,
-    form: InternalKoboImportedFormSummary
+    form: ToolboxImportedFormSummary
   ) => {
     event.stopPropagation();
     const label = form.title || form.formKey;
@@ -185,7 +185,7 @@ const GedOsCollectPage: React.FC = () => {
 
     setDeletingFormKey(form.formKey);
     try {
-      await deleteInternalKoboFormDefinition(form.formKey);
+      await deletetoolboxFormDefinition(form.formKey);
       setAvailableForms((current) => current.filter((entry) => entry.formKey !== form.formKey));
       if (selectedFormKey === form.formKey) {
         setSelectedFormKey(null);
@@ -223,7 +223,7 @@ const GedOsCollectPage: React.FC = () => {
 
           <div className="flex-1 w-full bg-slate-900/50 rounded-[2.5rem] border border-white/10 overflow-hidden shadow-2xl backdrop-blur-md relative min-h-[750px]">
             <Suspense fallback={<div className="flex items-center justify-center h-full min-h-[750px] text-slate-400"><div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" /></div>}>
-            <InternalKoboForm
+            <ToolboxForm
               initialFormKey={selectedFormKey}
               hideFormSelector={true}
               values={values}

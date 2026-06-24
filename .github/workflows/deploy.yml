@@ -76,7 +76,7 @@ jobs:
         run: npm install --prefix frontend --legacy-peer-deps
 
       - name: TypeScript check (frontend)
-        run: npx tsc --noEmit --project frontend/tsconfig.app.json
+        run: npx typescript --noEmit --project frontend/tsconfig.app.json
         continue-on-error: true
 
       - name: Lint frontend

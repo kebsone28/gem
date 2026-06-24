@@ -23,7 +23,7 @@
     "pmtiles:dev": "cd backend\\pmtiles-server && npm run dev",
     "pmtiles:start": "cd backend\\pmtiles-server && npm run start",
     "agent:deploy": "node scripts/local-deploy-agent.mjs",
-    "smoke:internal-kobo": "node scripts/internal-kobo-smoke.mjs",
+    "smoke:toolbox": "node scripts/toolbox-smoke.mjs",
     "import:kobo-legacy": "node scripts/import-kobo-legacy-submissions.mjs",
     "build": "cd frontend && npm run build",
     "preview": "cd frontend && npm run preview",

@@ -55,7 +55,7 @@ async function main() {
         }
       }
     } else {
-      console.log('\n⚠ No forms found. Import a form in the admin first (https://ged.proquelec.sn/admin/internal-kobo).');
+      console.log('\n⚠ No forms found. Import a form in the admin first (https://ged.proquelec.sn/admin/toolbox).');
     }
   }
 

@@ -1,4 +1,4 @@
-﻿ 
+ 
 /**
  * BackgroundServices
  * Thin bridge component — the ONLY reason this still exists as a React component
@@ -12,9 +12,9 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../store/db';
 import { updatePendingCount } from '../services/sync/syncService';
 import {
-  flushInternalKoboSubmissionQueue,
-  reportInternalKoboClientQueue,
-} from '../services/internalKoboSubmissionService';
+  flushtoolboxSubmissionQueue,
+  reportToolboxClientQueue,
+} from '../services/toolboxSubmissionService';
 
 export default function BackgroundServices() {
   const pendingCount = useLiveQuery(
@@ -22,11 +22,11 @@ export default function BackgroundServices() {
     [],
     0
   );
-  const internalKoboQueueCount = useLiveQuery(async () => {
+  const toolboxQueueCount = useLiveQuery(async () => {
     const queuedItems = await db.syncOutbox.where('status').anyOf('pending', 'failed').toArray();
-    return queuedItems.filter((item) => item.action === 'internal-kobo-submit').length;
+    return queuedItems.filter((item) => item.action === 'toolbox-submit').length;
   }, [], 0);
-  const isFlushingInternalKoboRef = useRef(false);
+  const isFlushingToolboxRef = useRef(false);
   const lastQueueReportAtRef = useRef(0);
 
   useEffect(() => {
@@ -36,28 +36,28 @@ export default function BackgroundServices() {
   }, [pendingCount]);
 
   useEffect(() => {
-    if (!internalKoboQueueCount) return undefined;
+    if (!toolboxQueueCount) return undefined;
 
     let timeoutId: number | undefined;
     const canFlush = () =>
       typeof navigator === 'undefined' || navigator.onLine !== false;
 
     const flush = async () => {
-      if (isFlushingInternalKoboRef.current || !canFlush()) return;
-      isFlushingInternalKoboRef.current = true;
+      if (isFlushingToolboxRef.current || !canFlush()) return;
+      isFlushingToolboxRef.current = true;
 
       try {
-        const result = await flushInternalKoboSubmissionQueue();
-        window.dispatchEvent(new CustomEvent('internal-kobo:queue-flushed', { detail: result }));
+        const result = await flushtoolboxSubmissionQueue();
+        window.dispatchEvent(new CustomEvent('toolbox:queue-flushed', { detail: result }));
         const now = Date.now();
         if (now - lastQueueReportAtRef.current > 60_000) {
           lastQueueReportAtRef.current = now;
-          reportInternalKoboClientQueue().catch(() => undefined);
+          reportToolboxClientQueue().catch(() => undefined);
         }
       } catch (error) {
-        window.dispatchEvent(new CustomEvent('internal-kobo:queue-flush-error', { detail: error }));
+        window.dispatchEvent(new CustomEvent('toolbox:queue-flush-error', { detail: error }));
       } finally {
-        isFlushingInternalKoboRef.current = false;
+        isFlushingToolboxRef.current = false;
       }
     };
 
@@ -82,20 +82,20 @@ export default function BackgroundServices() {
       window.removeEventListener('focus', scheduleFlush);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [internalKoboQueueCount]);
+  }, [toolboxQueueCount]);
 
   useEffect(() => {
-    if (!internalKoboQueueCount) return undefined;
+    if (!toolboxQueueCount) return undefined;
     const report = () => {
       if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
       const now = Date.now();
       if (now - lastQueueReportAtRef.current < 60_000) return;
       lastQueueReportAtRef.current = now;
-      reportInternalKoboClientQueue().catch(() => undefined);
+      reportToolboxClientQueue().catch(() => undefined);
     };
     const timeoutId = window.setTimeout(report, 3000);
     return () => window.clearTimeout(timeoutId);
-  }, [internalKoboQueueCount]);
+  }, [toolboxQueueCount]);
 
   return null;
 }

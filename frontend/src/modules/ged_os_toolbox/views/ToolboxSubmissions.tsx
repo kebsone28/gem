@@ -62,27 +62,27 @@ import {
 } from 'lucide-react';
 import { PageContainer, PageHeader, ContentArea } from '@components';
 import {
-  downloadInternalKoboMediaExport,
-  fetchInternalKoboDiagnostics,
-  fetchInternalKoboFormDefinition,
-  fetchInternalKoboFormDefinitions,
-  fetchInternalKoboImportedFormDefinition,
-  fetchInternalKoboSubmissionsReport,
-  importInternalKoboXlsForm,
-  importInternalKoboXlsFormFromUrl,
-  reviewInternalKoboSubmission,
-  updateInternalKoboFormDefinitionStatus,
-  type InternalKoboImportedFormSummary,
-  type InternalKoboSubmissionDiagnostics,
-  type InternalKoboSubmissionRecord,
-} from '@services/internalKoboSubmissionService';
+  downloadToolboxMediaExport,
+  fetchToolboxDiagnostics,
+  fetchtoolboxFormDefinition,
+  fetchtoolboxFormDefinitions,
+  fetchToolboxImportedFormDefinition,
+  fetchToolboxSubmissionsReport,
+  importToolboxXlsForm,
+  importToolboxXlsFormFromUrl,
+  reviewtoolboxSubmission,
+  updatetoolboxFormDefinitionStatus,
+  type ToolboxImportedFormSummary,
+  type toolboxSubmissionDiagnostics,
+  type toolboxSubmissionRecord,
+} from '@services/toolboxSubmissionService';
 import {
   formatInternalGemValue,
   formatInternalGedOsValue,
   INTERNAL_GED_OS_CHOICES,
   INTERNAL_GED_OS_FORM_SETTINGS,
   INTERNAL_GED_OS_SECTIONS,
-} from '@modules/terrain/components/internalKoboFormDefinition';
+} from '@modules/terrain/components/toolboxFormDefinition';
 import {
   formatKoboSourceColumnLabel,
   KOBO_SOURCE_RUBRICS,
@@ -91,13 +91,15 @@ import {
 import toast from 'react-hot-toast';
 import apiClient from '@/api/client';
 import logger from '@services/logger';
+import { usePermissions } from '@hooks/usePermissions';
 import GedcollectUserManager from './GedcollectUserManager';
 import GedcollectDashboard from './GedcollectDashboard';
+import RestServicesManager from './RestServicesManager';
 
 
 type Filters = {
   q: string;
-  status: '' | InternalKoboSubmissionStatus;
+  status: '' | ToolboxSubmissionstatus;
   role: string;
   syncStatus: string;
   formKey: string;
@@ -240,8 +242,8 @@ const projectSectors = [
   'Autre',
 ];
 const projectCountries = ['Senegal', 'Gambie', 'Mali', 'Guinee', 'Autre'];
-const savedDataFiltersStorageKey = 'gem-internal-kobo-saved-data-filters:v1';
-const STORAGE_KEY_FILTERS = 'gem-internal-kobo-filters-v2';
+const savedDataFiltersStorageKey = 'gem-toolbox-saved-data-filters:v1';
+const STORAGE_KEY_FILTERS = 'gem-toolbox-filters-v2';
 
 const builderLanguages: Array<{ id: BuilderLanguage; label: string; xlsLabel: string }> = [
   { id: 'fr', label: 'Francais', xlsLabel: 'Francais (fr)' },
@@ -978,8 +980,8 @@ const saveBlob = (blob: Blob, filename: string) => {
 };
 
 const countValue = (
-  diagnostics: InternalKoboSubmissionDiagnostics | null,
-  bucket: keyof InternalKoboSubmissionDiagnostics,
+  diagnostics: toolboxSubmissionDiagnostics | null,
+  bucket: keyof toolboxSubmissionDiagnostics,
   key: string
 ) => {
   const value = diagnostics?.[bucket];
@@ -988,15 +990,15 @@ const countValue = (
 };
 
 const getSubmissionAttachments = (
-  submission: InternalKoboSubmissionRecord | null
-): InternalKoboAttachment[] => {
+  submission: toolboxSubmissionRecord | null
+): toolboxAttachment[] => {
   const media = (submission?.metadata as any)?.media;
   const attachments = media?.attachments;
   return Array.isArray(attachments) ? attachments : [];
 };
 
 const getSubmissionValueByAliases = (
-  submission: InternalKoboSubmissionRecord,
+  submission: toolboxSubmissionRecord,
   aliases: string[]
 ) => {
   const values = submission.values || {};
@@ -1006,7 +1008,7 @@ const getSubmissionValueByAliases = (
   return undefined;
 };
 
-const getKoboTableValue = (submission: InternalKoboSubmissionRecord, column: KoboTableColumn) => {
+const getKoboTableValue = (submission: toolboxSubmissionRecord, column: KoboTableColumn) => {
   if (column.id === 'start')
     return (submission.values as any).start || submission.savedAt || submission.createdAt;
   if (column.id === 'Numero_ordre')
@@ -1048,7 +1050,7 @@ const getKoboTableValue = (submission: InternalKoboSubmissionRecord, column: Kob
 };
 
 const formatKoboTableCellValue = (
-  submission: InternalKoboSubmissionRecord,
+  submission: toolboxSubmissionRecord,
   column: KoboTableColumn
 ) => {
   const value = getKoboTableValue(submission, column);
@@ -1069,7 +1071,7 @@ const normalizeBucketLabel = (bucket: 'status' | 'role' | 'sync' | 'version', va
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const getSubmissionBucketCounts = (
-  submissions: InternalKoboSubmissionRecord[],
+  submissions: toolboxSubmissionRecord[],
   bucket: 'status' | 'role' | 'sync' | 'version'
 ) => {
   const counts: Record<string, number> = {};
@@ -1107,7 +1109,7 @@ const parseCoordinatePair = (value: unknown): { lat: number; lon: number } | nul
   return { lat, lon };
 };
 
-const getSubmissionCoordinates = (submission: InternalKoboSubmissionRecord) => {
+const getSubmissionCoordinates = (submission: toolboxSubmissionRecord) => {
   const values = submission.values || {};
   const direct = parseCoordinatePair([
     (values as any).latitude_key || (values as any).latitude || (values as any).lat,
@@ -1203,7 +1205,7 @@ const getDefinitionChoicesForList = (
   );
 
 const getDefinitionTitle = (
-  form: InternalKoboImportedFormSummary | null,
+  form: ToolboxImportedFormSummary | null,
   definition: Record<string, unknown> | null
 ) =>
   asString(
@@ -1331,7 +1333,7 @@ const buildSpreadsheetSheetXml = (sheetName: string, rows: Record<string, unknow
 };
 
 const buildXlsFormSpreadsheetXml = (
-  form: InternalKoboImportedFormSummary,
+  form: ToolboxImportedFormSummary,
   definition: Record<string, unknown>
 ) => {
   const settings = {
@@ -1352,7 +1354,7 @@ const buildXlsFormSpreadsheetXml = (
 };
 
 const buildXFormXml = (
-  form: InternalKoboImportedFormSummary,
+  form: ToolboxImportedFormSummary,
   definition: Record<string, unknown>
 ) => {
   const fields = getDefinitionFields(definition);
@@ -1372,7 +1374,7 @@ const buildXFormXml = (
 
 type ProjectStatus = 'deployed' | 'draft' | 'archived';
 
-const getProjectStatus = (form: InternalKoboImportedFormSummary): ProjectStatus => {
+const getProjectStatus = (form: ToolboxImportedFormSummary): ProjectStatus => {
   if (form.status === 'draft') return 'draft';
   if (form.active === false || form.status === 'inactive') return 'archived';
   return 'deployed';
@@ -1393,7 +1395,7 @@ const projectStatusMeta: Record<ProjectStatus, { label: string; className: strin
   },
 };
 
-export default function InternalKoboSubmissions() {
+export default function ToolboxSubmissions() {
   const [projectView, setProjectView] = useState(false);
   const [mainTab, setMainTab] = useState<MainTab>('data');
   const [dataTab, setDataTab] = useState<DataTab>('table');
@@ -1468,14 +1470,20 @@ export default function InternalKoboSubmissions() {
     title: string;
     submission: any;
   } | null>(null);
-  const [submissions, setSubmissions] = useState<InternalKoboSubmissionRecord[]>([]);
+  const [submissions, setSubmissions] = useState<toolboxSubmissionRecord[]>([]);
   const [submissionTotalCount, setSubmissionTotalCount] = useState(0);
-  const [listDiagnostics, setListDiagnostics] = useState<InternalKoboSubmissionDiagnostics | null>(
+  const [listDiagnostics, setListDiagnostics] = useState<toolboxSubmissionDiagnostics | null>(
     null
   );
   const [globalDiagnostics, setGlobalDiagnostics] =
-    useState<InternalKoboSubmissionDiagnostics | null>(null);
-  const [formStats, setFormStats] = useState<{ total: number; last7d: number; last31d: number; last3m: number; last12m: number; last7dDays: number[] } | null>(null);
+    useState<toolboxSubmissionDiagnostics | null>(null);
+  const [formStats, setFormStats] = useState<{
+    total: number; last7d: number; last31d: number; last3m: number; last12m: number;
+    last7dDays: number[]; statusBreakdown?: { status: string; count: number }[];
+    roleBreakdown?: { role: string; count: number }[];
+    topSubmitters?: { userId: string; name: string; count: number }[];
+    weeklyTrend?: number[];
+  } | null>(null);
   const [selectedId, setSelectedId] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -1486,19 +1494,20 @@ export default function InternalKoboSubmissions() {
   const [isExporting, setIsExporting] = useState('');
   const [isImporting, setIsImporting] = useState(false);
   // importMessage migré vers toast.success — canal supprimé
-  const [importedForms, setImportedForms] = useState<InternalKoboImportedFormSummary[]>([]);
+  const [importedForms, setImportedForms] = useState<ToolboxImportedFormSummary[]>([]);
   const [isLoadingForms, setIsLoadingForms] = useState(false);
   // formManagerMessage migré vers toast.success — canal supprimé
   const [formStatusUpdating, setFormStatusUpdating] = useState('');
   const [formToolsMenuKey, setFormToolsMenuKey] = useState('');
   const [formToolBusyKey, setFormToolBusyKey] = useState('');
-  const [previewForm, setPreviewForm] = useState<InternalKoboImportedFormSummary | null>(null);
+  const [previewForm, setPreviewForm] = useState<ToolboxImportedFormSummary | null>(null);
   const [previewDefinition, setPreviewDefinition] = useState<Record<string, unknown> | null>(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [selectedProjectFormKey, setSelectedProjectFormKey] = useState('');
   const importFileInputRef = useRef<HTMLInputElement | null>(null);
   const showLegacyKoboTable =
     typeof window !== 'undefined' && window.location.search.includes('legacyKoboTable=1');
+  const { peut, PERMISSIONS } = usePermissions();
 
   const selectedSubmission = useMemo(
     () => submissions.find((submission) => submission.id === selectedId) || submissions[0] || null,
@@ -1508,7 +1517,7 @@ export default function InternalKoboSubmissions() {
   const loadFormDefinitions = useCallback(async () => {
     setIsLoadingForms(true);
     try {
-      const forms = await fetchInternalKoboFormDefinitions();
+      const forms = await fetchtoolboxFormDefinitions();
       setImportedForms(forms);
     } catch {
       toast.error('Gestionnaire XLSForm indisponible pour le moment');
@@ -1532,11 +1541,11 @@ export default function InternalKoboSubmissions() {
         mobileOnly: filters.mobileOnly || undefined,
       };
       const [report, diagnostics] = await Promise.all([
-        fetchInternalKoboSubmissionsReport(cleanFilters).catch((err) => {
+        fetchToolboxSubmissionsReport(cleanFilters).catch((err) => {
           logger.error('Error fetching submissions report:', err);
           return { submissions: [], count: 0, diagnostics: null };
         }),
-        fetchInternalKoboDiagnostics().catch((err) => {
+        fetchToolboxDiagnostics().catch((err) => {
           logger.error('Error fetching diagnostics:', err);
           return null;
         }),
@@ -1569,7 +1578,7 @@ export default function InternalKoboSubmissions() {
 
   useEffect(() => {
     if (!selectedProjectFormKey) return;
-    apiClient.get('internal-kobo/form-stats', { params: { formKey: selectedProjectFormKey } })
+    apiClient.get('toolbox/form-stats', { params: { formKey: selectedProjectFormKey } })
       .then(({ data }) => { if (data?.stats) setFormStats(data.stats); })
       .catch(() => {});
   }, [selectedProjectFormKey]);
@@ -1698,7 +1707,7 @@ export default function InternalKoboSubmissions() {
         formKey: selectedProjectFormKey || undefined,
         limit: Math.max(filters.limit, 500),
       };
-      const { blob, filename } = await downloadInternalKoboSubmissionsExport(cleanFilters, format);
+      const { blob, filename } = await downloadToolboxSubmissionsExport(cleanFilters, format);
       saveBlob(blob, filename);
     } catch (exportError) {
       setError(exportError instanceof Error ? exportError.message : 'Export serveur impossible');
@@ -1711,7 +1720,7 @@ export default function InternalKoboSubmissions() {
     setIsExporting('zip');
     setError('');
     try {
-      const { blob, filename } = await downloadInternalKoboMediaExport({
+      const { blob, filename } = await downloadToolboxMediaExport({
         formKey: selectedProjectFormKey,
         status: filters.status || undefined,
       });
@@ -1730,12 +1739,12 @@ export default function InternalKoboSubmissions() {
     }
     if (!window.confirm('Supprimer cette soumission ? Cette action est irréversible.')) return;
     try {
-      await apiClient.delete(`/internal-kobo/submissions/${submissionId}`);
+      await apiClient.delete(`/toolbox/submissions/${submissionId}`);
       toast.success('Soumission supprimée avec succès.');
       setSubmissions((prev) => prev.filter((s) => s.id !== submissionId));
       if (selectedId === submissionId) setSelectedId('');
     } catch (err) {
-      logger.error('[InternalKobo] Delete failed:', err);
+      logger.error('[Toolbox] Delete failed:', err);
       setError(
         err instanceof Error ? err.message : 'Erreur lors de la suppression de la soumission.'
       );
@@ -1747,7 +1756,7 @@ export default function InternalKoboSubmissions() {
     setIsImporting(true);
     setError('');
     try {
-      const result = await importInternalKoboXlsForm(file);
+      const result = await importToolboxXlsForm(file);
       const diagnostics = result.form?.diagnostics as Record<string, unknown> | undefined;
       toast.success(
         `XLSForm importé : ${result.form?.title || result.form?.formKey || 'formulaire'} v${result.form?.formVersion || 'inconnue'} — ${diagnostics?.fieldCount || 0} champs, ${diagnostics?.choiceCount || 0} choix, ${diagnostics?.repeatCount || 0} repeat(s)`
@@ -1770,7 +1779,7 @@ export default function InternalKoboSubmissions() {
     setIsImporting(true);
     setError('');
     try {
-      const result = await importInternalKoboXlsFormFromUrl(url);
+      const result = await importToolboxXlsFormFromUrl(url);
       toast.success(
         `XLSForm importé depuis URL : ${result.form?.title || result.form?.formKey || 'formulaire'}`
       );
@@ -2345,7 +2354,7 @@ export default function InternalKoboSubmissions() {
     setIsSavingBuilder(true);
     setError('');
     try {
-      const result = await createInternalKoboFormDefinition({
+      const result = await createtoolboxFormDefinition({
         title: projectDraft.title.trim(),
         description: projectDraft.description.trim(),
         sector: projectDraft.sector,
@@ -2391,11 +2400,11 @@ export default function InternalKoboSubmissions() {
     }
   };
 
-  const handleToggleFormStatus = async (form: InternalKoboImportedFormSummary) => {
+  const handleToggleFormStatus = async (form: ToolboxImportedFormSummary) => {
     setFormStatusUpdating(form.formKey);
     setError('');
     try {
-      const updated = await updateInternalKoboFormDefinitionStatus(
+      const updated = await updatetoolboxFormDefinitionStatus(
         form.formKey,
         form.active === false
       );
@@ -2416,13 +2425,13 @@ export default function InternalKoboSubmissions() {
     }
   };
 
-  const loadFullFormDefinition = async (form: InternalKoboImportedFormSummary) => {
-    const definition = await fetchInternalKoboImportedFormDefinition(form.formKey);
+  const loadFullFormDefinition = async (form: ToolboxImportedFormSummary) => {
+    const definition = await fetchToolboxImportedFormDefinition(form.formKey);
     if (!definition) throw new Error('Definition XLSForm introuvable sur le VPS');
     return definition;
   };
 
-  const handleOpenFormPreview = async (form: InternalKoboImportedFormSummary) => {
+  const handleOpenFormPreview = async (form: ToolboxImportedFormSummary) => {
     setPreviewForm(form);
     setPreviewDefinition(null);
     setIsPreviewLoading(true);
@@ -2441,7 +2450,7 @@ export default function InternalKoboSubmissions() {
     }
   };
 
-  const handleEditFormInBuilder = async (form: InternalKoboImportedFormSummary) => {
+  const handleEditFormInBuilder = async (form: ToolboxImportedFormSummary) => {
     const busyKey = `${form.formKey}:edit`;
     setFormToolBusyKey(busyKey);
     setFormToolsMenuKey('');
@@ -2481,7 +2490,7 @@ export default function InternalKoboSubmissions() {
   };
 
   const handleDownloadFormDefinition = async (
-    form: InternalKoboImportedFormSummary,
+    form: ToolboxImportedFormSummary,
     format: 'xls' | 'xml'
   ) => {
     const busyKey = `${form.formKey}:${format}`;
@@ -2521,7 +2530,7 @@ export default function InternalKoboSubmissions() {
     }
   };
 
-  const handleShareForm = async (form: InternalKoboImportedFormSummary) => {
+  const handleShareForm = async (form: ToolboxImportedFormSummary) => {
     const shareUrl = `${window.location.origin}${window.location.pathname}?koboForm=${encodeURIComponent(form.formKey)}`;
     setFormToolsMenuKey('');
     try {
@@ -2533,7 +2542,7 @@ export default function InternalKoboSubmissions() {
   };
 
   const handleCloneForm = async (
-    form: InternalKoboImportedFormSummary,
+    form: ToolboxImportedFormSummary,
     mode: 'clone' | 'template'
   ) => {
     const busyKey = `${form.formKey}:${mode}`;
@@ -2545,7 +2554,7 @@ export default function InternalKoboSubmissions() {
       const titlePrefix = mode === 'template' ? 'Modele' : 'Clone';
       const title = `${titlePrefix} de ${getDefinitionTitle(form, definition)}`;
       const formId = normalizeBuilderName(`${title}_${Date.now()}`, 'formulaire_clone');
-      const result = await createInternalKoboFormDefinition({
+      const result = await createtoolboxFormDefinition({
         title,
         description:
           mode === 'template'
@@ -2585,7 +2594,7 @@ export default function InternalKoboSubmissions() {
     try {
       const questions = getInternalGemBuilderQuestions();
       const title = 'GEM Collect Natif Dynamique';
-      const result = await createInternalKoboFormDefinition({
+      const result = await createtoolboxFormDefinition({
         title,
         description: 'Structure native GED OS migree en definition dynamique.',
         sector: 'Energie',
@@ -2623,7 +2632,7 @@ export default function InternalKoboSubmissions() {
     }
   };
 
-  const handleRedeployForm = async (form: InternalKoboImportedFormSummary) => {
+  const handleRedeployForm = async (form: ToolboxImportedFormSummary) => {
     setFormToolsMenuKey('');
     if (form.active !== false) {
       toast(`${form.title || form.formKey} est déjà déployé.`);
@@ -2632,12 +2641,12 @@ export default function InternalKoboSubmissions() {
     await handleToggleFormStatus(form);
   };
 
-  const handleReview = async (status: Exclude<InternalKoboSubmissionStatus, 'draft'>) => {
+  const handleReview = async (status: Exclude<ToolboxSubmissionstatus, 'draft'>) => {
     if (!selectedSubmission) return;
     setIsReviewing(true);
     setError('');
     try {
-      const updated = await reviewInternalKoboSubmission(selectedSubmission.id, status, reviewNote);
+      const updated = await reviewtoolboxSubmission(selectedSubmission.id, status, reviewNote);
       setReviewNote('');
       await loadSubmissions();
       if (updated) setSelectedId(updated.id);
@@ -2716,7 +2725,7 @@ export default function InternalKoboSubmissions() {
           (
             entry
           ): entry is {
-            submission: InternalKoboSubmissionRecord;
+            submission: toolboxSubmissionRecord;
             coordinates: { lat: number; lon: number };
           } => Boolean(entry.coordinates)
         ),
@@ -3037,33 +3046,39 @@ export default function InternalKoboSubmissions() {
                 <p className="text-sm font-bold text-slate-400">Aucun formulaire déployé</p>
                 <p className="mt-1 text-xs text-slate-500">Importez un XLSForm ou créez un nouveau projet</p>
                 <div className="mt-6 flex gap-3">
-                  <label className="inline-flex cursor-pointer items-center gap-2 rounded-2xl bg-cyan-600 px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-white hover:bg-cyan-700">
-                    <Upload size={14} />
-                    Importer XLSForm
-                    <input
-                      type="file"
-                      accept=".xlsx,.xls"
-                      className="hidden"
-                      disabled={isImporting}
-                      onChange={(event) => {
-                        handleImportXlsForm(event.target.files?.[0]);
-                        event.target.value = '';
-                      }}
-                    />
-                  </label>
-                  <button
-                    onClick={() => openWorkspaceSection('new')}
-                    className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-slate-100 hover:bg-white/[0.08]"
-                  >
-                    <Plus size={14} />
-                    Nouveau projet
-                  </button>
+                  {peut(PERMISSIONS.TOOLBOX_SETTINGS_MANAGE) ? (
+                    <label className="inline-flex cursor-pointer items-center gap-2 rounded-2xl bg-cyan-600 px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-white hover:bg-cyan-700">
+                      <Upload size={14} />
+                      Importer XLSForm
+                      <input
+                        type="file"
+                        accept=".xlsx,.xls"
+                        className="hidden"
+                        disabled={isImporting}
+                        onChange={(event) => {
+                          handleImportXlsForm(event.target.files?.[0]);
+                          event.target.value = '';
+                        }}
+                      />
+                    </label>
+                  ) : null}
+                  {peut(PERMISSIONS.TOOLBOX_SETTINGS_MANAGE) ? (
+                    <button
+                      onClick={() => openWorkspaceSection('new')}
+                      className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-slate-100 hover:bg-white/[0.08]"
+                    >
+                      <Plus size={14} />
+                      Nouveau projet
+                    </button>
+                  ) : null}
                 </div>
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                 {(workspaceSection === 'new'
-                  ? [{ label: 'Nouveau projet vierge', formKey: '__new__' }]
+                  ? peut(PERMISSIONS.TOOLBOX_SETTINGS_MANAGE)
+                    ? [{ label: 'Nouveau projet vierge', formKey: '__new__' }]
+                    : []
                   : importedForms
                       .filter((f) => {
                         if (workspaceSection === 'deployed') return f.status === 'deployed';
@@ -5606,15 +5621,17 @@ export default function InternalKoboSubmissions() {
                               </td>
                               <td className="border-b border-slate-200 px-4 py-4 align-middle">
                                 <div className="relative flex items-center gap-1">
-                                  <button
-                                    type="button"
-                                    title="Modifier dans le builder"
-                                    onClick={() => handleEditFormInBuilder(form)}
-                                    disabled={Boolean(formToolBusyKey)}
-                                    className="grid h-9 w-9 place-items-center rounded-lg text-blue-800 hover:bg-blue-50 disabled:opacity-50"
-                                  >
-                                    <Pencil size={18} />
-                                  </button>
+                                  {peut(PERMISSIONS.TOOLBOX_SETTINGS_MANAGE) ? (
+                                    <button
+                                      type="button"
+                                      title="Modifier dans le builder"
+                                      onClick={() => handleEditFormInBuilder(form)}
+                                      disabled={Boolean(formToolBusyKey)}
+                                      className="grid h-9 w-9 place-items-center rounded-lg text-blue-800 hover:bg-blue-50 disabled:opacity-50"
+                                    >
+                                      <Pencil size={18} />
+                                    </button>
+                                  ) : null}
                                   <button
                                     type="button"
                                     title="Apercu du formulaire"
@@ -5799,13 +5816,15 @@ export default function InternalKoboSubmissions() {
                           <span className="text-xs font-bold text-white">Partager le projet</span>
                           <Share2 size={14} className="text-slate-400" />
                         </button>
-                        <button
-                          onClick={() => handleEditFormInBuilder(selectedProjectForm)}
-                          className="flex items-center justify-between rounded-xl border border-white/5 bg-white/5 p-3 text-left transition hover:bg-white/10"
-                        >
-                          <span className="text-xs font-bold text-white">Editer le formulaire</span>
-                          <Pencil size={14} className="text-slate-400" />
-                        </button>
+                        {peut(PERMISSIONS.TOOLBOX_SETTINGS_MANAGE) ? (
+                          <button
+                            onClick={() => handleEditFormInBuilder(selectedProjectForm)}
+                            className="flex items-center justify-between rounded-xl border border-white/5 bg-white/5 p-3 text-left transition hover:bg-white/10"
+                          >
+                            <span className="text-xs font-bold text-white">Editer le formulaire</span>
+                            <Pencil size={14} className="text-slate-400" />
+                          </button>
+                        ) : null}
                         <button
                           onClick={() => handleOpenFormPreview(selectedProjectForm)}
                           className="flex items-center justify-between rounded-xl border border-blue-500/20 bg-blue-500/10 p-3 text-left transition hover:bg-blue-500/20"
@@ -5856,6 +5875,67 @@ export default function InternalKoboSubmissions() {
                                   J-{6 - i}
                                 </span>
                                 <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-[9px] font-bold text-cyan-300 opacity-0 transition group-hover:opacity-100">
+                                  {val}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {formStats?.statusBreakdown && formStats.statusBreakdown.length > 0 ? (
+                      <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+                        <div>
+                          <p className="mb-3 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">Statut</p>
+                          <div className="space-y-2">
+                            {formStats.statusBreakdown.map((s) => {
+                              const pct = formStats.total > 0 ? ((s.count / formStats.total) * 100).toFixed(1) : '0';
+                              return (
+                                <div key={s.status} className="flex items-center gap-3">
+                                  <span className="w-20 text-[10px] font-semibold text-slate-400">{statusLabels[s.status] || s.status}</span>
+                                  <div className="flex-1 rounded-full bg-slate-800">
+                                    <div className="h-2 rounded-full bg-cyan-500/60" style={{ width: `${pct}%` }} />
+                                  </div>
+                                  <span className="w-16 text-right text-[11px] font-bold text-white">{s.count}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                        {formStats?.topSubmitters && formStats.topSubmitters.length > 0 ? (
+                          <div>
+                            <p className="mb-3 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">Top soumetteurs</p>
+                            <div className="space-y-1.5">
+                              {formStats.topSubmitters.map((u, i) => (
+                                <div key={u.userId} className="flex items-center justify-between rounded-xl border border-white/8 bg-slate-950/30 px-3 py-2">
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <span className="shrink-0 grid h-5 w-5 place-items-center rounded-full bg-slate-800 text-[9px] font-black text-slate-400">{i + 1}</span>
+                                    <span className="truncate text-[11px] font-semibold text-slate-300">{u.name}</span>
+                                  </div>
+                                  <span className="shrink-0 text-[11px] font-bold text-white">{u.count}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
+
+                    {formStats?.weeklyTrend && formStats.weeklyTrend.length > 0 ? (
+                      <div className="mt-6">
+                        <p className="mb-3 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">Tendance hebdo (12 semaines)</p>
+                        <div className="flex h-24 items-end gap-1.5">
+                          {formStats.weeklyTrend.map((val, i) => {
+                            const max = Math.max(...formStats.weeklyTrend!, 1);
+                            return (
+                              <div key={i} className="group relative flex flex-1 flex-col justify-end">
+                                <div
+                                  className="w-full rounded-t-sm bg-emerald-500/60 transition group-hover:bg-emerald-400"
+                                  style={{ height: `${(val / max) * 100}%` }}
+                                />
+                                <span className="mt-1 text-center text-[7px] font-semibold text-slate-600">S-{formStats.weeklyTrend.length - i}</span>
+                                <span className="absolute -top-4 left-1/2 -translate-x-1/2 text-[8px] font-bold text-emerald-300 opacity-0 transition group-hover:opacity-100">
                                   {val}
                                 </span>
                               </div>
@@ -6070,6 +6150,7 @@ export default function InternalKoboSubmissions() {
                           <Pencil size={24} />
                         </div>
                       </div>
+                      {peut(PERMISSIONS.TOOLBOX_SETTINGS_MANAGE) ? (
                       <div className="mt-6">
                         <button
                           type="button"
@@ -6079,14 +6160,16 @@ export default function InternalKoboSubmissions() {
                           <Pencil size={14} />
                           Editer le formulaire natif
                         </button>
+                      </div>
+                      ) : null}
                         <p className="mt-4 text-[11px] font-medium leading-relaxed text-slate-500">
                           Cette action chargera toutes les rubriques (Ménage, Maçon, Réseau, etc.)
                           et les choix natifs dans le builder. Une fois sauvegardé, vous pourrez
                           déployer des mises à jour dynamiques sans modifier le code source.
                         </p>
-                      </div>
                     </div>
 
+                    {peut(PERMISSIONS.TOOLBOX_SETTINGS_MANAGE) ? (
                     <div className="rounded-3xl border border-white/10 bg-slate-900/45 p-6">
                       <div className="flex items-center justify-between gap-4">
                         <div>
@@ -6119,6 +6202,7 @@ export default function InternalKoboSubmissions() {
                         </button>
                       </div>
                     </div>
+                    ) : null}
                   </section>
 
                   {globalDiagnostics?.warnings?.length ? (
@@ -6692,7 +6776,7 @@ export default function InternalKoboSubmissions() {
               </section>
             ) : null}
 
-            {mainTab === 'settings' ? (
+            {mainTab === 'settings' && peut(PERMISSIONS.TOOLBOX_SETTINGS_READ) ? (
               <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                 <div className="rounded-3xl border border-white/10 bg-slate-900/45 p-4">
                   <p className="text-[11px] font-black uppercase tracking-[0.16em] text-blue-100">
@@ -6788,13 +6872,15 @@ export default function InternalKoboSubmissions() {
                         ou select_one_from_file().
                       </p>
                     </div>
-                    <button
-                      type="button"
-                      className="inline-flex items-center gap-2 rounded-full border border-blue-300/20 bg-blue-500/10 px-4 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-blue-100 transition hover:bg-blue-500/20"
-                    >
-                      <Upload size={14} />
-                      Ajouter un fichier
-                    </button>
+                    {peut(PERMISSIONS.TOOLBOX_SETTINGS_MANAGE) ? (
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-2 rounded-full border border-blue-300/20 bg-blue-500/10 px-4 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-blue-100 transition hover:bg-blue-500/20"
+                      >
+                        <Upload size={14} />
+                        Ajouter un fichier
+                      </button>
+                    ) : null}
                   </div>
                   <div className="mt-5 rounded-2xl border border-dashed border-white/10 p-8 text-center text-sm font-semibold text-slate-500">
                     <FileSpreadsheet size={32} className="mx-auto mb-3 text-slate-600" />
@@ -6809,48 +6895,57 @@ export default function InternalKoboSubmissions() {
                         Partage du projet (Permissions)
                       </p>
                       <p className="mt-1 text-xs font-semibold text-slate-500">
-                        Gerez les acces specifiques a ce projet (Ajouter des soumissions, Editer,
-                        Valider).
+                        Vos permissions sur ce projet
                       </p>
                     </div>
-                    <button
-                      type="button"
-                      className="inline-flex items-center gap-2 rounded-full border border-blue-300/20 bg-blue-500/10 px-4 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-blue-100 transition hover:bg-blue-500/20"
-                    >
-                      <Share2 size={14} />
-                      Ajouter un utilisateur
-                    </button>
+                    {peut(PERMISSIONS.TOOLBOX_SETTINGS_MANAGE) ? (
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-2 rounded-full border border-blue-300/20 bg-blue-500/10 px-4 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-blue-100 transition hover:bg-blue-500/20"
+                      >
+                        <Share2 size={14} />
+                        Ajouter un utilisateur
+                      </button>
+                    ) : null}
                   </div>
                   <div className="mt-5 rounded-2xl border border-white/10 p-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-bold text-white">Equipe GED OS (Proprietaire)</p>
-                        <p className="text-[10px] font-semibold text-slate-500">Tous les droits</p>
+                        <p className="text-sm font-bold text-white">Vos permissions</p>
+                        <p className="mt-2 text-[10px] font-semibold text-slate-500">
+                          {[
+                            PERMISSIONS.TOOLBOX_SUBMISSION_CREATE,
+                            PERMISSIONS.TOOLBOX_SUBMISSION_EDIT,
+                            PERMISSIONS.TOOLBOX_SUBMISSION_VALIDATE,
+                            PERMISSIONS.TOOLBOX_SUBMISSION_DELETE,
+                            PERMISSIONS.TOOLBOX_SETTINGS_READ,
+                            PERMISSIONS.TOOLBOX_SETTINGS_MANAGE,
+                          ]
+                            .filter((p) => peut(p))
+                            .map((p) => (
+                              <span
+                                key={p}
+                                className="mr-2 inline-block rounded-full border border-emerald-300/20 bg-emerald-400/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.1em] text-emerald-100"
+                              >
+                                {p}
+                              </span>
+                            ))}
+                          {[PERMISSIONS.TOOLBOX_SUBMISSION_CREATE,
+                            PERMISSIONS.TOOLBOX_SUBMISSION_EDIT,
+                            PERMISSIONS.TOOLBOX_SUBMISSION_VALIDATE,
+                            PERMISSIONS.TOOLBOX_SUBMISSION_DELETE,
+                            PERMISSIONS.TOOLBOX_SETTINGS_READ,
+                            PERMISSIONS.TOOLBOX_SETTINGS_MANAGE,
+                          ].every((p) => !peut(p))
+                            ? 'Aucune permission specifique'
+                            : null}
+                        </p>
                       </div>
                     </div>
                   </div>
                 </div>
                 <GedcollectUserManager />
-                <div className="rounded-3xl border border-white/10 bg-slate-900/45 p-4 lg:col-span-2">
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <p className="text-[11px] font-black uppercase tracking-[0.16em] text-blue-100">
-                        Services REST (Webhooks)
-                      </p>
-                      <p className="mt-1 text-xs font-semibold text-slate-500">
-                        Envoyez automatiquement les donnees vers des serveurs externes lors de
-                        chaque soumission.
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      className="inline-flex items-center gap-2 rounded-full border border-blue-300/20 bg-blue-500/10 px-4 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-blue-100 transition hover:bg-blue-500/20"
-                    >
-                      <Link size={14} />
-                      Ajouter un service
-                    </button>
-                  </div>
-                </div>
+                <RestServicesManager formKey={selectedProjectFormKey} />
                 <div className="rounded-3xl border border-white/10 bg-slate-900/45 p-4 lg:col-span-2">
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div>
@@ -6972,23 +7067,25 @@ export default function InternalKoboSubmissions() {
                             <span className="text-[11px] font-black text-slate-300">
                               {formatDateTime(submission.savedAt)}
                             </span>
-                            <button
-                              type="button"
-                              title="Supprimer cette soumission"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (
-                                  window.confirm(
-                                    'Voulez-vous vraiment supprimer cette soumission ? (Simulation, action bloquee pour integrite DB)'
-                                  )
-                                ) {
-                                  handleDeleteSubmission(submission.id);
-                                }
-                              }}
-                              className="grid h-7 w-7 place-items-center rounded-lg border border-rose-500/20 bg-rose-500/10 text-rose-400 transition hover:bg-rose-500/20"
-                            >
-                              <Trash2 size={13} />
-                            </button>
+                            {peut(PERMISSIONS.TOOLBOX_SUBMISSION_DELETE) ? (
+                              <button
+                                type="button"
+                                title="Supprimer cette soumission"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (
+                                    window.confirm(
+                                      'Voulez-vous vraiment supprimer cette soumission ? (Simulation, action bloquee pour integrite DB)'
+                                    )
+                                  ) {
+                                    handleDeleteSubmission(submission.id);
+                                  }
+                                }}
+                                className="grid h-7 w-7 place-items-center rounded-lg border border-rose-500/20 bg-rose-500/10 text-rose-400 transition hover:bg-rose-500/20"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            ) : null}
                             <Eye
                               size={16}
                               className={isSelected ? 'text-blue-200' : 'text-slate-600'}
@@ -7090,7 +7187,8 @@ export default function InternalKoboSubmissions() {
                           ))}
                         </div>
 
-                        <div className="mt-4 rounded-2xl border border-blue-300/15 bg-blue-500/[0.06] p-3">
+                        {peut(PERMISSIONS.TOOLBOX_SUBMISSION_VALIDATE) ? (
+                          <div className="mt-4 rounded-2xl border border-blue-300/15 bg-blue-500/[0.06] p-3">
                           <div className="flex items-center justify-between gap-3">
                             <div>
                               <p className="text-[10px] font-black uppercase tracking-[0.14em] text-blue-100">
@@ -7143,6 +7241,7 @@ export default function InternalKoboSubmissions() {
                             </button>
                           </div>
                         </div>
+                        ) : null}
 
                         {(selectedSubmission.requiredMissing || []).length > 0 ? (
                           <div className="mt-4 rounded-2xl border border-amber-300/20 bg-amber-400/10 p-3">

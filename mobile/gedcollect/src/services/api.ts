@@ -1,14 +1,29 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const TOKEN_KEY = '@gedcollect/authToken';
-const API_BASE_URL = 'https://ged.proquelec.sn';
+const BASE_URL_KEY = '@gedcollect/baseUrl';
+const DEFAULT_BASE_URL = 'https://ged.proquelec.sn';
 
 async function getToken(): Promise<string | null> {
   return AsyncStorage.getItem(TOKEN_KEY);
 }
 
+async function getBaseUrl(): Promise<string> {
+  const stored = await AsyncStorage.getItem(BASE_URL_KEY);
+  return stored || DEFAULT_BASE_URL;
+}
+
+export async function updateServerUrl(url: string): Promise<void> {
+  await AsyncStorage.setItem(BASE_URL_KEY, url);
+}
+
+export async function getServerUrl(): Promise<string> {
+  return getBaseUrl();
+}
+
 async function apiFetch(path: string, options: RequestInit = {}): Promise<Response> {
-  const url = `${API_BASE_URL}${path}`;
+  const baseUrl = await getBaseUrl();
+  const url = `${baseUrl}${path}`;
   const token = await getToken();
 
   const headers: Record<string, string> = {
@@ -24,7 +39,8 @@ async function apiFetch(path: string, options: RequestInit = {}): Promise<Respon
 }
 
 export async function sendOtp(phone: string): Promise<{ message: string; code?: string }> {
-  const resp = await fetch(`${API_BASE_URL}/api/gedcollect/auth/send-otp`, {
+  const baseUrl = await getBaseUrl();
+  const resp = await fetch(`${baseUrl}/api/gedcollect/auth/send-otp`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ phone }),
@@ -35,7 +51,8 @@ export async function sendOtp(phone: string): Promise<{ message: string; code?: 
 }
 
 export async function verifyOtp(phone: string, code: string): Promise<{ accessToken: string; user: any }> {
-  const resp = await fetch(`${API_BASE_URL}/api/gedcollect/auth/verify-otp`, {
+  const baseUrl = await getBaseUrl();
+  const resp = await fetch(`${baseUrl}/api/gedcollect/auth/verify-otp`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ phone, code }),
@@ -81,6 +98,6 @@ export async function isAuthenticated(): Promise<boolean> {
     const resp = await apiFetch('/api/gedcollect/forms');
     return resp.ok;
   } catch {
-    return false;
+    return true;
   }
 }

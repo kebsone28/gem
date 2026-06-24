@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getServerRequiredMissing, getServerValidationIssues } from '../internalKobo.validation.js';
+import { getServerRequiredMissing, getServerValidationIssues } from '../toolbox.validation.js';
 
 const BASE_VALUES = {
     Numero_ordre: '26',
