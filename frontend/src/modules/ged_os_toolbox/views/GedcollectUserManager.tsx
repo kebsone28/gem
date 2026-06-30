@@ -57,14 +57,14 @@ const GedcollectUserManager: React.FC = () => {
     try {
       const { data } = await apiClient.get('gedcollect-admin/forms');
       setForms(data.forms || []);
-    } catch {}
+    } catch { /* silent – forms are optional */ }
   }, []);
 
   const fetchAssignments = useCallback(async () => {
     try {
       const { data } = await apiClient.get('gedcollect-admin/assignments');
       setAssignments(data.assignments || []);
-    } catch {}
+    } catch { /* silent – assignments are optional */ }
   }, []);
 
   useEffect(() => {

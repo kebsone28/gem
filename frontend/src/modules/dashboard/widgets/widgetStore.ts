@@ -24,7 +24,7 @@ export function loadWidgetOrder(): WidgetItem[] {
       const savedIds = new Set(parsed.map((w) => w.id));
       const missing = DEFAULT_WIDGETS.filter((w) => !savedIds.has(w.id));
       return [...parsed, ...missing];
-    } catch {}
+    } catch { /* corrupted localStorage – fall through to defaults */ }
   }
   return [...DEFAULT_WIDGETS];
 }

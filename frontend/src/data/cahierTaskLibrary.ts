@@ -1847,7 +1847,7 @@ export const DEFAULT_TASK_LIBRARY: TaskLibrary = {
           'Rester indépendant et objectif',
           'Signaler toute fraude',
         ],
-      ],
+      },
       koboGuide: [
         {
           title: 'Prérequis avant contrôle',
