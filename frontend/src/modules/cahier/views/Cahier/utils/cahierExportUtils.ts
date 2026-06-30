@@ -1,4 +1,4 @@
-﻿import { AlignmentType, Document, HeadingLevel, Packer, Paragraph, TextRun, BorderStyle, Header, Footer, ImageRun, SectionType } from 'docx';
+﻿import { AlignmentType, Document, HeadingLevel, Packer, Paragraph, TextRun, BorderStyle, Header, Footer, ImageRun, SectionType, PageNumber } from 'docx';
 import { saveAs } from 'file-saver';
 import { isContractHeading, isStrategyHeading } from './cahierUtils';
 import type { OperationalStrategyTemplate } from '@/data/operationalStrategyTemplates';
@@ -11,51 +11,42 @@ const COLORS = {
   muted: '718096',
 };
 
-function isBulletItem(line: string): boolean {
+type DocLineType = 'heading' | 'article' | 'bullet' | 'signature' | 'intro' | 'paragraph' | 'subheading';
+
+function classifyLine(line: string, index: number, totalLines: number): DocLineType {
   const t = line.trim();
-  if (t.length < 10 || t.length > 250) return false;
-  if (isContractHeading(t)) return false;
-  if (/^[A-ZÀÂÄÇÉÈÊËÎÏÔÖÙÛÜ\s\d-]+$/.test(t) && t.length > 5) return false;
-  if (/^(Entre les|Il a été|Pour Proquelec|Pour le Prestataire|Fait à|LE PRESTATAIRE|PROQUELEC)/i.test(t)) return false;
-  return (
-    /^[A-Z][a-zéèêëàâäùûüôöîïç]{2,} : /.test(t) ||
-    /^(Montage|Câblage|Serrage|Test|Marquage|Préparation|Déroulement|Copie|Copies|Liste|Attestation|Assurer|Respecter|Renseigner|Informer|Vérifier|Maintenir|Payer|Porter|Fournir|Les kits|Accessoires|Appareillage|Rouleau|Câble|Kit|Coffret|Objectif|Équipe|Lieu d'exécution)/i.test(t)
-  );
-}
+  if (!t) return 'paragraph';
 
-function isIntroLine(line: string): boolean {
-  const t = line.trim();
-  return t.endsWith(':') && t.length > 12 && !isContractHeading(t) && t !== t.toUpperCase();
-}
+  // HEADINGS (contract headings or first line if short)
+  if (isContractHeading(t) || isStrategyHeading(t)) return 'heading';
+  if (index === 0 && t.length < 80) return 'heading';
 
-function isSignatureLine(line: string): boolean {
-  const t = line.trim();
-  return /^(Pour (Proquelec|le Prestataire|le Client|le Fournisseur|le Directeur|le Coordonnateur)|Titre ou Fonction|Téléphone|Email|Fait à|LE PRESTATAIRE|LE CLIENT|LE FOURNISSEUR|LE DIRECTEUR|LE COORDONNATEUR)/i.test(t);
-}
+  // SIGNATURES
+  if (
+    /^(Pour (Proquelec|le Prestataire|le Client|le Fournisseur|le Directeur|le Coordonnateur)|LE PRESTATAIRE|LE CLIENT|LE FOURNISSEUR|LE DIRECTEUR|LE COORDONNATEUR|Titre ou Fonction|Téléphone|Email|Fait à)/i.test(t)
+  ) return 'signature';
 
-function buildParagraph(text: string, options: {
-  bold?: boolean;
-  italic?: boolean;
-  size?: number;
-  color?: string;
-  alignment?: (typeof AlignmentType)[keyof typeof AlignmentType];
-  spacingBefore?: number;
-  spacingAfter?: number;
-  indentLeft?: number;
-  isBullet?: boolean;
-}) {
-  const { bold, italic, size, color, alignment, spacingBefore, spacingAfter, indentLeft, isBullet } = options;
-  const children: import('docx').TextRun[] = [];
+  // ARTICLES
+  if (/^Article\s+\d+/i.test(t)) return 'article';
 
-  children.push(new TextRun({ text, bold, italic, size: size || 26, color: color || COLORS.body }));
+  // SUBHEADINGS (numérotation simple 1., 2., etc.)
+  if (/^\d+\.\s+[A-Z]/.test(t)) return 'subheading';
 
-  return new Paragraph({
-    alignment,
-    bullet: isBullet ? { level: 0 } : undefined,
-    spacing: { before: spacingBefore || 60, after: spacingAfter || 60 },
-    indent: indentLeft ? { left: indentLeft, hanging: isBullet ? 360 : undefined } : undefined,
-    children,
-  });
+  // BULLETS EXPLICITES (marqueurs visuels)
+  if (/^(\-|\•|\*)\s+/.test(t)) return 'bullet';
+
+  // BULLETS IMPLICITES (se termine par ; et commence par minuscule)
+  if (/;\s*$/.test(t) && /^[a-zéèêëàâäùûüôöîïç]/.test(t)) return 'bullet';
+
+  // INTRO (très limité - exclude articles)
+  if (
+    t.endsWith(':') &&
+    t.length > 20 &&
+    !/^Article\s+\d+/i.test(t) &&
+    !isContractHeading(t)
+  ) return 'intro';
+
+  return 'paragraph';
 }
 
 function buildContractSection(lotName: string, lines: string[]) {
@@ -83,80 +74,74 @@ function buildContractSection(lotName: string, lines: string[]) {
     if (!trimmed) continue;
     trimmed = trimmed.replace(/^•[\s•]*/, '').trim();
 
-    const isTitle = i <= 2;
-    const isArticleHeading = /^Article\s+\d+/i.test(trimmed);
-    const isSubHeading = /^\d+\.\d/.test(trimmed);
-    const isAllCaps = /^[A-ZÀÂÄÇÉÈÊËÎÏÔÖÙÛÜ\s\d-]+$/.test(trimmed) && trimmed.length > 5;
-    const isBullet = isBulletItem(trimmed);
-    const isIntro = isIntroLine(trimmed);
-    const isSignature = isSignatureLine(trimmed);
+    const type = classifyLine(trimmed, i, lines.length);
 
-    if (isTitle) {
-      children.push(buildParagraph(trimmed, {
-        bold: true,
-        size: i === 0 ? 30 : 28,
-        color: COLORS.primary,
-        alignment: AlignmentType.CENTER,
-        spacingBefore: i === 0 ? 0 : 80,
-        spacingAfter: i === 2 ? 200 : 80,
-      }));
-    } else if (isArticleHeading) {
-      children.push(new Paragraph({
-        spacing: { before: 360, after: 120 },
-        border: { top: { color: COLORS.primary, size: 2, space: 1, style: BorderStyle.SINGLE } },
-        children: [
-          new TextRun({ text: trimmed, bold: true, size: 28, color: COLORS.primary }),
-        ],
-      }));
-    } else if (isSubHeading) {
-      children.push(buildParagraph(trimmed, {
-        bold: true,
-        size: 26,
-        color: COLORS.secondary,
-        spacingBefore: 200,
-        spacingAfter: 80,
-      }));
-    } else if (isAllCaps) {
-      children.push(buildParagraph(trimmed, {
-        bold: true,
-        size: 26,
-        color: COLORS.secondary,
-        spacingBefore: 240,
-        spacingAfter: 100,
-      }));
-    } else if (isBullet) {
-      children.push(buildParagraph(trimmed, {
-        size: 26,
-        color: COLORS.body,
-        spacingBefore: 40,
-        spacingAfter: 40,
-        indentLeft: 720,
-        isBullet: true,
-      }));
-    } else if (isIntro) {
-      children.push(buildParagraph(trimmed, {
-        bold: true,
-        italic: true,
-        size: 26,
-        color: COLORS.body,
-        spacingBefore: 160,
-        spacingAfter: 80,
-      }));
-    } else if (isSignature) {
-      children.push(buildParagraph(trimmed, {
-        bold: /^(Pour|LE PRESTATAIRE)/i.test(trimmed),
-        size: 26,
-        color: COLORS.primary,
-        spacingBefore: trimmed.startsWith('Pour') ? 200 : 60,
-        spacingAfter: 40,
-      }));
-    } else {
-      children.push(buildParagraph(trimmed, {
-        size: 26,
-        color: COLORS.body,
-        spacingBefore: 60,
-        spacingAfter: 60,
-      }));
+    switch (type) {
+      case 'heading':
+        children.push(new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { before: i === 0 ? 0 : 80, after: i === 2 ? 200 : 80 },
+          children: [
+            new TextRun({ text: trimmed, bold: true, size: i === 0 ? 30 : 28, color: COLORS.primary }),
+          ],
+        }));
+        break;
+
+      case 'article':
+        children.push(new Paragraph({
+          spacing: { before: 360, after: 120 },
+          border: { top: { color: COLORS.primary, size: 2, space: 1, style: BorderStyle.SINGLE } },
+          children: [
+            new TextRun({ text: trimmed, bold: true, size: 28, color: COLORS.primary }),
+          ],
+        }));
+        break;
+
+      case 'subheading':
+        children.push(new Paragraph({
+          spacing: { before: 240, after: 120 },
+          children: [
+            new TextRun({ text: trimmed, bold: true, size: 26, color: COLORS.secondary }),
+          ],
+        }));
+        break;
+
+      case 'bullet':
+        children.push(new Paragraph({
+          bullet: { level: 0 },
+          indent: { left: 720, hanging: 360 },
+          spacing: { before: 40, after: 40 },
+          children: [
+            new TextRun({ text: trimmed, size: 26, color: COLORS.body }),
+          ],
+        }));
+        break;
+
+      case 'intro':
+        children.push(new Paragraph({
+          spacing: { before: 160, after: 80 },
+          children: [
+            new TextRun({ text: trimmed, bold: true, italics: true, size: 26, color: COLORS.body }),
+          ],
+        }));
+        break;
+
+      case 'signature':
+        children.push(new Paragraph({
+          spacing: { before: trimmed.startsWith('Pour') ? 200 : 60, after: 40 },
+          children: [
+            new TextRun({ text: trimmed, bold: /^(Pour|LE PRESTATAIRE)/i.test(trimmed), size: 26, color: COLORS.primary }),
+          ],
+        }));
+        break;
+
+      default:
+        children.push(new Paragraph({
+          spacing: { before: 60, after: 60 },
+          children: [
+            new TextRun({ text: trimmed, size: 26, color: COLORS.body }),
+          ],
+        }));
     }
   }
 
@@ -178,6 +163,7 @@ const createContractHeader = (enteteBuffer: ArrayBuffer | null) => new Header({
           new ImageRun({
             data: enteteBuffer,
             transformation: { width: 617, height: 90 },
+            type: 'png',
           }),
         ],
       }),
@@ -193,9 +179,9 @@ const createContractFooter = () => new Footer({
       border: { top: { style: BorderStyle.SINGLE, size: 1, color: COLORS.muted } },
       children: [
         new TextRun({ text: 'Document confidentiel PROQUELEC — Page ', size: 18, color: COLORS.muted }),
-        new TextRun({ children: ['PAGE_NUMBER'], field: 'PAGE_NUMBER', size: 18, color: COLORS.muted }),
+        new TextRun({ children: [PageNumber.CURRENT], size: 18, color: COLORS.muted }),
         new TextRun({ text: ' sur ', size: 18, color: COLORS.muted }),
-        new TextRun({ children: ['NUMPAGES'], field: 'NUMPAGES', size: 18, color: COLORS.muted }),
+        new TextRun({ children: [PageNumber.TOTAL_PAGES], size: 18, color: COLORS.muted }),
       ],
     }),
   ],

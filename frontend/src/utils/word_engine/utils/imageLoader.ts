@@ -9,8 +9,17 @@ export const fetchImageCached = async (url: string): Promise<ArrayBuffer | null>
   if (imageCache.has(url)) return imageCache.get(url)!;
 
   try {
-    const response = await fetch(url);
-    if (!response.ok) return null;
+    // Handle relative paths by converting to absolute URL
+    let fetchUrl = url;
+    if (url.startsWith('/')) {
+      fetchUrl = `${window.location.origin}${url}`;
+    }
+
+    const response = await fetch(fetchUrl);
+    if (!response.ok) {
+      logger.warn(`Image fetch failed: ${response.status} ${response.statusText}`);
+      return null;
+    }
     const buffer = await response.arrayBuffer();
     imageCache.set(url, buffer);
     return buffer;

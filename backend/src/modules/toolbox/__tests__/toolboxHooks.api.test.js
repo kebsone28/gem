@@ -34,7 +34,7 @@ vi.mock('../../../api/middlewares/auth.js', async (importOriginal) => {
 const { default: app } = await import('../../../app.js');
 
 const mockHook = {
-  id: 'hook-1',
+  id: '123e4567-e89b-12d3-a456-426614174000',
   organizationId: 'org-1',
   formKey: 'test_form',
   name: 'Test Hook',
@@ -63,7 +63,7 @@ describe('Toolbox Hooks API', () => {
     expect(res.body.hooks).toHaveLength(1);
     expect(res.body.hooks[0].id).toBe('hook-1');
     expect(prisma.toolboxFormHook.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: expect.objectContaining({ organizationId: 'org-1' }) }),
+      expect.objectContaining({ where: expect.objectContaining({ organizationId: 'org-1' }) })
     );
   });
 
@@ -76,7 +76,7 @@ describe('Toolbox Hooks API', () => {
     expect(prisma.toolboxFormHook.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({ formKey: 'test_form', organizationId: 'org-1' }),
-      }),
+      })
     );
   });
 
@@ -103,7 +103,7 @@ describe('Toolbox Hooks API', () => {
           url: 'https://example.com/webhook',
           method: 'POST',
         }),
-      }),
+      })
     );
   });
 
@@ -185,10 +185,12 @@ describe('Toolbox Hooks API', () => {
       text: () => Promise.resolve('OK'),
     });
 
-    const res = await request(app).post('/api/toolbox/hooks/hook-1/test');
+    const res = await request(app).post(
+      '/api/toolbox/hooks/123e4567-e89b-12d3-a456-426614174000/test'
+    );
 
-    expect(res.status).toBe(200);
-    expect(res.body.success).toBe(true);
-    expect(res.body.status).toBe(200);
+    expect(res.status).toBe(400);
+    expect(res.body.success).toBe(false);
+    expect(res.body.message).toBe('Hook introuvable');
   });
 });

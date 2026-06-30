@@ -2,9 +2,8 @@ import { useMemo, useState, useEffect, useCallback } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../store/db';
 import { KIT_COMPOSITION, GRAPPES_CONFIG } from '../utils/config';
-import type { Household, Project, SubGrappe, Team, Warehouse } from '../utils/types';
+import type { Household, SubGrappe, Team, Warehouse } from '../utils/types';
 import apiClient from '../api/client';
-import * as safeStorage from '../utils/safeStorage';
 import logger from '../utils/logger';
 import appLogger from '../services/logger';
 import { useProject } from '../contexts/ProjectContext';
@@ -84,18 +83,11 @@ interface MovementHistoryEntry {
 }
 
 export function useLogistique(serverHouseholds?: Household[]) {
-  const activeProjectId = safeStorage.getItem('active_project_id');
-  const { updateProject } = useProject();
+  const { activeProjectId, project, updateProject, isLoading: isProjectLoading } = useProject();
   const cachedHouseholds = useLiveQuery(async () => {
     if (!activeProjectId) return [];
     return await db.households.where('projectId').equals(activeProjectId).toArray();
   }, [activeProjectId]) as Household[] | undefined;
-  const projects = useLiveQuery(() => db.projects.toArray()) as Project[] | undefined;
-
-  const project = useLiveQuery(async () => {
-    if (activeProjectId) return await db.projects.get(activeProjectId);
-    return (await db.projects.toArray())[0] ?? null;
-  }, [activeProjectId]) as Project | null | undefined;
 
   const [dbTeams, setDbTeams] = useState<Team[]>([]);
 
@@ -728,6 +720,7 @@ export function useLogistique(serverHouseholds?: Household[]) {
     teams,
     preparatorTeams,
     project,
+    hasActiveProject: Boolean(project?.id),
     stockData,
     deliveries,
     agents,
@@ -753,7 +746,7 @@ export function useLogistique(serverHouseholds?: Household[]) {
     updateWarehouseCoords,
     deleteMovement,
     updateMovement,
-    isLoading: !households || project === undefined || !projects,
+    isLoading: isProjectLoading || (Boolean(activeProjectId) && !households),
   };
 
 }

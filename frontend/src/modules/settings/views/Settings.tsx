@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import logger from '@services/logger';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -18,7 +18,9 @@ import {
     CloudDownload,
     Navigation2,
     Save,
-    RefreshCw
+    RefreshCw,
+    Globe,
+    HardDrive,
 } from 'lucide-react';
 import { useProject } from '@contexts/ProjectContext';
 import type { CatalogItem, SubTeamEquipment } from '@utils/types';
@@ -26,13 +28,15 @@ import { generateDynamicGrappes } from '@utils/clustering';
 import { useTeams } from '@hooks/useTeams';
 import apiClient from '@/api/client';
 import { PageContainer, PageHeader, ContentArea } from '@components';
+import { ModuleStatePanel } from '@components/common/ModuleStatePanel';
 import { KoboSettingsSection } from '@components/KoboSettingsSection';
+import DataHubSection from '@components/DataHubSection';
 
 import { SENEGAL_REGIONS } from '@utils/config';
 import { StatusBadge } from '@components/dashboards/DashboardComponents';
 import { useTerrainData } from '@hooks/useTerrainData';
 
-type TabType = 'teams' | 'costs' | 'zones' | 'logistics' | 'kobo' | 'data';
+type TabType = 'teams' | 'costs' | 'zones' | 'logistics' | 'kobo' | 'data' | 'datahub';
 
 interface TeamAllocation {
     id: string;
@@ -48,11 +52,19 @@ interface Zone {
 }
 
 export default function Settings() {
-    const [activeTab, setActiveTab] = useState<TabType>('teams');
+    const [activeTab, setActiveTab] = useState<TabType>(() => {
+        const params = new URLSearchParams(window.location.search);
+        const tab = params.get('tab');
+        if (tab === 'datahub') return 'datahub';
+        return 'teams';
+    });
     const { project, updateProject, isLoading: isProjectLoading } = useProject();
-    const { households, isLoading: isHouseholdsLoading } = useTerrainData();
+    const needsHouseholds = activeTab === 'data' || activeTab === 'datahub';
+    const { households, isLoading: isHouseholdsLoading } = useTerrainData({
+        enabled: Boolean(project?.id) && needsHouseholds,
+    });
 
-    const isLoading = isProjectLoading || isHouseholdsLoading;
+    const isLoading = isProjectLoading || (needsHouseholds && isHouseholdsLoading);
 
     if (isLoading) return (
         <div className="min-h-screen flex items-center justify-center bg-slate-950">
@@ -63,6 +75,27 @@ export default function Settings() {
         </div>
     );
 
+    if (!project?.id) {
+        return (
+            <PageContainer className="min-h-screen bg-slate-950 py-8 transition-all duration-500">
+                <PageHeader
+                    backLink={{ to: '/admin/hub', label: 'Retour au Centre de Contrôle' }}
+                    title="Configuration"
+                    subtitle="Paramètres globaux du projet"
+                    icon={<SettingsIcon size={24} />}
+                />
+                <ContentArea className="space-y-10 p-8 bg-slate-950 border-white/5">
+                    <ModuleStatePanel
+                        title="Aucun projet actif"
+                        description="Les parametres d'equipes, tarifs, zones, logistique et Kobo sont definis par projet. Selectionnez un projet pour modifier ou consulter la bonne configuration."
+                        actionLabel="Choisir un projet"
+                        actionTo="/projects"
+                    />
+                </ContentArea>
+            </PageContainer>
+        );
+    }
+
     const tabs = [
         { id: 'teams', label: 'Équipes', icon: Users },
         { id: 'costs', label: 'Tarifs', icon: DollarSign },
@@ -70,6 +103,7 @@ export default function Settings() {
         { id: 'logistics', label: 'Dotations Standard', icon: Wrench },
         { id: 'kobo', label: 'KoBo', icon: CloudDownload },
         { id: 'data', label: 'Données', icon: Database },
+        { id: 'datahub', label: 'Data Hub', icon: Globe },
     ];
 
     return (
@@ -143,6 +177,7 @@ export default function Settings() {
                                 {activeTab === 'logistics' && <LogisticsSection project={project} onUpdate={updateProject} />}
                                 {activeTab === 'kobo' && <KoboSettingsSection project={project} onUpdate={updateProject} />}
                                 {activeTab === 'data' && <DataSection project={project} households={households || []} onUpdate={updateProject} />}
+                                {activeTab === 'datahub' && <DataHubSection project={project} onUpdate={updateProject} />}
                             </div>
                         </motion.div>
                     </AnimatePresence>

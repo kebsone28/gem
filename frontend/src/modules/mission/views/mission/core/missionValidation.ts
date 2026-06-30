@@ -16,8 +16,8 @@ export const missionMemberSchema = z.object({
  * SCHÉMA : Informations de Base de la Mission
  */
 export const missionFormSchema = z.object({
-  orderNumber: z.string().trim().min(3, "N° d'ordre invalide"),
-  date: z.string().trim().regex(/^\d{2}\/\d{2}\/\d{4}$/, 'Format date invalide (JJ/MM/AAAA)'),
+  orderNumber: z.string().trim().optional(),
+  date: z.string().trim().optional(),
   region: z.string().trim().min(2, 'La destination est requise'),
   purpose: z.string().trim().min(5, "L'objet doit être détaillé (min 5 caract.)"),
   startDate: z.string().optional(),

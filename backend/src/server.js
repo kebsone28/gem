@@ -147,6 +147,10 @@ async function bootstrap() {
       const simulationCleanup = initSimulationWorker();
       if (simulationCleanup) cleanupFunctions.push(simulationCleanup);
 
+      // Report scheduler cleanup
+      const { stopReportScheduler } = await import('./services/reportScheduler.service.js');
+      cleanupFunctions.push(stopReportScheduler);
+
       // Démarrage de la synchronisation automatique KoboToolbox en arrière-plan
       const { startKoboAutoSync } = await import('./services/kobo.cron.js');
       const koboCleanup = startKoboAutoSync();
@@ -161,6 +165,10 @@ async function bootstrap() {
       const { startSilentSupervisor } = await import('./core/workers/supervisor.worker.js');
       const supervisorCleanup = startSilentSupervisor();
       if (supervisorCleanup) cleanupFunctions.push(supervisorCleanup);
+
+      // Démarrage du planificateur de rapports automatiques
+      const { startReportScheduler } = await import('./services/reportScheduler.service.js');
+      startReportScheduler();
 
       // Démarrage du système d'escalade des alertes
       const { startAlertEscalationAgent, startIGPPAlertAgent } =

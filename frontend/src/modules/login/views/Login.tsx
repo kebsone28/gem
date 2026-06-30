@@ -37,26 +37,35 @@ const SECTORS = [
   {
     key: 'gem',
     label: 'GEM',
-    role: "Gestionnaire d'Électrification Massive",
-    description: 'Suivi terrain, raccordements, ménages, logistique et pilotage.',
+    role: "Electrification Massive",
+    description: 'Suivi terrain, raccordements, menages, logistique et pilotage.',
+    note: 'Choix du secteur, pas du projet',
     icon: Zap,
-    color: 'from-orange-500/10 to-amber-500/10',
-    borderColor: 'border-orange-500/20 hover:border-orange-500/40',
-    iconColor: 'text-orange-400',
-    shadowColor: 'hover:shadow-orange-500/10',
+    gradient: 'from-amber-500/20 via-orange-500/10 to-slate-950',
+    accent: 'from-amber-400 to-orange-500',
+    borderColor: 'border-amber-400/20 hover:border-amber-300/50',
+    iconColor: 'text-amber-300',
+    badgeClass: 'bg-amber-400/10 text-amber-200 border-amber-300/20',
+    glowClass: 'bg-amber-500/20',
   },
   {
     key: 'mes',
     label: 'MES',
     role: 'Mise En Service',
     description: 'Branchement, pose compteur, contrôle qualité et validation.',
+    note: 'Choix du secteur, pas du projet',
     icon: Activity,
-    color: 'from-blue-500/10 to-indigo-500/10',
-    borderColor: 'border-blue-500/20 hover:border-blue-500/40',
-    iconColor: 'text-blue-400',
-    shadowColor: 'hover:shadow-blue-500/10',
+    gradient: 'from-sky-500/20 via-indigo-500/10 to-slate-950',
+    accent: 'from-sky-400 to-indigo-500',
+    borderColor: 'border-sky-400/20 hover:border-sky-300/50',
+    iconColor: 'text-sky-300',
+    badgeClass: 'bg-sky-400/10 text-sky-200 border-sky-300/20',
+    glowClass: 'bg-sky-500/20',
   },
 ];
+
+const getSectorLandingPath = (sectorKey?: string) =>
+  sectorKey ? `/projects?domainType=${encodeURIComponent(sectorKey)}` : '/projects';
 
 // Positions stables des particules (calculées une seule fois au chargement du module)
 const PARTICLE_POSITIONS = Array.from({ length: 15 }, () => ({
@@ -233,7 +242,7 @@ export default function Login() {
         userPayload?.permissions,
         userPayload?.organizationId,  // ✅ Pass org UUID so ProjectContext can load projects
       );
-      navigate('/projects');
+      navigate(getSectorLandingPath(selectedSector?.key));
     } catch (err: any) {
       setError(getApiErrorMessage(err, 'Identifiant ou mot de passe incorrect.'));
     } finally {
@@ -277,7 +286,7 @@ export default function Login() {
         user.permissions,
         user.organizationId,  // ✅ Pass org UUID from 2FA response
       );
-      navigate('/projects');
+      navigate(getSectorLandingPath(selectedSector?.key));
     } catch {
       setError('Réponse de sécurité incorrecte.');
     } finally {
@@ -506,14 +515,19 @@ export default function Login() {
               <div className="mb-6 text-center md:text-left">
                 <h2 className="text-xl font-black text-white tracking-tight italic mb-2 uppercase">
                   {step === 'sector-select'
-                    ? 'Sélectionnez votre secteur'
+                    ? "Choisissez un secteur d'activite"
                     : step === 'credentials'
-                      ? `Connexion - ${selectedSector?.label || ''}`
+                      ? `Connexion - Secteur ${selectedSector?.label || ''}`
                       : step === '2fa'
                         ? 'Sécurité'
                         : 'Récupération'}
                 </h2>
                 <div className="h-1 w-12 bg-indigo-500 rounded-full mx-auto md:mx-0" />
+                {step === 'sector-select' && (
+                  <p className="mt-3 text-sm leading-relaxed text-slate-400 max-w-2xl">
+                    Le secteur definit votre espace metier `GEM` ou `MES`. Le choix du projet se fera ensuite dans l'accueil.
+                  </p>
+                )}
               </div>
 
               {error && (
@@ -538,8 +552,22 @@ export default function Login() {
 
               {/* Sector Selection Grid */}
               {step === 'sector-select' && (
-                <div className="space-y-4 animate-in fade-in duration-500">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-5 animate-in fade-in duration-500">
+                  <div className="rounded-[2rem] border border-white/8 bg-white/[0.03] p-4 md:p-5">
+                    <div className="flex items-center justify-between gap-4 border-b border-white/6 pb-4">
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
+                          Portes d'entree
+                        </p>
+                        <h3 className="mt-2 text-lg font-black text-white">
+                          Deux univers, un meme socle GED OS
+                        </h3>
+                      </div>
+                      <div className="hidden md:flex items-center gap-2 rounded-full border border-indigo-400/20 bg-indigo-500/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-indigo-200">
+                        Secteur puis projet
+                      </div>
+                    </div>
+                    <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {SECTORS.map((sector) => {
                       const IconComponent = sector.icon;
                       return (
@@ -551,25 +579,41 @@ export default function Login() {
                             setSelectedSector(sector);
                             setStep('credentials');
                           }}
-                          className={`flex flex-col items-start text-left p-4 bg-gradient-to-br ${sector.color} border ${sector.borderColor} rounded-2xl transition-all hover:bg-white/[0.02] shadow-md ${sector.shadowColor} group`}
+                          className={`group relative overflow-hidden rounded-[1.75rem] border bg-gradient-to-br ${sector.gradient} ${sector.borderColor} p-5 text-left transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl`}
                         >
-                          <div className="flex items-center gap-2 mb-2">
-                            <div className={`p-2 bg-white/[0.04] rounded-lg border border-white/5 ${sector.iconColor}`}>
-                              <IconComponent size={16} />
+                          <div className={`absolute -right-10 -top-10 h-28 w-28 rounded-full blur-3xl transition-opacity duration-300 group-hover:opacity-80 ${sector.glowClass}`} />
+                          <div className="relative z-10 flex h-full flex-col">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-[0.22em] ${sector.badgeClass}`}>
+                                <IconComponent size={14} className={sector.iconColor} />
+                                {sector.label}
+                              </div>
+                              <div className={`flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] ${sector.iconColor}`}>
+                                <IconComponent size={18} />
+                              </div>
                             </div>
-                            <h3 className="text-xs font-black text-white uppercase tracking-wider group-hover:text-indigo-400 transition-colors">
-                              {sector.label}
-                            </h3>
+                            <div className="mt-8">
+                              <h3 className="text-2xl font-black tracking-tight text-white">
+                                {sector.label}
+                              </h3>
+                              <p className="mt-2 text-sm font-bold text-slate-200">
+                                {sector.role}
+                              </p>
+                              <p className="mt-3 max-w-xs text-xs leading-relaxed text-slate-400">
+                                {sector.description}
+                              </p>
+                            </div>
+                            <div className="mt-6 flex items-center justify-between">
+                              <span className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">
+                                {sector.note}
+                              </span>
+                              <div className={`h-1.5 w-16 rounded-full bg-gradient-to-r ${sector.accent}`} />
+                            </div>
                           </div>
-                          <p className="text-[10px] font-black text-slate-300 leading-snug mb-1">
-                            {sector.role}
-                          </p>
-                          <p className="text-[9px] font-medium text-slate-500 leading-normal">
-                            {sector.description}
-                          </p>
                         </motion.button>
                       );
                     })}
+                    </div>
                   </div>
                 </div>
               )}

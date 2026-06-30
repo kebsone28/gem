@@ -16,6 +16,43 @@ export const listHooks = async (req, res) => {
   }
 };
 
+export const listWebhookExecutions = async (req, res) => {
+  try {
+    const { organizationId } = req.user;
+    const { hookId, formKey, success, limit = 50, offset = 0 } = req.query;
+
+    const where = { organizationId };
+    if (hookId) where.hookId = String(hookId);
+    if (formKey) where.formKey = String(formKey);
+    if (success !== undefined) where.success = success === 'true';
+
+    const [executions, total] = await Promise.all([
+      prisma.toolboxWebhookExecution.findMany({
+        where,
+        skip: Number(offset),
+        take: Math.min(Number(limit), 100),
+        orderBy: { timestamp: 'desc' },
+        include: { hook: { select: { name: true, url: true } } },
+      }),
+      prisma.toolboxWebhookExecution.count({ where }),
+    ]);
+
+    return res.json({
+      success: true,
+      count: executions.length,
+      total,
+      offset: Number(offset),
+      limit: Number(limit),
+      executions,
+    });
+  } catch (err) {
+    logger.error('[TOOLBOX-HOOKS] list executions error:', err);
+    return res
+      .status(500)
+      .json({ success: false, message: 'Erreur chargement exécutions webhook' });
+  }
+};
+
 export const createHook = async (req, res) => {
   try {
     const { organizationId } = req.user;
@@ -37,7 +74,9 @@ export const createHook = async (req, res) => {
     return res.status(201).json({ success: true, hook });
   } catch (err) {
     if (err.code === 'P2002') {
-      return res.status(409).json({ success: false, message: 'Ce webhook existe déjà pour ce formulaire' });
+      return res
+        .status(409)
+        .json({ success: false, message: 'Ce webhook existe déjà pour ce formulaire' });
     }
     logger.error('[TOOLBOX-HOOKS] create error:', err);
     return res.status(500).json({ success: false, message: 'Erreur création hook' });
@@ -89,7 +128,11 @@ export const testHook = async (req, res) => {
     const hook = await prisma.toolboxFormHook.findFirst({ where: { id, organizationId } });
     if (!hook) return res.status(404).json({ success: false, message: 'Hook introuvable' });
 
-    const testPayload = { test: true, message: 'Test depuis GED OS Toolbox', timestamp: new Date().toISOString() };
+    const testPayload = {
+      test: true,
+      message: 'Test depuis GED OS Toolbox',
+      timestamp: new Date().toISOString(),
+    };
     const response = await fetch(hook.url, {
       method: hook.method,
       headers: { 'Content-Type': 'application/json', ...(hook.headers || {}) },
@@ -106,10 +149,12 @@ export const testHook = async (req, res) => {
     return res.json({ success: response.ok, status: response.status, body: body.slice(0, 500) });
   } catch (err) {
     const message = err.name === 'AbortError' ? 'Timeout (10s)' : err.message;
-    await prisma.toolboxFormHook.update({
-      where: { id: req.params.id },
-      data: { lastTriggeredAt: new Date(), lastStatus: 0 },
-    }).catch(() => {});
+    await prisma.toolboxFormHook
+      .update({
+        where: { id: req.params.id },
+        data: { lastTriggeredAt: new Date(), lastStatus: 0 },
+      })
+      .catch(() => {});
     return res.json({ success: false, status: 0, body: message });
   }
 };

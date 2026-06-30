@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, prefer-const */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, prefer-const */
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import logger from '@services/logger';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -65,6 +65,7 @@ import { AnimatedCounter } from '@components/common/AnimatedCounter';
 import { useAuthStore } from '@/store/authStore';
 import { useProject } from '@contexts/ProjectContext';
 import type { Household, Team } from '@utils/types';
+import { ModuleStatePanel } from '@components/common/ModuleStatePanel';
 
 // --- Constants & Types ---
 
@@ -157,6 +158,7 @@ export interface PVLogic {
   hseDescription: string;
   setHseDescription: (d: string) => void;
   teams: Team[];
+  hasActiveProject: boolean;
 }
 
 const COLOR_MAP = {
@@ -272,8 +274,16 @@ function usePVAutomation(): PVLogic {
 
 
 
-  const submissionsQuery = useLiveQuery(() =>
-    db.households.filter((h) => !!h.koboData || h.status === 'WAITING_AUDIT').toArray()
+  const submissionsQuery = useLiveQuery(
+    () =>
+      activeProjectId
+        ? db.households
+            .where('projectId')
+            .equals(activeProjectId)
+            .filter((h) => !!h.koboData || h.status === 'WAITING_AUDIT')
+            .toArray()
+        : Promise.resolve([]),
+    [activeProjectId]
   );
 
   const migrateLocalPVsToServer = useCallback(async () => {
@@ -310,6 +320,12 @@ function usePVAutomation(): PVLogic {
   }, []);
 
   const refreshArchivedPVs = useCallback(async () => {
+    if (!activeProjectId) {
+      setArchivedPVs([]);
+      setIsLoadingPVs(false);
+      return;
+    }
+
     setIsLoadingPVs(true);
     try {
       await migrateLocalPVsToServer();
@@ -320,7 +336,7 @@ function usePVAutomation(): PVLogic {
         if (!latestMap.has(key)) {
           latestMap.set(key, {
             ...pv,
-            projectId: pv.projectId || 'N/A',
+            projectId: pv.projectId || activeProjectId,
             content: pv.content || '',
             createdBy: pv.createdBy || 'Système GED OS',
           } as PVRecord);
@@ -362,7 +378,10 @@ function usePVAutomation(): PVLogic {
 
   const [hseTeam, setHseTeam] = useState('');
   const [hseDescription, setHseDescription] = useState('');
-  const teamsQuery = useLiveQuery(() => db.teams.toArray()) || [];
+  const teamsQuery = useLiveQuery(
+    () => (activeProjectId ? db.teams.where('projectId').equals(activeProjectId).toArray() : Promise.resolve([])),
+    [activeProjectId]
+  ) || [];
   const teams = teamsQuery as unknown as Team[];
 
   const handleCreatePV = useCallback(
@@ -375,13 +394,18 @@ function usePVAutomation(): PVLogic {
 
         // Clé d'id unique par ménage+type pour éviter les doublons au clic répétitif
         const stableId = `${submission.id}_${type}`;
+        const projectId = submission.projectId || activeProjectId;
+        if (!projectId) {
+          toast.error('Aucun projet actif pour generer ce PV.');
+          return;
+        }
 
         const currentHseTeamName = teams.find((t) => t.id === hseTeam)?.name || 'N/A';
 
         await pvService.upsert({
           id: stableId,
           householdId: submission.id,
-          projectId: submission.projectId || 'N/A',
+          projectId,
           type,
           content: `PV ${type} pour ${submission.name}`,
           createdBy: issuerName,
@@ -398,7 +422,7 @@ function usePVAutomation(): PVLogic {
         await dispatchPVAlerts({
           pvId: stableId,
           householdId: submission.id,
-          projectId: submission.projectId || 'N/A',
+          projectId,
           pvType: type,
           phoneNumber: submission.phone,
           email: undefined,
@@ -413,13 +437,13 @@ function usePVAutomation(): PVLogic {
           message: `PV pour ${lotLabel} transmis.`,
           sender: 'Système GED OS',
           type: type === 'PVNC' || type === 'PVHSE' ? 'rejection' : 'approval',
-          projectId: submission.projectId,
+          projectId,
           dedupKey: `pv-${stableId}`,
         });
 
         await alertsAPI
           .createAlert({
-            projectId: submission.projectId || 'N/A',
+            projectId,
             householdId: submission.id,
             pvId: stableId,
             type,
@@ -1072,12 +1096,39 @@ function usePVAutomation(): PVLogic {
     hseDescription,
     setHseDescription,
     teams,
+    hasActiveProject: Boolean(activeProjectId),
   };
 }
 
 export default function PVAutomation() {
   const logic = usePVAutomation();
   const { canEdit } = usePermissions();
+  const { activeProjectId, isLoading: isProjectLoading } = useProject();
+
+  if (isProjectLoading) {
+    return (
+      <PageContainer>
+        <ModuleStatePanel
+          tone="loading"
+          title="Chargement du projet"
+          description="Le contexte projet est en cours d'initialisation pour l'automatisation des rapports."
+        />
+      </PageContainer>
+    );
+  }
+
+  if (!activeProjectId) {
+    return (
+      <PageContainer>
+        <ModuleStatePanel
+          title="Aucun projet actif"
+          description="Les PV, alerts et archives sont rattaches a un projet. Selectionnez un projet avant de generer ou consulter des rapports."
+          actionLabel="Choisir un projet"
+          actionTo="/projects"
+        />
+      </PageContainer>
+    );
+  }
 
   return (
     <PageContainer>

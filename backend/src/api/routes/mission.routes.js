@@ -1,43 +1,101 @@
 import express from 'express';
+import rateLimit from 'express-rate-limit';
 import {
-    getMissions,
-    getMissionStats,
-    getPendingApprovals,
-    createMission,
-    updateMission,
-    deleteMission,
-    getMissionApprovalHistory,
-    approveMissionStep,
-    rejectMissionStep,
-    duplicateMission,
-    overrideOrderNumber,
-    verifyMissionPublic,
-    downloadMissionCertifiedDocumentPublic,
-    downloadMissionCertifiedDocument,
-    sendMissionDocumentEmail,
-    analyzeMissionIA,
-    purgeMissions,
-    assignMissionToProject
+  getMissions,
+  getMissionStats,
+  getPendingApprovals,
+  createMission,
+  updateMission,
+  deleteMission,
+  getMissionApprovalHistory,
+  approveMissionStep,
+  rejectMissionStep,
+  duplicateMission,
+  overrideOrderNumber,
+  verifyMissionPublic,
+  downloadMissionCertifiedDocumentPublic,
+  downloadMissionCertifiedDocument,
+  sendMissionDocumentEmail,
+  analyzeMissionIA,
+  purgeMissions,
+  assignMissionToProject,
 } from '../../modules/mission/mission.controller.js';
 import { authProtect, authorize } from '../middlewares/auth.js';
 import { verifierPermission, verifierModule } from '../../middleware/verifierPermission.js';
 import { PERMISSIONS } from '../../core/config/permissions.js';
-import { validateSchema } from '../../middleware/validation.js';
+import { validate } from '../../middleware/validate.js';
 import { getAllValidMissionStatuses } from '../../core/config/businessRules.js';
 import multer from 'multer';
+import Joi from 'joi';
+import {
+  getMissionsSchema,
+  getMissionStatsSchema,
+  missionCreateSchema,
+  missionUpdateSchema,
+  missionAssignSchema,
+  duplicateMissionSchema,
+  overrideOrderNumberSchema,
+  approveMissionStepSchema,
+  rejectMissionStepSchema,
+  downloadMissionCertifiedDocumentSchema,
+  sendMissionDocumentEmailSchema,
+  analyzeMissionIaSchema,
+  verifyMissionPublicSchema,
+  downloadMissionCertifiedDocumentPublicSchema,
+  purgeMissionsSchema,
+} from '../../modules/mission/mission.validation.schemas.js';
 
 // Internal multer for doc sending
 const upload = multer({ storage: multer.memoryStorage() });
 
 const router = express.Router();
 
+// Rate limiters
+const missionLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Trop de requêtes. Réessayez dans une minute.', code: 'MISSION_RATE_LIMIT' },
+  skip: () => process.env.NODE_ENV === 'development',
+});
+
+const missionWriteLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    error: 'Trop de modifications. Réessayez dans une minute.',
+    code: 'MISSION_WRITE_RATE_LIMIT',
+  },
+  skip: () => process.env.NODE_ENV === 'development',
+});
+
+const missionApproveLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    error: 'Trop de validations. Réessayez dans une minute.',
+    code: 'MISSION_APPROVE_RATE_LIMIT',
+  },
+  skip: () => process.env.NODE_ENV === 'development',
+});
+
 // Public route - MUST BE BEFORE authProtect
-router.get('/verify/:identifier', verifyMissionPublic);
-router.get('/verify/:identifier/document', downloadMissionCertifiedDocumentPublic);
+router.get('/verify/:identifier', validate(verifyMissionPublicSchema), verifyMissionPublic);
+router.get(
+  '/verify/:identifier/document',
+  validate(downloadMissionCertifiedDocumentPublicSchema),
+  downloadMissionCertifiedDocumentPublic
+);
 
 // Secure routes - require authentication
 router.use(authProtect);
 router.use(verifierModule('mission'));
+router.use(missionLimiter);
 
 // =============================================
 // RÔLES CANONIQUES (après normalisation dans authorize()) :
@@ -51,95 +109,108 @@ router.use(verifierModule('mission'));
 router.get('/approvals/pending', authorize('ADMIN_PROQUELEC', 'DIRECTEUR'), getPendingApprovals);
 
 // CRUD missions
-router.get('/', getMissions); // Filtrage géré dans le contrôleur selon le rôle
-router.get('/stats', getMissionStats); // Statistiques KPI
-router.delete('/purge/all', authorize('ADMIN_PROQUELEC'), purgeMissions); // Purge massive (Admin seulement)
+router.get('/', validate(getMissionsSchema), getMissions); // Filtrage géré dans le contrôleur selon le rôle
+router.get('/stats', validate(getMissionStatsSchema), getMissionStats); // Statistiques KPI
+router.delete(
+  '/purge/all',
+  authorize('ADMIN_PROQUELEC'),
+  validate(purgeMissionsSchema),
+  purgeMissions
+); // Purge massive (Admin seulement)
 
-// Define mission schemas
+// Define mission schemas (Joi)
 const MISSION_STATUS_ENUM = getAllValidMissionStatuses();
 
-const missionCreateSchema = {
-  required: ['title'],
-  fields: {
-    title: {
-      type: 'string',
-      required: true,
-      minLength: 3,
-      maxLength: 255,
-    },
-    description: {
-      type: 'string',
-      maxLength: 5000,
-    },
-    budget: {
-      type: 'number',
-      minimum: 0,
-    },
-    projectId: {
-      type: 'string',
-    },
-    status: {
-      type: 'string',
-      enum: MISSION_STATUS_ENUM,
-    },
-  },
-};
-
-const missionUpdateSchema = {
-  fields: {
-    title: {
-      type: 'string',
-      minLength: 3,
-      maxLength: 255,
-    },
-    description: {
-      type: 'string',
-      maxLength: 5000,
-    },
-    budget: {
-      type: 'number',
-      minimum: 0,
-    },
-    projectId: {
-      type: 'string',
-    },
-    status: {
-      type: 'string',
-      enum: MISSION_STATUS_ENUM,
-    },
-  },
-};
-
-const missionAssignSchema = {
-  required: ['projectId'],
-  fields: {
-    projectId: {
-      type: 'string',
-      required: true,
-    },
-  },
-};
-
-router.post('/', validateSchema(missionCreateSchema), verifierPermission(PERMISSIONS.CREER_MISSION), async (req, res, next) => {
+router.post(
+  '/',
+  missionWriteLimiter,
+  validate(missionCreateSchema),
+  verifierPermission(PERMISSIONS.CREER_MISSION),
+  async (req, res, next) => {
     try {
-        await createMission(req, res);
+      await createMission(req, res);
     } catch (e) {
-        next(e);
+      next(e);
     }
-});
-router.patch('/:id', validateSchema(missionUpdateSchema), verifierPermission(PERMISSIONS.MODIFIER_MISSIONS), updateMission);
-router.patch('/:id/assign-project', validateSchema(missionAssignSchema), verifierPermission(PERMISSIONS.MODIFIER_MISSIONS), assignMissionToProject);
-router.put('/:id', validateSchema(missionUpdateSchema), verifierPermission(PERMISSIONS.MODIFIER_MISSIONS), updateMission);
-router.delete('/:id', verifierPermission(PERMISSIONS.SUPPRIMER_MISSIONS), deleteMission);
-router.post('/:id/duplicate', verifierPermission(PERMISSIONS.CREER_MISSION), duplicateMission);
+  }
+);
+router.patch(
+  '/:id',
+  missionWriteLimiter,
+  validate(missionUpdateSchema),
+  verifierPermission(PERMISSIONS.MODIFIER_MISSIONS),
+  updateMission
+);
+router.patch(
+  '/:id/assign-project',
+  missionWriteLimiter,
+  validate(missionAssignSchema),
+  verifierPermission(PERMISSIONS.MODIFIER_MISSIONS),
+  assignMissionToProject
+);
+router.put(
+  '/:id',
+  missionWriteLimiter,
+  validate(missionUpdateSchema),
+  verifierPermission(PERMISSIONS.MODIFIER_MISSIONS),
+  updateMission
+);
+router.delete(
+  '/:id',
+  missionWriteLimiter,
+  verifierPermission(PERMISSIONS.SUPPRIMER_MISSIONS),
+  deleteMission
+);
+router.post(
+  '/:id/duplicate',
+  missionWriteLimiter,
+  validate(duplicateMissionSchema),
+  verifierPermission(PERMISSIONS.CREER_MISSION),
+  duplicateMission
+);
 
 // Workflow d'approbation - validation finale par Direction ou Administration
-router.get('/:missionId/approval-history', getMissionApprovalHistory);
-router.post('/:missionId/approve', authorize('ADMIN_PROQUELEC', 'DIRECTEUR'), approveMissionStep);
-router.post('/:missionId/reject',  authorize('ADMIN_PROQUELEC', 'DIRECTEUR'), rejectMissionStep);
-router.post('/:missionId/override-order-number', authorize('ADMIN_PROQUELEC'), overrideOrderNumber);
-router.get('/:missionId/certified-document', downloadMissionCertifiedDocument);
-router.post('/:missionId/send-document-email', upload.single('document'), sendMissionDocumentEmail);
-router.post('/:missionId/analyze-ia', authorize('ADMIN_PROQUELEC', 'DIRECTEUR'), analyzeMissionIA);
+router.get(
+  '/:missionId/approval-history',
+  validate({ params: { missionId: Joi.string().uuid().required() } }),
+  getMissionApprovalHistory
+);
+router.post(
+  '/:missionId/approve',
+  missionApproveLimiter,
+  authorize('ADMIN_PROQUELEC', 'DIRECTEUR'),
+  validate(approveMissionStepSchema),
+  approveMissionStep
+);
+router.post(
+  '/:missionId/reject',
+  missionApproveLimiter,
+  authorize('ADMIN_PROQUELEC', 'DIRECTEUR'),
+  validate(rejectMissionStepSchema),
+  rejectMissionStep
+);
+router.post(
+  '/:missionId/override-order-number',
+  authorize('ADMIN_PROQUELEC'),
+  validate(overrideOrderNumberSchema),
+  overrideOrderNumber
+);
+router.get(
+  '/:missionId/certified-document',
+  validate(downloadMissionCertifiedDocumentSchema),
+  downloadMissionCertifiedDocument
+);
+router.post(
+  '/:missionId/send-document-email',
+  upload.single('document'),
+  validate(sendMissionDocumentEmailSchema),
+  sendMissionDocumentEmail
+);
+router.post(
+  '/:missionId/analyze-ia',
+  authorize('ADMIN_PROQUELEC', 'DIRECTEUR'),
+  validate(analyzeMissionIaSchema),
+  analyzeMissionIA
+);
 
 export default router;

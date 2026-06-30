@@ -53,6 +53,12 @@ export const tracerAction = async (dataOrOrgId, userId, action, resource, resour
             auditData.userId = uId;
         }
 
+        // Ne pas persister les audits sans organisation (requêtes anonymes)
+        if (!orgId) {
+            logger.info(`[AUDIT] Action non-authentifiée ignorée : ${act}`);
+            return;
+        }
+
         try {
             await prisma.auditLog.create({
                 data: auditData
@@ -102,7 +108,7 @@ export const getRecentActions = async (organizationId, limit = 10) => {
                 user: {
                     select: {
                         name: true,
-                        role: true,
+                        roleLegacy: true,
                         email: true
                     }
                 }

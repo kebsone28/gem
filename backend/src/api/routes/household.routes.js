@@ -10,7 +10,8 @@ import {
     getHouseholdsCount,
     getHouseholdApprovalHistory,
     approveHouseholdStep,
-    rejectHouseholdStep
+    rejectHouseholdStep,
+    exportHouseholds
 } from '../../modules/household/household.controller.js';
 import { authProtect } from '../middlewares/auth.js';
 import { verifierPermission, verifierAssignation, verifierModule } from '../../middleware/verifierPermission.js';
@@ -99,6 +100,7 @@ router.get('/stream', (req, res) => {
 
 router.get('/', getHouseholds);
 router.get('/count', getHouseholdsCount);
+router.get('/export', verifierPermission(PERMISSIONS.HOUSEHOLD_EXPORT), exportHouseholds);
 router.get('/by-numero/:numeroordre', getHouseholdByNumero);
 router.get('/:id', getHouseholdById);
 router.post('/', validateSchema(householdCreateSchema), verifierPermission(PERMISSIONS.MODIFIER_CARTE), verifierAssignation('menage'), createHousehold);

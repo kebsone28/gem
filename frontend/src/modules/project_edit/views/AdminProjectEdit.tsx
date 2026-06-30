@@ -18,6 +18,8 @@ import toast from 'react-hot-toast';
 import { extractApiError } from '@utils/format';
 import { PageContainer, PageHeader, ContentArea, Modal } from '@components';
 import { Button } from '@components/UI';
+import { ImageManager } from '@components/ImageManager';
+import type { ProjectImage } from '@components/ImageManager';
 
 // ─── Module definition ──────────────────────────────────
 interface ProjectModule {
@@ -89,6 +91,7 @@ export default function AdminProjectEdit() {
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState<'active' | 'planning' | 'completed' | 'paused'>('active');
   const [modules, setModules] = useState<ProjectModule[]>([]);
+  const [projectImages, setProjectImages] = useState<ProjectImage[]>([]);
   const [deleteModal, setDeleteModal] = useState(false);
   const [deletePassword, setDeletePassword] = useState('');
   const [deleteNameConfirm, setDeleteNameConfirm] = useState('');
@@ -121,6 +124,10 @@ export default function AdminProjectEdit() {
             enabled: m.required || enabledKeys.includes(m.key),
           }))
         );
+
+        // Load project images if available
+        const images: ProjectImage[] = (project as any).images || [];
+        setProjectImages(images);
       } catch {
         toast.error('Impossible de charger le projet');
         navigate('/projects');
@@ -151,6 +158,7 @@ export default function AdminProjectEdit() {
           enabledModules,
           description: description.trim(),
         },
+        images: projectImages,
       } as any);
       toast.success(`✅ Projet "${name.trim()}" mis à jour`);
       navigate('/projects');
@@ -255,6 +263,21 @@ export default function AdminProjectEdit() {
                 className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-white placeholder:text-slate-600 focus:ring-2 focus:ring-indigo-500/50 outline-none resize-none"
               />
             </div>
+          </motion.section>
+
+          {/* ── Images du Projet ─────────────────────────────────────── */}
+          <motion.section
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="bg-slate-900/60 border border-slate-800 rounded-3xl p-8"
+          >
+            <h2 className="text-lg font-black text-white uppercase tracking-tight mb-6">Images du Projet</h2>
+            <ImageManager
+              images={projectImages}
+              onImagesChange={setProjectImages}
+              maxImages={20}
+            />
           </motion.section>
 
           {/* ── Modules activables ─────────────────────────────────────── */}

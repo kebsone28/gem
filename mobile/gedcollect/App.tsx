@@ -13,12 +13,19 @@ import { PinLockProvider } from '@components/PinLock';
 import LoginScreen from '@screens/LoginScreen';
 import FormListScreen from '@screens/FormListScreen';
 import FormScreen from '@screens/FormScreen';
+import DraftsScreen from '@screens/DraftsScreen';
+import DashboardScreen from '@screens/DashboardScreen';
+import QRScannerScreen from '@screens/QRScannerScreen';
 import SettingsScreen from '@screens/SettingsScreen';
 import SubmissionsScreen from '@screens/SubmissionsScreen';
+import { isBiometricAvailable, authenticateBiometric } from '@services/nativeCapabilities';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
-const ThemedApp: React.FC<{ loggedIn: boolean; setLoggedIn: (v: boolean) => void }> = ({ loggedIn, setLoggedIn }) => {
+const ThemedApp: React.FC<{ loggedIn: boolean; setLoggedIn: (v: boolean) => void }> = ({
+  loggedIn,
+  setLoggedIn,
+}) => {
   const { theme } = useTheme();
 
   if (!loggedIn) {
@@ -44,6 +51,9 @@ const ThemedApp: React.FC<{ loggedIn: boolean; setLoggedIn: (v: boolean) => void
           {(props) => <FormListScreen {...props} onLogout={() => setLoggedIn(false)} />}
         </Stack.Screen>
         <Stack.Screen name="Form" component={FormScreen} />
+        <Stack.Screen name="Drafts" component={DraftsScreen} />
+        <Stack.Screen name="Dashboard" component={DashboardScreen} />
+        <Stack.Screen name="QRScanner" component={QRScannerScreen} />
         <Stack.Screen name="Settings">
           {(props) => <SettingsScreen {...props} onLogout={() => setLoggedIn(false)} />}
         </Stack.Screen>
@@ -60,22 +70,48 @@ const App: React.FC = () => {
   const [appState, setAppState] = useState<AppStateStatus>('active');
 
   useEffect(() => {
-    loadSettings()
+    let cancelled = false;
+
+    Promise.resolve()
+      .then(() => loadSettings())
       .then(() => isAuthenticated())
       .then((auth) => {
+        if (cancelled) return;
         setLoggedIn(auth);
-        if (auth) startAutoSync();
+        if (auth) {
+          try {
+            startAutoSync();
+          } catch (e) {
+            console.warn('[startup] AutoSync init failed:', e);
+          }
+        }
       })
-      .catch(() => {})
-      .finally(() => setReady(true));
+      .catch((err) => {
+        console.warn('[startup] Initialization error (non-fatal):', err);
+      })
+      .finally(() => {
+        if (!cancelled) setReady(true);
+      });
 
-    return () => stopAutoSync();
+    return () => {
+      cancelled = true;
+      try {
+        stopAutoSync();
+      } catch {
+        /* ignore */
+      }
+    };
   }, []);
 
   useEffect(() => {
     const sub = AppState.addEventListener('change', (state: AppStateStatus) => {
       setAppState(state);
-      if (state === 'active') syncPendingSubmissions();
+      if (state === 'active') {
+        syncPendingSubmissions();
+        isBiometricAvailable().then((avail) => {
+          if (avail) authenticateBiometric().catch(() => {});
+        });
+      }
     });
     return () => sub.remove();
   }, []);

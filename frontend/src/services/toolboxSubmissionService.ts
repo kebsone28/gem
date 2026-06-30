@@ -523,7 +523,7 @@ export async function reviewtoolboxSubmission(
 }
 
 export async function downloadToolboxSubmissionsExport(
-  params: toolboxSubmissionFilters = {},
+  params: toolboxSubmissionFilters & { columns?: string } = {},
   format: 'csv' | 'json' | 'xlsx' = 'csv'
 ): Promise<{ blob: Blob; filename: string }> {
   const response = await apiClient.get<Blob>(`${TOOLBOX_SUBMISSION_ENDPOINT}/export`, {

@@ -11,6 +11,8 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { filesize } from 'filesize';
 import logger from '@services/logger';
+import { useProject } from '@contexts/ProjectContext';
+import { ModuleStatePanel } from '@components/common/ModuleStatePanel';
 
 const getDocType = (mimeType: string, isFolder: boolean): 'folder' | 'pdf' | 'word' | 'excel' | 'image' | 'video' | 'archive' | 'other' => {
   if (isFolder || mimeType === 'application/vnd.folder') return 'folder';
@@ -68,8 +70,10 @@ function buildTree(items: SharedDocument[]): SharedDocument[] {
 }
 
 export default function Sharedoc() {
+  const { activeProjectId, isLoading: isProjectLoading } = useProject();
   const [documents, setDocuments] = useState<SharedDocument[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
@@ -78,7 +82,15 @@ export default function Sharedoc() {
   const [filterAccess, setFilterAccess] = useState<'all' | 'ORG' | 'PROJECT' | 'PRIVATE'>('all');
 
   const fetchDocuments = async () => {
+    if (!activeProjectId) {
+      setDocuments([]);
+      setError(null);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
+    setError(null);
     try {
       // In a real app, you might want to fetch based on selectedFolderId or fetch all to build tree.
       // We'll fetch all or root level and their descendants based on backend support.
@@ -89,14 +101,17 @@ export default function Sharedoc() {
       }
     } catch (error) {
       logger.error('Failed to load documents:', error);
+      setDocuments([]);
+      setError("Impossible de charger les documents du projet actif.");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchDocuments();
-  }, []);
+    void fetchDocuments();
+    setSelectedFolderId(null);
+  }, [activeProjectId]);
 
   const toggleFolder = (id: string) => {
     setExpanded(prev => {
@@ -124,6 +139,43 @@ export default function Sharedoc() {
   }, [search, searchResults, selectedFolderId, documents]);
 
   const starred = useMemo(() => documents.filter(d => false), [documents]); // No starred field yet
+
+  if (isProjectLoading) {
+    return (
+      <div className="min-h-screen bg-[radial-gradient(circle_at_top,#0b1531_0%,#070b1f_48%,#030712_100%)] text-white">
+        <ModuleStatePanel
+          tone="loading"
+          title="Chargement du projet"
+          description="Le contexte projet est en cours d'initialisation pour Sharedoc."
+        />
+      </div>
+    );
+  }
+
+  if (!activeProjectId) {
+    return (
+      <div className="min-h-screen bg-[radial-gradient(circle_at_top,#0b1531_0%,#070b1f_48%,#030712_100%)] text-white">
+        <ModuleStatePanel
+          title="Aucun projet actif"
+          description="Sharedoc est organise par projet. Selectionnez un projet pour consulter et partager les documents associes."
+          actionLabel="Choisir un projet"
+          actionTo="/projects"
+        />
+      </div>
+    );
+  }
+
+  if (error && documents.length === 0) {
+    return (
+      <div className="min-h-screen bg-[radial-gradient(circle_at_top,#0b1531_0%,#070b1f_48%,#030712_100%)] text-white">
+        <ModuleStatePanel
+          tone="error"
+          title="Chargement impossible"
+          description={error}
+        />
+      </div>
+    );
+  }
 
   const handleCreateFolder = async () => {
     const name = prompt('Nom du dossier :');

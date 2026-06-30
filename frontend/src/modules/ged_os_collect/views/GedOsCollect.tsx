@@ -16,6 +16,7 @@ const ToolboxForm = React.lazy(() =>
   import('@modules/terrain/components/ToolboxForm').then((m) => ({ default: m.ToolboxForm }))
 );
 import { PageContainer, PageHeader, ContentArea } from '@components/layout';
+import { ModuleStatePanel } from '@components/common/ModuleStatePanel';
 import {
   cleartoolboxLocalDraft,
   deletetoolboxFormDefinition,
@@ -28,8 +29,10 @@ import {
 // Import service to fetch households for auto‑remplissage
 import { householdService } from '@services/householdService';
 import toast from 'react-hot-toast';
+import { useProject } from '@contexts/ProjectContext';
 
 const GedOsCollectPage: React.FC = () => {
+  const { activeProjectId, isLoading: isProjectLoading } = useProject();
   const [availableForms, setAvailableForms] = useState<ToolboxImportedFormSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedFormKey, setSelectedFormKey] = useState<string | null>(null);
@@ -204,6 +207,31 @@ const GedOsCollectPage: React.FC = () => {
   );
 
   const selectedForm = availableForms.find((f) => f.formKey === selectedFormKey);
+
+  if (isProjectLoading) {
+    return (
+      <PageContainer className="min-h-screen bg-slate-950">
+        <ModuleStatePanel
+          tone="loading"
+          title="Chargement du projet"
+          description="Le contexte projet est en cours d'initialisation pour GED OS Collect."
+        />
+      </PageContainer>
+    );
+  }
+
+  if (!activeProjectId) {
+    return (
+      <PageContainer className="min-h-screen bg-slate-950">
+        <ModuleStatePanel
+          title="Aucun projet actif"
+          description="GED OS Collect est rattaché à un projet. Sélectionnez un projet pour saisir les formulaires terrain."
+          actionLabel="Choisir un projet"
+          actionTo="/projects"
+        />
+      </PageContainer>
+    );
+  }
 
   if (selectedFormKey && selectedForm) {
     return (

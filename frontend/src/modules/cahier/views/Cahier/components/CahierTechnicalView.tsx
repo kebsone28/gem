@@ -11,7 +11,10 @@ import {
   Smartphone,
   CheckCircle2,
   XCircle,
-  ArrowRightCircle
+  ArrowRightCircle,
+  ListChecks,
+  Wrench,
+  Shield
 } from 'lucide-react';
 import type { CahierTask } from '@utils/types';
 import { CahierSection } from './CahierSection';
@@ -37,7 +40,8 @@ export const CahierTechnicalView: React.FC<CahierTechnicalViewProps> = ({
   handleExportWord,
   selectedRole,
 }) => {
-  const synopticSchema = currentTask.technicalImages?.[0];
+  const technicalImages = currentTask.technicalImages || [];
+  const synopticSchema = technicalImages[0];
   const synopticLeftNotes = synopticSchema?.notes?.slice(0, 2) || [];
   const synopticRightNotes = synopticSchema?.notes?.slice(2) || [];
 
@@ -366,76 +370,129 @@ export const CahierTechnicalView: React.FC<CahierTechnicalViewProps> = ({
           </div>
         </CahierSection>
 
-        {synopticSchema && (
+        {currentTask.executionGuide && currentTask.executionGuide.length > 0 && (
+          <CahierSection title="Guide d'Exécution Step-by-Step" color="#8b5cf6" id="section-execution">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {currentTask.executionGuide.map((section, i) => (
+                <div key={i} className="flex flex-col rounded-3xl border border-violet-500/10 bg-gradient-to-br from-violet-500/[0.02] to-violet-500/[0.05] p-6 transition-all hover:border-violet-500/30 hover:shadow-[0_8px_30px_rgb(139,92,246,0.1)]">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500/20 to-violet-500/10 text-violet-400 shadow-lg shadow-violet-500/20">
+                      <Wrench size={22} />
+                    </div>
+                    <div className="flex-1">
+                      <h5 className="text-[12px] font-black uppercase tracking-widest text-violet-200 leading-tight">
+                        {section.title}
+                      </h5>
+                      <p className="text-[10px] text-violet-400/70 mt-1">{section.description}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <div className="bg-slate-950/40 rounded-2xl p-4 border border-violet-500/10">
+                      <span className="text-[9px] font-black text-violet-400 uppercase tracking-widest block mb-3 flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-violet-500"></span>
+                        Étapes
+                      </span>
+                      <ol className="space-y-2">
+                        {section.steps.map((step, si) => (
+                          <li key={si} className="flex gap-3 text-[11px] text-slate-300 leading-relaxed">
+                            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500/30 to-violet-500/20 text-violet-400 text-[10px] font-bold border border-violet-500/30">
+                              {si + 1}
+                            </span>
+                            <span>{step}</span>
+                          </li>
+                        ))}
+                      </ol>
+                    </div>
+
+                    <div className="bg-slate-950/40 rounded-2xl p-4 border border-emerald-500/10">
+                      <span className="text-[9px] font-black text-emerald-400 uppercase tracking-widest block mb-3 flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                        Checklist
+                      </span>
+                      <ul className="space-y-2">
+                        {section.checklist.map((item, ci) => (
+                          <li key={ci} className="flex gap-2 text-[11px] text-slate-300 leading-relaxed">
+                            <CheckCircle2 size={12} className="text-emerald-500 shrink-0 mt-0.5" />
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-3">
+                      <div className="bg-slate-950/40 rounded-xl p-3 border border-cyan-500/10">
+                        <span className="text-[9px] font-black text-cyan-400 uppercase tracking-widest block mb-2 flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-cyan-500"></span>
+                          Qualité
+                        </span>
+                        <ul className="space-y-1.5">
+                          {section.qualityPoints.map((qp, qi) => (
+                            <li key={qi} className="flex gap-2 text-[10px] text-slate-400 leading-relaxed">
+                              <ArrowRightCircle size={10} className="text-cyan-500 shrink-0 mt-0.5" />
+                              <span>{qp}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div className="bg-slate-950/40 rounded-xl p-3 border border-rose-500/10">
+                        <span className="text-[9px] font-black text-rose-400 uppercase tracking-widest block mb-2 flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                          Sécurité
+                        </span>
+                        <ul className="space-y-1.5">
+                          {section.safetyPoints.map((sp, spi) => (
+                            <li key={spi} className="flex gap-2 text-[10px] text-slate-400 leading-relaxed">
+                              <Shield size={10} className="text-rose-500 shrink-0 mt-0.5" />
+                              <span>{sp}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CahierSection>
+        )}
+
+        {technicalImages.length > 0 && (
           <section className="rounded-[2.5rem] border border-cyan-500/20 bg-slate-950/60 p-6 md:p-10 shadow-2xl">
-            <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-cyan-400">Architecture de Branchement</p>
-                <h4 className="mt-2 text-2xl font-black text-white md:text-3xl">Synoptique Séquentiel</h4>
-              </div>
-              <div className="flex items-center gap-4 bg-slate-900/50 px-5 py-2.5 rounded-2xl border border-white/5">
-                <div className="flex flex-col items-end">
-                  <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Alimentation</span>
-                  <span className="text-xs font-bold text-cyan-400">230 V ~ 50 Hz</span>
-                </div>
-                <div className="h-8 w-px bg-white/10" />
-                <Zap size={20} className="text-cyan-400" />
-              </div>
+            <div className="mb-8">
+              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-cyan-400">Documentation Technique</p>
+              <h4 className="mt-2 text-2xl font-black text-white md:text-3xl">Images & Schémas</h4>
             </div>
 
-            <div className="overflow-hidden rounded-3xl border border-white/5 bg-white p-4 shadow-2xl shadow-cyan-900/20 transition-transform hover:scale-[1.01] duration-500">
-              <img
-                src={synopticSchema.url}
-                alt={synopticSchema.label}
-                className="h-auto w-full rounded-2xl object-contain"
-              />
-            </div>
-
-            <div className="mt-10 grid grid-cols-1 gap-6 xl:grid-cols-2">
-              <div className="space-y-4">
-                {synopticLeftNotes.map((block) => (
-                  <div key={block.title} className="rounded-2xl border border-white/5 bg-slate-900/40 p-5 transition-all hover:bg-slate-900/60">
-                    <h5 className="mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-cyan-400">{block.title}</h5>
-                    <ul className="space-y-2.5">
-                      {block.lines.map((line) => (
-                        <li key={line} className="flex gap-3 text-sm leading-relaxed text-slate-300">
-                          <ArrowRightCircle size={14} className="text-cyan-500 shrink-0 mt-1" />
-                          <span>{line}</span>
-                        </li>
-                      ))}
-                    </ul>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {technicalImages.map((img, idx) => (
+                <div key={idx} className="space-y-4">
+                  <div className="overflow-hidden rounded-3xl border border-white/5 bg-white p-4 shadow-2xl shadow-cyan-900/20 transition-transform hover:scale-[1.01] duration-500">
+                    <img
+                      src={img.url}
+                      alt={img.label}
+                      className="h-auto w-full rounded-2xl object-contain"
+                    />
                   </div>
-                ))}
-              </div>
-              <div className="space-y-4">
-                {synopticRightNotes.map((block) => (
-                  <div key={block.title} className="rounded-2xl border border-white/5 bg-slate-900/40 p-5 transition-all hover:bg-slate-900/60">
-                    <h5 className="mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-cyan-400">{block.title}</h5>
-                    <ul className="space-y-2.5">
-                      {block.lines.map((line) => (
-                        <li key={line} className="flex gap-3 text-sm leading-relaxed text-slate-300">
-                          <ArrowRightCircle size={14} className="text-cyan-500 shrink-0 mt-1" />
-                          <span>{line}</span>
-                        </li>
-                      ))}
-                    </ul>
+                  <div className="rounded-2xl border border-white/5 bg-slate-900/40 p-5 transition-all hover:bg-slate-900/60">
+                    <h5 className="mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-cyan-400">{img.label}</h5>
+                    {img.notes?.map((block) => (
+                      <div key={block.title} className="mb-4 last:mb-0">
+                        <h6 className="text-[9px] font-bold text-slate-400 uppercase mb-2">{block.title}</h6>
+                        <ul className="space-y-2">
+                          {block.lines.map((line) => (
+                            <li key={line} className="flex gap-3 text-sm leading-relaxed text-slate-300">
+                              <ArrowRightCircle size={14} className="text-cyan-500 shrink-0 mt-1" />
+                              <span>{line}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </div>
-
-            {synopticSchema.legend && (
-              <div className="mt-8 rounded-2xl bg-slate-950/80 p-5 border border-white/5">
-                <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-4">Légende Normalisée</span>
-                <div className="flex flex-wrap gap-2">
-                  {synopticSchema.legend.map((item) => (
-                    <span key={item} className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-[10px] font-bold text-slate-200">
-                      {item}
-                    </span>
-                  ))}
                 </div>
-              </div>
-            )}
+              ))}
+            </div>
           </section>
         )}
 

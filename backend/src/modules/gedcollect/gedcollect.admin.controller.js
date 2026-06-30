@@ -5,20 +5,28 @@ import logger from '../../utils/logger.js';
 export const listUsers = async (req, res) => {
   try {
     const { organizationId } = req.user;
-    const users = await prisma.user.findMany({
-      where: { organizationId, phone: { not: null } },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        phone: true,
-        phoneActivated: true,
-        active: true,
-        createdAt: true,
-      },
-      orderBy: { createdAt: 'desc' },
-    });
-    res.json({ users });
+    const offset = Math.max(Number(req.query.offset) || 0, 0);
+    const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 500);
+
+    const [users, total] = await Promise.all([
+      prisma.user.findMany({
+        where: { organizationId, phone: { not: null } },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+          phoneActivated: true,
+          active: true,
+          createdAt: true,
+        },
+        orderBy: { createdAt: 'desc' },
+        skip: offset,
+        take: limit,
+      }),
+      prisma.user.count({ where: { organizationId, phone: { not: null } } }),
+    ]);
+    res.json({ users, total, offset, limit });
   } catch (err) {
     logger.error('[GEDCOLLECT-ADMIN] listUsers error:', err);
     res.status(500).json({ error: 'Erreur serveur' });
@@ -35,7 +43,9 @@ export const setPhone = async (req, res) => {
     const user = await prisma.user.findFirst({ where: { id: userId, organizationId } });
     if (!user) return res.status(404).json({ error: 'Utilisateur introuvable' });
 
-    const existing = await prisma.user.findFirst({ where: { phone, organizationId, id: { not: userId } } });
+    const existing = await prisma.user.findFirst({
+      where: { phone, organizationId, id: { not: userId } },
+    });
     if (existing) return res.status(409).json({ error: 'Ce numéro est déjà utilisé' });
 
     await prisma.user.update({ where: { id: userId }, data: { phone } });
@@ -64,14 +74,22 @@ export const toggleActivation = async (req, res) => {
 export const listAssignments = async (req, res) => {
   try {
     const { organizationId } = req.user;
-    const assignments = await prisma.gedcollectAssignment.findMany({
-      where: { organizationId },
-      include: {
-        user: { select: { id: true, name: true, phone: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
-    res.json({ assignments });
+    const offset = Math.max(Number(req.query.offset) || 0, 0);
+    const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 500);
+
+    const [assignments, total] = await Promise.all([
+      prisma.gedcollectAssignment.findMany({
+        where: { organizationId },
+        include: {
+          user: { select: { id: true, name: true, phone: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip: offset,
+        take: limit,
+      }),
+      prisma.gedcollectAssignment.count({ where: { organizationId } }),
+    ]);
+    res.json({ assignments, total, offset, limit });
   } catch (err) {
     logger.error('[GEDCOLLECT-ADMIN] listAssignments error:', err);
     res.status(500).json({ error: 'Erreur serveur' });
@@ -256,10 +274,12 @@ export const listGedcollectSubmissions = async (req, res) => {
       });
 
       const header = 'Date,FormKey,Version,Statut,Valeurs,SoumisPar,Téléphone\n';
-      const rows = submissions.map((s) => {
-        const values = JSON.stringify(s.values || {}).replace(/"/g, '""');
-        return `${s.submittedAt?.toISOString() || ''},${s.formKey},${s.formVersion},${s.status},"${values}",${s.submittedBy?.name || ''},${s.submittedBy?.phone || ''}`;
-      }).join('\n');
+      const rows = submissions
+        .map((s) => {
+          const values = JSON.stringify(s.values || {}).replace(/"/g, '""');
+          return `${s.submittedAt?.toISOString() || ''},${s.formKey},${s.formVersion},${s.status},"${values}",${s.submittedBy?.name || ''},${s.submittedBy?.phone || ''}`;
+        })
+        .join('\n');
 
       res.setHeader('Content-Type', 'text/csv; charset=utf-8');
       res.setHeader('Content-Disposition', 'attachment; filename=gedcollect-submissions.csv');
@@ -289,20 +309,111 @@ export const listGedcollectSubmissions = async (req, res) => {
 export const listForms = async (req, res) => {
   try {
     const { organizationId } = req.user;
-    const forms = await prisma.koboFormMapping.findMany({
-      where: { organizationId },
-      select: { koboAssetId: true, version: true, mapping: true, updatedAt: true },
-      orderBy: { updatedAt: 'desc' },
-    });
+    const offset = Math.max(Number(req.query.offset) || 0, 0);
+    const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 500);
+
+    const [forms, total] = await Promise.all([
+      prisma.koboFormMapping.findMany({
+        where: { organizationId },
+        select: { koboAssetId: true, version: true, mapping: true, updatedAt: true },
+        orderBy: { updatedAt: 'desc' },
+        skip: offset,
+        take: limit,
+      }),
+      prisma.koboFormMapping.count({ where: { organizationId } }),
+    ]);
     const result = forms.map((f) => ({
       formKey: f.koboAssetId,
       version: f.version,
       title: f.mapping?.settings?.[0]?.form_title || f.koboAssetId,
       updatedAt: f.updatedAt,
     }));
-    res.json({ forms: result });
+    res.json({ forms: result, total, offset, limit });
   } catch (err) {
     logger.error('[GEDCOLLECT-ADMIN] listForms error:', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+};
+
+export const exportGedcollectSubmissions = async (req, res) => {
+  try {
+    const { organizationId } = req.user;
+    const { format = 'csv', formKey, status } = req.query;
+
+    const where = {
+      organizationId,
+      submittedBy: { phone: { not: null } },
+    };
+    if (formKey) where.formKey = String(formKey);
+    if (status) where.status = String(status);
+
+    const submissions = await prisma.toolboxSubmission.findMany({
+      where,
+      include: {
+        submittedBy: { select: { name: true, phone: true } },
+      },
+      orderBy: { submittedAt: 'desc' },
+      take: 5000,
+    });
+
+    if (format === 'xlsx') {
+      const ExcelJS = await import('exceljs');
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Soumissions');
+
+      const valueKeys = [...new Set(submissions.flatMap((s) => Object.keys(s.values || {})))].slice(
+        0,
+        20
+      );
+      const headers = [
+        'Date',
+        'FormKey',
+        'Version',
+        'Statut',
+        'SoumisPar',
+        'Téléphone',
+        ...valueKeys.map((k) => `Champ ${k}`),
+      ];
+
+      worksheet.addRow(headers);
+      for (const s of submissions) {
+        const values = s.values || {};
+        worksheet.addRow([
+          s.submittedAt?.toISOString() || '',
+          s.formKey,
+          s.formVersion,
+          s.status,
+          s.submittedBy?.name || '',
+          s.submittedBy?.phone || '',
+          ...valueKeys.map((k) => values[k] || ''),
+        ]);
+      }
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      const filename = `gedcollect-submissions-${new Date().toISOString().slice(0, 10)}.xlsx`;
+
+      res.setHeader(
+        'Content-Type',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      );
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      return res.send(buffer);
+    }
+
+    // Default: CSV
+    const header = 'Date,FormKey,Version,Statut,SoumisPar,Téléphone,Valeurs\n';
+    const rows = submissions
+      .map((s) => {
+        const values = JSON.stringify(s.values || {}).replace(/"/g, '""');
+        return `${s.submittedAt?.toISOString() || ''},${s.formKey},${s.formVersion},${s.status},${s.submittedBy?.name || ''},${s.submittedBy?.phone || ''},"${values}"`;
+      })
+      .join('\n');
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename=gedcollect-submissions.csv');
+    return res.send(header + rows);
+  } catch (err) {
+    logger.error('[GEDCOLLECT-ADMIN] export error:', err);
     res.status(500).json({ error: 'Erreur serveur' });
   }
 };

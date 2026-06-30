@@ -1,4 +1,4 @@
-﻿ 
+ 
 // src/utils/word_engine/utils/styles.ts
 import { Paragraph, TextRun, HeadingLevel, BorderStyle, ShadingType } from 'docx';
 
@@ -29,6 +29,16 @@ export const createText = (text: string, options: Record<string, unknown> = {}) 
     ...options,
   });
 
+export const parseMarkdownText = (text: string, baseOptions: Record<string, unknown> = {}): TextRun[] => {
+  const parts = text.split(/(\*\*.*?\*\*)/g);
+  return parts.filter(p => p.length > 0).map(part => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return createText(part.slice(2, -2), { ...baseOptions, bold: true });
+    }
+    return createText(part, baseOptions);
+  });
+};
+
 export const createSectionHeader = (text: string, color: string) => {
   return new Paragraph({
     heading: HeadingLevel.HEADING_2,
@@ -36,6 +46,12 @@ export const createSectionHeader = (text: string, color: string) => {
       fill: color.replace('#', ''),
       type: ShadingType.SOLID,
       color: 'auto',
+    },
+    border: {
+      top: { style: BorderStyle.SINGLE, size: 6, color: 'D5E3F5' },
+      bottom: { style: BorderStyle.SINGLE, size: 6, color: 'D5E3F5' },
+      left: { style: BorderStyle.NONE },
+      right: { style: BorderStyle.NONE },
     },
     indent: { left: 144 },
     children: [

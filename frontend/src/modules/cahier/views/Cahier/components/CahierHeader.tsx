@@ -9,12 +9,15 @@ import {
   ShieldCheck,
   AlertCircle,
   Loader2,
-  Clock
+  Clock,
+  Layers3
 } from 'lucide-react';
 
 interface CahierHeaderProps {
   projectName?: string;
   isSaving?: boolean;
+  statusLabel?: string;
+  statusTone?: 'success' | 'info';
   selectedRole: string;
   documentMode: 'cahier' | 'contrat' | 'strategie';
   isEditing: boolean;
@@ -27,11 +30,15 @@ interface CahierHeaderProps {
   onReset: () => void;
   onExportWord: () => void;
   onEditToggle: () => void;
+  isFusedMode?: boolean;
+  onToggleFusedMode?: () => void;
 }
 
 export const CahierHeader: React.FC<CahierHeaderProps> = ({
   projectName = 'Projet Sans Nom',
   isSaving = false,
+  statusLabel = 'Synchronisé au Cloud',
+  statusTone = 'success',
   selectedRole,
   documentMode,
   isEditing,
@@ -44,6 +51,8 @@ export const CahierHeader: React.FC<CahierHeaderProps> = ({
   onReset,
   onExportWord,
   onEditToggle,
+  isFusedMode = false,
+  onToggleFusedMode,
 }) => {
   return (
     <div className="mb-6 space-y-6">
@@ -118,6 +127,22 @@ export const CahierHeader: React.FC<CahierHeaderProps> = ({
 
             <div className="h-8 w-px bg-white/10 mx-2 hidden sm:block" />
 
+            {/* Toggle Fusion Mode - Only for cahier mode */}
+            {documentMode === 'cahier' && onToggleFusedMode && (
+              <button
+                onClick={onToggleFusedMode}
+                title={isFusedMode ? "Séparer les cahiers" : "Fusionner les cahiers"}
+                className={`flex items-center gap-2 rounded-2xl border px-4 py-3 text-xs font-bold uppercase tracking-wider transition-all duration-300 hover:scale-[1.02] ${
+                  isFusedMode 
+                    ? 'border-purple-500/50 bg-purple-500/10 text-purple-400 shadow-lg shadow-purple-500/20' 
+                    : 'border-white/10 bg-white/5 text-slate-300 hover:bg-white/10'
+                }`}
+              >
+                <Layers3 size={16} />
+                <span className="hidden sm:inline">{isFusedMode ? 'Fusionné' : 'Fusionner'}</span>
+              </button>
+            )}
+
             <button
               onClick={() => setShowAdvancedSections(!showAdvancedSections)}
               title="Paramètres avancés"
@@ -165,9 +190,9 @@ export const CahierHeader: React.FC<CahierHeaderProps> = ({
               Sauvegarde en cours...
             </span>
           ) : (
-            <span className="text-emerald-400 flex items-center gap-2">
+            <span className={`${statusTone === 'info' ? 'text-blue-400' : 'text-emerald-400'} flex items-center gap-2`}>
               <ShieldCheck size={14} />
-              Synchronisé au Cloud
+              {statusLabel}
             </span>
           )}
         </div>

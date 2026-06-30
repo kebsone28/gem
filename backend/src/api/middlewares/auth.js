@@ -92,6 +92,16 @@ export const authProtect = async (req, res, next) => {
             const isProjectRoute = projectScopedPrefixes.some(prefix => req.originalUrl.startsWith(prefix));
             
             if (isProjectRoute) {
+                // Exempt GET /api/projects (list) from project context verification.
+                // This route is used to discover projects — requiring a valid X-Project-Id
+                // here causes a deadlock when the header is stale (e.g. after a DB reset).
+                const isProjectListRoute =
+                    req.originalUrl.replace(/\?.*$/, '') === '/api/projects' &&
+                    req.method === 'GET';
+
+                if (isProjectListRoute) {
+                    return next();
+                }
                 await verifierProjet(req, res, next);
             } else {
                 return next();

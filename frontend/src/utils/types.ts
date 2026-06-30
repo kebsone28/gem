@@ -219,6 +219,15 @@ export interface CahierTaskGuideBlock {
   completion?: string[];
 }
 
+export interface ExecutionGuideSection {
+  title: string;
+  description: string;
+  steps: string[];
+  checklist: string[];
+  qualityPoints: string[];
+  safetyPoints: string[];
+}
+
 export interface CahierTask {
   color: string;
   icon: string | React.ComponentType;
@@ -239,6 +248,11 @@ export interface CahierTask {
     legend?: string[];
   }[];
   koboGuide?: CahierTaskGuideBlock[];
+  executionGuide?: ExecutionGuideSection[];
+  qualityChecklist?: Array<{
+    item: string;
+    category: 'quality' | 'safety' | 'technical';
+  }>;
 }
 
 export interface TaskLibrary {

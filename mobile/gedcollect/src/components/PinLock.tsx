@@ -84,3 +84,81 @@ export const PinLockProvider: React.FC<PinLockProps> = ({ appState, children }) 
 
   return <>{children}</>;
 };
+
+const styles = StyleSheet.create({
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#0a0e27',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 9999,
+  },
+  box: {
+    backgroundColor: '#141832',
+    borderRadius: 20,
+    padding: 30,
+    alignItems: 'center',
+    width: '85%',
+    maxWidth: 400,
+    borderWidth: 1,
+    borderColor: '#1e2a4a',
+  },
+  lockIcon: {
+    fontSize: 40,
+    marginBottom: 16,
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#e8edf5',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  subtitle: {
+    fontSize: 14,
+    color: '#8899aa',
+    marginBottom: 24,
+    textAlign: 'center',
+  },
+  dots: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 16,
+    marginBottom: 32,
+  },
+  dot: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#1e2a4a',
+    backgroundColor: 'transparent',
+  },
+  dotFull: {
+    backgroundColor: '#4f8cff',
+    borderColor: '#4f8cff',
+  },
+  keypad: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    width: '100%',
+    gap: 16,
+  },
+  keyBtn: {
+    width: '28%',
+    aspectRatio: 1,
+    borderRadius: 40,
+    backgroundColor: '#0d1130',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#1e2a4a',
+  },
+  keyText: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#e8edf5',
+  },
+});
+

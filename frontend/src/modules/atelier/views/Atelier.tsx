@@ -27,8 +27,11 @@ import {
   ModulePageShell,
   ContentArea
 } from '@components';
+import { ModuleStatePanel } from '@components/common/ModuleStatePanel';
+import { useProject } from '@contexts/ProjectContext';
 
 export default function Atelier() {
+  const { activeProjectId, isLoading: isProjectLoading } = useProject();
   const {
     warehouses,
     warehouseStats,
@@ -184,6 +187,31 @@ export default function Atelier() {
     if (variantId === 'standard') return 'KIT Principal';
     return variantId;
   };
+
+  if (isProjectLoading) {
+    return (
+      <PageContainer>
+        <ModuleStatePanel
+          tone="loading"
+          title="Chargement du projet"
+          description="Le contexte projet est en cours d'initialisation pour l'atelier de production."
+        />
+      </PageContainer>
+    );
+  }
+
+  if (!activeProjectId) {
+    return (
+      <PageContainer>
+        <ModuleStatePanel
+          title="Aucun projet actif"
+          description="L'atelier de production est rattaché à un projet. Sélectionnez un projet pour préparer les kits de déploiement."
+          actionLabel="Choisir un projet"
+          actionTo="/projects"
+        />
+      </PageContainer>
+    );
+  }
 
   return (
     <PageContainer>

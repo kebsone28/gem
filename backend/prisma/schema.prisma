@@ -49,6 +49,9 @@ model Organization {
   warehouses                 Warehouse[]
   workflows                  Workflow[]
   mesRecords                 MESRecord[]
+  scheduledReports           ScheduledReport[]
+  generatedReports           GeneratedReport[]
+  toolboxWebhookExecutions   ToolboxWebhookExecution[]
 }
 
 model User {
@@ -72,6 +75,7 @@ model User {
   chatStatusText           String?
   phone                    String?
   phoneActivated           Boolean                  @default(false)
+  pinHash                  String?
   actionApprovals          ActionApproval[]
   auditLogs                AuditLog[]
   validatedActions         AutomatedAction[]
@@ -96,6 +100,8 @@ model User {
   mesRecordsValidated      MESRecord[]              @relation("MESValidator")
   mesControls              MESControl[]
   gedcollectAssignments    GedcollectAssignment[]
+  scheduledReports         ScheduledReport[]
+  generatedReports         GeneratedReport[]
 
   @@index([email])
   @@unique([email, organizationId])
@@ -117,6 +123,7 @@ model Project {
   deletedAt             DateTime?
   templateKey           String?
   templateVersion       Int?
+  mode                  String                 @default("enterprise")
   automatedActions      AutomatedAction[]
   campaigns             Campaign[]
   dataCollectionSurveys DataCollectionSurvey[]
@@ -384,10 +391,34 @@ model ToolboxFormHook {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   organization   Organization @relation(fields: [organizationId], references: [id])
+  executions     ToolboxWebhookExecution[]
 
   @@unique([organizationId, formKey, url])
   @@index([organizationId, formKey])
   @@index([organizationId])
+}
+
+model ToolboxWebhookExecution {
+  id               String       @id @default(uuid())
+  hookId           String
+  organizationId   String
+  event            String
+  submissionId     String?
+  clientSubmissionId String?
+  formKey          String?
+  payload          Json?
+  responseStatus   Int?
+  responseBody     String?
+  success          Boolean      @default(false)
+  error            String?
+  timestamp        DateTime     @default(now())
+  hook             ToolboxFormHook @relation(fields: [hookId], references: [id], onDelete: Cascade)
+  organization     Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([hookId])
+  @@index([organizationId])
+  @@index([timestamp])
+  @@index([success])
 }
 
 model GedcollectAssignment {
@@ -404,6 +435,49 @@ model GedcollectAssignment {
   @@index([organizationId])
   @@index([userId])
   @@index([formKey])
+}
+
+model ScheduledReport {
+  id             String    @id @default(uuid())
+  organizationId String
+  userId         String
+  name           String
+  schedule       String    // Format: "daily:08:00" | "weekly:1:08:00" | "monthly:1:08:00"
+  format         String    @default("csv") // csv | json
+  formKey        String?
+  filters        Json?     @default("{}")
+  active         Boolean   @default(true)
+  lastRunAt      DateTime?
+  nextRunAt      DateTime?
+  lastError      String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  user           User          @relation(fields: [userId], references: [id])
+  organization   Organization  @relation(fields: [organizationId], references: [id])
+  generatedReports GeneratedReport[]
+
+  @@index([organizationId])
+  @@index([nextRunAt])
+}
+
+model GeneratedReport {
+  id               String    @id @default(uuid())
+  organizationId   String
+  scheduledReportId String?
+  userId           String?
+  name             String
+  format           String    @default("csv")
+  fileBuffer       Bytes
+  filename         String
+  mimeType         String    @default("text/csv")
+  recordCount      Int       @default(0)
+  generatedAt      DateTime  @default(now())
+  organization     Organization @relation(fields: [organizationId], references: [id])
+  scheduledReport  ScheduledReport? @relation(fields: [scheduledReportId], references: [id])
+  user             User?         @relation(fields: [userId], references: [id])
+
+  @@index([organizationId])
+  @@index([generatedAt])
 }
 
 model ToolboxSubmission {
@@ -1437,11 +1511,11 @@ model MESRecord {
   id              String       @id @default(uuid())
   organizationId  String
   projectId       String?
-  
+
   // Informations de l'avis Senelec
   avisNumber      String       @unique
   meterNumber     String
-  
+
   // Informations techniques
   poste           String
   zone            String
@@ -1450,51 +1524,51 @@ model MESRecord {
   cable           String?
   ct70            Boolean      @default(false)
   pa              Boolean      @default(false)
-  
+
   // Intervention
   agent           String
   date            DateTime
   observations    String?
   status          String       @default("RECU") // RECU, PROGRAMME, EN_COURS, REALISE, CONTROLE, VALIDE, FACTURE, PAYE
   prestataire     String       // PROQUELEC, UMSAT, AUTRE
-  
+
   // Géolocalisation
   gpsLat          Float?
   gpsLng          Float?
-  
+
   // Photos et signature
   photos          Json?        @default("[]")
   clientSignature String?
-  
+
   // Contrôle qualité
   controlled      Boolean      @default(false)
   controllerId    String?
   controlDate     DateTime?
   checklist       Json?        @default("{}")
-  
+
   // Validation
   validated       Boolean      @default(false)
   validatorId     String?
   validationDate  DateTime?
-  
+
   // Facturation
   factured        Boolean      @default(false)
   factureNumber   String?
   factureDate     DateTime?
   amount          Decimal?
-  
+
   // Metadata
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
   deletedAt       DateTime?
   version         Int          @default(1)
-  
+
   organization    Organization     @relation(fields: [organizationId], references: [id])
   project         Project?         @relation(fields: [projectId], references: [id])
   controller      User?            @relation("MESController", fields: [controllerId], references: [id])
   validator       User?            @relation("MESValidator", fields: [validatorId], references: [id])
   controls        MESControl[]
-  
+
   @@index([organizationId])
   @@index([projectId])
   @@index([status])
@@ -1508,25 +1582,25 @@ model MESControl {
   id              String       @id @default(uuid())
   mesRecordId     String
   controllerId    String
-  
+
   // Checklist de contrôle
   compteurFixe    Boolean      @default(false)
   coupeCircuit    Boolean      @default(false)
   raccordement    Boolean      @default(false)
   conformiteZone  Boolean      @default(false)
   photosValides   Boolean      @default(false)
-  
+
   // Résultat
   conforme        Boolean      @default(false)
   observations    String?
   score           Int?
-  
+
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
-  
+
   mesRecord       MESRecord    @relation(fields: [mesRecordId], references: [id], onDelete: Cascade)
   controller      User         @relation(fields: [controllerId], references: [id])
-  
+
   @@index([mesRecordId])
   @@index([controllerId])
   @@index([conforme])

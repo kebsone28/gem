@@ -25,6 +25,7 @@
       "@components": ["components/index"],
       "@components/*": ["components/*"],
       "@contexts/*": ["contexts/*"],
+      "@hooks/*": ["hooks/*"],
       "@utils/*": ["utils/*"],
       "@assets/*": ["assets/*"],
       "xlsx": ["utils/safeExcel.ts"]

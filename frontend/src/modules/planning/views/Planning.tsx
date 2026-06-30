@@ -53,6 +53,7 @@ import {
   StatusBadge,
   ProgressBar,
 } from '@components';
+import { ModuleStatePanel } from '@components/common/ModuleStatePanel';
 import {
   DASHBOARD_STICKY_PANEL,
   MODULE_ACCENTS,
@@ -263,7 +264,7 @@ export default function Planning() {
   const [aiRecommendation, setAiRecommendation] = useState<AIResponse | null>(null);
   const [isAnalyzingAI, setIsAnalyzingAI] = useState(false);
 
-  const { project, updateProject } = useProject();
+  const { project, updateProject, activeProjectId, isLoading: isProjectLoading } = useProject();
   const currentProjectId = project?.id || null;
   const [manualPlanningOverrides, setManualPlanningOverrides] = useState<
     Record<string, ManualPlanningOverride>
@@ -1005,6 +1006,31 @@ export default function Planning() {
     await refreshPlanningData();
     toast.success('Planning actualisé');
   }, [refreshPlanningData]);
+
+  if (isProjectLoading) {
+    return (
+      <PageContainer>
+        <ModuleStatePanel
+          tone="loading"
+          title="Chargement du projet"
+          description="Le contexte projet est en cours d'initialisation pour le planning des travaux."
+        />
+      </PageContainer>
+    );
+  }
+
+  if (!activeProjectId) {
+    return (
+      <PageContainer>
+        <ModuleStatePanel
+          title="Aucun projet actif"
+          description="Le planning des travaux est rattaché à un projet. Sélectionnez un projet pour planifier les équipes et suivre l'avancement."
+          actionLabel="Choisir un projet"
+          actionTo="/projects"
+        />
+      </PageContainer>
+    );
+  }
 
   return (
     <PageContainer>

@@ -90,6 +90,35 @@ export type RootStackParamList = {
   Login: undefined;
   FormList: undefined;
   Form: { formKey: string; formTitle: string; survey: any[]; choices: any[]; draft?: DraftInfo; viewOnly?: boolean; serverVersion?: string };
+  Drafts: undefined;
+  Dashboard: undefined;
+  QRScanner: { onScan?: (value: string) => void };
   Settings: undefined;
   Submissions: { formKey?: string };
 };
+
+export interface DraftSummary {
+  id: string;
+  formKey: string;
+  formTitle: string;
+  formVersion: string;
+  totalFields: number;
+  filledFields: number;
+  photoCount: number;
+  hasGps: boolean;
+  savedAt: string;
+  qualityScore: number;
+}
+
+export interface DashboardStats {
+  todayCount: number;
+  weekCount: number;
+  totalCount: number;
+  pendingCount: number;
+  syncedCount: number;
+  draftCount: number;
+  averageQuality: number;
+  lastSyncAt: string | null;
+  formsThisWeek: { day: string; count: number }[];
+  byForm: { formKey: string; formTitle: string; count: number }[];
+}

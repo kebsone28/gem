@@ -100,7 +100,7 @@ describe('universal XLSForm engine', () => {
 
         const values = applyXlsFormCalculations(definition, {
             Numero_ordre: '4526',
-            _gem_pulldata_Thies: {
+            _ged_os_pulldata_Thies: {
                 code_key: '4526',
                 nom: 'Menage test'
             }

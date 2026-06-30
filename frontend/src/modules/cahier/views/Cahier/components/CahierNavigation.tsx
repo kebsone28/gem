@@ -13,6 +13,7 @@ interface CahierNavigationProps {
   isEditing?: boolean;
   onEditToggle?: () => void;
   onSave?: () => void;
+  isFusedMode?: boolean;
 }
 
 export const CahierNavigation: React.FC<CahierNavigationProps> = ({
@@ -26,6 +27,7 @@ export const CahierNavigation: React.FC<CahierNavigationProps> = ({
   isEditing = false,
   onEditToggle,
   onSave,
+  isFusedMode = false,
 }) => {
   return (
     <div className="flex flex-col w-full gap-6 bg-slate-900/40 backdrop-blur-md p-6 rounded-[2.5rem] border border-white/5 shadow-2xl z-20 relative">
@@ -115,7 +117,22 @@ export const CahierNavigation: React.FC<CahierNavigationProps> = ({
       <div className="h-px w-full bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
       {/* Sélecteur contextuel selon le mode */}
-      {documentMode === 'cahier' && (
+      {documentMode === 'cahier' && isFusedMode && (
+        <div className="flex flex-col gap-3 animate-in fade-in slide-in-from-top-4 duration-500 w-full">
+          <h3 className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 ml-2">
+            Mode Fusionné
+          </h3>
+          <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-purple-500/10 border border-purple-500/30 text-purple-400">
+            <Layers size={16} />
+            <span className="text-[11px] font-bold uppercase tracking-widest">
+              Électricien + Maçonnerie + Logistique
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Sélecteur contextuel selon le mode */}
+      {documentMode === 'cahier' && !isFusedMode && (
         <div className="flex flex-col gap-3 animate-in fade-in slide-in-from-top-4 duration-500 w-full">
           <h3 className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 ml-2">
             Corps d'État ({Object.keys(taskLibrary).length})

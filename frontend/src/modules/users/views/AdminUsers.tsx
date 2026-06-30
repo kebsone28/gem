@@ -1,5 +1,13 @@
-/* eslint-disable @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, no-empty */
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+
+// Helper pour extraire les messages d'erreur API de manière typée
+const getApiError = (err: unknown): string => {
+  if (err instanceof Error) return err.message;
+  if (typeof err === 'string') return err;
+  const apiError = (err as any)?.response?.data?.error;
+  const apiMessage = (err as any)?.response?.data?.message;
+  return apiError || apiMessage || String(err);
+};
 import { motion, AnimatePresence } from 'framer-motion';
 import { db } from '@/store/db';
 import type { UserRole, User } from '@utils/types';
@@ -26,26 +34,21 @@ import {
   Settings as SettingsIcon,
   Layout,
   FileText,
-} from 'lucide-react';
-import { appSecurity } from '@services/appSecurity';
-import { useAuth } from '@contexts/AuthContext';
-import { useProject } from '@contexts/ProjectContext';
-import { PageContainer, PageHeader, ContentArea, Modal } from '@components';
-// Import des icônes pour le tableau
-import { 
-  MoreVertical, 
-  Trash2 as TrashIcon, 
-  UserPlus, 
-  Key, 
-  Activity, 
+  MoreVertical,
+  UserPlus,
+  Key,
+  Activity,
   ShieldAlert,
   ArrowUpDown,
   Mail,
   Calendar as DateIcon,
   Zap,
   Globe,
-  Settings as ConfigIcon
 } from 'lucide-react';
+import { appSecurity } from '@services/appSecurity';
+import { useAuth } from '@contexts/AuthContext';
+import { useProject } from '@contexts/ProjectContext';
+import { PageContainer, PageHeader, ContentArea, Modal } from '@components';
 import {
   PERMISSION_LABELS,
   PERMISSIONS,
@@ -62,7 +65,7 @@ import { organizationService } from '@services/organizationService';
 import { auditService } from '@services/auditService';
 import projectService from '@services/projectService';
 import adminPermissionsService from '@services/adminPermissionsService';
-import logger from '@utils/logger';
+import logger from '@services/logger';
 import { isMasterAdminEmail } from '@core/security/roleUtils';
 
 // Les constantes statiques de sécurité sont gérées par appSecurity
@@ -76,6 +79,8 @@ const ROLE_CONFIG: Record<
     textColor: string;
     icon: typeof ShieldIcon;
     description: string;
+    governanceMode?: 'enterprise' | 'gov' | 'ong' | 'bailleur';
+    limits?: string[];
   }
 > = {
   // CLIENT LSE
@@ -85,6 +90,8 @@ const ROLE_CONFIG: Record<
     textColor: 'text-cyan-400',
     icon: ShieldIcon,
     description: 'Contrôle Technique National',
+    governanceMode: 'enterprise',
+    limits: ['Accès limité aux projets SENELEC', 'Validation technique uniquement'],
   },
   SENELEC_CONTROLEUR: {
     label: 'Contrôleur SENELEC',
@@ -92,64 +99,187 @@ const ROLE_CONFIG: Record<
     textColor: 'text-cyan-400',
     icon: ShieldIcon,
     description: 'Inspection & Conformité',
+    governanceMode: 'enterprise',
+    limits: ['Inspection uniquement', 'Pas de modification de données'],
   },
 
-  // PROQUELEC/GEM - MAÎTRE D'ŒUVRE
+  // PROQUELEC/GEM - MAÎTRE D'ŒUVRE (Mode Entreprise)
+  [AppRole.PLATFORM_ADMIN]: {
+    label: 'Administrateur Plateforme',
+    color: 'bg-rose-500/10 border-rose-500/50',
+    textColor: 'text-rose-400',
+    icon: ShieldCheck,
+    description: 'Accès complet système & Multi-tenant',
+    governanceMode: 'enterprise',
+    limits: ['Accès illimité', 'Gestion multi-organisations'],
+  },
   [AppRole.ADMIN]: {
     label: 'Administrateur Proquelec',
     color: 'bg-indigo-500/10 border-indigo-500/50',
     textColor: 'text-indigo-400',
     icon: ShieldCheck,
-    description: 'Accès complet & 2FA',
+    description: 'Accès complet organisation & 2FA',
+    governanceMode: 'enterprise',
+    limits: ['Accès complet organisation', 'Gestion utilisateurs'],
   },
   [AppRole.DIRECTEUR]: {
     label: 'DG Proquelec',
     color: 'bg-emerald-500/10 border-emerald-500/50',
     textColor: 'text-emerald-400',
     icon: ShieldIcon,
-    description: 'Direction GEM',
+    description: 'Direction GEM & Décisions Stratégiques',
+    governanceMode: 'enterprise',
+    limits: ['Validation décisions stratégiques', 'Accès tous projets'],
   },
   [AppRole.CHEF_PROJET]: {
     label: 'Chef de Projet',
     color: 'bg-sky-500/10 border-sky-500/50',
     textColor: 'text-sky-400',
     icon: Briefcase,
-    description: 'Gestion de Mission',
+    description: 'Gestion de Mission & Coordination',
+    governanceMode: 'enterprise',
+    limits: ['Accès projets assignés', 'Gestion missions'],
+  },
+  [AppRole.CHEF_EQUIPE]: {
+    label: 'Chef d\'Équipe',
+    color: 'bg-sky-500/10 border-sky-500/50',
+    textColor: 'text-sky-400',
+    icon: Briefcase,
+    description: 'Coordination Terrain & Équipes',
+    governanceMode: 'enterprise',
+    limits: ['Accès équipe uniquement', 'Validation terrain'],
   },
   [AppRole.COMPTABLE]: {
     label: 'Comptable',
     color: 'bg-rose-500/10 border-rose-500/50',
     textColor: 'text-rose-400',
     icon: Calculator,
-    description: 'Finances & Audit',
+    description: 'Finances & Audit & Paiements',
+    governanceMode: 'enterprise',
+    limits: ['Accès finances uniquement', 'Validation paiements'],
   },
   [AppRole.PATRIMOINE]: {
     label: 'Gestion Patrimoine',
     color: 'bg-purple-500/10 border-purple-500/50',
     textColor: 'text-purple-400',
     icon: Award,
-    description: 'Actifs & Maintenance',
+    description: 'Actifs & Maintenance & Inventaire',
+    governanceMode: 'enterprise',
+    limits: ['Gestion actifs uniquement', 'Inventaire'],
   },
   [AppRole.EMPLOYE]: {
     label: 'Employé Proquelec',
     color: 'bg-blue-500/10 border-blue-500/50',
     textColor: 'text-blue-400',
     icon: UserIcon,
-    description: 'Opérations & Reporting',
+    description: 'Opérations & Reporting & Terrain',
+    governanceMode: 'enterprise',
+    limits: ['Accès limité aux tâches assignées', 'Pas de validation'],
   },
   [AppRole.SUPERVISEUR]: {
     label: 'Superviseur / Consultant',
     color: 'bg-amber-500/10 border-amber-500/50',
     textColor: 'text-amber-400',
     icon: UserIcon,
-    description: 'Supervision & Validation',
+    description: 'Supervision & Validation & Qualité',
+    governanceMode: 'enterprise',
+    limits: ['Validation missions', 'Accès lecture seule finances'],
   },
   [AppRole.CONTROLEUR]: {
     label: 'Contrôleur / Audit',
     color: 'bg-amber-500/10 border-amber-500/50',
     textColor: 'text-amber-400',
     icon: UserIcon,
-    description: 'Validation Technique',
+    description: 'Validation Technique & Conformité',
+    governanceMode: 'enterprise',
+    limits: ['Audit technique', 'Pas de modification'],
+  },
+
+  // RÔLES MODE GOUVERNEMENT
+  [AppRole.MINISTRE]: {
+    label: 'Ministre',
+    color: 'bg-violet-500/10 border-violet-500/50',
+    textColor: 'text-violet-400',
+    icon: ShieldCheck,
+    description: 'Décisions Ministérielles & Souveraineté',
+    governanceMode: 'gov',
+    limits: ['Validation finale stratégique', 'Accès tous projets nationaux'],
+  },
+  [AppRole.DIRECTEUR_GENERAL]: {
+    label: 'Directeur Général',
+    color: 'bg-violet-500/10 border-violet-500/50',
+    textColor: 'text-violet-400',
+    icon: ShieldIcon,
+    description: 'Direction Ministérielle & Transmissions',
+    governanceMode: 'gov',
+    limits: ['Transmission au ministère', 'Validation niveau directeur'],
+  },
+  [AppRole.INSPECTEUR_GENERAL]: {
+    label: 'Inspecteur Général',
+    color: 'bg-violet-500/10 border-violet-500/50',
+    textColor: 'text-violet-400',
+    icon: ShieldIcon,
+    description: 'Audit National & Conformité Légale',
+    governanceMode: 'gov',
+    limits: ['Audit légal', 'Accès lecture seule'],
+  },
+
+  // RÔLES MODE ONG
+  [AppRole.COORDINATEUR]: {
+    label: 'Coordinateur',
+    color: 'bg-teal-500/10 border-teal-500/50',
+    textColor: 'text-teal-400',
+    icon: Briefcase,
+    description: 'Coordination Projets & Évaluation Impact',
+    governanceMode: 'ong',
+    limits: ['Évaluation impact', 'Validation bénéficiaires'],
+  },
+  [AppRole.RESPONSABLE_IMPACT]: {
+    label: 'Responsable Impact',
+    color: 'bg-teal-500/10 border-teal-500/50',
+    textColor: 'text-teal-400',
+    icon: Award,
+    description: 'Mesure Impact & Reporting Social',
+    governanceMode: 'ong',
+    limits: ['Mesure impact uniquement', 'Rapports sociaux'],
+  },
+  [AppRole.PROTECTION_BENEFICIAIRES]: {
+    label: 'Protection Bénéficiaires',
+    color: 'bg-teal-500/10 border-teal-500/50',
+    textColor: 'text-teal-400',
+    icon: ShieldIcon,
+    description: 'Protection Données Personnelles & Éthique',
+    governanceMode: 'ong',
+    limits: ['Accès restreint données sensibles', 'Validation éthique'],
+  },
+
+  // RÔLES MODE BAILLEUR
+  [AppRole.COMPLIANCE_OFFICER]: {
+    label: 'Officier Conformité',
+    color: 'bg-orange-500/10 border-orange-500/50',
+    textColor: 'text-orange-400',
+    icon: ShieldIcon,
+    description: 'Vérification Conformité Bailleur',
+    governanceMode: 'bailleur',
+    limits: ['Vérification conformité uniquement', 'Standards BM/BAD/UE'],
+  },
+  [AppRole.REPRESENTANT_BAILLEUR]: {
+    label: 'Représentant Bailleur',
+    color: 'bg-orange-500/10 border-orange-500/50',
+    textColor: 'text-orange-400',
+    icon: ShieldCheck,
+    description: 'Validation Bailleur & Reporting Standard',
+    governanceMode: 'bailleur',
+    limits: ['Validation finale bailleur', 'Reporting standardisé'],
+  },
+  [AppRole.AUDITEUR_EXTERNE]: {
+    label: 'Auditeur Externe',
+    color: 'bg-orange-500/10 border-orange-500/50',
+    textColor: 'text-orange-400',
+    icon: UserIcon,
+    description: 'Audit Externe & Certification',
+    governanceMode: 'bailleur',
+    limits: ['Audit externe uniquement', 'Accès lecture seule'],
   },
 };
 
@@ -238,7 +368,7 @@ const emptyForm = (): UserForm => ({
   teamId: undefined,
   active: true,
   requires2FA: false,
-  permissions: [],
+  permissions: undefined, // undefined = Mode Automatique (hérite du rôle)
   assignedProjectIds: [], // New field for UI management
 });
 
@@ -412,7 +542,7 @@ const AdminUsersTable = ({
                         className="p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white border border-rose-500/20 transition-all active:scale-90"
                         title="Supprimer"
                       >
-                        <TrashIcon size={14} />
+                        <Trash2 size={14} />
                       </button>
                     )}
                   </div>
@@ -671,12 +801,12 @@ export default function AdminUsers() {
       name: trimmedName,
     };
 
-    if (!editId && (form.password?.length ?? 0) < 6) {
-      toast.error('Le mot de passe doit faire au moins 6 caractères.');
+    if (!editId && (form.password?.length ?? 0) < 12) {
+      toast.error('Le mot de passe doit faire au moins 12 caractères.');
       return;
     }
-    if (editId && form.password?.trim() && form.password.trim().length < 6) {
-      toast.error('Le nouveau mot de passe doit faire au moins 6 caractères.');
+    if (editId && form.password?.trim() && form.password.trim().length < 12) {
+      toast.error('Le nouveau mot de passe doit faire au moins 12 caractères.');
       return;
     }
     setSaving(true);
@@ -719,21 +849,16 @@ export default function AdminUsers() {
         try {
           await projectService.setUserAssignments(finalUserId, assignedIds);
         } catch (assignError) {
-          const errMessage =
-            assignError instanceof Error ? assignError.message : String(assignError);
-          const serverMsg =
-            (assignError as any)?.response?.data?.error ||
-            (assignError as any)?.response?.data?.message;
+          const errMessage = getApiError(assignError);
           logger.warn('[AdminUsers] Project assignment failed', errMessage);
-          toast.error(`Certaines assignations de projets n'ont pas pu être finalisées${serverMsg ? ` — ${serverMsg}` : ''}`);
+          toast.error(`Certaines assignations de projets n'ont pas pu être finalisées — ${errMessage}`);
         }
       }
 
       setShowForm(false);
       loadData(); // Refresh list
     } catch (err) {
-      const errMessage =
-        (err as any)?.response?.data?.error || (err instanceof Error ? err.message : String(err));
+      const errMessage = getApiError(err);
       toast.error(`❌  Erreur: ${errMessage}`);
     } finally {
       setSaving(false);
@@ -758,10 +883,34 @@ export default function AdminUsers() {
   // ─── Confirm delete: step 1 (password) ────────────────────────────────────
   const confirmDelStep1 = async () => {
     if (!deleteTarget) return;
-    // Non-admin: require name confirmation before delete
+    
+    // Vérifier le mot de passe pour tous les utilisateurs (cohérence de sécurité)
+    const ok = await appSecurity.check('adminPassword', delPass);
+    if (!ok) {
+      setDelError('Mot de passe incorrect. Veuillez réessayer.');
+      return;
+    }
+    
+    setDelError('');
+    setDelStep(2);
+  };
+
+  // ─── Confirm delete: step 2 (name confirmation for non-admin, security question for admin) ───────────────────────────
+  const confirmDelStep2 = async () => {
+    if (!deleteTarget) return;
+    
     const isAdminTarget =
       normalizeRole(deleteTarget.role) === AppRole.ADMIN || isMasterAdminEmail(deleteTarget.email);
-    if (!isAdminTarget) {
+    
+    if (isAdminTarget) {
+      // Admin: vérifier la question de sécurité
+      const ok = await appSecurity.check('securityAnswer', delAnswer, true);
+      if (!ok) {
+        setDelError('Réponse incorrecte. Suppression annulée.');
+        return;
+      }
+    } else {
+      // Non-admin: confirmer le nom
       if (
         !deleteConfirmedName ||
         deleteConfirmedName.toLowerCase() !== (deleteTarget.name || '').toLowerCase()
@@ -769,26 +918,8 @@ export default function AdminUsers() {
         setDelError("Veuillez saisir le nom de l'utilisateur pour confirmer la suppression.");
         return;
       }
-      await executeDelete();
-      return;
     }
-    // Admin: check password first
-    const ok = await appSecurity.check('adminPassword', delPass);
-    if (!ok) {
-      setDelError('Mot de passe incorrect. Veuillez réessayer.');
-      return;
-    }
-    setDelError('');
-    setDelStep(2);
-  };
-
-  // ─── Confirm delete: step 2 (security question) ───────────────────────────
-  const confirmDelStep2 = async () => {
-    const ok = await appSecurity.check('securityAnswer', delAnswer, true);
-    if (!ok) {
-      setDelError('Réponse incorrecte. Suppression annulée.');
-      return;
-    }
+    
     await executeDelete();
   };
 
@@ -816,8 +947,7 @@ export default function AdminUsers() {
       setDeleteTarget(null);
       loadData();
     } catch (err) {
-      const errMessage =
-        (err as any)?.response?.data?.error || (err instanceof Error ? err.message : String(err));
+      const errMessage = getApiError(err);
       toast.error(`❌  Erreur: ${errMessage}`, { id: toastId });
     }
   };
@@ -851,9 +981,37 @@ export default function AdminUsers() {
       }
       loadData();
     } catch (err) {
-      const errMessage =
-        (err as any)?.response?.data?.error || (err instanceof Error ? err.message : String(err));
+      const errMessage = getApiError(err);
       toast.error(`❌  Erreur: ${errMessage}`);
+    }
+  };
+
+  // ─── Impersonation with audit ─────────────────────────────────────────────
+  const handleImpersonate = async (targetUser: User, projectId?: string) => {
+    try {
+      if (projectId) {
+        setActiveProjectId(projectId);
+      }
+      impersonate(targetUser);
+      
+      // Audit log for impersonation
+      if (user) {
+        await auditService.logAction(
+          user,
+          'Impersonation Utilisateur',
+          'UTILISATEURS',
+          `A pris l'identité de "${targetUser.name}" (${targetUser.email})${projectId ? ` sur le projet ${projectId}` : ''}`,
+          'warning'
+        );
+      }
+      
+      setImpersonateTarget(null);
+      toast.success(`🔄 Impersonation de "${targetUser.name}" activée`);
+    } catch (err) {
+      logger.error('[AdminUsers] Impersonation audit failed', err);
+      // Still allow impersonation even if audit fails
+      impersonate(targetUser);
+      setImpersonateTarget(null);
     }
   };
 
@@ -865,8 +1023,8 @@ export default function AdminUsers() {
   };
   const saveReset = async () => {
     if (!resetTarget) return;
-    if (newPassword.length < 6) {
-      toast.error('Le mot de passe doit faire au moins 6 caractères.');
+    if (newPassword.length < 12) {
+      toast.error('Le mot de passe doit faire au moins 12 caractères.');
       return;
     }
     try {
@@ -884,8 +1042,7 @@ export default function AdminUsers() {
       setResetTarget(null);
       loadData();
     } catch (err) {
-      const errMessage =
-        (err as any)?.response?.data?.error || (err instanceof Error ? err.message : String(err));
+      const errMessage = getApiError(err);
       toast.error(`❌  Erreur: ${errMessage}`);
     }
   };
@@ -947,7 +1104,7 @@ export default function AdminUsers() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-4000 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4"
+            className="fixed inset-0 z-[4000] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4"
           >
             <motion.div
               initial={{ scale: 0.9, y: 30 }}
@@ -1352,30 +1509,94 @@ export default function AdminUsers() {
             </div>
           </header>
 
-          {/* KPI Section with Glassmorphism */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-            {roleStats.map((s) => {
-              const Icon = s.icon;
-              return (
-                <div
-                  key={s.role}
-                  className={`backdrop-blur-xl group hover:scale-[1.02] transition-all p-6 rounded-[2.5rem] border ${s.color}`}
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <div
-                      className={`p-3 rounded-2xl ${s.color.replace(' border-', ' ')} border border-transparent group-hover:border-current transition-colors`}
+          {/* Rôles Tableau Transparent - Premium Design */}
+          <div className="backdrop-blur-xl bg-slate-900/40 border border-slate-800/50 rounded-[2.5rem] overflow-hidden shadow-2xl">
+            {/* Table Header */}
+            <div className="grid grid-cols-12 gap-4 px-8 py-5 border-b border-slate-800/50 bg-slate-950/30">
+              <div className="col-span-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Rôle</div>
+              <div className="col-span-2 text-[10px] font-black text-slate-500 uppercase tracking-widest text-center">Mode</div>
+              <div className="col-span-2 text-[10px] font-black text-slate-500 uppercase tracking-widest text-center">Utilisateurs</div>
+              <div className="col-span-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Limites & Restrictions</div>
+            </div>
+
+            {/* Table Body */}
+            <div className="divide-y divide-slate-800/30">
+              {roleStats
+                .sort((a, b) => b.count - a.count)
+                .map((s, idx) => {
+                  const Icon = s.icon;
+                  const governanceBadge = s.governanceMode ? {
+                    enterprise: { label: '🏢', color: 'text-blue-400' },
+                    gov: { label: '🏛️', color: 'text-violet-400' },
+                    ong: { label: '🤝', color: 'text-teal-400' },
+                    bailleur: { label: '🌍', color: 'text-orange-400' },
+                  }[s.governanceMode] : null;
+
+                  return (
+                    <motion.div
+                      key={s.role}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: idx * 0.05 }}
+                      className="grid grid-cols-12 gap-4 px-8 py-5 hover:bg-slate-800/30 transition-all group"
                     >
-                      <Icon size={20} className={s.textColor} />
-                    </div>
-                    <span className={`text-3xl font-black ${s.textColor}`}>{s.count}</span>
-                  </div>
-                  <h3 className="text-white font-black text-sm tracking-wide uppercase mb-1">
-                    {s.label}
-                  </h3>
-                  <p className="text-slate-500 text-xs font-bold leading-tight">{s.description}</p>
-                </div>
-              );
-            })}
+                      {/* Rôle */}
+                      <div className="col-span-4 flex items-center gap-4">
+                        <div
+                          className={`p-3 rounded-xl ${s.color.replace(' border-', ' ')} border border-white/10 group-hover:border-white/20 transition-all shadow-lg`}
+                        >
+                          <Icon size={20} className={s.textColor} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-white font-black text-sm tracking-wide uppercase mb-1 truncate">
+                            {s.label}
+                          </h3>
+                          <p className="text-slate-500 text-[10px] font-bold leading-tight truncate">{s.description}</p>
+                        </div>
+                      </div>
+
+                      {/* Mode */}
+                      <div className="col-span-2 flex items-center justify-center">
+                        {governanceBadge ? (
+                          <span className={`text-lg ${governanceBadge.color}`} title={s.governanceMode}>
+                            {governanceBadge.label}
+                          </span>
+                        ) : (
+                          <span className="text-slate-600 text-sm">—</span>
+                        )}
+                      </div>
+
+                      {/* Utilisateurs */}
+                      <div className="col-span-2 flex items-center justify-center">
+                        <span className={`text-2xl font-black ${s.textColor} drop-shadow-lg`}>{s.count}</span>
+                      </div>
+
+                      {/* Limites */}
+                      <div className="col-span-4 flex items-center">
+                        {s.limits && s.limits.length > 0 ? (
+                          <div className="flex flex-wrap gap-2">
+                            {s.limits.slice(0, 2).map((limit) => (
+                              <span
+                                key={limit}
+                                className="text-[9px] font-medium text-slate-400 bg-slate-800/50 px-2 py-1 rounded-lg border border-slate-700/50"
+                              >
+                                {limit}
+                              </span>
+                            ))}
+                            {s.limits.length > 2 && (
+                              <span className="text-[9px] font-medium text-slate-500">
+                                +{s.limits.length - 2}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-slate-600 text-[10px]">Aucune restriction</span>
+                        )}
+                      </div>
+                    </motion.div>
+                  );
+                })}
+            </div>
           </div>
 
           {/* Business Rules Config Section (NEW) */}
@@ -1793,7 +2014,7 @@ export default function AdminUsers() {
                                       <div className="flex items-center gap-3">
                                         <input
                                           type="checkbox"
-                                          className="hidden"
+                                          className="sr-only"
                                           checked={isAssigned}
                                           onChange={() => {
                                             setForm((f: UserForm) => {
@@ -2168,7 +2389,7 @@ export default function AdminUsers() {
                                           <div className="flex items-center gap-3">
                                             <input
                                               type="checkbox"
-                                              className="hidden"
+                                              className="sr-only"
                                               checked={isChecked}
                                               onChange={() => togglePermission(value)}
                                             />
@@ -2297,10 +2518,7 @@ export default function AdminUsers() {
                 {impersonateProjects.map(proj => (
                   <button
                     key={proj.id}
-                    onClick={() => {
-                      setActiveProjectId(proj.id);
-                      impersonate(impersonateTarget);
-                    }}
+                    onClick={() => handleImpersonate(impersonateTarget, proj.id)}
                     className="w-full text-left p-4 rounded-xl border border-white/10 hover:border-indigo-500/50 hover:bg-indigo-500/10 transition-all flex items-center justify-between group"
                   >
                     <div>
@@ -2325,7 +2543,7 @@ export default function AdminUsers() {
                   Annuler
                 </button>
                 <button
-                  onClick={() => impersonate(impersonateTarget)}
+                  onClick={() => handleImpersonate(impersonateTarget)}
                   className="px-6 py-2.5 rounded-xl font-bold bg-indigo-600 text-white hover:bg-indigo-500 transition-all shadow-lg shadow-indigo-500/25"
                 >
                   Continuer par défaut

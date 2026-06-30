@@ -21,7 +21,12 @@ export interface Mission {
 /**
  * Récupère toutes les missions d'un projet
  */
-export const getMissions = async (params?: { projectId?: string; search?: string; status?: string; limit?: number }): Promise<Mission[]> => {
+export const getMissions = async (params?: {
+  projectId?: string;
+  search?: string;
+  status?: string;
+  limit?: number;
+}): Promise<Mission[]> => {
   try {
     const response = await api.get('/missions', { params });
     return response.data.missions || [];
@@ -55,6 +60,10 @@ export const createMission = async (missionData: Partial<Mission>): Promise<Miss
   } catch (err: any) {
     logger.error('❌ [API] Failed to create mission:', err);
     logger.error('❌ FULL BACKEND ERROR:', err.response?.data);
+    logger.error('❌ STATUS:', err.response?.status);
+    if (err.response?.status === 403 || err.response?.status === 401) {
+      throw new Error('Permission refusee: votre role (N/A) ne permet pas de creer des missions.');
+    }
     throw err; // Let caller handle error
   }
 };
@@ -114,7 +123,7 @@ export const purgeAllMissions = async (): Promise<{ success: boolean; count: num
     const response = await api.delete('/missions/purge/all');
     return {
       success: true,
-      count: response.data.count || 0
+      count: response.data.count || 0,
     };
   } catch (err: any) {
     logger.error('Failed to purge missions:', err);
@@ -138,7 +147,10 @@ export const verifyMission = async (identifier: string): Promise<Mission | null>
 /**
  * Assigne une mission à un projet (liaison indépendante)
  */
-export const assignMissionToProject = async (missionId: string, projectId: string): Promise<Mission | null> => {
+export const assignMissionToProject = async (
+  missionId: string,
+  projectId: string
+): Promise<Mission | null> => {
   try {
     logger.debug('🚀 [API] ASSIGN MISSION TO PROJECT:', { missionId, projectId });
     const response = await api.patch(`/missions/${missionId}/assign-project`, { projectId });

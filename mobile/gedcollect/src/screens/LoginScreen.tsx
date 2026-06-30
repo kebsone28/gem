@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,7 @@ import {
   ScrollView,
   Image,
 } from 'react-native';
-import { sendOtp, verifyOtp } from '@services/api';
+import { registerPin, loginWithPin } from '@services/api';
 
 interface Props {
   onLoginSuccess: () => void;
@@ -19,11 +19,11 @@ interface Props {
 
 export default function LoginScreen({ onLoginSuccess }: Props) {
   const [phone, setPhone] = useState('');
-  const [code, setCode] = useState('');
-  const [step, setStep] = useState<'phone' | 'otp'>('phone');
+  const [pin, setPin] = useState('');
+  const [isRegistering, setIsRegistering] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const codeInputRef = useRef<TextInput>(null);
+  const pinInputRef = useRef<TextInput>(null);
 
   const formatPhone = (v: string) => {
     const digits = v.replace(/\D/g, '');
@@ -33,46 +33,37 @@ export default function LoginScreen({ onLoginSuccess }: Props) {
     return `${digits.slice(0, 3)} ${digits.slice(3, 5)} ${digits.slice(5, 7)} ${digits.slice(7, 9)}`;
   };
 
-  const handleSendOtp = async () => {
+  const handleSubmit = async () => {
     const raw = phone.replace(/\s/g, '');
     if (raw.length < 8) {
       setError('Numéro de téléphone invalide');
       return;
     }
-    setLoading(true);
-    setError('');
-    try {
-      const res = await sendOtp(raw);
-      setStep('otp');
-      setTimeout(() => codeInputRef.current?.focus(), 300);
-    } catch (e: any) {
-      setError(e.message || 'Erreur lors de l\'envoi du code');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleVerifyOtp = async () => {
-    if (code.length < 4) {
-      setError('Code invalide');
+    if (pin.length < 4) {
+      setError('Le PIN doit contenir au moins 4 chiffres');
       return;
     }
     setLoading(true);
     setError('');
     try {
-      const raw = phone.replace(/\s/g, '');
-      await verifyOtp(raw, code);
+      if (isRegistering) {
+        await registerPin(raw, pin);
+      }
+      await loginWithPin(raw, pin);
       onLoginSuccess();
     } catch (e: any) {
-      setError(e.message || 'Code incorrect');
+      const msg = e.message || '';
+      if (msg.includes('Aucun PIN configuré') || msg.includes('Un PIN est déjà défini')) {
+        setIsRegistering(!isRegistering);
+      }
+      setError(msg);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleBack = () => {
-    setStep('phone');
-    setCode('');
+  const toggleMode = () => {
+    setIsRegistering(!isRegistering);
     setError('');
   };
 
@@ -93,67 +84,56 @@ export default function LoginScreen({ onLoginSuccess }: Props) {
         </View>
 
         <View style={styles.card}>
-          {step === 'phone' ? (
-            <>
-              <Text style={styles.title}>Connexion</Text>
-              <Text style={styles.label}>Numéro de téléphone</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="77 123 45 67"
-                placeholderTextColor="#666"
-                keyboardType="phone-pad"
-                value={phone}
-                onChangeText={(v) => setPhone(formatPhone(v))}
-                maxLength={14}
-                editable={!loading}
-              />
-              {error ? <Text style={styles.error}>{error}</Text> : null}
-              <TouchableOpacity
-                style={[styles.button, loading && styles.buttonDisabled]}
-                onPress={handleSendOtp}
-                disabled={loading}
-              >
-                {loading ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.buttonText}>Envoyer le code</Text>
-                )}
-              </TouchableOpacity>
-            </>
-          ) : (
-            <>
-              <TouchableOpacity onPress={handleBack} style={styles.backBtn}>
-                <Text style={styles.backText}>← Modifier le numéro</Text>
-              </TouchableOpacity>
-              <Text style={styles.title}>Code de vérification</Text>
-              <Text style={styles.label}>
-                Entrez le code reçu au {phone}
+          <Text style={styles.title}>
+            {isRegistering ? 'Créer votre PIN' : 'Connexion'}
+          </Text>
+          <Text style={styles.label}>Numéro de téléphone</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="77 123 45 67"
+            placeholderTextColor="#666"
+            keyboardType="phone-pad"
+            value={phone}
+            onChangeText={(v) => setPhone(formatPhone(v))}
+            maxLength={14}
+            editable={!loading}
+          />
+          <Text style={styles.label}>
+            {isRegistering ? 'Nouveau PIN (4 à 6 chiffres)' : 'Votre PIN'}
+          </Text>
+          <TextInput
+            ref={pinInputRef}
+            style={[styles.input, styles.pinInput]}
+            placeholder="****"
+            placeholderTextColor="#666"
+            keyboardType="number-pad"
+            secureTextEntry
+            value={pin}
+            onChangeText={(v) => setPin(v.replace(/\D/g, '').slice(0, 6))}
+            maxLength={6}
+            editable={!loading}
+          />
+          {error ? <Text style={styles.error}>{error}</Text> : null}
+          <TouchableOpacity
+            style={[styles.button, loading && styles.buttonDisabled]}
+            onPress={handleSubmit}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.buttonText}>
+                {isRegistering ? 'Enregistrer et connecter' : 'Se connecter'}
               </Text>
-              <TextInput
-                ref={codeInputRef}
-                style={[styles.input, styles.codeInput]}
-                placeholder="1234"
-                placeholderTextColor="#666"
-                keyboardType="number-pad"
-                value={code}
-                onChangeText={(v) => setCode(v.replace(/\D/g, '').slice(0, 6))}
-                maxLength={6}
-                editable={!loading}
-              />
-              {error ? <Text style={styles.error}>{error}</Text> : null}
-              <TouchableOpacity
-                style={[styles.button, loading && styles.buttonDisabled]}
-                onPress={handleVerifyOtp}
-                disabled={loading}
-              >
-                {loading ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.buttonText}>Vérifier</Text>
-                )}
-              </TouchableOpacity>
-            </>
-          )}
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity onPress={toggleMode} style={styles.toggleBtn}>
+            <Text style={styles.toggleText}>
+              {isRegistering
+                ? 'Déjà un PIN ? Connectez-vous'
+                : 'Première fois ? Créez votre PIN'}
+            </Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -207,7 +187,7 @@ const styles = StyleSheet.create({
     borderColor: '#1e2a4a',
     marginBottom: 16,
   },
-  codeInput: { fontSize: 28, letterSpacing: 8 },
+  pinInput: { fontSize: 28, letterSpacing: 8 },
   button: {
     backgroundColor: '#4f8cff',
     borderRadius: 12,
@@ -218,6 +198,6 @@ const styles = StyleSheet.create({
   buttonDisabled: { opacity: 0.6 },
   buttonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   error: { color: '#ff4757', fontSize: 13, textAlign: 'center', marginBottom: 12 },
-  backBtn: { marginBottom: 16 },
-  backText: { color: '#4f8cff', fontSize: 14, fontWeight: '600' },
+  toggleBtn: { marginTop: 16, alignItems: 'center' },
+  toggleText: { color: '#4f8cff', fontSize: 13, fontWeight: '600' },
 });

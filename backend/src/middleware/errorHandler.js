@@ -63,8 +63,9 @@ export const errorHandler = (err, req, res, _next) => {
   persistSystemError(err, req);
 
   if (err.isJoi) {
+    const messages = err.details.map(d => d.message).join('; ');
     return res.status(400).json({
-      error: 'Données invalides',
+      error: `Validation failed: ${messages}`,
       details: err.details.map(d => ({
         path: d.path.join('.'),
         message: d.message

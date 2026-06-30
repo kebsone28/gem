@@ -77,10 +77,10 @@ export const buildProjectCreationPayload = (
     client: normalizeString(payload.client),
     budget: payload.budget || 0,
     status: 'active',
+    mode: payload.mode,
     config: {
       enabledModules,
       country: normalizeString(payload.country),
-      mode: payload.mode,
       sector: selectedTemplateId || 'elec_bt',
       customFields: normalizeCustomFields(payload.customFields),
       labels: payload.labels || {},

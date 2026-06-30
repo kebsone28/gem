@@ -19,23 +19,25 @@ const app = express();
 app.set('trust proxy', 1);
 app.set('json replacer', jsonBigIntReplacer);
 
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "https://puter.com"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      imgSrc: ["'self'", "data:", "https://tiles.openfreemap.org", "https://kf.kobotoolbox.org"],
-      connectSrc: ["'self'", "https://kf.kobotoolbox.org", "wss://*.proquelec.sn"],
-      fontSrc: ["'self'"],
-      objectSrc: ["'none'"],
-      frameAncestors: ["'none'"],
-      upgradeInsecureRequests: [],
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", 'https://puter.com'],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", 'data:', 'https://tiles.openfreemap.org', 'https://kf.kobotoolbox.org'],
+        connectSrc: ["'self'", 'https://kf.kobotoolbox.org', 'wss://*.proquelec.sn'],
+        fontSrc: ["'self'"],
+        objectSrc: ["'none'"],
+        frameAncestors: ["'none'"],
+        upgradeInsecureRequests: [],
+      },
     },
-  },
-  crossOriginEmbedderPolicy: false,
-  referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
-}));
+    crossOriginEmbedderPolicy: false,
+    referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+  })
+);
 app.use(cors(config.cors));
 
 app.get('/api/ping', async (req, res) => {
@@ -49,7 +51,12 @@ app.get('/api/ping', async (req, res) => {
   } catch (e) {
     dbStatus = `error: ${e.message}`;
   }
-  res.json({ status: 'ok', msg: 'GED OS Core API is alive', db: dbStatus, version: '1.0.3-MANUAL-CORS' });
+  res.json({
+    status: 'ok',
+    msg: 'GED OS Core API is alive',
+    db: dbStatus,
+    version: '1.0.3-MANUAL-CORS',
+  });
 });
 
 // 2. Request Parsing
@@ -85,7 +92,10 @@ app.use('/api/', limiter);
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
-  message: { error: 'Trop de tentatives de connexion. Réessayez dans 15 minutes.', code: 'AUTH_RATE_LIMIT' },
+  message: {
+    error: 'Trop de tentatives de connexion. Réessayez dans 15 minutes.',
+    code: 'AUTH_RATE_LIMIT',
+  },
   standardHeaders: true,
   legacyHeaders: false,
   skip: () => process.env.NODE_ENV === 'development',
@@ -127,6 +137,7 @@ import toolboxRoutes from './modules/toolbox/toolbox.routes.js';
 import toolboxHooksRoutes from './modules/toolbox/toolboxHooks.routes.js';
 import gedcollectRoutes from './modules/gedcollect/gedcollect.routes.js';
 import gedcollectAdminRoutes from './modules/gedcollect/gedcollect.admin.routes.js';
+import gedcollectReportsRoutes from './modules/gedcollect/reports.routes.js';
 import debugRoutes from './api/routes/debug.routes.js';
 import adminPermissionRoutes from './api/routes/admin.permissions.routes.js';
 import mesRoutes from './api/routes/mes.routes.js';
@@ -135,13 +146,16 @@ import { tenantResolver } from './middleware/tenantResolver.js';
 import { domainContext } from './middleware/domainContext.js';
 import { paginationMiddleware } from './utils/paginationHelper.js';
 import { requestTimingMiddleware } from './middleware/timing.js';
+import { auditLog } from './middleware/auditLog.js';
 import systemRoutes from './api/routes/system.routes.js';
+import webhookRoutes from './api/routes/webhooks.routes.js';
 
 setupSwagger(app);
 
-// Add global middleware for pagination and timing
+// Add global middleware for pagination, timing and audit logging
 app.use(paginationMiddleware);
 app.use(requestTimingMiddleware);
+app.use(auditLog);
 
 app.use('/api/auth', authRoutes);
 // Tenant resolver: always populate AsyncLocalStorage with org/project when available
@@ -174,6 +188,7 @@ app.use('/api/pvs', pvRoutes);
 app.use('/api/toolbox', toolboxRoutes);
 app.use('/api/toolbox', toolboxHooksRoutes);
 app.use('/api/gedcollect', gedcollectRoutes);
+app.use('/api/gedcollect', gedcollectReportsRoutes);
 app.use('/api/gedcollect-admin', gedcollectAdminRoutes);
 app.use('/api/sharedoc', sharedocRoutes);
 app.use('/api/mes', mesRoutes);
@@ -182,6 +197,7 @@ if (config.env !== 'production') {
 }
 app.use('/api/admin', adminPermissionRoutes);
 app.use('/api/system', systemRoutes);
+app.use('/api', webhookRoutes);
 
 app.get('/health', async (req, res) => {
   const health = {

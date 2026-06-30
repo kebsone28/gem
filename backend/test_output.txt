@@ -1,0 +1,126 @@
+
+> proquelec-backend@1.0.0 test
+> vitest
+
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.5 [39m[90mC:/Mes-Sites-Web/GED_SAAS/backend[39m
+
+ [32m✓[39m src/core/config/__tests__/permissionNormalization.test.js [2m([22m[2m3 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m src/modules/toolbox/__tests__/toolbox.validation.test.js [2m([22m[2m6 tests[22m[2m)[22m[32m 20[2mms[22m[39m
+ [32m✓[39m src/modules/alerts/__tests__/alerts.service.test.js [2m([22m[2m14 tests[22m[2m)[22m[32m 64[2mms[22m[39m
+ [32m✓[39m src/middleware/__tests__/domainContext.test.js [2m([22m[2m2 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+[90mstdout[2m | src/modules/mission/__tests__/approval.security.test.js
+[22m[39m[2026-06-25T22:37:58.002Z] [INFO] ℹ️  🔍 Loaded DB_URL from env: PRESENT {}
+[2026-06-25T22:37:58.003Z] [INFO] ℹ️  🔍 Loaded REDIS_URL from env: MISSING (Defaults to localhost)
+[2026-06-25T22:37:58.004Z] [INFO] ℹ️  🔍 JWT Secrets from env: PRESENT
+[2026-06-25T22:37:58.004Z] [INFO] ℹ️  🔍 Current Working Directory: C:\Mes-Sites-Web\GED_SAAS\backend
+
+[90mstdout[2m | tests/phase1-validation.test.js
+[22m[39m[2026-06-25T22:37:58.028Z] [INFO] ℹ️  🔍 Loaded DB_URL from env: PRESENT {}
+[2026-06-25T22:37:58.030Z] [INFO] ℹ️  🔍 Loaded REDIS_URL from env: MISSING (Defaults to localhost)
+[2026-06-25T22:37:58.030Z] [INFO] ℹ️  🔍 JWT Secrets from env: PRESENT
+[2026-06-25T22:37:58.030Z] [INFO] ℹ️  🔍 Current Working Directory: C:\Mes-Sites-Web\GED_SAAS\backend
+
+[90mstdout[2m | src/modules/project/__tests__/assignUserToProjects.test.js
+[22m[39m[2026-06-25T22:37:58.047Z] [INFO] ℹ️  🔍 Loaded DB_URL from env: PRESENT {}
+[2026-06-25T22:37:58.050Z] [INFO] ℹ️  🔍 Loaded REDIS_URL from env: MISSING (Defaults to localhost)
+[2026-06-25T22:37:58.050Z] [INFO] ℹ️  🔍 JWT Secrets from env: PRESENT
+[2026-06-25T22:37:58.050Z] [INFO] ℹ️  🔍 Current Working Directory: C:\Mes-Sites-Web\GED_SAAS\backend
+
+[90mstdout[2m | src/modules/__tests__/multitenant-isolation.security.test.js
+[22m[39m[2026-06-25T22:37:58.056Z] [INFO] ℹ️  🔍 Loaded DB_URL from env: PRESENT {}
+[2026-06-25T22:37:58.057Z] [INFO] ℹ️  🔍 Loaded REDIS_URL from env: MISSING (Defaults to localhost)
+[2026-06-25T22:37:58.058Z] [INFO] ℹ️  🔍 JWT Secrets from env: PRESENT
+[2026-06-25T22:37:58.058Z] [INFO] ℹ️  🔍 Current Working Directory: C:\Mes-Sites-Web\GED_SAAS\backend
+
+[90mstdout[2m | src/modules/mission/__tests__/approval.security.test.js
+[22m[39m[2026-06-25T22:37:58.021Z] [INFO] ℹ️  🔧 Initializing Prisma for DB: postgresql://proquelec:proquelec_secure_2024@127.0.0.1:5437/electrification?schema=public
+
+ [32m✓[39m src/api/routes/__tests__/route.permissions.hardening.test.js [2m([22m[2m3 tests[22m[2m)[22m[32m 113[2mms[22m[39m
+[90mstdout[2m | tests/phase1-validation.test.js
+[22m[39m[2026-06-25T22:37:58.036Z] [INFO] ℹ️  🔧 Initializing Prisma for DB: postgresql://proquelec:proquelec_secure_2024@127.0.0.1:5437/electrification?schema=public
+
+[90mstdout[2m | src/modules/project/__tests__/assignUserToProjects.test.js
+[22m[39m[2026-06-25T22:37:58.056Z] [INFO] ℹ️  🔧 Initializing Prisma for DB: postgresql://proquelec:proquelec_secure_2024@127.0.0.1:5437/electrification?schema=public
+
+[90mstdout[2m | src/modules/__tests__/multitenant-isolation.security.test.js
+[22m[39m[2026-06-25T22:37:58.062Z] [INFO] ℹ️  🔧 Initializing Prisma for DB: postgresql://proquelec:proquelec_secure_2024@127.0.0.1:5437/electrification?schema=public
+
+[90mstdout[2m | tests/phase2-caching.test.js
+[22m[39m[2026-06-25T22:37:58.141Z] [INFO] ℹ️  🔍 Loaded DB_URL from env: PRESENT {}
+[2026-06-25T22:37:58.145Z] [INFO] ℹ️  🔍 Loaded REDIS_URL from env: MISSING (Defaults to localhost)
+[2026-06-25T22:37:58.145Z] [INFO] ℹ️  🔍 JWT Secrets from env: PRESENT
+[2026-06-25T22:37:58.145Z] [INFO] ℹ️  🔍 Current Working Directory: C:\Mes-Sites-Web\GED_SAAS\backend
+
+[90mstdout[2m | src/api/routes/__tests__/input.validation.hardening.test.js
+[22m[39m[2026-06-25T22:37:58.152Z] [INFO] ℹ️  🔍 Loaded DB_URL from env: PRESENT {}
+[2026-06-25T22:37:58.154Z] [INFO] ℹ️  🔍 Loaded REDIS_URL from env: MISSING (Defaults to localhost)
+[2026-06-25T22:37:58.154Z] [INFO] ℹ️  🔍 JWT Secrets from env: PRESENT
+[2026-06-25T22:37:58.155Z] [INFO] ℹ️  🔍 Current Working Directory: C:\Mes-Sites-Web\GED_SAAS\backend
+
+[90mstdout[2m | src/api/routes/__tests__/input.validation.hardening.test.js
+[22m[39m[2026-06-25T22:37:58.165Z] [INFO] ℹ️  🔧 Initializing Prisma for DB: postgresql://proquelec:proquelec_secure_2024@127.0.0.1:5437/electrification?schema=public
+
+[90mstdout[2m | tests/phase2-caching.test.js[2m > [22m[2mPhase 2: Caching[2m > [22m[2mCache Invalidation Strategy[2m > [22m[2mshould invalidate mission on update
+[22m[39m[2026-06-25T22:37:58.229Z] [INFO] ℹ️  [CACHE] Invalidated mission {
+  eventType: [32m'MISSION_UPDATED'[39m,
+  missionId: [32m'mission-1'[39m,
+  organizationId: [32m'org-1'[39m
+}
+
+[90mstdout[2m | tests/phase2-caching.test.js[2m > [22m[2mPhase 2: Caching[2m > [22m[2mCache Invalidation Strategy[2m > [22m[2mshould invalidate on permission change
+[22m[39m[2026-06-25T22:37:58.230Z] [INFO] ℹ️  [CACHE] Invalidated permission {
+  eventType: [32m'PERMISSION_GRANTED'[39m,
+  userId: [32m'user-1'[39m,
+  organizationId: [32m'org-1'[39m
+}
+
+[90mstdout[2m | tests/phase2-caching.test.js[2m > [22m[2mPhase 2: Caching[2m > [22m[2mCache Invalidation Strategy[2m > [22m[2mshould invalidate org cache
+[22m[39m[2026-06-25T22:37:58.232Z] [INFO] ℹ️  [CACHE] Invalidated entire org cache { orgId: [32m'org-1'[39m }
+
+ [32m✓[39m tests/phase2-caching.test.js [2m([22m[2m13 tests[22m[2m)[22m[32m 17[2mms[22m[39m
+[90mstdout[2m | src/modules/toolbox/__tests__/toolboxHooks.api.test.js
+[22m[39m[2026-06-25T22:37:58.249Z] [INFO] ℹ️  🔍 Loaded DB_URL from env: PRESENT {}
+[2026-06-25T22:37:58.256Z] [INFO] ℹ️  🔍 Loaded REDIS_URL from env: MISSING (Defaults to localhost)
+[2026-06-25T22:37:58.256Z] [INFO] ℹ️  🔍 JWT Secrets from env: PRESENT
+[2026-06-25T22:37:58.256Z] [INFO] ℹ️  🔍 Current Working Directory: C:\Mes-Sites-Web\GED_SAAS\backend
+
+[90mstdout[2m | src/api/routes/__tests__/projectTemplates.api.test.js
+[22m[39m[2026-06-25T22:37:58.259Z] [INFO] ℹ️  🔍 Loaded DB_URL from env: PRESENT {}
+[2026-06-25T22:37:58.260Z] [INFO] ℹ️  🔍 Loaded REDIS_URL from env: MISSING (Defaults to localhost)
+[2026-06-25T22:37:58.260Z] [INFO] ℹ️  🔍 JWT Secrets from env: PRESENT
+[2026-06-25T22:37:58.261Z] [INFO] ℹ️  🔍 Current Working Directory: C:\Mes-Sites-Web\GED_SAAS\backend
+
+[90mstdout[2m | src/modules/alerts/__tests__/alerts.api.test.js
+[22m[39m[2026-06-25T22:37:58.305Z] [INFO] ℹ️  🔍 Loaded DB_URL from env: PRESENT {}
+[2026-06-25T22:37:58.307Z] [INFO] ℹ️  🔍 Loaded REDIS_URL from env: MISSING (Defaults to localhost)
+[2026-06-25T22:37:58.307Z] [INFO] ℹ️  🔍 JWT Secrets from env: PRESENT
+[2026-06-25T22:37:58.307Z] [INFO] ℹ️  🔍 Current Working Directory: C:\Mes-Sites-Web\GED_SAAS\backend
+
+[90mstdout[2m | src/api/routes/__tests__/admin.permissions.test.js
+[22m[39m[2026-06-25T22:37:58.323Z] [INFO] ℹ️  🔍 Loaded DB_URL from env: PRESENT {}
+[2026-06-25T22:37:58.325Z] [INFO] ℹ️  🔍 Loaded REDIS_URL from env: MISSING (Defaults to localhost)
+[2026-06-25T22:37:58.325Z] [INFO] ℹ️  🔍 JWT Secrets from env: PRESENT
+[2026-06-25T22:37:58.325Z] [INFO] ℹ️  🔍 Current Working Directory: C:\Mes-Sites-Web\GED_SAAS\backend
+
+ [32m✓[39m src/modules/toolbox/__tests__/xlsFormEngine.test.js [2m([22m[2m9 tests[22m[2m)[22m[32m 29[2mms[22m[39m
+[90mstdout[2m | src/api/routes/__tests__/input.validation.hardening.test.js[2m > [22m[2mInput validation hardening[2m > [22m[2mrejects sync push when schema is invalid
+[22m[39m[2026-06-25T22:37:58.685Z] [INFO] ℹ️  [SYNC-DEBUG] 🔄 Start Push for Organization: org-1 (User: user-1) {}
+[2026-06-25T22:37:58.685Z] [INFO] ℹ️  [SYNC-DEBUG] Changes received: { projects: [33m0[39m, zones: [33m0[39m, households: [33m1[39m }
+[2026-06-25T22:37:58.686Z] [INFO] ℹ️  [SYNC-DEBUG] Payload Size: 0.04 KB {}
+
+ [32m✓[39m src/api/routes/__tests__/input.validation.hardening.test.js [2m([22m[2m3 tests[22m[2m)[22m[32m 81[2mms[22m[39m
+ [32m✓[39m src/modules/mission/__tests__/approval.security.test.js [2m([22m[2m4 tests[22m[2m)[22m[32m 23[2mms[22m[39m
+ [31m❯[39m src/modules/project/__tests__/assignUserToProjects.test.js [2m([22m[2m0 test[22m[2m)[22m
+ [31m❯[39m src/api/routes/__tests__/projectTemplates.api.test.js [2m([22m[2m0 test[22m[2m)[22m
+ [31m❯[39m src/api/routes/__tests__/admin.permissions.test.js [2m([22m[2m0 test[22m[2m)[22m
+ [31m❯[39m src/modules/alerts/__tests__/alerts.api.test.js [2m([22m[2m0 test[22m[2m)[22m
+ [31m❯[39m src/modules/__tests__/multitenant-isolation.security.test.js [2m([22m[2m0 test[22m[2m)[22m
+ [31m❯[39m src/modules/toolbox/__tests__/toolboxHooks.api.test.js [2m([22m[2m0 test[22m[2m)[22m
+ [31m❯[39m tests/phase1-validation.test.js [2m([22m[2m0 test[22m[2m)[22m
+
+[2m Test Files [22m [1m[31m7 failed[39m[22m[2m | [22m[1m[32m9 passed[39m[22m[90m (16)[39m
+[2m      Tests [22m [1m[32m57 passed[39m[22m[90m (57)[39m
+[2m   Start at [22m 22:37:57
+[2m   Duration [22m 4.67s[2m (transform 7.67s, setup 0ms, import 5.33s, tests 363ms, environment 3ms)[22m
+

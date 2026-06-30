@@ -2,6 +2,7 @@ import logger from '../../utils/logger.js';
 import prisma from '../../core/utils/prisma.js';
 import eventBus from '../../core/utils/eventBus.js';
 import { tracerAction } from '../../services/audit.service.js';
+import { triggerWebhooks } from '../../services/webhook.service.js';
 import { uploadFile, getFileUrl, getFileStream } from '../../services/storage.service.js';
 import crypto from 'node:crypto';
 import ExcelJS from 'exceljs';
@@ -445,18 +446,26 @@ function escapeCsv(value) {
   return `"${String(value ?? '').replace(/"/g, '""')}"`;
 }
 
-function flattenSubmissionForExport(submission, valueKeys = []) {
+function flattenSubmissionForExport(submission, valueKeys = [], columns = null) {
   const values = isPlainObject(submission.values) ? submission.values : {};
   const metadata = isPlainObject(submission.metadata) ? submission.metadata : {};
   const attachments = metadata?.media?.attachments || [];
   const row = {
     id: submission.id,
     clientSubmissionId: submission.clientSubmissionId,
-    numeroOrdre: submission.numeroOrdre || submission.household?.numeroordre || '',
-    householdName: submission.household?.name || '',
-    telephone: submission.household?.phone || values.telephone_key || '',
-    region: submission.household?.region || values.region_key || '',
-    role: submission.role || '',
+    numeroOrdre:
+      submission.numeroOrdre ||
+      submission.household?.numeroordre ||
+      values.Numero_ordre ||
+      values.numero_ordre ||
+      values.numeroordre ||
+      values.order_number ||
+      '',
+    householdName: submission.household?.name || values.nom_key || values.nom || values.name || '',
+    telephone:
+      submission.household?.phone || values.telephone_key || values.telephone || values.phone || '',
+    region: submission.household?.region || values.region_key || values.region || '',
+    role: submission.role || values.role || '',
     status: submission.status,
     syncStatus: submission.syncStatus,
     formVersion: submission.formVersion,
@@ -483,6 +492,11 @@ function flattenSubmissionForExport(submission, valueKeys = []) {
         ? JSON.stringify(value)
         : (value ?? '');
   });
+
+  if (columns) {
+    const colSet = new Set(columns);
+    return Object.fromEntries(Object.entries(row).filter(([k]) => colSet.has(k)));
+  }
 
   return row;
 }
@@ -817,34 +831,44 @@ export const submitToolboxSubmission = async (req, res) => {
     }
 
     try {
+      // Webhooks via webhook.service.js (HMAC + retry + queue)
       const hooks = await prisma.toolboxFormHook.findMany({
         where: { organizationId, formKey: payload.formKey, active: true },
       });
       if (hooks.length > 0) {
         const submissionData = sanitizeBigIntForJson(submission);
-        for (const hook of hooks) {
-          fetch(hook.url, {
-            method: hook.method,
-            headers: { 'Content-Type': 'application/json', ...(hook.headers || {}) },
-            body: JSON.stringify({ event: 'submission.create', submission: submissionData }),
-            signal: AbortSignal.timeout(10000),
+        const webhookConfigs = hooks.map((hook) => ({
+          url: hook.url,
+          secret: hook.secret || undefined,
+          events: hook.events || ['submission.create'],
+          timeout: 10000,
+        }));
+        triggerWebhooks(webhookConfigs, {
+          event: 'submission.create',
+          formKey: payload.formKey,
+          submissionId: submission.id,
+          clientSubmissionId: payload.clientSubmissionId,
+          timestamp: new Date().toISOString(),
+          data: submissionData,
+        })
+          .then(async (result) => {
+            logger.info(`[TOOLBOX] Webhooks: ${result.sent} sent, ${result.failed} failed`);
+            // Update hook statuses
+            for (const hook of hooks) {
+              await prisma.toolboxFormHook
+                .update({
+                  where: { id: hook.id },
+                  data: { lastTriggeredAt: new Date() },
+                })
+                .catch(() => {});
+            }
           })
-            .then(async (resp) => {
-              await prisma.toolboxFormHook.update({
-                where: { id: hook.id },
-                data: { lastTriggeredAt: new Date(), lastStatus: resp.status },
-              });
-            })
-            .catch(async () => {
-              await prisma.toolboxFormHook.update({
-                where: { id: hook.id },
-                data: { lastTriggeredAt: new Date(), lastStatus: 0 },
-              }).catch(() => {});
-            });
-        }
+          .catch((err) => {
+            logger.error('[TOOLBOX] webhook trigger error:', err.message);
+          });
       }
     } catch (hookError) {
-      logger.error('[TOOLBOX] hook trigger error:', hookError.message);
+      logger.error('[TOOLBOX] hook find error:', hookError.message);
     }
 
     return res.status(201).json({
@@ -910,11 +934,7 @@ export const getToolboxFormDefinition = async (req, res) => {
       },
     });
   } catch (err) {
-    logger.error(
-      '[TOOLBOX] form-definition error:',
-      err?.message || err,
-      err?.stack || 'no-stack'
-    );
+    logger.error('[TOOLBOX] form-definition error:', err?.message || err, err?.stack || 'no-stack');
     return res.status(500).json({
       success: false,
       message: 'Server error while loading internal Kobo form definition',
@@ -924,15 +944,27 @@ export const getToolboxFormDefinition = async (req, res) => {
 
 export const listToolboxFormDefinitions = async (req, res) => {
   try {
-    const mappings = await prisma.koboFormMapping.findMany({
-      where: { organizationId: req.user.organizationId },
-      orderBy: { updatedAt: 'desc' },
-    });
+    const { organizationId } = req.user;
+    const offset = Math.max(Number(req.query.offset) || 0, 0);
+    const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 500);
+
+    const [mappings, total] = await Promise.all([
+      prisma.koboFormMapping.findMany({
+        where: { organizationId },
+        orderBy: { updatedAt: 'desc' },
+        skip: offset,
+        take: limit,
+      }),
+      prisma.koboFormMapping.count({ where: { organizationId } }),
+    ]);
     const visibleMappings = filterVisibleUniversalXlsFormMappings(mappings);
 
     return res.json({
       success: true,
       count: visibleMappings.length,
+      total,
+      offset,
+      limit,
       forms: visibleMappings.map(summarizeUniversalXlsFormMapping),
     });
   } catch (err) {
@@ -1088,6 +1120,79 @@ export const updateToolboxFormDefinitionStatus = async (req, res) => {
       success: false,
       message: 'Server error while updating XLSForm status',
     });
+  }
+};
+
+/**
+ * PUT /form-definitions/:formKey
+ * Mise à jour générique d'une définition de formulaire
+ */
+export const updateToolboxFormDefinition = async (req, res) => {
+  try {
+    const { organizationId, id: userId } = req.user;
+    const formKey = String(req.params.formKey || '').trim();
+
+    if (!formKey) {
+      return res.status(400).json({ success: false, message: 'formKey is required' });
+    }
+
+    const mapping = await prisma.koboFormMapping.findFirst({
+      where: { organizationId, koboAssetId: formKey },
+    });
+
+    if (!mapping || !isPlainObject(mapping.mapping) || isUniversalXlsFormDeleted(mapping.mapping)) {
+      return res.status(404).json({ success: false, message: 'Formulaire non trouvé' });
+    }
+
+    const current = mapping.mapping;
+    const updateFields = req.body;
+
+    // Fusionner les champs mis à jour dans la définition existante
+    const nextDefinition = {
+      ...current,
+      ...updateFields,
+      lifecycle: {
+        ...(current.lifecycle || {}),
+        updatedAt: new Date().toISOString(),
+        updatedById: userId,
+      },
+    };
+
+    // Si un titre est fourni, le propager dans settings
+    if (updateFields.title) {
+      nextDefinition.settings = {
+        ...(current.settings || {}),
+        form_title: updateFields.title,
+      };
+    }
+
+    const updatedMapping = await prisma.koboFormMapping.update({
+      where: { id: mapping.id },
+      data: {
+        mapping: nextDefinition,
+        lastValidated: new Date(),
+      },
+    });
+
+    await prisma.syncLog.create({
+      data: {
+        userId,
+        organizationId,
+        deviceId: 'ged-os-toolbox-admin',
+        action: 'TOOLBOX_XLSFORM_UPDATE',
+        details: { formKey, updatedFields: Object.keys(updateFields) },
+      },
+    });
+
+    return res.json({
+      success: true,
+      form: summarizeUniversalXlsFormMapping(updatedMapping),
+    });
+  } catch (err) {
+    logger.error('[TOOLBOX] form-definition update error:', err);
+    return res
+      .status(500)
+      .json({ success: false, message: 'Erreur serveur lors de la mise à jour du formulaire' });
   }
 };
 
@@ -1808,11 +1913,42 @@ function toolboxSubmissionInclude() {
   };
 }
 
+function extractGeopointFromValues(values) {
+  const candidates = [
+    values.LOCALISATION_CLIENT,
+    values.gps,
+    values.geopoint,
+    values._geolocation,
+  ].filter(Boolean);
+  for (const raw of candidates) {
+    if (typeof raw === 'string') {
+      const parts = raw.trim().split(/\s+/).map(Number);
+      if (parts.length >= 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+        return { lat: parts[0], lng: parts[1] };
+      }
+    }
+  }
+  const lat = values.latitude_key ?? values.latitude ?? values.lat;
+  const lng = values.longitude_key ?? values.longitude ?? values.lon ?? values.lng;
+  if (lat != null && lng != null) {
+    const nlat = Number(lat);
+    const nlng = Number(lng);
+    if (!isNaN(nlat) && !isNaN(nlng)) return { lat: nlat, lng: nlng };
+  }
+  return null;
+}
+
 export const exportToolboxSubmissions = async (req, res) => {
   try {
     const { organizationId } = req.user;
     const format = String(req.query.format || 'csv').toLowerCase();
     const take = Math.min(Math.max(parseInt(req.query.limit, 10) || 500, 1), 5000);
+    const columns = req.query.columns
+      ? String(req.query.columns)
+          .split(',')
+          .map((c) => c.trim())
+          .filter(Boolean)
+      : null;
     const where = buildSubmissionWhere(req.user, req.query);
     const submissions = await prisma.toolboxSubmission.findMany({
       where,
@@ -1830,9 +1966,60 @@ export const exportToolboxSubmissions = async (req, res) => {
         )
       )
     ).sort();
-    const rows = submissions.map((submission) => flattenSubmissionForExport(submission, valueKeys));
+    const rows = submissions.map((submission) =>
+      flattenSubmissionForExport(submission, valueKeys, columns)
+    );
     const generatedAt = new Date().toISOString();
     const baseFilename = `soumissions-kobo-interne-${generatedAt.slice(0, 10)}`;
+
+    if (format === 'kml') {
+      const placemarks = submissions
+        .map((s) => {
+          const coords = extractGeopointFromValues(s.values || {});
+          if (!coords) return null;
+          const props = flattenSubmissionForExport(s, valueKeys);
+          const description = Object.entries(props)
+            .filter(([, v]) => v !== undefined && v !== null && v !== '')
+            .map(
+              ([k, v]) =>
+                `${k}: ${String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}`
+            )
+            .join('\n');
+          const name = props.numeroOrdre || props.householdName || `Soumission ${s.id.slice(0, 8)}`;
+          return `      <Placemark>\n        <name>${name.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</name>\n        <description><![CDATA[${description}]]></description>\n        <Point><coordinates>${coords.lng},${coords.lat},0</coordinates></Point>\n      </Placemark>`;
+        })
+        .filter(Boolean)
+        .join('\n');
+
+      const kml = `<?xml version="1.0" encoding="UTF-8"?>\n<kml xmlns="http://www.opengis.net/kml/2.2">\n  <Document>\n    <name>Soumissions ${generatedAt.slice(0, 10)}</name>\n${placemarks}\n  </Document>\n</kml>`;
+      res.setHeader('Content-Type', 'application/vnd.google-earth.kml+xml; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="${baseFilename}.kml"`);
+      return res.send(kml);
+    }
+
+    if (format === 'geojson') {
+      const features = submissions
+        .map((s) => {
+          const coords = extractGeopointFromValues(s.values || {});
+          if (!coords) return null;
+          const props = flattenSubmissionForExport(s, valueKeys);
+          return {
+            type: 'Feature',
+            geometry: { type: 'Point', coordinates: [coords.lng, coords.lat] },
+            properties: { ...props, submission_id: s.id, form_key: s.formKey },
+          };
+        })
+        .filter(Boolean);
+      res.setHeader('Content-Type', 'application/geo+json; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="${baseFilename}.geojson"`);
+      return res.send(
+        JSON.stringify(
+          { type: 'FeatureCollection', generatedAt, count: features.length, features },
+          null,
+          2
+        )
+      );
+    }
 
     if (format === 'json') {
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
@@ -2498,12 +2685,26 @@ export const getToolboxFormStats = async (req, res) => {
       last12m: new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000),
     };
 
-    const [total, last7d, last31d, last3m, last12m, statusBreakdown, roleBreakdown, topSubmitters, weeklyTrend] = await Promise.all([
+    const [
+      total,
+      last7d,
+      last31d,
+      last3m,
+      last12m,
+      statusBreakdown,
+      roleBreakdown,
+      topSubmitters,
+      weeklyTrend,
+    ] = await Promise.all([
       prisma.toolboxSubmission.count({ where: baseWhere }),
       prisma.toolboxSubmission.count({ where: { ...baseWhere, savedAt: { gte: periods.last7d } } }),
-      prisma.toolboxSubmission.count({ where: { ...baseWhere, savedAt: { gte: periods.last31d } } }),
+      prisma.toolboxSubmission.count({
+        where: { ...baseWhere, savedAt: { gte: periods.last31d } },
+      }),
       prisma.toolboxSubmission.count({ where: { ...baseWhere, savedAt: { gte: periods.last3m } } }),
-      prisma.toolboxSubmission.count({ where: { ...baseWhere, savedAt: { gte: periods.last12m } } }),
+      prisma.toolboxSubmission.count({
+        where: { ...baseWhere, savedAt: { gte: periods.last12m } },
+      }),
       prisma.toolboxSubmission.groupBy({
         by: ['status'],
         where: baseWhere,
@@ -2523,8 +2724,8 @@ export const getToolboxFormStats = async (req, res) => {
       }),
       Promise.all(
         Array.from({ length: 12 }, (_, i) => {
-          const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (7 * i) - 6);
-          const weekEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (7 * i) + 1);
+          const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7 * i - 6);
+          const weekEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7 * i + 1);
           return prisma.toolboxSubmission.count({
             where: { ...baseWhere, savedAt: { gte: weekStart, lt: weekEnd } },
           });
@@ -2546,7 +2747,10 @@ export const getToolboxFormStats = async (req, res) => {
       topSubmitters.map(async (s) => {
         let name = `Utilisateur ${s.submittedById?.slice(0, 8)}`;
         if (s.submittedById) {
-          const user = await prisma.user.findUnique({ where: { id: s.submittedById }, select: { name: true, email: true } });
+          const user = await prisma.user.findUnique({
+            where: { id: s.submittedById },
+            select: { name: true, email: true },
+          });
           if (user) name = user.name || user.email || name;
         }
         return { userId: s.submittedById, name, count: s._count.id };
@@ -2556,7 +2760,11 @@ export const getToolboxFormStats = async (req, res) => {
     return res.json({
       success: true,
       stats: {
-        total, last7d, last31d, last3m, last12m,
+        total,
+        last7d,
+        last31d,
+        last3m,
+        last12m,
         last7dDays: last7dDays.reverse(),
         statusBreakdown: statusBreakdown.map((s) => ({ status: s.status, count: s._count.id })),
         roleBreakdown: roleBreakdown.map((r) => ({ role: r.role, count: r._count.id })),
@@ -2567,5 +2775,152 @@ export const getToolboxFormStats = async (req, res) => {
   } catch (err) {
     logger.error('[TOOLBOX] formStats error:', err);
     return res.status(500).json({ success: false, message: 'Erreur stats formulaire' });
+  }
+};
+
+/**
+ * Export PDF d'une soumission
+ * GET /api/toolbox/submissions/:id/pdf
+ */
+export const exportToolboxSubmissionPdf = async (req, res) => {
+  try {
+    const { organizationId } = req.user;
+    const submissionId = req.params.id;
+
+    const { generateSubmissionPdf } = await import('../../services/pdfExport.service.js');
+    const pdfBuffer = await generateSubmissionPdf(submissionId, organizationId);
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="soumission-${submissionId.slice(0, 8)}.pdf"`
+    );
+    res.send(pdfBuffer);
+  } catch (err) {
+    if (err.message === 'Submission not found') {
+      return res.status(404).json({ success: false, message: 'Soumission introuvable' });
+    }
+    logger.error('[TOOLBOX] PDF export error:', err.message);
+    return res.status(500).json({ success: false, message: "Erreur d'export PDF" });
+  }
+};
+
+/**
+ * Upload de média standalone (images, documents, etc.)
+ * POST /api/toolbox/media/upload
+ */
+export const uploadToolboxMedia = async (req, res) => {
+  const { organizationId } = req.user;
+  const { formKey, fieldName, fileName, mimeType, dataUrl, originalBytes } = req.body;
+
+  try {
+    // Parse the dataUrl to extract buffer and verify mime type
+    const parsed = parseDataUrl(dataUrl);
+    if (!parsed) {
+      return res.status(400).json({
+        success: false,
+        message: 'Format dataUrl invalide',
+      });
+    }
+
+    const { buffer, mimeType: parsedMime } = parsed;
+
+    // Generate unique storage key
+    const mediaId = crypto.randomUUID();
+    const storageKey = `${organizationId}/toolbox/media/${mediaId}/${fileName}`;
+
+    // Upload file to storage
+    await uploadFile(storageKey, buffer, parsedMime || mimeType);
+
+    // Generate URL for the uploaded file
+    const url = `${process.env.MEDIA_BASE_URL || 'https://media.ged-os.com'}/${storageKey}`;
+
+    // Log the upload
+    await prisma.syncLog.create({
+      data: {
+        userId: req.user.id,
+        organizationId,
+        deviceId: 'gem-toolbox-admin',
+        action: 'TOOLBOX_MEDIA_UPLOAD',
+        details: {
+          formKey,
+          fieldName,
+          fileName,
+          mimeType: parsedMime || mimeType,
+          storageKey,
+          originalBytes: originalBytes || buffer.length,
+        },
+      },
+    });
+
+    return res.status(201).json({
+      success: true,
+      url,
+      storageKey,
+      fileName,
+      mimeType: parsedMime || mimeType,
+    });
+  } catch (err) {
+    logger.error('[TOOLBOX] Media upload error:', err);
+    return res.status(500).json({
+      success: false,
+      message: "Erreur lors de l'upload du média",
+    });
+  }
+};
+
+/**
+ * Liste les templates de formulaires pré-faits
+ * GET /api/toolbox/form-templates
+ */
+export const listToolboxFormTemplates = async (req, res) => {
+  try {
+    const { FORM_TEMPLATES, getTemplatesBySector } = await import('./form-templates/index.js');
+    const sector = req.query.sector;
+    let templates = sector ? getTemplatesBySector(sector) : FORM_TEMPLATES;
+    const total = templates.length;
+    const offset = Math.max(Number(req.query.offset) || 0, 0);
+    const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 200);
+    templates = templates.slice(offset, offset + limit);
+
+    return res.json({
+      success: true,
+      count: templates.length,
+      total,
+      offset,
+      limit,
+      templates: templates.map((t) => ({
+        key: t.key,
+        title: t.title,
+        description: t.description,
+        sector: t.sector,
+        country: t.country,
+        languages: t.languages,
+        fieldCount: t.survey.filter(
+          (s) => !s.type.startsWith('begin_') && !s.type.startsWith('end_')
+        ).length,
+      })),
+    });
+  } catch (err) {
+    logger.error('[TOOLBOX] list templates error:', err.message);
+    return res.status(500).json({ success: false, message: 'Erreur chargement templates' });
+  }
+};
+
+/**
+ * Récupère un template complet par sa clé
+ * GET /api/toolbox/form-templates/:key
+ */
+export const getToolboxFormTemplate = async (req, res) => {
+  try {
+    const { getTemplateByKey } = await import('./form-templates/index.js');
+    const template = getTemplateByKey(req.params.key);
+    if (!template) {
+      return res.status(404).json({ success: false, message: 'Template introuvable' });
+    }
+    return res.json({ success: true, template });
+  } catch (err) {
+    logger.error('[TOOLBOX] get template error:', err.message);
+    return res.status(500).json({ success: false, message: 'Erreur chargement template' });
   }
 };

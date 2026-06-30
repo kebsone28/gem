@@ -36,6 +36,7 @@ import { AutoSizer } from 'react-virtualized-auto-sizer';
 
 // Import centralized design system
 import { PageContainer, PageHeader, ContentArea, ActionBar } from '@components';
+import { ModuleStatePanel } from '@components/common/ModuleStatePanel';
 import {
   DASHBOARD_ACCENT_SURFACE,
   DASHBOARD_INPUT,
@@ -153,7 +154,7 @@ GrappeCard.displayName = 'GrappeCard';
 
 const Bordereau = () => {
   const navigate = useNavigate();
-  const { project } = useProject();
+  const { project, activeProjectId, isLoading: isProjectLoading } = useProject();
   const setSelectedHouseholdId = useTerrainUIStore((s) => s.setSelectedHouseholdId);
   const projectId = project?.id || null;
 
@@ -470,6 +471,39 @@ const Bordereau = () => {
 
     void runExport();
   };
+
+  if (isProjectLoading) {
+    return (
+      <PageContainer className="min-h-screen py-8 bg-surface">
+        <PageHeader
+          title="Bordereau de Livraison"
+          subtitle="Initialisation des données..."
+          icon={<FileSpreadsheet size={24} />}
+        />
+        <ContentArea>
+          <div className="flex flex-col items-center justify-center min-h-[400px] space-y-6">
+            <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+            <p className="text-[11px] font-black uppercase tracking-[0.2em] text-blue-300 animate-pulse">
+              Chargement du projet
+            </p>
+          </div>
+        </ContentArea>
+      </PageContainer>
+    );
+  }
+
+  if (!activeProjectId) {
+    return (
+      <PageContainer>
+        <ModuleStatePanel
+          title="Aucun projet actif"
+          description="Le bordereau de livraison est rattaché à un projet. Sélectionnez un projet pour gérer les grappes et suivre les livraisons."
+          actionLabel="Choisir un projet"
+          actionTo="/projects"
+        />
+      </PageContainer>
+    );
+  }
 
   if (loading && !syncing) {
     return (

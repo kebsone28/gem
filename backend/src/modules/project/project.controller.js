@@ -57,10 +57,10 @@ export const getProjects = async (req, res) => {
     const { email, id: userId, role: userRole } = req.user;
 
     const isGlobalAdmin = userRole === ROLES.ADMIN ||
-                         userRole === ROLES.DIRECTEUR ||
-                         userRole === ROLES.ADMIN_ALT ||
-                         userRole === 'ADMIN_PROQUELEC' ||
-                         userRole === 'DG_PROQUELEC';
+      userRole === ROLES.DIRECTEUR ||
+      userRole === ROLES.ADMIN_ALT ||
+      userRole === 'ADMIN_PROQUELEC' ||
+      userRole === 'DG_PROQUELEC';
 
     let projects = rawProjects.map(p => {
       try {
@@ -156,6 +156,7 @@ export const createProject = async (req, res) => {
 
     const safeName = name.trim();
     const safeClient = req.body.client.trim();
+    const governanceMode = req.body.mode || 'enterprise';
 
     // Check for duplicate name
     const existing = await prisma.project.findFirst({
@@ -181,6 +182,7 @@ export const createProject = async (req, res) => {
           duration: duration || 12,
           totalHouses: totalHouses || 0,
           templateKey: sector,
+          mode: governanceMode,
           config: {
             ...config,
             client: safeClient,
@@ -218,10 +220,10 @@ export const createProject = async (req, res) => {
       }
 
       // 3. Initialiser les Workflows par défaut (Phase 3 Engine)
-      await workflowService.seedDefaultWorkflow(newProject.id, sector, organizationId, tx);
+      await workflowService.seedDefaultWorkflow(newProject.id, sector, organizationId, governanceMode, tx);
 
       // 4. Initialiser la Gouvernance (Phase 3.5 Security Engine)
-      await securityService.seedDefaultPolicies(organizationId, tx);
+      await securityService.seedDefaultPolicies(organizationId, governanceMode, tx);
 
       return newProject;
     });
@@ -233,10 +235,10 @@ export const createProject = async (req, res) => {
       userId,
       resource: 'Projet',
       resourceId: project.id,
-      data: { 
-        name: project.name, 
+      data: {
+        name: project.name,
         modulesInitialises: enabledModules.length,
-        secteur: sector 
+        secteur: sector
       },
       metadata: { ip: req.ip, userAgent: req.headers['user-agent'] }
     });
@@ -595,9 +597,9 @@ const haversineDistance = (lat1, lon1, lat2, lon2) => {
   const a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
     Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
+    Math.cos((lat2 * Math.PI) / 180) *
+    Math.sin(dLon / 2) *
+    Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
 };
@@ -846,13 +848,13 @@ export const deployServerUpdate = async (req, res) => {
   try {
     const { email, organizationId, role: userRole } = req.user;
 
-// 🛡️ SÉCURITÉ : Seul l'administrateur principal ou un ADMIN_PROQUELEC peut déployer
-      const { ROLES, isSuperAdminEmail } = await import('../../core/config/permissions.js');
-      const isSuperAdmin = isSuperAdminEmail(email);
-      const hasAdminRole = userRole === ROLES.ADMIN || userRole === ROLES.DIRECTEUR || userRole === ROLES.ADMIN_ALT || userRole === 'ADMIN_PROQUELEC';
-      if (!isSuperAdmin && !hasAdminRole) {
-        return res.status(403).json({ error: 'Privilèges insuffisants pour cette opération.' });
-      }
+    // 🛡️ SÉCURITÉ : Seul l'administrateur principal ou un ADMIN_PROQUELEC peut déployer
+    const { ROLES, isSuperAdminEmail } = await import('../../core/config/permissions.js');
+    const isSuperAdmin = isSuperAdminEmail(email);
+    const hasAdminRole = userRole === ROLES.ADMIN || userRole === ROLES.DIRECTEUR || userRole === ROLES.ADMIN_ALT || userRole === 'ADMIN_PROQUELEC';
+    if (!isSuperAdmin && !hasAdminRole) {
+      return res.status(403).json({ error: 'Privilèges insuffisants pour cette opération.' });
+    }
 
     const projectPath = DEFAULT_WANEKOO_DEPLOY_PATH;
     const command = buildWanekooDeployCommand(projectPath);
@@ -903,13 +905,13 @@ export const dbMaintenance = async (req, res) => {
   try {
     const { email, organizationId, role: userRole } = req.user;
 
-// 🛡️ SÉCURITÉ : Seul l'administrateur principal ou un ADMIN_PROQUELEC peut lancer la maintenance
-     const { ROLES, isSuperAdminEmail } = await import('../../core/config/permissions.js');
-     const isSuperAdmin = isSuperAdminEmail(email);
-     const hasAdminRole = userRole === ROLES.ADMIN || userRole === ROLES.DIRECTEUR || userRole === ROLES.ADMIN_ALT || userRole === 'ADMIN_PROQUELEC';
-     if (!isSuperAdmin && !hasAdminRole) {
-       return res.status(403).json({ error: 'Privilèges insuffisants pour cette opération.' });
-     }
+    // 🛡️ SÉCURITÉ : Seul l'administrateur principal ou un ADMIN_PROQUELEC peut lancer la maintenance
+    const { ROLES, isSuperAdminEmail } = await import('../../core/config/permissions.js');
+    const isSuperAdmin = isSuperAdminEmail(email);
+    const hasAdminRole = userRole === ROLES.ADMIN || userRole === ROLES.DIRECTEUR || userRole === ROLES.ADMIN_ALT || userRole === 'ADMIN_PROQUELEC';
+    if (!isSuperAdmin && !hasAdminRole) {
+      return res.status(403).json({ error: 'Privilèges insuffisants pour cette opération.' });
+    }
 
     logger.info(`[SYSTEM] Maintenance BD initiée par ${email}`);
 

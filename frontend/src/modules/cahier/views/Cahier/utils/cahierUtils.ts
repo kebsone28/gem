@@ -144,6 +144,9 @@ export function sanitizeTaskForCahier(roleName: string, task: CahierTask): Cahie
         (block.completion || []).length > 0
       );
     }),
+    executionGuide: task.executionGuide,
+    qualityChecklist: task.qualityChecklist,
+    technicalImages: task.technicalImages,
     hse: task.hse.map(cleanTechnicalLine).filter(Boolean),
     subcontracting: [],
     finances: [],

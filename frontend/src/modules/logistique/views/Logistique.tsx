@@ -11,7 +11,9 @@ import { useLogistique } from '@hooks/useLogistique';
 import { useTheme } from '@contexts/ThemeContext';
 import { usePermissions } from '@hooks/usePermissions';
 import { useLabels } from '@contexts/LabelsContext';
+import { useProject } from '@contexts/ProjectContext';
 import toast from 'react-hot-toast';
+import { ModuleStatePanel } from '@components/common/ModuleStatePanel';
 
 // Import centralized design system
 import { PageContainer, PageHeader, ContentArea, ActionBar, ModulePageShell } from '@components';
@@ -47,6 +49,7 @@ export default function Logistique() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { isLoading, refreshTeams } = useLogistique();
+  const { project, isLoading: isProjectLoading } = useProject();
   const { isDarkMode } = useTheme();
   const logistiqueAccent = MODULE_ACCENTS.logistique;
 
@@ -58,6 +61,10 @@ export default function Logistique() {
   };
 
   const handleRefresh = async () => {
+    if (!project?.id) {
+      toast.error('Aucun projet actif.');
+      return;
+    }
     setIsRefreshing(true);
     try {
       await refreshTeams();
@@ -156,7 +163,22 @@ export default function Logistique() {
 
         <ContentArea className="p-0">
           <div className="h-full">
-            {isLoading ? (
+            {isProjectLoading ? (
+              <ModuleStatePanel
+                tone="loading"
+                title="Chargement du projet"
+                description="Le contexte projet est en cours d'initialisation pour la logistique."
+                className="min-h-[40vh]"
+              />
+            ) : !project?.id ? (
+              <ModuleStatePanel
+                title="Aucun projet actif"
+                description="La logistique suit les stocks, equipes et mouvements d'un projet selectionne. Choisissez un projet pour afficher les donnees correctes."
+                actionLabel="Choisir un projet"
+                actionTo="/projects"
+                className="min-h-[40vh]"
+              />
+            ) : isLoading ? (
               <div className="flex flex-col items-center justify-center h-full space-y-6">
                 <div
                   className={`w-12 h-12 border-4 rounded-full animate-spin ${isDarkMode ? 'border-slate-700 border-t-blue-500' : 'border-slate-200 border-t-blue-500'}`}

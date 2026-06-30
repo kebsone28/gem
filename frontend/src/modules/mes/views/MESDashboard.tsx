@@ -1,5 +1,11 @@
 ﻿import React, { useState, useEffect, useCallback } from 'react';
 import logger from '@services/logger';
+import mesAPI, { type MESRecord, type MESStats } from '@services/mesAPI';
+import MESForm from '../components/MESForm';
+import MESControlModal from '../components/MESControlModal';
+import MESValidationModal from '../components/MESValidationModal';
+import MESDetailsModal from '../components/MESDetailsModal';
+import MESMap from '../components/MESMap';
 import {
   Zap,
   ClipboardList,
@@ -20,50 +26,31 @@ import {
   ShieldCheck,
   Clock,
   TrendingUp,
+  Edit,
+  Trash2,
+  Eye,
+  X,
 } from 'lucide-react';
 import { PageContainer, PageHeader, ContentArea } from '@components/layout';
+import { ModuleStatePanel } from '@components/common/ModuleStatePanel';
+import { useProject } from '@contexts/ProjectContext';
+import { useAuth } from '@contexts/AuthContext';
 import toast from 'react-hot-toast';
 
-// Types pour le module MES
 type MESStatus = 'RECU' | 'PROGRAMME' | 'EN_COURS' | 'REALISE' | 'CONTROLE' | 'VALIDE' | 'FACTURE' | 'PAYE';
-type MESType = 'MONO' | 'TRI';
-type MESNature = 'POSE' | 'BRANCHEMENT_POSE';
-
-interface MESRecord {
-  id: string;
-  avisNumber: string;
-  meterNumber: string;
-  poste: string;
-  zone: string;
-  type: MESType;
-  nature: MESNature;
-  cable?: string;
-  ct70?: boolean;
-  pa?: boolean;
-  agent: string;
-  date: string;
-  observations?: string;
-  status: MESStatus;
-  prestataire: 'PROQUELEC' | 'UMSAT' | 'AUTRE';
-  photos?: string[];
-  gps?: { lat: number; lng: number };
-  clientSignature?: string;
-}
-
-interface MESStats {
-  total: number;
-  poseMono: number;
-  poseTri: number;
-  branchementPoseMono: number;
-  branchementPoseTri: number;
-  enCours: number;
-  realises: number;
-  controles: number;
-  valides: number;
-  tauxConformite: number;
-}
 
 const MESDashboard: React.FC = () => {
+  const { activeProjectId, isLoading: isProjectLoading } = useProject();
+  const { user } = useAuth();
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isControlModalOpen, setIsControlModalOpen] = useState(false);
+  const [isValidationModalOpen, setIsValidationModalOpen] = useState(false);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isMapOpen, setIsMapOpen] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [selectedRecord, setSelectedRecord] = useState<MESRecord | null>(null);
   const [records, setRecords] = useState<MESRecord[]>([]);
   const [stats, setStats] = useState<MESStats>({
     total: 0,
@@ -87,81 +74,133 @@ const MESDashboard: React.FC = () => {
   const loadMESData = useCallback(async () => {
     setLoading(true);
     try {
-      // Simulation de chargement des données depuis l'API
-      // En production, ceci serait remplacé par un appel API réel
-      const mockData: MESRecord[] = [
-        {
-          id: '1',
-          avisNumber: 'AV-001',
-          meterNumber: 'CT-12345',
-          poste: 'POSTE-01',
-          zone: 'Patte d\'Oie',
-          type: 'MONO',
-          nature: 'POSE',
-          cable: '2x16',
-          ct70: true,
-          agent: 'Agent 1',
-          date: '2026-04-01',
-          status: 'REALISE',
-          prestataire: 'PROQUELEC',
-        },
-        {
-          id: '2',
-          avisNumber: 'AV-002',
-          meterNumber: 'CT-12346',
-          poste: 'POSTE-02',
-          zone: 'Médina',
-          type: 'TRI',
-          nature: 'BRANCHEMENT_POSE',
-          cable: '4x16',
-          ct70: true,
-          pa: true,
-          agent: 'Agent 2',
-          date: '2026-04-02',
-          status: 'VALIDE',
-          prestataire: 'PROQUELEC',
-        },
-      ];
-
-      setRecords(mockData);
-
-      // Calculer les statistiques
-      const newStats: MESStats = {
-        total: mockData.length,
-        poseMono: mockData.filter(r => r.type === 'MONO' && r.nature === 'POSE').length,
-        poseTri: mockData.filter(r => r.type === 'TRI' && r.nature === 'POSE').length,
-        branchementPoseMono: mockData.filter(r => r.type === 'MONO' && r.nature === 'BRANCHEMENT_POSE').length,
-        branchementPoseTri: mockData.filter(r => r.type === 'TRI' && r.nature === 'BRANCHEMENT_POSE').length,
-        enCours: mockData.filter(r => r.status === 'EN_COURS').length,
-        realises: mockData.filter(r => r.status === 'REALISE').length,
-        controles: mockData.filter(r => r.status === 'CONTROLE').length,
-        valides: mockData.filter(r => r.status === 'VALIDE').length,
-        tauxConformite: mockData.length > 0 ? (mockData.filter(r => r.status === 'VALIDE').length / mockData.length) * 100 : 0,
+      const filters = {
+        prestataire: selectedPrestataire === 'ALL' ? undefined : selectedPrestataire,
+        status: selectedStatus === 'ALL' ? undefined : selectedStatus,
+        month: selectedMonth,
+        search: searchQuery || undefined,
       };
 
-      setStats(newStats);
+      const { records: recordsData } = await mesAPI.getRecords(filters);
+      setRecords(recordsData);
+
+      const statsData = await mesAPI.getStats(filters);
+      setStats(statsData);
     } catch (error) {
       toast.error('Erreur lors du chargement des données MES');
       logger.error(error);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [selectedPrestataire, selectedStatus, selectedMonth, searchQuery]);
 
   useEffect(() => {
     loadMESData();
   }, [loadMESData]);
 
-  // Filtrer les enregistrements
-  const filteredRecords = records.filter(record => {
-    const matchPrestataire = selectedPrestataire === 'ALL' || record.prestataire === selectedPrestataire;
-    const matchStatus = selectedStatus === 'ALL' || record.status === selectedStatus;
-    const matchSearch = searchQuery === '' || 
-      record.avisNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      record.meterNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      record.zone.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchPrestataire && matchStatus && matchSearch;
-  });
+  // Handlers pour les modals
+  const handleOpenForm = (record?: MESRecord) => {
+    setSelectedRecord(record || null);
+    setIsFormOpen(true);
+  };
+
+  const handleCloseForm = () => {
+    setIsFormOpen(false);
+    setSelectedRecord(null);
+  };
+
+  const handleOpenControl = (record: MESRecord) => {
+    setSelectedRecord(record);
+    setIsControlModalOpen(true);
+  };
+
+  const handleCloseControl = () => {
+    setIsControlModalOpen(false);
+    setSelectedRecord(null);
+  };
+
+  const handleOpenValidation = (record: MESRecord) => {
+    setSelectedRecord(record);
+    setIsValidationModalOpen(true);
+  };
+
+  const handleCloseValidation = () => {
+    setIsValidationModalOpen(false);
+    setSelectedRecord(null);
+  };
+
+  const handleOpenDetails = (record: MESRecord) => {
+    setSelectedRecord(record);
+    setIsDetailsModalOpen(true);
+  };
+
+  const handleCloseDetails = () => {
+    setIsDetailsModalOpen(false);
+    setSelectedRecord(null);
+  };
+
+  const handleDelete = async (record: MESRecord) => {
+    if (!confirm(`Êtes-vous sûr de vouloir supprimer l'enregistrement ${record.avisNumber} ?`)) {
+      return;
+    }
+
+    try {
+      await mesAPI.deleteRecord(record.id);
+      toast.success('Enregistrement MES supprimé avec succès');
+      loadMESData();
+    } catch (error) {
+      toast.error('Erreur lors de la suppression de l\'enregistrement MES');
+      console.error(error);
+    }
+  };
+
+  const handleImport = async () => {
+    if (!importFile) {
+      toast.error('Veuillez sélectionner un fichier Excel');
+      return;
+    }
+
+    setImporting(true);
+    try {
+      const result = await mesAPI.importFromExcel(importFile);
+      toast.success(`Import réussi: ${result.imported} enregistrements importés, ${result.errors} erreurs`);
+      if (result.errors > 0 && result.details.length > 0) {
+        console.log('Import details:', result.details);
+      }
+      loadMESData();
+      setIsImportModalOpen(false);
+      setImportFile(null);
+    } catch (error) {
+      toast.error('Erreur lors de l\'import Excel');
+      console.error(error);
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const handleExport = async () => {
+    try {
+      const filters = {
+        prestataire: selectedPrestataire === 'ALL' ? undefined : selectedPrestataire,
+        status: selectedStatus === 'ALL' ? undefined : selectedStatus,
+        month: selectedMonth,
+      };
+
+      const blob = await mesAPI.exportToExcel(filters);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `mes_export_${new Date().toISOString().split('T')[0]}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      toast.success('Export Excel réussi');
+    } catch (error) {
+      toast.error('Erreur lors de l\'export Excel');
+      console.error(error);
+    }
+  };
 
   // Obtenir la couleur du statut
   const getStatusColor = (status: MESStatus) => {
@@ -192,6 +231,31 @@ const MESDashboard: React.FC = () => {
     };
     return labels[status];
   };
+
+  if (isProjectLoading) {
+    return (
+      <PageContainer>
+        <ModuleStatePanel
+          tone="loading"
+          title="Chargement du projet"
+          description="Le contexte projet est en cours d'initialisation pour le système MES."
+        />
+      </PageContainer>
+    );
+  }
+
+  if (!activeProjectId) {
+    return (
+      <PageContainer>
+        <ModuleStatePanel
+          title="Aucun projet actif"
+          description="Le système MES est rattaché à un projet. Sélectionnez un projet pour gérer les mises en service électriques."
+          actionLabel="Choisir un projet"
+          actionTo="/projects"
+        />
+      </PageContainer>
+    );
+  }
 
   return (
     <PageContainer className="min-h-screen bg-slate-950 py-8">
@@ -333,12 +397,18 @@ const MESDashboard: React.FC = () => {
               Actualiser
             </button>
 
-            <button className="px-4 py-2 bg-blue-600/20 border border-blue-500/30 rounded-xl text-sm text-blue-400 hover:bg-blue-600/30 transition-all flex items-center gap-2">
+            <button
+              onClick={() => setIsImportModalOpen(true)}
+              className="px-4 py-2 bg-blue-600/20 border border-blue-500/30 rounded-xl text-sm text-blue-400 hover:bg-blue-600/30 transition-all flex items-center gap-2"
+            >
               <Upload size={16} />
               Importer Excel
             </button>
 
-            <button className="px-4 py-2 bg-green-600/20 border border-green-500/30 rounded-xl text-sm text-green-400 hover:bg-green-600/30 transition-all flex items-center gap-2">
+            <button
+              onClick={handleExport}
+              className="px-4 py-2 bg-green-600/20 border border-green-500/30 rounded-xl text-sm text-green-400 hover:bg-green-600/30 transition-all flex items-center gap-2"
+            >
               <Download size={16} />
               Exporter
             </button>
@@ -360,10 +430,11 @@ const MESDashboard: React.FC = () => {
                     <th className="px-4 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Date</th>
                     <th className="px-4 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Prestataire</th>
                     <th className="px-4 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Statut</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredRecords.map((record) => (
+                  {records.map((record) => (
                     <tr key={record.id} className="border-b border-slate-700/30 hover:bg-slate-800/30 transition-colors">
                       <td className="px-4 py-3 text-sm text-white font-medium">{record.avisNumber}</td>
                       <td className="px-4 py-3 text-sm text-slate-300">{record.meterNumber}</td>
@@ -379,13 +450,56 @@ const MESDashboard: React.FC = () => {
                           {getStatusLabel(record.status)}
                         </span>
                       </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleOpenDetails(record)}
+                            className="p-1.5 hover:bg-slate-700 rounded-lg transition-colors"
+                            title="Voir détails"
+                          >
+                            <Eye size={16} className="text-slate-400" />
+                          </button>
+                          <button
+                            onClick={() => handleOpenForm(record)}
+                            className="p-1.5 hover:bg-slate-700 rounded-lg transition-colors"
+                            title="Modifier"
+                          >
+                            <Edit size={16} className="text-slate-400" />
+                          </button>
+                          {record.status === 'REALISE' && (
+                            <button
+                              onClick={() => handleOpenControl(record)}
+                              className="p-1.5 hover:bg-slate-700 rounded-lg transition-colors"
+                              title="Contrôle qualité"
+                            >
+                              <ShieldCheck size={16} className="text-cyan-400" />
+                            </button>
+                          )}
+                          {(record.status === 'CONTROLE' || record.status === 'REALISE') && (
+                            <button
+                              onClick={() => handleOpenValidation(record)}
+                              className="p-1.5 hover:bg-slate-700 rounded-lg transition-colors"
+                              title="Valider"
+                            >
+                              <CheckCircle2 size={16} className="text-green-400" />
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleDelete(record)}
+                            className="p-1.5 hover:bg-slate-700 rounded-lg transition-colors"
+                            title="Supprimer"
+                          >
+                            <Trash2 size={16} className="text-red-400" />
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
 
-            {filteredRecords.length === 0 && (
+            {records.length === 0 && (
               <div className="p-8 text-center">
                 <ClipboardList size={48} className="text-slate-600 mx-auto mb-4" />
                 <p className="text-slate-400 text-sm">Aucun enregistrement trouvé</p>
@@ -395,11 +509,17 @@ const MESDashboard: React.FC = () => {
 
           {/* Actions rapides */}
           <div className="flex justify-center gap-4">
-            <button className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-500 transition-all flex items-center gap-2">
+            <button
+              onClick={() => handleOpenForm()}
+              className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-500 transition-all flex items-center gap-2"
+            >
               <Plus size={16} />
               Nouvelle MES
             </button>
-            <button className="px-6 py-3 bg-slate-800/50 text-slate-400 rounded-xl hover:text-white transition-all flex items-center gap-2">
+            <button
+              onClick={() => setIsMapOpen(true)}
+              className="px-6 py-3 bg-slate-800/50 text-slate-400 rounded-xl hover:text-white transition-all flex items-center gap-2"
+            >
               <MapPin size={16} />
               Cartographie
             </button>
@@ -415,6 +535,90 @@ const MESDashboard: React.FC = () => {
 
         </div>
       </ContentArea>
+
+      {/* Modals */}
+      <MESForm
+        isOpen={isFormOpen}
+        onClose={handleCloseForm}
+        record={selectedRecord}
+        onSuccess={loadMESData}
+      />
+      <MESControlModal
+        isOpen={isControlModalOpen}
+        onClose={handleCloseControl}
+        record={selectedRecord}
+        onSuccess={loadMESData}
+      />
+      <MESValidationModal
+        isOpen={isValidationModalOpen}
+        onClose={handleCloseValidation}
+        record={selectedRecord}
+        onSuccess={loadMESData}
+      />
+      <MESDetailsModal
+        isOpen={isDetailsModalOpen}
+        onClose={handleCloseDetails}
+        record={selectedRecord}
+      />
+
+      {/* Map Modal */}
+      <MESMap
+        isOpen={isMapOpen}
+        onClose={() => setIsMapOpen(false)}
+      />
+
+      {/* Import Modal */}
+      {isImportModalOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-white">Importer Excel</h2>
+              <button
+                onClick={() => setIsImportModalOpen(false)}
+                className="p-2 hover:bg-slate-800 rounded-lg transition-colors"
+              >
+                <X className="text-slate-400" size={20} />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div className="border-2 border-dashed border-slate-600 rounded-lg p-8 text-center">
+                <Upload className="text-slate-400 mx-auto mb-4" size={32} />
+                <input
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={e => setImportFile(e.target.files?.[0] || null)}
+                  className="hidden"
+                  id="file-upload"
+                />
+                <label
+                  htmlFor="file-upload"
+                  className="cursor-pointer text-sm text-slate-300 hover:text-white"
+                >
+                  {importFile ? importFile.name : 'Cliquez pour sélectionner un fichier Excel'}
+                </label>
+              </div>
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => {
+                    setIsImportModalOpen(false);
+                    setImportFile(null);
+                  }}
+                  className="px-4 py-2 bg-slate-800 text-slate-300 rounded-lg hover:bg-slate-700 transition-colors"
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={handleImport}
+                  disabled={!importFile || importing}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {importing ? 'Importation...' : 'Importer'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </PageContainer>
   );
 };

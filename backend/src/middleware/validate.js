@@ -3,7 +3,7 @@ import Joi from 'joi';
 
 /**
  * Standard validation middleware using Joi
- * 
+ *
  * @param {Object} schema - Joi schema object (can contain body, query, and params keys)
  * @returns {Function} Express middleware function
  */
@@ -27,10 +27,19 @@ export const validate = (schema) => {
         message: details.message,
       }));
 
-      logger.error('[DIAGNOSTIC] Joi Validation Error:', JSON.stringify(errorDetails, null, 2), 'Body was:', req.body);
+      logger.error(
+        '[DIAGNOSTIC] Joi Validation Error:',
+        JSON.stringify(errorDetails, null, 2),
+        'Body was:',
+        req.body
+      );
+
+      // Include first error message in top-level error for backwards compatibility
+      const firstErrorMessage = errorDetails[0]?.message || 'Invalid request data';
 
       return res.status(400).json({
-        error: 'Validation Error',
+        success: false,
+        error: `Validation failed: ${firstErrorMessage}`,
         message: 'Invalid request data',
         details: errorDetails,
       });

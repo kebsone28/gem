@@ -49,6 +49,18 @@ export interface ExportData {
     blockers?: string[];
     completion?: string[];
   }>;
+  executionGuide?: Array<{
+    title: string;
+    description: string;
+    steps: string[];
+    checklist: string[];
+    qualityPoints: string[];
+    safetyPoints: string[];
+  }>;
+  qualityChecklist?: Array<{
+    item: string;
+    category: 'quality' | 'safety' | 'technical';
+  }>;
   pricing?: {
     dailyRate: number;
     personnelCount: number;
@@ -181,6 +193,14 @@ export const exportCahiersToWord = async (
       hse: task.hse,
       subcontracting: task.subcontracting,
       finances: task.finances,
+      legal: task.legal,
+      koboGuide: task.koboGuide,
+      pricing: task.pricing,
+      executionGuide: task.executionGuide,
+      qualityChecklist: task.qualityChecklist,
+      technicalImages: task.technicalImages,
+      startDate: task.startDate,
+      endDate: task.endDate,
     };
     const children = await createRoleSection(roleSectionData, qrBuffer);
     if (tasks.indexOf(task) < tasks.length - 1) {

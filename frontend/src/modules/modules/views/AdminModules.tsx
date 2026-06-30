@@ -27,6 +27,15 @@ import {
 import { PageContainer, PageHeader, ContentArea } from '@components';
 import { TemplateManager } from '@components/admin/TemplateManager';
 
+// Modules spécifiques à un domaine (GEM / MES) — apparaissent dans un seul template projet
+const DOMAIN_MODULES = ['terrain', 'logistique', 'mes', 'approval'];
+
+/** Détermine le scope d'un module : 'global' (indépendant du projet), 'domaine' (spécifique GEM/MES) ou 'admin' */
+const getModuleScope = (moduleId: string, category: string): 'global' | 'domaine' | 'admin' => {
+  if (category === 'admin') return 'admin';
+  return DOMAIN_MODULES.includes(moduleId) ? 'domaine' : 'global';
+};
+
 interface ModuleStats {
   moduleId: string;
   name: string;
@@ -53,7 +62,9 @@ export default function AdminModules() {
   const [showTemplates, setShowTemplates] = useState(false);
   const [configMode, setConfigMode] = useState<'global' | 'domain'>('global');
   const [selectedDomain, setSelectedDomain] = useState<string | null>(null);
-  const [domainModulesConfig, setDomainModulesConfig] = useState<Record<string, Record<string, ModuleConfig>>>({});
+  const [domainModulesConfig, setDomainModulesConfig] = useState<
+    Record<string, Record<string, ModuleConfig>>
+  >({});
   const [loadingDomainConfig, setLoadingDomainConfig] = useState(false);
   const [domains, setDomains] = useState<{ key: string; label: string }[]>([]);
 
@@ -90,9 +101,9 @@ export default function AdminModules() {
       if (domainKeys.length === 0) {
         // Fallback: domaines par défaut si aucun enregistré
         const defaults = ['gem', 'mes'];
-        setDomains(defaults.map(key => ({ key, label: key.toUpperCase() })));
+        setDomains(defaults.map((key) => ({ key, label: key.toUpperCase() })));
       } else {
-        setDomains(domainKeys.map(key => ({ key, label: key.toUpperCase() })));
+        setDomains(domainKeys.map((key) => ({ key, label: key.toUpperCase() })));
       }
 
       if (!selectedDomain && domainKeys.length > 0) {
@@ -304,7 +315,8 @@ export default function AdminModules() {
         )}
       </AnimatePresence>
 
-      <PageHeader backLink={{ to: '/admin/hub', label: 'Retour au Centre de Contrôle' }}
+      <PageHeader
+        backLink={{ to: '/admin/hub', label: 'Retour au Centre de Contrôle' }}
         title="Gestion des Modules"
         subtitle="Configuration globale des fonctionnalités du système"
         icon={<Settings size={24} />}
@@ -312,7 +324,6 @@ export default function AdminModules() {
 
       <ContentArea className="space-y-8 p-8 bg-slate-950 border-slate-800">
         <div className="max-w-7xl mx-auto space-y-8">
-
           {/* ── Définition de la page ────────────────────────────────────────── */}
           <div className="rounded-2xl border border-slate-700/60 bg-slate-900/50 p-6 flex flex-col sm:flex-row gap-6">
             <div className="w-12 h-12 shrink-0 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
@@ -320,9 +331,14 @@ export default function AdminModules() {
             </div>
             <div className="space-y-3 flex-1">
               <p className="text-slate-200 text-sm font-medium leading-relaxed">
-                Cette page vous permet de contrôler les <span className="text-white font-bold">fonctionnalités actives</span> sur toute la plateforme.
-                Chaque module correspond à un ensemble de pages, d'API et de permissions.
-                Désactiver un module le rend <span className="text-rose-400 font-bold">inaccessible pour tous les utilisateurs</span>, quel que soit leur rôle — y compris au niveau API.
+                Cette page vous permet de contrôler les{' '}
+                <span className="text-white font-bold">fonctionnalités actives</span> sur toute la
+                plateforme. Chaque module correspond à un ensemble de pages, d'API et de
+                permissions. Désactiver un module le rend{' '}
+                <span className="text-rose-400 font-bold">
+                  inaccessible pour tous les utilisateurs
+                </span>
+                , quel que soit leur rôle — y compris au niveau API.
               </p>
               <div className="flex flex-wrap gap-3 text-xs font-bold">
                 <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400">
@@ -337,7 +353,6 @@ export default function AdminModules() {
               </div>
             </div>
           </div>
-
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="p-6 bg-gradient-to-br from-blue-500/10 to-blue-600/10 border border-blue-500/20 rounded-2xl">
@@ -462,263 +477,286 @@ export default function AdminModules() {
 
           {/* Modules par catégorie */}
           {/* Modules par catégorie - Mode Domaine */}
-          {configMode === 'domain' && selectedDomain && Object.entries(modulesByCategory).map(([category, categoryModules]) => {
-            const CategoryIcon = getModuleIcon(categoryModules[0]?.icon);
-            const domainConfig = domainModulesConfig[selectedDomain] || {};
-            const domainModules = modules.map(m => ({
-              ...m,
-              enabled: domainConfig[m.id]?.enabled ?? true,
-            }));
-            const domainModulesByCategory = domainModules.reduce(
-              (acc, m) => {
-                if (!acc[m.category]) acc[m.category] = [];
-                acc[m.category].push(m);
-                return acc;
-              },
-              {} as Record<string, typeof modules>
-            );
-            const domainCategoryModules = domainModulesByCategory[category] || [];
-            return (
-              <div key={category} className="space-y-4">
-                <div className="flex items-center gap-3 mb-4">
-                  <div
-                    className={`w-8 h-8 rounded-xl flex items-center justify-center ${getCategoryColor(category)}`}
-                  >
-                    <CategoryIcon size={20} />
+          {configMode === 'domain' &&
+            selectedDomain &&
+            Object.entries(modulesByCategory).map(([category, categoryModules]) => {
+              const CategoryIcon = getModuleIcon(categoryModules[0]?.icon);
+              const domainConfig = domainModulesConfig[selectedDomain] || {};
+              const domainModules = modules.map((m) => ({
+                ...m,
+                enabled: domainConfig[m.id]?.enabled ?? true,
+              }));
+              const domainModulesByCategory = domainModules.reduce(
+                (acc, m) => {
+                  if (!acc[m.category]) acc[m.category] = [];
+                  acc[m.category].push(m);
+                  return acc;
+                },
+                {} as Record<string, typeof modules>
+              );
+              const domainCategoryModules = domainModulesByCategory[category] || [];
+              return (
+                <div key={category} className="space-y-4">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div
+                      className={`w-8 h-8 rounded-xl flex items-center justify-center ${getCategoryColor(category)}`}
+                    >
+                      <CategoryIcon size={20} />
+                    </div>
+                    <h3 className="text-lg font-black text-white capitalize">
+                      {category === 'core'
+                        ? 'Modules Core'
+                        : category === 'advanced'
+                          ? 'Modules Avancés'
+                          : category === 'experimental'
+                            ? 'Modules Expérimentaux'
+                            : 'Modules Admin'}
+                    </h3>
+                    <span className="text-xs text-slate-500 uppercase tracking-widest">
+                      {domainCategoryModules.filter((m) => m.enabled).length}/
+                      {domainCategoryModules.length} activés
+                    </span>
                   </div>
-                  <h3 className="text-lg font-black text-white capitalize">
-                    {category === 'core'
-                      ? 'Modules Core'
-                      : category === 'advanced'
-                        ? 'Modules Avancés'
-                        : category === 'experimental'
-                          ? 'Modules Expérimentaux'
-                          : 'Modules Admin'}
-                  </h3>
-                  <span className="text-xs text-slate-500 uppercase tracking-widest">
-                    {domainCategoryModules.filter((m) => m.enabled).length}/{domainCategoryModules.length}{' '}
-                    activés
-                  </span>
-                </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {domainCategoryModules
-                    .filter((module) => showDisabled || module.enabled)
-                    .map((module) => {
-                      const ModuleIcon = getModuleIcon(module.icon);
-                      const isEnabled = module.enabled;
-                      const canToggle = module.global;
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {domainCategoryModules
+                      .filter((module) => showDisabled || module.enabled)
+                      .map((module) => {
+                        const ModuleIcon = getModuleIcon(module.icon);
+                        const isEnabled = module.enabled;
+                        const canToggle = module.global;
 
-                      return (
-                        <motion.div
-                          key={module.id}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className={`p-6 rounded-2xl border transition-all cursor-pointer hover:shadow-xl ${
-                            isEnabled
-                              ? 'bg-gradient-to-br from-slate-800/50 to-slate-700/50 border-slate-600/50'
-                              : 'bg-slate-900/50 border-slate-800/50 opacity-60'
-                          }`}
-                          onClick={() =>
-                            canToggle && toggleDomainModule(selectedDomain, module.id, !isEnabled)
-                          }
-                        >
-                          <div className="flex items-start justify-between mb-4">
-                            <div className="flex items-center gap-3">
-                              <div
-                                className={`w-12 h-12 rounded-xl flex items-center justify-center ${getCategoryColor(category)}`}
-                              >
-                                <ModuleIcon size={24} />
-                              </div>
-                              <div>
-                                <h4 className="text-white font-black text-base mb-1">
-                                  {module.name}
-                                </h4>
-                                <p className="text-slate-400 text-xs">{module.description}</p>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                              {canToggle ? (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    toggleDomainModule(selectedDomain, module.id, !isEnabled);
-                                  }}
-                                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
-                                    isEnabled ? 'bg-emerald-600' : 'bg-slate-700'
-                                  }`}
+                        return (
+                          <motion.div
+                            key={module.id}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className={`p-6 rounded-2xl border transition-all cursor-pointer hover:shadow-xl ${
+                              isEnabled
+                                ? 'bg-gradient-to-br from-slate-800/50 to-slate-700/50 border-slate-600/50'
+                                : 'bg-slate-900/50 border-slate-800/50 opacity-60'
+                            }`}
+                            onClick={() =>
+                              canToggle && toggleDomainModule(selectedDomain, module.id, !isEnabled)
+                            }
+                          >
+                            <div className="flex items-start justify-between mb-4">
+                              <div className="flex items-center gap-3">
+                                <div
+                                  className={`w-12 h-12 rounded-xl flex items-center justify-center ${getCategoryColor(category)}`}
                                 >
-                                  <span
-                                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                                      isEnabled ? 'translate-x-6' : 'translate-x-1'
-                                    }`}
-                                  />
-                                </button>
-                              ) : (
-                                <div className="px-3 py-1 bg-slate-700 rounded-lg">
-                                  <span className="text-xs text-slate-400">Non désactivable</span>
+                                  <ModuleIcon size={24} />
                                 </div>
-                              )}
-                            </div>
-                          </div>
+                                <div>
+                                  <h4 className="text-white font-black text-base mb-1">
+                                    {module.name}
+                                    {getModuleScope(module.id, category) === 'global' && (
+                                      <span className="ml-2 px-2 py-0.5 text-[10px] font-bold bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-md">
+                                        🌐 Globaux
+                                      </span>
+                                    )}
+                                    {getModuleScope(module.id, category) === 'domaine' && (
+                                      <span className="ml-2 px-2 py-0.5 text-[10px] font-bold bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-md">
+                                        📋 Domaine
+                                      </span>
+                                    )}
+                                  </h4>
+                                  <p className="text-slate-400 text-xs">{module.description}</p>
+                                </div>
+                              </div>
 
-                          <div className="mt-3">
-                            <p className="text-xs text-slate-500 mb-2">Permissions requises:</p>
-                            <div className="flex flex-wrap gap-1">
-                              {(module.permissions || []).map((perm) => (
-                                <span
-                                  key={perm}
-                                  className="px-2 py-1 bg-slate-800 rounded text-xs text-slate-300"
-                                >
-                                  {perm}
-                                </span>
-                              ))}
+                              <div className="flex items-center gap-2">
+                                {canToggle ? (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      toggleDomainModule(selectedDomain, module.id, !isEnabled);
+                                    }}
+                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                                      isEnabled ? 'bg-emerald-600' : 'bg-slate-700'
+                                    }`}
+                                  >
+                                    <span
+                                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                        isEnabled ? 'translate-x-6' : 'translate-x-1'
+                                      }`}
+                                    />
+                                  </button>
+                                ) : (
+                                  <div className="px-3 py-1 bg-slate-700 rounded-lg">
+                                    <span className="text-xs text-slate-400">Non désactivable</span>
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        </motion.div>
-                      );
-                    })}
+
+                            <div className="mt-3">
+                              <p className="text-xs text-slate-500 mb-2">Permissions requises:</p>
+                              <div className="flex flex-wrap gap-1">
+                                {(module.permissions || []).map((perm) => (
+                                  <span
+                                    key={perm}
+                                    className="px-2 py-1 bg-slate-800 rounded text-xs text-slate-300"
+                                  >
+                                    {perm}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          </motion.div>
+                        );
+                      })}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
 
           {/* Modules par catégorie - Mode Global */}
-          {configMode === 'global' && Object.entries(modulesByCategory).map(([category, categoryModules]) => {
-            const CategoryIcon = getModuleIcon(categoryModules[0]?.icon);
-            return (
-              <div key={category} className="space-y-4">
-                <div className="flex items-center gap-3 mb-4">
-                  <div
-                    className={`w-8 h-8 rounded-xl flex items-center justify-center ${getCategoryColor(category)}`}
-                  >
-                    <CategoryIcon size={20} />
+          {configMode === 'global' &&
+            Object.entries(modulesByCategory).map(([category, categoryModules]) => {
+              const CategoryIcon = getModuleIcon(categoryModules[0]?.icon);
+              return (
+                <div key={category} className="space-y-4">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div
+                      className={`w-8 h-8 rounded-xl flex items-center justify-center ${getCategoryColor(category)}`}
+                    >
+                      <CategoryIcon size={20} />
+                    </div>
+                    <h3 className="text-lg font-black text-white capitalize">
+                      {category === 'core'
+                        ? 'Modules Core'
+                        : category === 'advanced'
+                          ? 'Modules Avancés'
+                          : category === 'experimental'
+                            ? 'Modules Expérimentaux'
+                            : 'Modules Admin'}
+                    </h3>
+                    <span className="text-xs text-slate-500 uppercase tracking-widest">
+                      {categoryModules.filter((m) => m.enabled).length}/{categoryModules.length}{' '}
+                      activés
+                    </span>
                   </div>
-                  <h3 className="text-lg font-black text-white capitalize">
-                    {category === 'core'
-                      ? 'Modules Core'
-                      : category === 'advanced'
-                        ? 'Modules Avancés'
-                        : category === 'experimental'
-                          ? 'Modules Expérimentaux'
-                          : 'Modules Admin'}
-                  </h3>
-                  <span className="text-xs text-slate-500 uppercase tracking-widest">
-                    {categoryModules.filter((m) => m.enabled).length}/{categoryModules.length}{' '}
-                    activés
-                  </span>
-                </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {categoryModules
-                    .filter((module) => showDisabled || module.enabled)
-                    .map((module) => {
-                      const ModuleIcon = getModuleIcon(module.icon);
-                      const moduleStats = stats[module.id];
-                      const isGloballyEnabled = module.enabled;
-                      const canToggleGlobally = module.global;
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {categoryModules
+                      .filter((module) => showDisabled || module.enabled)
+                      .map((module) => {
+                        const ModuleIcon = getModuleIcon(module.icon);
+                        const moduleStats = stats[module.id];
+                        const isGloballyEnabled = module.enabled;
+                        const canToggleGlobally = module.global;
 
-                      return (
-                        <motion.div
-                          key={module.id}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className={`p-6 rounded-2xl border transition-all cursor-pointer hover:shadow-xl ${
-                            isGloballyEnabled
-                              ? 'bg-gradient-to-br from-slate-800/50 to-slate-700/50 border-slate-600/50'
-                              : 'bg-slate-900/50 border-slate-800/50 opacity-60'
-                          }`}
-                          onClick={() =>
-                            canToggleGlobally && openConfirmModal(module.id, !isGloballyEnabled)
-                          }
-                        >
-                          <div className="flex items-start justify-between mb-4">
-                            <div className="flex items-center gap-3">
-                              <div
-                                className={`w-12 h-12 rounded-xl flex items-center justify-center ${getCategoryColor(category)}`}
-                              >
-                                <ModuleIcon size={24} />
-                              </div>
-                              <div>
-                                <h4 className="text-white font-black text-base mb-1">
-                                  {module.name}
-                                </h4>
-                                <p className="text-slate-400 text-xs">{module.description}</p>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                              {canToggleGlobally ? (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    openConfirmModal(module.id, !isGloballyEnabled);
-                                  }}
-                                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
-                                    isGloballyEnabled ? 'bg-blue-600' : 'bg-slate-700'
-                                  }`}
+                        return (
+                          <motion.div
+                            key={module.id}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className={`p-6 rounded-2xl border transition-all cursor-pointer hover:shadow-xl ${
+                              isGloballyEnabled
+                                ? 'bg-gradient-to-br from-slate-800/50 to-slate-700/50 border-slate-600/50'
+                                : 'bg-slate-900/50 border-slate-800/50 opacity-60'
+                            }`}
+                            onClick={() =>
+                              canToggleGlobally && openConfirmModal(module.id, !isGloballyEnabled)
+                            }
+                          >
+                            <div className="flex items-start justify-between mb-4">
+                              <div className="flex items-center gap-3">
+                                <div
+                                  className={`w-12 h-12 rounded-xl flex items-center justify-center ${getCategoryColor(category)}`}
                                 >
-                                  <span
-                                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                                      isGloballyEnabled ? 'translate-x-6' : 'translate-x-1'
+                                  <ModuleIcon size={24} />
+                                </div>
+                                <div>
+                                  <h4 className="text-white font-black text-base mb-1">
+                                    {module.name}
+                                    {getModuleScope(module.id, category) === 'global' && (
+                                      <span className="ml-2 px-2 py-0.5 text-[10px] font-bold bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-md">
+                                        🌐 Globaux
+                                      </span>
+                                    )}
+                                    {getModuleScope(module.id, category) === 'domaine' && (
+                                      <span className="ml-2 px-2 py-0.5 text-[10px] font-bold bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-md">
+                                        📋 Domaine
+                                      </span>
+                                    )}
+                                  </h4>
+                                  <p className="text-slate-400 text-xs">{module.description}</p>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                {canToggleGlobally ? (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      openConfirmModal(module.id, !isGloballyEnabled);
+                                    }}
+                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                                      isGloballyEnabled ? 'bg-blue-600' : 'bg-slate-700'
                                     }`}
-                                  />
-                                </button>
-                              ) : (
-                                <div className="px-3 py-1 bg-slate-700 rounded-lg">
-                                  <span className="text-xs text-slate-400">Non désactivable</span>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Statistiques d'utilisation */}
-                          {moduleStats && (
-                            <div className="mt-4 pt-4 border-t border-slate-700/50">
-                              <div className="flex items-center justify-between text-xs">
-                                <span className="text-slate-400">
-                                  {moduleStats.userCount} utilisateur
-                                  {moduleStats.userCount > 1 ? 's' : ''}
-                                </span>
-                                <div className="flex items-center gap-2">
-                                  {isGloballyEnabled ? (
-                                    <>
-                                      <CheckCircle2 className="text-emerald-400" size={14} />
-                                      <span className="text-emerald-400">Actif</span>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <X className="text-slate-500" size={14} />
-                                      <span className="text-slate-500">Inactif</span>
-                                    </>
-                                  )}
-                                </div>
+                                  >
+                                    <span
+                                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                        isGloballyEnabled ? 'translate-x-6' : 'translate-x-1'
+                                      }`}
+                                    />
+                                  </button>
+                                ) : (
+                                  <div className="px-3 py-1 bg-slate-700 rounded-lg">
+                                    <span className="text-xs text-slate-400">Non désactivable</span>
+                                  </div>
+                                )}
                               </div>
                             </div>
-                          )}
 
-                          {/* Permissions requises */}
-                          <div className="mt-3">
-                            <p className="text-xs text-slate-500 mb-2">Permissions requises:</p>
-                            <div className="flex flex-wrap gap-1">
-                              {(module.permissions || []).map((perm) => (
-                                <span
-                                  key={perm}
-                                  className="px-2 py-1 bg-slate-800 rounded text-xs text-slate-300"
-                                >
-                                  {perm}
-                                </span>
-                              ))}
+                            {/* Statistiques d'utilisation */}
+                            {moduleStats && (
+                              <div className="mt-4 pt-4 border-t border-slate-700/50">
+                                <div className="flex items-center justify-between text-xs">
+                                  <span className="text-slate-400">
+                                    {moduleStats.userCount} utilisateur
+                                    {moduleStats.userCount > 1 ? 's' : ''}
+                                  </span>
+                                  <div className="flex items-center gap-2">
+                                    {isGloballyEnabled ? (
+                                      <>
+                                        <CheckCircle2 className="text-emerald-400" size={14} />
+                                        <span className="text-emerald-400">Actif</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <X className="text-slate-500" size={14} />
+                                        <span className="text-slate-500">Inactif</span>
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Permissions requises */}
+                            <div className="mt-3">
+                              <p className="text-xs text-slate-500 mb-2">Permissions requises:</p>
+                              <div className="flex flex-wrap gap-1">
+                                {(module.permissions || []).map((perm) => (
+                                  <span
+                                    key={perm}
+                                    className="px-2 py-1 bg-slate-800 rounded text-xs text-slate-300"
+                                  >
+                                    {perm}
+                                  </span>
+                                ))}
+                              </div>
                             </div>
-                          </div>
-                        </motion.div>
-                      );
-                    })}
+                          </motion.div>
+                        );
+                      })}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
 
           {/* Actions globales */}
           <div className="flex justify-center gap-4 mt-8">
@@ -731,7 +769,9 @@ export default function AdminModules() {
             <button
               onClick={() => setShowTemplates(!showTemplates)}
               className={`px-6 py-3 rounded-xl transition-all flex items-center gap-2 ${
-                showTemplates ? 'bg-blue-600 text-white' : 'bg-slate-800/50 text-slate-400 hover:text-white'
+                showTemplates
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-slate-800/50 text-slate-400 hover:text-white'
               }`}
             >
               <FileText size={16} />

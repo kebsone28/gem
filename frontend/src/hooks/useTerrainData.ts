@@ -156,6 +156,7 @@ export function useTerrainData(options: UseTerrainDataOptions = {}) {
   const [householdsRaw, setHouseholdsRaw] = useState<Household[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const missingProject = enabled && !currentProjectId;
 
   const reloadHouseholds = useCallback(async () => {
     if (!enabled) {
@@ -168,6 +169,7 @@ export function useTerrainData(options: UseTerrainDataOptions = {}) {
     if (!currentProjectId) {
       setHouseholdsRaw([]);
       setIsLoading(false);
+      setError(null);
       return [];
     }
 
@@ -415,6 +417,7 @@ export function useTerrainData(options: UseTerrainDataOptions = {}) {
     households,
     isLoading,
     error,
+    missingProject,
     searchTerm,
     setSearchTerm,
     statusFilter,

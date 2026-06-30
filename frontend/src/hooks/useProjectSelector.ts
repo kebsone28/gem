@@ -61,11 +61,19 @@ function isAdminRole(role?: string): boolean {
 
 export function useProjectSelector() {
   const { user } = useAuth();
+  const tenantId = user?.organizationId || null;
 
-  // 1. Observer la base Dexie de manière réactive.
+  // 1. Observer la base Dexie de manière réactive, dans le meme tenant que ProjectContext.
   //    useLiveQuery retourne `undefined` pendant le premier chargement (pas encore résolu),
   //    et un tableau (possiblement vide) ensuite.
-  const rawDbProjects = useLiveQuery(() => db.projects.toArray());
+  const rawDbProjects = useLiveQuery(async () => {
+    if (!tenantId) return [];
+    return db.projects
+      .where('organizationId')
+      .equals(tenantId)
+      .and((project) => project.deletedAt === undefined || project.deletedAt === null)
+      .toArray();
+  }, [tenantId]);
 
   // Tant que Dexie n'a pas répondu, on est en état "loading"
   const isHydrating = rawDbProjects === undefined;
@@ -82,7 +90,9 @@ export function useProjectSelector() {
     if (!user) return [];
     if (isHydrating) return []; // Dexie pas encore prêt
 
-    logger.debug(`[ProjectSelector] DB: ${allDbProjectsFromDb.length} projet(s), admin=${isGlobalAdmin}`);
+    logger.debug(
+      `[ProjectSelector] DB tenant=${tenantId || 'none'}: ${allDbProjectsFromDb.length} projet(s), admin=${isGlobalAdmin}`
+    );
 
     if (isGlobalAdmin) {
       // L'admin voit tout sauf les projets explicitement archivés
@@ -112,7 +122,7 @@ export function useProjectSelector() {
         (p as any).createdBy === userId
       );
     });
-  }, [allDbProjectsFromDb, user, isGlobalAdmin, isHydrating]);
+  }, [allDbProjectsFromDb, user, isGlobalAdmin, isHydrating, tenantId]);
 
   // 4. Assignations dérivées
   const userAssignments = useMemo((): ProjectAssignment[] => {

@@ -92,9 +92,55 @@ jobs:
         run: npm run test:unit --prefix frontend
         continue-on-error: true
 
-  # ============ DEPLOY TO WANEKOO (MANUAL) ==========
-  # Deployment has been removed from CI. Use the local deployment script.
-
-
-
   # ============ DEPLOY TO GED VPS ============
+  deploy:
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Déploiement via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          script: |
+            set -euo pipefail
+            cd ${{ secrets.VPS_PATH || '/var/www/gedcollect' }}
+
+            echo "→ Récupération du dernier code"
+            git fetch --all
+            git reset --hard origin/main
+
+            echo "→ Installation des dépendances backend"
+            npm ci --prefix backend --legacy-peer-deps
+
+            echo "→ Prisma generate + migrations"
+            npx prisma generate --schema=prisma/schema.prisma
+            npx prisma migrate deploy --schema=prisma/schema.prisma || echo "Migrations déjà à jour"
+
+            echo "→ Installation des dépendances front"
+            npm ci --prefix frontend --legacy-peer-deps
+
+            echo "→ Build du front"
+            NODE_OPTIONS='--max-old-space-size=4096' npm run build --prefix frontend
+
+            echo "→ Redémarrage du backend avec pm2"
+            npx pm2 restart all
+
+            echo "→ Health‑check"
+            sleep 10
+            curl -fsS http://localhost:5005/health || echo "⚠️ Health‑check échoué – vérifier manuellement"
+
+      - name: Notifier le résultat
+        if: always()
+        run: |
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "✅ Déploiement réussi sur ${{ secrets.VPS_HOST }}"
+          else
+            echo "❌ Déploiement échoué"
+          fi

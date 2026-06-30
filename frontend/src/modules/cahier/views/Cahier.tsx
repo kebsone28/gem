@@ -1,6 +1,6 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
-import { useState, useMemo, useCallback } from 'react';
-import { HardHat } from 'lucide-react';
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
+import { useState, useMemo, useCallback, useEffect } from 'react';
+import { HardHat, Layers3 } from 'lucide-react';
 import { useAuth } from '@contexts/AuthContext';
 import { useProject } from '@contexts/ProjectContext';
 import { usePermissions } from '@hooks/usePermissions';
@@ -37,8 +37,8 @@ import { CahierTechnicalView } from './Cahier/components/CahierTechnicalView';
 import { CahierContractView } from './Cahier/components/CahierContractView';
 import { CahierStrategyView } from './Cahier/components/CahierStrategyView';
 
-import { PageContainer, PageHeader, ContentArea } from '@components';
-import { TableRowSkeleton, CardSkeleton } from '@components/common/Skeleton';
+import { PageContainer } from '@components';
+import { ModuleStatePanel } from '@components/common/ModuleStatePanel';
 
 type CahierDocumentMode = 'cahier' | 'contrat' | 'strategie';
 
@@ -47,6 +47,8 @@ export default function Cahier() {
   const { peut, PERMISSIONS } = usePermissions();
   const isAdmin = peut(PERMISSIONS.SYSTEM_CONFIG);
   const { project } = useProject();
+  const hasActiveProject = Boolean(project);
+  const canCustomizeProject = hasActiveProject && isAdmin;
 
   const {
     customLibrary,
@@ -74,8 +76,90 @@ export default function Cahier() {
   const [isEditing, setIsEditing] = useState(false);
   const [showAdvancedSections, setShowAdvancedSections] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [isFusedMode, setIsFusedMode] = useState(false);
 
   const currentTask = useMemo(() => {
+    if (isFusedMode) {
+      // Mode fusionné : combiner Électricien + Maçonnerie + Logistique
+      const electricienTask = customLibrary['Électricien'] || DEFAULT_TASK_LIBRARY['Électricien'];
+      const maconnerieTask = customLibrary['Maçonnerie'] || DEFAULT_TASK_LIBRARY['Maçonnerie'];
+      const logistiqueTask = customLibrary['Logistique'] || DEFAULT_TASK_LIBRARY['Logistique'];
+
+      return {
+        role: 'Fusionné',
+        color: 'purple',
+        icon: Layers3 as any,
+        image: '/assets/images/installation-terre.png',
+        defaultCadence: 'Cadence : Combinée selon les lots',
+        introduction: `ARTICLE 1 - OBJET : Cahier de charges fusionné couvrant les lots Électricien, Maçonnerie et Logistique. Ce document regroupe les spécifications techniques, les missions, les matériels et les exigences HSE pour les trois lots principaux du projet d'électrification.`,
+        missions: [
+          '=== LOT ÉLECTRICIEN ===',
+          ...(electricienTask?.missions || []),
+          '',
+          '=== LOT MAÇONNERIE ===',
+          ...(maconnerieTask?.missions || []),
+          '',
+          '=== LOT LOGISTIQUE ===',
+          ...(logistiqueTask?.missions || []),
+        ],
+        materials: [
+          '=== MATÉRIELS ÉLECTRICIEN ===',
+          ...(electricienTask?.materials || []),
+          '',
+          '=== MATÉRIELS MAÇONNERIE ===',
+          ...(maconnerieTask?.materials || []),
+          '',
+          '=== MATÉRIELS LOGISTIQUE ===',
+          ...(logistiqueTask?.materials || []),
+        ],
+        hse: [
+          '=== HSE ÉLECTRICIEN ===',
+          ...(electricienTask?.hse || []),
+          '',
+          '=== HSE MAÇONNERIE ===',
+          ...(maconnerieTask?.hse || []),
+          '',
+          '=== HSE LOGISTIQUE ===',
+          ...(logistiqueTask?.hse || []),
+        ],
+        legal: [
+          '=== CLAUSES LÉGALES ÉLECTRICIEN ===',
+          ...(electricienTask?.legal || []),
+          '',
+          '=== CLAUSES LÉGALES MAÇONNERIE ===',
+          ...(maconnerieTask?.legal || []),
+          '',
+          '=== CLAUSES LÉGALES LOGISTIQUE ===',
+          ...(logistiqueTask?.legal || []),
+        ],
+        finances: [
+          '=== FINANCES ÉLECTRICIEN ===',
+          ...(electricienTask?.finances || []),
+          '',
+          '=== FINANCES MAÇONNERIE ===',
+          ...(maconnerieTask?.finances || []),
+          '',
+          '=== FINANCES LOGISTIQUE ===',
+          ...(logistiqueTask?.finances || []),
+        ],
+        pricing: {
+          dailyRate: (electricienTask?.pricing?.dailyRate || 0) + (maconnerieTask?.pricing?.dailyRate || 0) + (logistiqueTask?.pricing?.dailyRate || 0),
+          personnelCount: (electricienTask?.pricing?.personnelCount || 0) + (maconnerieTask?.pricing?.personnelCount || 0) + (logistiqueTask?.pricing?.personnelCount || 0),
+          durationDays: Math.max(
+            electricienTask?.pricing?.durationDays || 0,
+            maconnerieTask?.pricing?.durationDays || 0,
+            logistiqueTask?.pricing?.durationDays || 0
+          ),
+          penalties: `=== PÉNALITÉS COMBINÉES ===\n\n${electricienTask?.pricing?.penalties || ''}\n\n${maconnerieTask?.pricing?.penalties || ''}\n\n${logistiqueTask?.pricing?.penalties || ''}`,
+          currency: 'FCFA',
+        },
+        technicalImages: electricienTask?.technicalImages || [],
+        koboGuide: electricienTask?.koboGuide || [],
+        subcontracting: electricienTask?.subcontracting || [],
+      };
+    }
+
+    // Mode normal : afficher le rôle sélectionné
     const task = customLibrary[selectedRole];
     const defaultTask = DEFAULT_TASK_LIBRARY[selectedRole] || DEFAULT_TASK_LIBRARY[Object.keys(DEFAULT_TASK_LIBRARY)[0]];
     
@@ -87,7 +171,7 @@ export default function Cahier() {
     }
     
     return sanitizeTaskForCahier(selectedRole, defaultTask);
-  }, [customLibrary, selectedRole]);
+  }, [customLibrary, selectedRole, isFusedMode]);
 
   const automatedRate = useMemo(() => getAutomatedRate(selectedRole), [getAutomatedRate, selectedRole]);
 
@@ -96,6 +180,14 @@ export default function Cahier() {
   const currentContract = contractLibrary[selectedContractLot] || DEFAULT_CONTRACT_TEMPLATES[selectedContractLot];
   const [contractDraft, setContractDraft] = useState(currentContract.content.join('\n'));
   const [strategyDraft, setStrategyDraft] = useState(operationalStrategy.content.join('\n'));
+
+  useEffect(() => {
+    setContractDraft(currentContract.content.join('\n'));
+  }, [currentContract]);
+
+  useEffect(() => {
+    setStrategyDraft(operationalStrategy.content.join('\n'));
+  }, [operationalStrategy]);
 
   const handleRoleChange = useCallback((role: string) => {
     setSelectedRole(role);
@@ -144,30 +236,28 @@ export default function Cahier() {
 
   const finalRolesToDisplay = useMemo(() => getFilteredRolesToDisplay(customLibrary, user, isAdmin), [customLibrary, user, isAdmin]);
 
-  if (!project) {
-    return (
-      <PageContainer>
-        <PageHeader title="Chargement..." subtitle="Préparation de la norme projet" icon={HardHat} />
-        <ContentArea className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6"><CardSkeleton /><CardSkeleton /><CardSkeleton /></div>
-          <div className="space-y-4"><TableRowSkeleton /><TableRowSkeleton /><TableRowSkeleton /></div>
-        </ContentArea>
-      </PageContainer>
-    );
-  }
-
   return (
     <PageContainer className="overflow-x-hidden !bg-slate-950 relative min-h-screen">
       <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-6 relative z-10">
         <div className="flex flex-col gap-6">
+          {!hasActiveProject && (
+            <ModuleStatePanel
+              title="Configuration de Base"
+              description="Vous consultez le socle standard du module Cahier de Charge. Cette base reste intacte. Sélectionnez un projet pour appliquer vos adaptations locales sans affecter le module principal."
+              actionLabel="Choisir un projet"
+              actionTo="/projects"
+            />
+          )}
 
           {/* ⬆️ Workspace Header (Top Panel) */}
           <CahierHeader
-            projectName={project.name}
-            isSaving={isSaving}
-            selectedRole={selectedRole}
+            projectName={project?.name || 'Configuration de Base'}
+            isSaving={hasActiveProject ? isSaving : false}
+            statusLabel={hasActiveProject ? 'Synchronisé au Cloud' : 'Base standard du module'}
+            statusTone={hasActiveProject ? 'success' : 'info'}
+            selectedRole={isFusedMode ? 'Fusionné' : selectedRole}
             documentMode={documentMode}
-            isEditing={isEditing || isContractEditing || isStrategyEditing}
+            isEditing={canCustomizeProject && (isEditing || isContractEditing || isStrategyEditing)}
             hasUnsavedChanges={false}
             showAdvancedSections={showAdvancedSections}
             showHistory={showHistory}
@@ -175,15 +265,18 @@ export default function Cahier() {
             setShowAdvancedSections={setShowAdvancedSections}
             onSave={documentMode === 'cahier' ? handleSave : documentMode === 'contrat' ? handleSaveContract : handleSaveStrategy}
             onReset={documentMode === 'cahier' ? () => handleRoleChange(selectedRole) : documentMode === 'contrat' ? handleResetContract : () => setOperationalStrategy(DEFAULT_OPERATIONAL_STRATEGY)}
-            onExportWord={documentMode === 'cahier' ? () => exportCahiersToWord([{ ...currentTask, role: selectedRole, responsible: user?.name || '' } as any], false, []) : documentMode === 'contrat' ? () => exportContractToWord(['LOT A', 'LOT B', 'LOT C'].map(lot => ({
+            onExportWord={documentMode === 'cahier' ? () => exportCahiersToWord([{ ...currentTask, role: isFusedMode ? 'Fusionné' : selectedRole, responsible: user?.name || '' } as any], false, []) : documentMode === 'contrat' ? () => exportContractToWord(['LOT A', 'LOT B', 'LOT C'].map(lot => ({
               lotName: lot,
               content: (contractLibrary[lot] || DEFAULT_CONTRACT_TEMPLATES[lot]).content.join('\n'),
             }))) : () => exportStrategyToWord(operationalStrategy, strategyDraft)}
             onEditToggle={() => {
+              if (!canCustomizeProject) return;
               if (documentMode === 'cahier') setIsEditing(!isEditing);
               else if (documentMode === 'contrat') setIsContractEditing(!isContractEditing);
               else if (documentMode === 'strategie') setIsStrategyEditing(!isStrategyEditing);
             }}
+            isFusedMode={isFusedMode}
+            onToggleFusedMode={() => setIsFusedMode(!isFusedMode)}
           />
 
           {/* ⏸️ Workspace Navigation (Middle Panel) */}
@@ -195,13 +288,14 @@ export default function Cahier() {
             setSelectedContractLot={setSelectedContractLot}
             documentMode={documentMode}
             setDocumentMode={setDocumentMode}
-            isEditing={isEditing || isContractEditing || isStrategyEditing}
-            onEditToggle={() => {
+            isEditing={canCustomizeProject && (isEditing || isContractEditing || isStrategyEditing)}
+            onEditToggle={canCustomizeProject ? () => {
               if (documentMode === 'cahier') setIsEditing(!isEditing);
               else if (documentMode === 'contrat') setIsContractEditing(!isContractEditing);
               else if (documentMode === 'strategie') setIsStrategyEditing(!isStrategyEditing);
-            }}
-            onSave={documentMode === 'cahier' ? handleSave : documentMode === 'contrat' ? handleSaveContract : handleSaveStrategy}
+            } : undefined}
+            onSave={canCustomizeProject ? (documentMode === 'cahier' ? handleSave : documentMode === 'contrat' ? handleSaveContract : handleSaveStrategy) : undefined}
+            isFusedMode={isFusedMode}
           />
 
           {/* ⬇️ Workspace Editor Area (Bottom Panel) */}
@@ -211,7 +305,7 @@ export default function Cahier() {
               {documentMode === 'cahier' && (
                 <CahierTechnicalView
                   currentTask={currentTask}
-                  isEditing={isEditing}
+                  isEditing={canCustomizeProject && isEditing}
                   editData={editData}
                   setEditData={setEditData}
                   showAdvancedSections={showAdvancedSections}
@@ -225,7 +319,7 @@ export default function Cahier() {
                 <CahierContractView
                   contractLibrary={contractLibrary}
                   selectedContractLot={selectedContractLot}
-                  isEditing={isContractEditing}
+                  isEditing={canCustomizeProject && isContractEditing}
                   editData={{ ...editData, contractContent: contractDraft } as any}
                   setEditData={(updater: any) => {
                     const newVal = typeof updater === 'function' ? updater({ contractContent: contractDraft }).contractContent : updater.contractContent;
@@ -237,7 +331,7 @@ export default function Cahier() {
               {documentMode === 'strategie' && (
                 <CahierStrategyView
                   operationalStrategy={operationalStrategy}
-                  isEditing={isStrategyEditing}
+                  isEditing={canCustomizeProject && isStrategyEditing}
                   editData={{ ...editData, strategyContent: strategyDraft } as any}
                   setEditData={(updater: any) => {
                     const newVal = typeof updater === 'function' ? updater({ strategyContent: strategyDraft }).strategyContent : updater.strategyContent;

@@ -204,14 +204,20 @@ const FormListScreen: React.FC<Props> = ({ navigation, onLogout }) => {
             </Text>
           </View>
           <View style={styles.headerActions}>
+            <TouchableOpacity onPress={() => navigation.navigate('Dashboard')} style={styles.settingsBtn}>
+              <Text style={styles.settingsText}>📊</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => navigation.navigate('Drafts')} style={styles.settingsBtn}>
+              <Text style={styles.settingsText}>📝</Text>
+              {dashboardStats.drafts > 0 ? (
+                <View style={styles.badge}><Text style={styles.badgeText}>{dashboardStats.drafts > 99 ? '99+' : dashboardStats.drafts}</Text></View>
+              ) : null}
+            </TouchableOpacity>
             <TouchableOpacity onPress={() => setShowHelp(true)} style={styles.settingsBtn}>
               <Text style={styles.helpText}>?</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => navigation.navigate('Settings')} style={styles.settingsBtn}>
               <Text style={styles.settingsText}>⚙️</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn}>
-              <Text style={styles.logoutText}>Déconnexion</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -284,6 +290,13 @@ const makeStyles = (theme: ThemeColors) => StyleSheet.create({
   },
   helpText: { color: theme.accent, fontSize: 18, fontWeight: '800' },
   settingsText: { fontSize: 16 },
+  badge: {
+    position: 'absolute', top: -6, right: -6,
+    backgroundColor: '#f59e0b', borderRadius: 10,
+    minWidth: 18, height: 18, alignItems: 'center', justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  badgeText: { color: '#fff', fontSize: 10, fontWeight: '800' },
   logoutBtn: {
     backgroundColor: theme.bgCard,
     paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10,

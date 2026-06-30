@@ -46,7 +46,7 @@ loadEnvFile(path.resolve(dirname, '../.env'));
 const apiProxyTarget = (
   process.env.VITE_API_PROXY_TARGET ||
   process.env.GEM_API_PROXY_TARGET ||
-  `http://localhost:${process.env.GEM_API_PORT || process.env.PORT || '5009'}`
+  `http://127.0.0.1:${process.env.GEM_API_PORT || process.env.PORT || '8888'}`
 ).replace(/\/$/, '');
 
 // More info at: https://storybook.js.org/docs/next/writing-tests/integrations/vitest-addon
@@ -177,6 +177,11 @@ export default defineConfig({
     port: 8889, // Isolated port for GEM frontend
     strictPort: true,
     allowedHosts: true,
+    hmr: {
+      host: 'localhost',
+      port: 8889,
+      protocol: 'ws',
+    },
     proxy: {
       // Proxy all /api calls to the backend → eliminates CORS
       '/api': {

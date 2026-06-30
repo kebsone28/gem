@@ -30,12 +30,12 @@ function isEmptyDraftMission(mission: Mission): boolean {
 
   const hasMeaningfulContent = Boolean(
     data.purpose ||
-      data.region ||
-      data.destination ||
-      data.startDate ||
-      data.endDate ||
-      data.itineraryAller ||
-      (Array.isArray(data.members) && data.members.length > 0)
+    data.region ||
+    data.destination ||
+    data.startDate ||
+    data.endDate ||
+    data.itineraryAller ||
+    (Array.isArray(data.members) && data.members.length > 0)
   );
 
   return !hasMeaningfulContent;
@@ -63,15 +63,8 @@ export const useMissionSync = (
   activeProjectId: string | null
 ) => {
   const { user } = useAuth();
-  const {
-    formData,
-    members,
-    currentMissionId,
-    isCertified,
-    isSubmitted,
-    version,
-    auditTrail
-  } = state;
+  const { formData, members, currentMissionId, isCertified, isSubmitted, version, auditTrail } =
+    state;
 
   const normalizeServerMission = useCallback(
     (mission: Mission, fallbackId: string, fallbackUpdatedAt: string) => {
@@ -134,7 +127,7 @@ export const useMissionSync = (
         auditTrail,
         isCertified: finalIsCertified,
         isSubmitted: finalIsSubmitted,
-        createdBy: formData.createdBy || user?.id || '', 
+        createdBy: formData.createdBy || user?.id || '',
       };
 
       const rollbackWorkflowSubmission = async () => {
@@ -147,14 +140,7 @@ export const useMissionSync = (
           status: isCertified ? 'approuvee' : isSubmitted ? 'soumise' : 'draft',
         };
 
-        actions.loadMission(
-          finalId,
-          rollbackData as any,
-          members,
-          localVersion,
-          now,
-          auditTrail
-        );
+        actions.loadMission(finalId, rollbackData as any, members, localVersion, now, auditTrail);
       };
 
       try {
@@ -163,7 +149,9 @@ export const useMissionSync = (
         if (!navigator.onLine) {
           actions.setStatus('error');
           actions.setSyncStatus('failed');
-          toast.error('Connexion requise : les missions officielles sont enregistrées uniquement sur le serveur.');
+          toast.error(
+            'Connexion requise : les missions officielles sont enregistrées uniquement sur le serveur.'
+          );
           return { assignedId: finalId, serverSuccess: false };
         }
 
@@ -174,9 +162,7 @@ export const useMissionSync = (
             const validationMessages = getMissionValidationMessages(validation.errors);
             actions.setStatus('error');
             logger.warn('Validation échouée', validation.errors);
-            toast.error(
-              validationMessages[0] || 'Données incomplètes pour la soumission.'
-            );
+            toast.error(validationMessages[0] || 'Données incomplètes pour la soumission.');
             return null;
           }
         }
@@ -184,192 +170,210 @@ export const useMissionSync = (
         let assignedId = finalId;
         let serverSuccess: boolean | null = null;
 
-          actions.setSyncStatus('pending');
+        actions.setSyncStatus('pending');
 
-          const totals = calculateMissionTotals(members);
+        const totals = calculateMissionTotals(members);
 
-          let integrityHash = formData.integrityHash;
-          if (finalIsCertified && !integrityHash) {
-             integrityHash = await generateIntegrityHash({
-               formData,
-               members,
-               version: localVersion
-             });
-          }
-
-          let serverStatus = 'draft';
-          if (finalIsCertified) serverStatus = 'approuvee';
-          else if (finalIsSubmitted) serverStatus = 'soumise';
-
-          const serverPayload = {
-            projectId: activeProjectId,
-            title: formData.purpose || 'Sans titre',
-            description: formData.itineraryAller || '',
-            startDate: safeISODate(formData.startDate),
-            endDate: safeISODate(formData.endDate),
-            budget: totals.totalFrais || 0,
-            status: serverStatus,
+        let integrityHash = formData.integrityHash;
+        if (finalIsCertified && !integrityHash) {
+          integrityHash = await generateIntegrityHash({
+            formData,
+            members,
             version: localVersion,
-            data: {
-              ...formData,
-              members,
-              isCertified: finalIsCertified,
-              isSubmitted: finalIsSubmitted,
-              integrityHash,
-            },
-          };
+          });
+        }
 
-          try {
-            /**
-             * UPDATE OU CREATE
-             */
-            if (!isNewMission) {
-              const result = await missionService.updateMission(finalId, serverPayload as any);
+        let serverStatus = 'draft';
+        if (finalIsCertified) serverStatus = 'approuvee';
+        else if (finalIsSubmitted) serverStatus = 'soumise';
 
-              if (result && !('error' in result)) {
-                serverSuccess = true;
-                actions.setSyncStatus('synced');
-                const normalizedServerMission = normalizeServerMission(result, finalId, now);
-                await db.missions.put(normalizedServerMission as any);
+        const serverPayload = {
+          projectId: activeProjectId,
+          title: formData.purpose || 'Sans titre',
+          description: formData.itineraryAller || '',
+          startDate: safeISODate(formData.startDate),
+          endDate: safeISODate(formData.endDate),
+          budget: totals.totalFrais || 0,
+          status: serverStatus,
+          version: localVersion,
+          data: {
+            ...formData,
+            members,
+            isCertified: finalIsCertified,
+            isSubmitted: finalIsSubmitted,
+            integrityHash,
+          },
+        };
 
-                const officialOrderNumber =
-                  (result as any).orderNumber || (result as any).data?.orderNumber;
-                if (officialOrderNumber) {
-                  (missionData as any).orderNumber = officialOrderNumber;
-                  if ((missionData as any).data) {
-                    (missionData as any).data.orderNumber = officialOrderNumber;
-                  }
+        try {
+          /**
+           * UPDATE OU CREATE
+           */
+          if (!isNewMission) {
+            const result = await missionService.updateMission(finalId, serverPayload as any);
+
+            if (result && !('error' in result)) {
+              serverSuccess = true;
+              actions.setSyncStatus('synced');
+              const normalizedServerMission = normalizeServerMission(result, finalId, now);
+              await db.missions.put(normalizedServerMission as any);
+
+              const officialOrderNumber =
+                (result as any).orderNumber || (result as any).data?.orderNumber;
+              if (officialOrderNumber) {
+                (missionData as any).orderNumber = officialOrderNumber;
+                if ((missionData as any).data) {
+                  (missionData as any).data.orderNumber = officialOrderNumber;
                 }
-                actions.loadMission(
-                  normalizedServerMission.id,
-                  {
-                    ...(normalizedServerMission as any),
-                    orderNumber: officialOrderNumber as string | undefined,
-                  },
-                  members,
-                  normalizedServerMission.version,
-                  normalizedServerMission.updatedAt,
-                  auditTrail
-                );
-              } else if (result && typeof result === 'object' && 'error' in result && result.error === 409) {
-                /**
-                 * 🔥 CONFLIT VERSION
-                 */
-                logger.warn('Conflit version détecté → récupération serveur');
-
-                const serverMission = await missionService.getMission(finalId);
-
-                if (serverMission) {
-                  const normalizedServerMission = normalizeServerMission(serverMission, finalId, now);
-                  await db.missions.put(normalizedServerMission as any);
-                  actions.addAuditEntry(
-                    'Conflit résolu (serveur prioritaire)',
-                    'System'
-                  );
-                }
-
-                serverSuccess = false;
-              } else if (result && typeof result === 'object' && 'error' in result && result.error === 404) {
-                /**
-                 * 🔥 MISSION PERDUE SERVEUR
-                 */
-                const created = await missionService.createMission(serverPayload as any);
-                if (created) {
-                  assignedId = (created as any).id;
-                  serverSuccess = true;
-                  const normalizedServerMission = normalizeServerMission(created, assignedId, now);
-                  await db.missions.put(normalizedServerMission as any);
-                } else {
-                  serverSuccess = false;
-                }
-              } else {
-                serverSuccess = false;
               }
-            } else {
+              actions.loadMission(
+                normalizedServerMission.id,
+                {
+                  ...(normalizedServerMission as any),
+                  orderNumber: officialOrderNumber as string | undefined,
+                },
+                members,
+                normalizedServerMission.version,
+                normalizedServerMission.updatedAt,
+                auditTrail
+              );
+              logger.debug('[SYNC] Mission mise à jour avec succès sur le serveur', {
+                id: finalId,
+                version: localVersion,
+                status: serverStatus,
+              });
+            } else if (
+              result &&
+              typeof result === 'object' &&
+              'error' in result &&
+              result.error === 409
+            ) {
+              /**
+               * 🔥 CONFLIT VERSION
+               */
+              logger.warn('Conflit version détecté → récupération serveur');
+
+              const serverMission = await missionService.getMission(finalId);
+
+              if (serverMission) {
+                const normalizedServerMission = normalizeServerMission(serverMission, finalId, now);
+                await db.missions.put(normalizedServerMission as any);
+                actions.addAuditEntry('Conflit résolu (serveur prioritaire)', 'System');
+                toast.warn(
+                  'Conflit de version : la version serveur a été chargée. Merci de vérifier vos données et ressaisir les modifications.'
+                );
+              }
+
+              serverSuccess = false;
+            } else if (
+              result &&
+              typeof result === 'object' &&
+              'error' in result &&
+              result.error === 404
+            ) {
+              /**
+               * 🔥 MISSION PERDUE SERVEUR
+               */
               const created = await missionService.createMission(serverPayload as any);
               if (created) {
                 assignedId = (created as any).id;
                 serverSuccess = true;
                 const normalizedServerMission = normalizeServerMission(created, assignedId, now);
                 await db.missions.put(normalizedServerMission as any);
-
-                const officialNum = (created as any).orderNumber || (created as any).data?.orderNumber;
-                actions.loadMission(
-                  normalizedServerMission.id,
-                  {
-                    ...(normalizedServerMission as any),
-                    orderNumber: officialNum as string | undefined,
-                  },
-                  members,
-                  normalizedServerMission.version,
-                  normalizedServerMission.updatedAt,
-                  auditTrail
-                );
               } else {
                 serverSuccess = false;
               }
+            } else {
+              serverSuccess = false;
             }
-          } catch (serverError) {
-            logger.error('Erreur serveur', serverError);
-            serverSuccess = false;
+          } else {
+            const created = await missionService.createMission(serverPayload as any);
+            if (created) {
+              assignedId = (created as any).id;
+              serverSuccess = true;
+              const normalizedServerMission = normalizeServerMission(created, assignedId, now);
+              await db.missions.put(normalizedServerMission as any);
+
+              const officialNum =
+                (created as any).orderNumber || (created as any).data?.orderNumber;
+              actions.loadMission(
+                normalizedServerMission.id,
+                {
+                  ...(normalizedServerMission as any),
+                  orderNumber: officialNum as string | undefined,
+                },
+                members,
+                normalizedServerMission.version,
+                normalizedServerMission.updatedAt,
+                auditTrail
+              );
+            } else {
+              serverSuccess = false;
+            }
           }
+        } catch (serverError) {
+          logger.error('Erreur serveur lors de la sauvegarde:', serverError);
+          logger.error('Payload envoye:', JSON.stringify(serverPayload).slice(0, 1000));
+          serverSuccess = false;
+        }
 
-          /**
-           * ALIGNEMENT ID (temp → réel)
-           */
-          if (assignedId !== finalId) {
-            await db.missions.delete(finalId);
-            // Reuse normalized data instead of refetching
-            const missionForUi = { ...missionData, id: assignedId, updatedAt: now };
-            actions.loadMission(
-              assignedId,
-              missionForUi as any,
-              members,
-              (missionForUi as any).version || localVersion,
-              (missionForUi as any).updatedAt || now,
-              auditTrail
-            );
-          }
+        /**
+         * ALIGNEMENT ID (temp → réel)
+         */
+        if (assignedId !== finalId) {
+          await db.missions.delete(finalId);
+          // Reuse normalized data instead of refetching
+          const missionForUi = { ...missionData, id: assignedId, updatedAt: now };
+          actions.loadMission(
+            assignedId,
+            missionForUi as any,
+            members,
+            (missionForUi as any).version || localVersion,
+            (missionForUi as any).updatedAt || now,
+            auditTrail
+          );
+        }
 
-          /**
-           * AUDIT + EVENTS
-           */
-          if (serverSuccess) {
-            actions.addAuditEntry('Synchronisation réussie', 'System');
+        /**
+         * AUDIT + EVENTS
+         */
+        if (serverSuccess) {
+          actions.addAuditEntry('Synchronisation réussie', 'System');
 
-            syncEventBus.emit(SYNC_EVENTS.MISSION_SAVED, {
+          syncEventBus.emit(SYNC_EVENTS.MISSION_SAVED, {
+            id: assignedId,
+            version: localVersion,
+          });
+
+          if (finalIsSubmitted) {
+            syncEventBus.emit(SYNC_EVENTS.MISSION_SUBMITTED, {
               id: assignedId,
               version: localVersion,
             });
-
-            if (finalIsSubmitted) {
-              syncEventBus.emit(SYNC_EVENTS.MISSION_SUBMITTED, {
-                id: assignedId,
-                version: localVersion,
-              });
-            }
-
-            if (finalIsCertified) {
-              syncEventBus.emit(SYNC_EVENTS.MISSION_CERTIFIED, {
-                id: assignedId,
-              });
-            }
-          } else {
-            actions.setSyncStatus('failed');
-            await rollbackWorkflowSubmission();
-            toast.error(
-              finalIsSubmitted
-                ? "La soumission n'a pas été enregistrée sur le serveur."
-                : "La mission n'a pas été enregistrée sur le serveur."
-            );
-            actions.setStatus('error');
-            return { assignedId: finalId, serverSuccess: false };
           }
+
+          if (finalIsCertified) {
+            syncEventBus.emit(SYNC_EVENTS.MISSION_CERTIFIED, {
+              id: assignedId,
+            });
+          }
+        } else {
+          actions.setSyncStatus('failed');
+          await rollbackWorkflowSubmission();
+          const errMsg = finalIsSubmitted
+            ? 'La soumission a echoue sur le serveur.'
+            : "La mission n'a pas ete enregistree sur le serveur.";
+          toast.error(errMsg);
+          actions.setStatus('error');
+          return { assignedId: finalId, serverSuccess: false, error: errMsg };
+        }
 
         actions.clearDirty();
         actions.setStatus('success');
 
-        const officialOrderNumber = (missionData as Record<string, unknown>).orderNumber as string | undefined;
+        const officialOrderNumber = (missionData as Record<string, unknown>).orderNumber as
+          | string
+          | undefined;
 
         return { assignedId, serverSuccess, orderNumber: officialOrderNumber };
       } catch (err) {
@@ -411,7 +415,12 @@ export const useMissionSync = (
       let removedLocalOnlySubmissions = 0;
 
       for (const m of missions) {
-        if (hiddenMissionIds.has((m as any).id) && ((m as any).status === 'draft' || (m as any).data?.status === 'draft' || !(m as any).status)) {
+        if (
+          hiddenMissionIds.has((m as any).id) &&
+          ((m as any).status === 'draft' ||
+            (m as any).data?.status === 'draft' ||
+            !(m as any).status)
+        ) {
           await db.missions.delete((m as any).id);
           continue;
         }
@@ -449,8 +458,10 @@ export const useMissionSync = (
 
       const localSubmitted = await db.missions
         .filter((mission: any) => {
-          const isLocalSubmitted = mission?.isSubmitted === true || mission?.data?.isSubmitted === true;
-          const isLocalCertified = mission?.isCertified === true || mission?.data?.isCertified === true;
+          const isLocalSubmitted =
+            mission?.isSubmitted === true || mission?.data?.isSubmitted === true;
+          const isLocalCertified =
+            mission?.isCertified === true || mission?.data?.isCertified === true;
           return isLocalSubmitted && !isLocalCertified && !serverIds.has(mission.id);
         })
         .toArray();

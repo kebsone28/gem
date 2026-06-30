@@ -1,6 +1,7 @@
 import prisma, { basePrisma } from '../../core/utils/prisma.js';
 import eventBus from '../../core/utils/eventBus.js';
 import EventPublisher from '../../core/utils/EventPublisher.js';
+import ExcelJS from 'exceljs';
 import { tracerAction } from '../../services/audit.service.js';
 import { logPerformance } from '../../services/performance.service.js';
 import {
@@ -70,7 +71,7 @@ export const getHouseholds = async (req, res) => {
         const { organizationId } = req.user;
         const { projectId, zoneId, grappeId, status, bbox, limit = '100', page = '1', search } = req.query;
 
-        const limitNum = Math.min(Math.max(parseInt(limit) || 100, 1), 1000);
+        const limitNum = Math.min(Math.max(parseInt(limit) || 100, 1), 2000);
         const pageNum = Math.max(parseInt(page, 10) || 1, 1);
         const skip = (pageNum - 1) * limitNum;
 
@@ -651,5 +652,112 @@ export const deleteHousehold = async (req, res) => {
     } catch (error) {
         logger.error('Delete household error:', error);
         res.status(500).json({ error: 'Server error while deleting household' });
+    }
+};
+
+function flattenHouseholdForExport(household) {
+    const owner = typeof household.owner === 'object' && household.owner ? household.owner : {};
+    return {
+        id: household.id,
+        numero_ordre: household.numeroordre || '',
+        nom: household.name || '',
+        telephone: household.phone || '',
+        region: household.region || '',
+        departement: household.departement || '',
+        village: household.village || '',
+        latitude: household.latitude ?? '',
+        longitude: household.longitude ?? '',
+        status: household.status || '',
+        source: household.source || '',
+        zone: household.zone?.name || '',
+        chef_nom: owner.chefNom || owner.nom || '',
+        chef_prenom: owner.chefPrenom || owner.prenom || '',
+        chef_telephone: owner.telephone || '',
+        grappe_id: household.grappeId || '',
+        date_mise_a_jour: household.updatedAt ? household.updatedAt.toISOString() : '',
+        date_suppression: household.deletedAt ? household.deletedAt.toISOString() : '',
+    };
+}
+
+function escapeCsv(value) {
+    if (value === null || value === undefined) return '';
+    const str = String(value);
+    if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+        return `"${str.replace(/"/g, '""')}"`;
+    }
+    return str;
+}
+
+export const exportHouseholds = async (req, res) => {
+    try {
+        const { organizationId } = req.user;
+        const format = String(req.query.format || 'csv').toLowerCase();
+        const take = Math.min(Math.max(parseInt(req.query.limit, 10) || 500, 1), 5000);
+
+        const where = { organizationId, deletedAt: null };
+        if (req.query.status) where.status = req.query.status;
+        if (req.query.zoneId) where.zoneId = req.query.zoneId;
+        if (req.query.grappeId) where.grappeId = req.query.grappeId;
+        if (req.query.region) where.region = req.query.region;
+
+        const households = await prisma.household.findMany({
+            where,
+            select: LEGACY_SAFE_HOUSEHOLD_READ_SELECT,
+            orderBy: { numeroordre: 'asc' },
+            take,
+        });
+
+        const rows = households.map(flattenHouseholdForExport);
+        const generatedAt = new Date().toISOString();
+        const baseFilename = `menages-export-${generatedAt.slice(0, 10)}`;
+
+        if (format === 'geojson') {
+            const features = households
+                .filter((h) => h.longitude != null && h.latitude != null)
+                .map((h) => ({
+                    type: 'Feature',
+                    geometry: { type: 'Point', coordinates: [Number(h.longitude), Number(h.latitude)] },
+                    properties: flattenHouseholdForExport(h),
+                }));
+            res.setHeader('Content-Type', 'application/geo+json; charset=utf-8');
+            res.setHeader('Content-Disposition', `attachment; filename="${baseFilename}.geojson"`);
+            return res.send(JSON.stringify({ type: 'FeatureCollection', generatedAt, count: features.length, features }, null, 2));
+        }
+
+        if (format === 'json') {
+            res.setHeader('Content-Type', 'application/json; charset=utf-8');
+            res.setHeader('Content-Disposition', `attachment; filename="${baseFilename}.json"`);
+            return res.send(JSON.stringify({ generatedAt, count: households.length, households: rows }, null, 2));
+        }
+
+        if (format === 'xlsx') {
+            const workbook = new ExcelJS.Workbook();
+            const worksheet = workbook.addWorksheet('menages');
+            const headers = Object.keys(rows[0] || flattenHouseholdForExport({}));
+            worksheet.columns = headers.map((header) => ({
+                header,
+                key: header,
+                width: Math.min(Math.max(header.length + 4, 14), 42),
+            }));
+            rows.forEach((row) => worksheet.addRow(row));
+            worksheet.views = [{ state: 'frozen', ySplit: 1 }];
+
+            const buffer = await workbook.xlsx.writeBuffer();
+            res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            res.setHeader('Content-Disposition', `attachment; filename="${baseFilename}.xlsx"`);
+            return res.send(Buffer.from(buffer));
+        }
+
+        const headers = Object.keys(rows[0] || flattenHouseholdForExport({}));
+        const csv = [
+            headers.map(escapeCsv).join(','),
+            ...rows.map((row) => headers.map((header) => escapeCsv(row[header])).join(',')),
+        ].join('\n');
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="${baseFilename}.csv"`);
+        return res.send(csv);
+    } catch (err) {
+        logger.error('[HOUSEHOLD] export error:', err);
+        return res.status(500).json({ success: false, message: 'Erreur lors de l\'export des ménages.' });
     }
 };

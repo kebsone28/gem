@@ -38,10 +38,10 @@ class SecurityService {
     // 3. Évaluation ABAC (Attribute-Based Access Control)
     for (const policy of policies) {
       const isMatch = this.checkConditions(policy.conditions, user, resourceData, context);
-      
+
       if (isMatch) {
         if (policy.effect === 'DENY') return { allowed: false, reason: 'Accès explicitement refusé par une politique' };
-        
+
         // Vérifier le Scope (Région, Projet, etc.)
         const scopeResult = this.checkScope(policy.scope, user, resourceData);
         if (scopeResult.allowed) {
@@ -63,7 +63,7 @@ class SecurityService {
     // Ex: { "region": "user.region" }
     for (const [key, expectedValue] of Object.entries(conditions)) {
       let actualValue = resourceData?.[key] || context?.[key];
-      
+
       // Support des références utilisateur (ex: "user.id")
       if (typeof expectedValue === 'string' && expectedValue.startsWith('user.')) {
         const userAttr = expectedValue.split('.')[1];
@@ -82,7 +82,7 @@ class SecurityService {
   checkScope(scope, user, resourceData) {
     switch (scope) {
       case 'GLOBAL': return { allowed: true };
-      case 'ORGANIZATION': return { allowed: true }; 
+      case 'ORGANIZATION': return { allowed: true };
       case 'PROJECT': {
         // Sécurité : vérifier si l'attribut existe
         const userProjectId = user.activeProjectId || user.organization?.defaultProjectId;
@@ -102,11 +102,15 @@ class SecurityService {
 
   /**
    * Initialise les politiques par défaut pour un nouveau projet/organisation
+   * @param {string} organizationId - ID de l'organisation
+   * @param {string} governanceMode - Mode de gouvernance (enterprise, gov, ong, bailleur)
+   * @param {object} tx - Transaction Prisma (optionnel)
    */
-  async seedDefaultPolicies(organizationId, tx = null) {
+  async seedDefaultPolicies(organizationId, governanceMode = 'enterprise', tx = null) {
     const db = tx || prisma;
 
-    const defaultPolicies = [
+    // Politiques de base communes à tous les modes
+    const basePolicies = [
       {
         organizationId,
         name: 'Contrôle Régional Missions',
@@ -126,8 +130,107 @@ class SecurityService {
       }
     ];
 
-    await db.policy.createMany({ data: defaultPolicies });
-    logger.info(`[SecurityService] Default policies seeded for organization ${organizationId}`);
+    // Politiques spécifiques selon le mode de gouvernance
+    let modeSpecificPolicies = [];
+
+    switch (governanceMode) {
+      case 'gov':
+        // Mode Gouvernement : Souveraineté et contrôle strict
+        modeSpecificPolicies = [
+          {
+            organizationId,
+            name: 'Audit Souveraineté',
+            description: 'Traçabilité complète pour les actions sensibles',
+            action: 'AUDIT_LOG',
+            resource: 'SYSTEM',
+            scope: 'ORGANIZATION',
+            conditions: { "sensitivity": "HIGH" }
+          },
+          {
+            organizationId,
+            name: 'Validation Ministérielle',
+            description: 'Double validation pour les décisions stratégiques',
+            action: 'STRATEGIC_DECISION',
+            resource: 'PROJECT',
+            scope: 'ORGANIZATION',
+            conditions: { "level": "STRATEGIC" }
+          }
+        ];
+        break;
+
+      case 'ong':
+        // Mode ONG : Impact et bénéficiaires
+        modeSpecificPolicies = [
+          {
+            organizationId,
+            name: 'Protection Données Bénéficiaires',
+            description: 'Accès restreint aux données personnelles des bénéficiaires',
+            action: 'BENEFICIARY_VIEW',
+            resource: 'HOUSEHOLD',
+            scope: 'PROJECT',
+            conditions: { "data_type": "personal" }
+          },
+          {
+            organizationId,
+            name: 'Validation Impact',
+            description: 'Validation des rapports d\'impact par les coordinateurs',
+            action: 'IMPACT_REPORT',
+            resource: 'REPORT',
+            scope: 'REGION'
+          }
+        ];
+        break;
+
+      case 'bailleur':
+        // Mode Bailleur : Conformité et reporting
+        modeSpecificPolicies = [
+          {
+            organizationId,
+            name: 'Conformité Bailleur',
+            description: 'Respect des exigences des bailleurs de fonds',
+            action: 'COMPLIANCE_CHECK',
+            resource: 'PROJECT',
+            scope: 'ORGANIZATION',
+            conditions: { "funding_source": "BM_BAD_UE" }
+          },
+          {
+            organizationId,
+            name: 'Reporting Standardisé',
+            description: 'Format de reporting conforme aux standards bailleurs',
+            action: 'REPORT_EXPORT',
+            resource: 'REPORT',
+            scope: 'ORGANIZATION'
+          }
+        ];
+        break;
+
+      case 'enterprise':
+      default:
+        // Mode Entreprise : ROI et Performance
+        modeSpecificPolicies = [
+          {
+            organizationId,
+            name: 'Performance Tracking',
+            description: 'Suivi des KPIs de performance',
+            action: 'KPI_VIEW',
+            resource: 'PERFORMANCE',
+            scope: 'ORGANIZATION'
+          },
+          {
+            organizationId,
+            name: 'Budget Control',
+            description: 'Contrôle budgétaire par projet',
+            action: 'BUDGET_APPROVE',
+            resource: 'FINANCIAL',
+            scope: 'PROJECT'
+          }
+        ];
+        break;
+    }
+
+    const allPolicies = [...basePolicies, ...modeSpecificPolicies];
+    await db.policy.createMany({ data: allPolicies });
+    logger.info(`[SecurityService] Default policies seeded for organization ${organizationId} with governance mode: ${governanceMode}`);
   }
 }
 

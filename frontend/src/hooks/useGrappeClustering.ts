@@ -1,18 +1,33 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useMemo, useState } from 'react';
 import type { Household } from '../utils/types';
 
+type GrappeCluster = {
+  id: string;
+  lat: number;
+  lon: number;
+  village: string;
+  region: string;
+  status: string;
+  owner?: string;
+  name?: string;
+  phone?: string;
+  location?: {
+    type: string;
+    coordinates: [number, number];
+  };
+};
+
 type ClusterWorkerMessage = {
   success?: boolean;
-  panelData?: any[];
+  panelData?: GrappeCluster[];
   zones?: unknown;
   centroids?: unknown;
 };
 
 export const useGrappeClustering = (households: Household[] | undefined) => {
-  const [grappeClusters, setGrappeClusters] = useState<any[]>([]);
-  const [grappeZonesData, setGrappeZonesData] = useState<any>(null);
-  const [grappeCentroidsData, setGrappeCentroidsData] = useState<any>(null);
+  const [grappeClusters, setGrappeClusters] = useState<GrappeCluster[]>([]);
+  const [grappeZonesData, setGrappeZonesData] = useState<unknown>(null);
+  const [grappeCentroidsData, setGrappeCentroidsData] = useState<unknown>(null);
   const [progress, setProgress] = useState<{ current: number; total: number } | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
@@ -57,12 +72,12 @@ export const useGrappeClustering = (households: Household[] | undefined) => {
       clusterWorker.addEventListener('message', handler);
 
       const workerData = households
-        .filter((h: any) => {
+        .filter((h: Household) => {
           const lng = Number(h.location?.coordinates?.[0] ?? h.longitude);
           const lat = Number(h.location?.coordinates?.[1] ?? h.latitude);
           return !isNaN(lng) && !isNaN(lat) && (lng !== 0 || lat !== 0);
         })
-        .map((h: any) => ({
+        .map((h: Household) => ({
           id: h.id,
           lat: Number(h.location?.coordinates?.[1] ?? h.latitude),
           lon: Number(h.location?.coordinates?.[0] ?? h.longitude),
@@ -84,6 +99,7 @@ export const useGrappeClustering = (households: Household[] | undefined) => {
       if (handler) {
         clusterWorker.removeEventListener('message', handler);
       }
+      clusterWorker.terminate();
     };
   }, [households, clusterWorker]);
 

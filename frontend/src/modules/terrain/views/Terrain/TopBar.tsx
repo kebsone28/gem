@@ -148,9 +148,9 @@ const TopBar: React.FC<TopBarProps> = ({
                   statusOptions={statusOptions}
                   showTeamFilter={showTeamFilter}
                   showStatusFilter={showStatusFilter}
-                  onOpenDataHub={() => {
+                    onOpenDataHub={() => {
                     // Rediriger vers les paramètres Data Hub
-                    window.location.href = '/settings?tab=datahub';
+                    window.location.href = '/admin/settings?tab=datahub';
                   }}
                   showDataHub={showDataHub}
                   peutVoirDataHub={peutVoirDataHub}

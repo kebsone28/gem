@@ -4,7 +4,7 @@ import type { ModuleManifest } from '@core/kernel/types';
 
 export const manifest: ModuleManifest = {
   key: 'ged_os_collect',
-  name: 'GED OS Collect',
+  name: 'GED Collect',
   icon: 'Activity',
   // Explicit .tsx extension to ensure Vite resolves the module correctly
   component: lazyWithRetry(() => import('./views/GedOsCollect.tsx'), 'lazy:ged-os-collect'),

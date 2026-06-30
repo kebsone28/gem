@@ -40,6 +40,115 @@ const getProjectDomain = (p: any): string => {
   return '';
 };
 
+const SECTOR_META: Record<string, { label: string; title: string; accent: string }> = {
+  gem: {
+    label: 'GEM',
+    title: 'Secteur GEM',
+    accent: 'text-amber-300',
+  },
+  mes: {
+    label: 'MES',
+    title: 'Secteur MES',
+    accent: 'text-sky-300',
+  },
+};
+
+const HOME_THEME = {
+  default: {
+    pageGradient: 'from-slate-950 via-slate-900 to-slate-950',
+    orbTop: 'bg-blue-600/10',
+    orbBottom: 'bg-purple-600/10',
+    logoGradient: 'from-blue-500 to-purple-600',
+    logoShadow: 'shadow-blue-500/20',
+    indicator: 'bg-blue-500',
+    linkText: 'text-blue-400 hover:text-blue-300',
+    heroGradient: 'from-blue-400 via-purple-500 to-emerald-400',
+    primaryButton: 'bg-blue-600 hover:bg-blue-500 shadow-blue-600/20',
+    searchFocus: 'group-focus-within:text-blue-400',
+    filterActive: 'bg-blue-600 text-white border-blue-500 shadow-lg shadow-blue-600/20',
+    toggleActive: 'bg-blue-600 text-white shadow-lg',
+    emptyBadge: 'text-slate-300',
+    emptyButtonHover: 'hover:bg-blue-500',
+    cardHoverBorder: 'hover:border-blue-500/30',
+    cardOverlay: 'group-hover:from-blue-600/5 group-hover:via-purple-600/5 group-hover:to-emerald-600/5',
+    cardTitleHover: 'group-hover:text-blue-400',
+    cardEditHover: 'hover:bg-indigo-600',
+    cardArrow: 'group-hover:text-blue-400',
+    cardArrowBg: 'group-hover:bg-blue-500/10',
+    progressGradient: 'from-blue-500 to-purple-600',
+    floatingCta: 'bg-blue-600 shadow-blue-600/40',
+    heroAccent: 'text-blue-300',
+    stats: [
+      { color: 'from-blue-500/20 to-blue-600/5', border: 'border-blue-500/20', text: 'text-blue-400' },
+      { color: 'from-emerald-500/20 to-emerald-600/5', border: 'border-emerald-500/20', text: 'text-emerald-400' },
+      { color: 'from-purple-500/20 to-purple-600/5', border: 'border-purple-500/20', text: 'text-purple-400' },
+      { color: 'from-amber-500/20 to-amber-600/5', border: 'border-amber-500/20', text: 'text-amber-400' },
+    ],
+  },
+  gem: {
+    pageGradient: 'from-slate-950 via-[#221407] to-slate-950',
+    orbTop: 'bg-amber-500/12',
+    orbBottom: 'bg-orange-500/10',
+    logoGradient: 'from-amber-400 to-orange-500',
+    logoShadow: 'shadow-amber-500/20',
+    indicator: 'bg-amber-400',
+    linkText: 'text-amber-300 hover:text-amber-200',
+    heroGradient: 'from-amber-300 via-orange-400 to-yellow-200',
+    primaryButton: 'bg-amber-500 hover:bg-amber-400 shadow-amber-500/20',
+    searchFocus: 'group-focus-within:text-amber-300',
+    filterActive: 'bg-amber-500 text-slate-950 border-amber-400 shadow-lg shadow-amber-500/20',
+    toggleActive: 'bg-amber-500 text-slate-950 shadow-lg',
+    emptyBadge: 'text-amber-200',
+    emptyButtonHover: 'hover:bg-amber-500',
+    cardHoverBorder: 'hover:border-amber-400/30',
+    cardOverlay: 'group-hover:from-amber-500/10 group-hover:via-orange-500/5 group-hover:to-yellow-400/5',
+    cardTitleHover: 'group-hover:text-amber-200',
+    cardEditHover: 'hover:bg-amber-500',
+    cardArrow: 'group-hover:text-amber-300',
+    cardArrowBg: 'group-hover:bg-amber-500/10',
+    progressGradient: 'from-amber-400 to-orange-500',
+    floatingCta: 'bg-amber-500 shadow-amber-500/40',
+    heroAccent: 'text-amber-200',
+    stats: [
+      { color: 'from-amber-500/20 to-orange-500/5', border: 'border-amber-500/20', text: 'text-amber-300' },
+      { color: 'from-emerald-500/20 to-lime-500/5', border: 'border-emerald-500/20', text: 'text-emerald-300' },
+      { color: 'from-orange-500/20 to-amber-500/5', border: 'border-orange-500/20', text: 'text-orange-300' },
+      { color: 'from-yellow-500/20 to-amber-500/5', border: 'border-yellow-500/20', text: 'text-yellow-300' },
+    ],
+  },
+  mes: {
+    pageGradient: 'from-slate-950 via-[#081425] to-slate-950',
+    orbTop: 'bg-sky-500/12',
+    orbBottom: 'bg-indigo-500/10',
+    logoGradient: 'from-sky-400 to-indigo-500',
+    logoShadow: 'shadow-sky-500/20',
+    indicator: 'bg-sky-400',
+    linkText: 'text-sky-300 hover:text-sky-200',
+    heroGradient: 'from-sky-300 via-cyan-300 to-indigo-300',
+    primaryButton: 'bg-sky-500 hover:bg-sky-400 shadow-sky-500/20',
+    searchFocus: 'group-focus-within:text-sky-300',
+    filterActive: 'bg-sky-500 text-slate-950 border-sky-400 shadow-lg shadow-sky-500/20',
+    toggleActive: 'bg-sky-500 text-slate-950 shadow-lg',
+    emptyBadge: 'text-sky-200',
+    emptyButtonHover: 'hover:bg-sky-500',
+    cardHoverBorder: 'hover:border-sky-400/30',
+    cardOverlay: 'group-hover:from-sky-500/10 group-hover:via-cyan-500/5 group-hover:to-indigo-500/5',
+    cardTitleHover: 'group-hover:text-sky-200',
+    cardEditHover: 'hover:bg-sky-500',
+    cardArrow: 'group-hover:text-sky-300',
+    cardArrowBg: 'group-hover:bg-sky-500/10',
+    progressGradient: 'from-sky-400 to-indigo-500',
+    floatingCta: 'bg-sky-500 shadow-sky-500/40',
+    heroAccent: 'text-sky-200',
+    stats: [
+      { color: 'from-sky-500/20 to-indigo-500/5', border: 'border-sky-500/20', text: 'text-sky-300' },
+      { color: 'from-emerald-500/20 to-cyan-500/5', border: 'border-emerald-500/20', text: 'text-emerald-300' },
+      { color: 'from-indigo-500/20 to-sky-500/5', border: 'border-indigo-500/20', text: 'text-indigo-300' },
+      { color: 'from-cyan-500/20 to-sky-500/5', border: 'border-cyan-500/20', text: 'text-cyan-300' },
+    ],
+  },
+} as const;
+
 export default function Home() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -64,6 +173,11 @@ export default function Home() {
     (user ? isPlatformAdmin(user as any) : false) ||
     normalizedRole === ROLES.ADMIN ||
     normalizedRole === ROLES.DIRECTEUR;
+
+  const storedSector = typeof window !== 'undefined' ? localStorage.getItem('selectedSector') || '' : '';
+  const activeSectorKey = (domainTypeParam || storedSector || '').toLowerCase();
+  const activeSectorMeta = SECTOR_META[activeSectorKey];
+  const theme = HOME_THEME[activeSectorKey as keyof typeof HOME_THEME] || HOME_THEME.default;
 
   const availableProjects = useMemo(() => {
     if (!domainTypeParam) return filteredProjects;
@@ -229,7 +343,7 @@ export default function Home() {
     <div className="min-h-screen bg-slate-950 relative overflow-hidden font-outfit">
       {/* Modern Geometric Background */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950" />
+        <div className={`absolute inset-0 bg-gradient-to-br ${theme.pageGradient}`} />
         <div className={`absolute inset-0 opacity-10 ${styles.geometricBackground}`} />
         <motion.div
           animate={{
@@ -237,7 +351,7 @@ export default function Home() {
             scale: [1, 1.1, 1],
           }}
           transition={{ duration: 8, repeat: Infinity }}
-          className="absolute -top-20 -right-20 w-[600px] h-[600px] bg-blue-600/10 rounded-full blur-[120px] z-0"
+          className={`absolute -top-20 -right-20 w-[600px] h-[600px] ${theme.orbTop} rounded-full blur-[120px] z-0`}
         />
         <motion.div
           animate={{
@@ -245,7 +359,7 @@ export default function Home() {
             scale: [1, 1.2, 1],
           }}
           transition={{ duration: 10, repeat: Infinity, delay: 2 }}
-          className="absolute -bottom-20 -left-20 w-[500px] h-[500px] bg-purple-600/10 rounded-full blur-[100px] z-0"
+          className={`absolute -bottom-20 -left-20 w-[500px] h-[500px] ${theme.orbBottom} rounded-full blur-[100px] z-0`}
         />
       </div>
 
@@ -255,7 +369,7 @@ export default function Home() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4 md:gap-6">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-[1rem] flex items-center justify-center shadow-lg shadow-blue-500/20">
+                <div className={`w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br ${theme.logoGradient} rounded-[1rem] flex items-center justify-center shadow-lg ${theme.logoShadow}`}>
                   <Building size={20} className="text-white" />
                 </div>
                 <div>
@@ -283,7 +397,7 @@ export default function Home() {
                 aria-expanded={showNotifications}
               >
                 <Bell size={18} className="text-slate-300 group-hover:text-white transition-colors" />
-                <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-blue-500 rounded-full border-2 border-slate-900"></span>
+                <span className={`absolute top-2.5 right-2.5 w-2 h-2 ${theme.indicator} rounded-full border-2 border-slate-900`}></span>
               </button>
 
               <button 
@@ -357,7 +471,7 @@ export default function Home() {
                 })}
               </div>
               <div className="p-4 text-center bg-white/5">
-                <button className="text-xs font-black text-blue-400 hover:text-blue-300 transition-colors uppercase tracking-widest">
+                <button className={`text-xs font-black transition-colors uppercase tracking-widest ${theme.linkText}`}>
                   Tout marquer comme lu
                 </button>
               </div>
@@ -379,21 +493,28 @@ export default function Home() {
             >
               <h1 className="text-4xl md:text-6xl lg:text-7xl font-black text-white mb-6 leading-[1.1] tracking-tight">
                 Pilotez vos <br className="hidden md:block" />
-                <span className="bg-gradient-to-r from-blue-400 via-purple-500 to-emerald-400 bg-clip-text text-transparent">
+                <span className={`bg-gradient-to-r ${theme.heroGradient} bg-clip-text text-transparent`}>
                   Opérations
                 </span>
               </h1>
               <p className="text-lg md:text-xl text-slate-400 mb-8 max-w-2xl leading-relaxed font-medium mx-auto lg:mx-0">
                 L'écosystème intelligent pour connecter le terrain, automatiser vos flux et piloter l'avenir de vos projets.
               </p>
+              {activeSectorMeta && (
+                <div className={`mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[11px] font-black uppercase tracking-[0.22em] ${theme.heroAccent}`}>
+                  {activeSectorMeta.label}
+                  <span className="text-slate-500">/</span>
+                  <span className="text-slate-300">Espace Projets</span>
+                </div>
+              )}
               
               <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4">
                 {isGlobalAdmin && (
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    onClick={() => navigate('/projects/create')}
-                    className="px-6 py-3.5 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-xl shadow-blue-600/20 flex items-center gap-2"
+                    onClick={() => navigate(activeSectorKey ? `/projects/create?domainType=${encodeURIComponent(activeSectorKey)}` : '/projects/create')}
+                    className={`px-6 py-3.5 text-white rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-xl flex items-center gap-2 ${theme.primaryButton}`}
                   >
                     <Plus size={18} />
                     Nouveau Projet
@@ -449,7 +570,7 @@ export default function Home() {
                 />
               </motion.div>
               
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-60 h-60 sm:w-72 sm:h-72 bg-blue-600/20 rounded-full blur-[80px] -z-10" />
+              <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-60 h-60 sm:w-72 sm:h-72 ${theme.orbTop.replace('/12', '/20').replace('/10', '/20')} rounded-full blur-[80px] -z-10`} />
             </motion.div>
           </div>
 
@@ -488,21 +609,23 @@ export default function Home() {
                 border: 'border-amber-500/20',
                 text: 'text-amber-400'
               }
-            ].map((stat, idx) => (
+            ].map((stat, idx) => {
+              const themedStat = theme.stats[idx] || theme.stats[0];
+              return (
               <motion.div
                 key={idx}
                 whileHover={{ y: -5 }}
-                className={`bg-gradient-to-br ${stat.color} border ${stat.border} rounded-[1.5rem] p-5 md:p-6 backdrop-blur-xl transition-all shadow-lg shadow-black/20`}
+                className={`bg-gradient-to-br ${themedStat.color} border ${themedStat.border} rounded-[1.5rem] p-5 md:p-6 backdrop-blur-xl transition-all shadow-lg shadow-black/20`}
               >
                 <div className="flex items-center justify-between mb-3 md:mb-4">
-                  <div className={`p-2 rounded-xl bg-white/5 ${stat.text}`}>
+                  <div className={`p-2 rounded-xl bg-white/5 ${themedStat.text}`}>
                     <stat.icon size={20} />
                   </div>
                   <span className="text-2xl md:text-3xl font-black text-white">{stat.value}</span>
                 </div>
                 <h3 className="text-xs md:text-sm font-bold text-slate-400 uppercase tracking-widest">{stat.label}</h3>
               </motion.div>
-            ))}
+            )})}
           </div>
 
           {/* Search and Filters - Compact & Glassy */}
@@ -510,7 +633,7 @@ export default function Home() {
             <div className="flex flex-col md:flex-row gap-4">
               <div className="flex-1 relative group">
                 <Search
-                  className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-400 transition-colors"
+                  className={`absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 transition-colors ${theme.searchFocus}`}
                   size={20}
                 />
                 <input
@@ -537,7 +660,7 @@ export default function Home() {
                     onClick={() => { setProjectFilter(f.id as any); setCurrentPage(1); }}
                     className={`px-5 py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all shrink-0 border ${
                       projectFilter === f.id
-                        ? 'bg-blue-600 text-white border-blue-500 shadow-lg shadow-blue-600/20'
+                        ? theme.filterActive
                         : 'bg-white/5 text-slate-400 border-white/5 hover:bg-white/10'
                     }`}
                   >
@@ -550,7 +673,7 @@ export default function Home() {
                 <button
                   onClick={() => setViewMode('grid')}
                   className={`p-2.5 rounded-xl transition-all ${
-                    viewMode === 'grid' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'
+                    viewMode === 'grid' ? theme.toggleActive : 'text-slate-500 hover:text-slate-300'
                   }`}
                   title="Affichage grille"
                   aria-label="Afficher en grille"
@@ -560,7 +683,7 @@ export default function Home() {
                 <button
                   onClick={() => setViewMode('list')}
                   className={`p-2.5 rounded-xl transition-all ${
-                    viewMode === 'list' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'
+                    viewMode === 'list' ? theme.toggleActive : 'text-slate-500 hover:text-slate-300'
                   }`}
                   title="Affichage liste"
                   aria-label="Afficher en liste"
@@ -591,17 +714,26 @@ export default function Home() {
               <div className="w-24 h-24 bg-slate-800/50 rounded-full flex items-center justify-center mx-auto mb-8 shadow-inner">
                 <Target size={32} className="text-slate-600" />
               </div>
-              <h2 className="text-2xl font-black text-white mb-3">Territoire inconnu</h2>
+              <div className="mb-4 flex justify-center">
+                <span className={`rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-[10px] font-black uppercase tracking-[0.22em] ${activeSectorMeta?.accent || 'text-slate-300'}`}>
+                  {activeSectorMeta ? `${activeSectorMeta.label} selectionne` : 'Aucun secteur filtre'}
+                </span>
+              </div>
+              <h2 className="text-2xl font-black text-white mb-3">
+                {activeSectorMeta ? `Aucun projet dans ${activeSectorMeta.title}` : 'Aucun projet disponible'}
+              </h2>
               <p className="text-slate-400 mb-10 max-w-sm mx-auto font-medium">
-                Aucun projet ne correspond à vos critères. C'est le moment idéal pour en créer un nouveau.
+                {activeSectorMeta
+                  ? `Le secteur choisi est pret, mais aucun projet ${activeSectorMeta.label} n'a encore ete cree dans cette organisation.`
+                  : "Aucun projet ne correspond a vos criteres. C'est le moment ideal pour en creer un nouveau."}
               </p>
               {isGlobalAdmin ? (
                 <button
-                  onClick={() => navigate('/projects/create')}
-                  className="inline-flex items-center gap-3 px-8 py-4 bg-white text-slate-950 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-blue-500 hover:text-white transition-all shadow-xl"
+                  onClick={() => navigate(activeSectorKey ? `/projects/create?domainType=${encodeURIComponent(activeSectorKey)}` : '/projects/create')}
+                  className={`inline-flex items-center gap-3 px-8 py-4 bg-white text-slate-950 rounded-2xl font-black text-sm uppercase tracking-widest ${theme.emptyButtonHover} hover:text-white transition-all shadow-xl`}
                 >
                   <Plus size={20} />
-                  Démarrer un Projet
+                  {activeSectorMeta ? `Creer un projet ${activeSectorMeta.label}` : 'Demarrer un Projet'}
                 </button>
               ) : (
                 <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">
@@ -626,12 +758,12 @@ export default function Home() {
                   transition={{ delay: index * 0.05 }}
                   whileHover={{ y: -8, shadow: '0 20px 40px -20px rgba(0,0,0,0.5)' }}
                   onClick={() => handleProjectSelect(project.id)}
-                  className={`group relative overflow-hidden bg-slate-900/40 backdrop-blur-2xl border border-white/5 rounded-[1.5rem] cursor-pointer transition-all hover:border-blue-500/30 ${
+                  className={`group relative overflow-hidden bg-slate-900/40 backdrop-blur-2xl border border-white/5 rounded-[1.5rem] cursor-pointer transition-all ${theme.cardHoverBorder} ${
                     viewMode === 'list' ? 'p-4 flex items-center gap-5' : 'p-5'
                   }`}
                 >
                   {/* Decorative Gradient Background on Hover */}
-                  <div className="absolute inset-0 bg-gradient-to-br from-blue-600/0 via-purple-600/0 to-emerald-600/0 group-hover:from-blue-600/5 group-hover:via-purple-600/5 group-hover:to-emerald-600/5 transition-all duration-500 opacity-0 group-hover:opacity-100 pointer-events-none" />
+                  <div className={`absolute inset-0 bg-gradient-to-br from-blue-600/0 via-purple-600/0 to-emerald-600/0 ${theme.cardOverlay} transition-all duration-500 opacity-0 group-hover:opacity-100 pointer-events-none`} />
 
                   <div className={`flex items-start justify-between ${viewMode === 'list' ? 'flex-1' : 'mb-4'}`}>
                     <div className="flex items-center gap-3">
@@ -644,7 +776,7 @@ export default function Home() {
                         {project.status === 'paused' && <AlertTriangle size={20} />}
                       </div>
                       <div className="min-w-0">
-                        <h3 className="text-lg font-black text-white group-hover:text-blue-400 transition-colors tracking-tight line-clamp-1">{project.name}</h3>
+                        <h3 className={`text-lg font-black text-white transition-colors tracking-tight line-clamp-1 ${theme.cardTitleHover}`}>{project.name}</h3>
                         <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.1em] mt-0.5 truncate">
                           {(project as any).config?.client || project.client || 'Client Privé'}
                         </p>
@@ -659,7 +791,7 @@ export default function Home() {
                               e.stopPropagation();
                               navigate(`/admin/project-edit/${project.id}`);
                             }}
-                            className="p-2 rounded-lg bg-white/5 hover:bg-indigo-600 text-slate-400 hover:text-white border border-white/5 transition-all"
+                            className={`p-2 rounded-lg bg-white/5 ${theme.cardEditHover} text-slate-400 hover:text-white border border-white/5 transition-all`}
                             title="Modifier"
                           >
                             <Pencil size={12} />
@@ -679,7 +811,7 @@ export default function Home() {
                           )}
                         </div>
                       )}
-                      <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-slate-500 group-hover:text-blue-400 group-hover:bg-blue-500/10 transition-all">
+                      <div className={`w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-slate-500 ${theme.cardArrow} ${theme.cardArrowBg} transition-all`}>
                         <ArrowRight size={16} />
                       </div>
                     </div>
@@ -707,7 +839,7 @@ export default function Home() {
                           initial={{ width: 0 }}
                           animate={{ width: `${project.progress || 0}%` }}
                           transition={{ duration: 1, delay: 0.5 }}
-                          className="h-full bg-gradient-to-r from-blue-500 to-purple-600 relative"
+                          className={`h-full bg-gradient-to-r ${theme.progressGradient} relative`}
                         >
                           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer" />
                         </motion.div>
@@ -853,7 +985,7 @@ export default function Home() {
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
             onClick={() => navigate('/projects/create')}
-            className="w-16 h-16 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-2xl shadow-blue-600/40 border-4 border-slate-950"
+            className={`w-16 h-16 ${theme.floatingCta} text-white rounded-full flex items-center justify-center shadow-2xl border-4 border-slate-950`}
           >
             <Plus size={32} />
           </motion.button>

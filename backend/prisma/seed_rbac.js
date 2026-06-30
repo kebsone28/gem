@@ -1,7 +1,5 @@
-import { PrismaClient } from '../src/generated/prisma/index.js';
+import { basePrisma as prisma } from '../src/core/utils/prisma.js';
 import { ROLES, PERMISSIONS, ROLE_PERMISSIONS } from '../src/core/config/permissions.js';
-
-const prisma = new PrismaClient();
 
 async function main() {
   console.log('🚀 DÉMARRAGE DU SEEDING RBAC...');
@@ -67,10 +65,10 @@ async function main() {
 
   for (const user of users) {
     let targetRoleName = user.roleLegacy;
-    
+
     // Cas particulier : l'admin par défaut avait le rôle textuel 'user'
     if (user.email === 'admingem' || user.roleLegacy === 'user') {
-        targetRoleName = ROLES.ADMIN;
+      targetRoleName = ROLES.ADMIN;
     }
 
     const matchingRole = await prisma.role.findUnique({ where: { name: targetRoleName } });

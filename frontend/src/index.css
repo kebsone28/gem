@@ -58,22 +58,113 @@
   --gradient-electric: linear-gradient(135deg, #6366f1 0%, #06b6d4 100%);
 }
 
-/* Light mode overrides */
+/* Light mode overrides - GED OS Dolphin Executive Premium Theme */
 :root:not(.dark) {
-  --color-surface-elevated: #ffffff;
-  --color-surface-alt: #f8fafc;
-  --color-bg-tertiary: #f1f5f9;
-  --color-text: #0f172a;
-  --color-text-primary: #0f172a;
-  --color-text-secondary: #475569;
-  --color-text-muted: #94a3b8;
-  --color-border: rgba(0, 0, 0, 0.1);
-  --color-border-subtle: rgba(0, 0, 0, 0.05);
-  --color-dark-surface: #ffffff;
-  --color-dark-border: rgba(30, 144, 255, 0.1);
-  --color-dark-text-secondary: #475569;
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
-  --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.1);
+  /* ─── GED OS Dolphin Executive Premium Palette ─── */
+  
+  /* Fond principal - Bleu électrique dégradé premium avec effet wow */
+  --color-surface-elevated: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #56CCF2 75%, #4facfe 100%);
+  --color-surface-alt: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #56CCF2 100%);
+  --color-bg-tertiary: rgba(102, 126, 234, 0.1);
+  
+  /* Textes - avec meilleur contraste */
+  --color-text: #0a1628;
+  --color-text-primary: #0a1628;
+  --color-text-secondary: #1e3a5f;
+  --color-text-muted: #2d4a6f;
+  
+  /* Bordures */
+  --color-border: rgba(107, 122, 144, 0.3);
+  --color-border-subtle: rgba(107, 122, 144, 0.2);
+  
+  /* Couleurs fonctionnelles */
+  --color-primary: #56CCF2;
+  --color-primary-light: #7ED6F5;
+  --color-accent: #1E88E5;
+  --color-success: #27AE60;
+  --color-danger: #E74C3C;
+  --color-warning: #F39C12;
+  --color-info: #3498DB;
+  
+  /* Surface principale */
+  --color-dark-surface: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #56CCF2 75%, #4facfe 100%);
+  --color-dark-border: rgba(107, 122, 144, 0.2);
+  --color-dark-text-secondary: #1e3a5f;
+  
+  /* ─── Premium Glow Effects ─── */
+  --glow-primary: 0 0 20px rgba(86, 204, 242, 0.5), 0 0 40px rgba(86, 204, 242, 0.3);
+  --glow-accent: 0 0 15px rgba(30, 136, 229, 0.4), 0 0 30px rgba(30, 136, 229, 0.2);
+  --glow-purple: 0 0 15px rgba(118, 75, 162, 0.4), 0 0 30px rgba(118, 75, 162, 0.2);
+  
+  /* ─── Soft UI Shadows Premium ─── */
+  --shadow-sm: 0 4px 10px rgba(10, 22, 40, 0.1), 0 2px 6px rgba(255, 255, 255, 0.9);
+  --shadow-md: 0 12px 30px rgba(10, 22, 40, 0.12), 0 4px 10px rgba(255, 255, 255, 0.7);
+  --shadow-lg: 0 20px 40px rgba(10, 22, 40, 0.15), 0 8px 16px rgba(255, 255, 255, 0.6);
+  --shadow-glow: 0 0 30px rgba(102, 126, 234, 0.3), 0 0 60px rgba(118, 75, 162, 0.2);
+  
+  /* ─── Sidebar specific - Dolphin Executive Premium ─── */
+  --sidebar-bg: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #56CCF2 75%, #4facfe 100%);
+  --sidebar-bg-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #56CCF2 75%, #4facfe 100%);
+  --sidebar-border: rgba(255, 255, 255, 0.4);
+  --sidebar-inner-bg: rgba(0, 0, 0, 0.25);
+  --sidebar-inner-border: rgba(255, 255, 255, 0.3);
+  
+  /* Textes sidebar - avec ombre pour contraste */
+  --sidebar-text-primary: #FFFFFF;
+  --sidebar-text-secondary: rgba(255, 255, 255, 0.95);
+  --sidebar-text-muted: rgba(255, 255, 255, 0.85);
+  
+  /* Badges */
+  --sidebar-badge-bg: rgba(0, 0, 0, 0.4);
+  --sidebar-badge-text: #FFFFFF;
+  --sidebar-badge-border: rgba(255, 255, 255, 0.6);
+  
+  /* Navigation */
+  --sidebar-nav-hover-bg: rgba(0, 0, 0, 0.35);
+  --sidebar-nav-hover-text: #FFFFFF;
+  --sidebar-nav-active-bg: rgba(0, 0, 0, 0.45);
+  --sidebar-nav-active-text: #FFFFFF;
+  --sidebar-nav-active-border: rgba(255, 255, 255, 0.7);
+  
+  /* Input */
+  --sidebar-input-bg: rgba(0, 0, 0, 0.4);
+  --sidebar-input-border: rgba(255, 255, 255, 0.5);
+  --sidebar-input-placeholder: rgba(255, 255, 255, 0.75);
+  
+  /* ─── Glassmorphism Premium ─── */
+  --glass-bg: rgba(255, 255, 255, 0.85);
+  --glass-blur: blur(16px);
+  --glass-shine: linear-gradient(135deg, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.2) 100%);
+  
+  /* ─── Coins arrondis ─── */
+  --radius-badge: 999px;
+  --radius-button: 18px;
+  --radius-card: 28px;
+  --radius-window: 36px;
+}
+
+/* Dark mode (default) */
+.dark {
+  /* Sidebar specific for dark mode */
+  --sidebar-bg: #020817;
+  --sidebar-bg-gradient: radial-gradient(circle at top, #0b1531 0%, #070b1f 48%, #030712 100%);
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-inner-bg: rgba(255, 255, 255, 0.02);
+  --sidebar-inner-border: rgba(255, 255, 255, 0.06);
+  --sidebar-text-primary: #ffffff;
+  --sidebar-text-secondary: #94a3b8;
+  --sidebar-text-muted: #64748b;
+  --sidebar-badge-bg: rgba(59, 130, 246, 0.1);
+  --sidebar-badge-text: #60a5fa;
+  --sidebar-badge-border: rgba(59, 130, 246, 0.2);
+  --sidebar-nav-hover-bg: rgba(255, 255, 255, 0.04);
+  --sidebar-nav-hover-text: #ffffff;
+  --sidebar-nav-active-bg: rgba(59, 130, 246, 0.1);
+  --sidebar-nav-active-text: #60a5fa;
+  --sidebar-nav-active-border: rgba(59, 130, 246, 0.3);
+  --sidebar-input-bg: rgba(30, 41, 59, 0.5);
+  --sidebar-input-border: rgba(148, 163, 184, 0.2);
+  --sidebar-input-placeholder: #64748b;
 }
 
 /* Smooth theme transition */
@@ -82,8 +173,64 @@ html {
 }
 
 html, body {
-  background-color: var(--color-dark-surface);
+  background-color: var(--color-bg-tertiary);
   color: var(--color-text);
+}
+
+:root:not(.dark) html, :root:not(.dark) body {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #56CCF2 75%, #4facfe 100%);
+  background-size: 400% 400%;
+  animation: gradientShift 15s ease infinite;
+}
+
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Premium shimmer effect for cards */
+:root:not(.dark) .glass-premium,
+:root:not(.dark) .glass-card {
+  position: relative;
+  overflow: hidden;
+}
+
+:root:not(.dark) .glass-premium::before,
+:root:not(.dark) .glass-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  animation: shimmer 3s infinite;
+}
+
+@keyframes shimmer {
+  0% { left: -100%; }
+  100% { left: 100%; }
+}
+
+/* Floating animation for premium elements */
+.premium-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+/* Pulse glow effect */
+.premium-pulse {
+  animation: pulseGlow 2s ease-in-out infinite;
+}
+
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: var(--glow-primary); }
+  50% { box-shadow: var(--shadow-glow); }
 }
 
 /* (Tokens and rules below) */
@@ -148,12 +295,25 @@ input::placeholder {
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
 }
 
-/* Glass Premium – Now Sleek/Solid */
+/* ─────────────────────────────────────────────
+   GLASS PREMIUM - Dolphin Executive Premium Style
+───────────────────────────────────────────── */
 .glass-premium {
-  background: var(--color-surface-elevated);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-sm);
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(107, 122, 144, 0.15);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-md);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  position: relative;
+  overflow: hidden;
+  transition: all var(--transition-fast);
+}
+
+.glass-premium:hover {
+  box-shadow: var(--shadow-glow);
+  transform: translateY(-2px);
+  border-color: rgba(86, 204, 242, 0.3);
 }
 
 .dark .glass-premium {
@@ -161,18 +321,65 @@ input::placeholder {
   border-color: var(--color-dark-border);
 }
 
+:root:not(.dark) .glass-premium {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(107, 122, 144, 0.3);
+  color: #0a1628;
+}
+
 /* ─────────────────────────────────────────────
-   SIDEBAR / NAV
+   GLASSMORPHISM UTILITIES
+───────────────────────────────────────────── */
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+:root:not(.dark) .glass {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(107, 122, 144, 0.3);
+  color: #0a1628;
+}
+
+.dark .glass {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* ─────────────────────────────────────────────
+   SIDEBAR / NAV - Dolphin Executive Premium Style
 ───────────────────────────────────────────── */
 .glass-nav {
   background: var(--color-surface-alt);
-  border-right: 1px solid rgba(255, 255, 255, 0.05);
-  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.25);
+  border-right: 1px solid var(--color-border);
+  box-shadow: var(--shadow-md);
+  position: relative;
+  overflow: hidden;
 }
 
-:not(.dark) .glass-nav {
-  background: var(--color-surface-alt);
-  border-right: 1px solid rgba(255, 255, 255, 0.05);
+:root:not(.dark) .glass-nav {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #56CCF2 75%, #4facfe 100%);
+  border-right-color: rgba(255, 255, 255, 0.2);
+  box-shadow: var(--shadow-glow);
+}
+
+:root:not(.dark) .glass-nav::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  animation: navShimmer 8s infinite;
+}
+
+@keyframes navShimmer {
+  0% { left: -100%; }
+  50% { left: 100%; }
+  100% { left: 100%; }
 }
 
 .glass-category-header {
@@ -180,10 +387,43 @@ input::placeholder {
   font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
+  position: relative;
+}
+
+:root:not(.dark) .glass-category-header {
+  color: rgba(255, 255, 255, 0.95);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3), 0 0 10px rgba(255, 255, 255, 0.3);
+}
+
+/* Texte avec badge pour meilleure visibilité en mode clair */
+:root:not(.dark) .sidebar-text-badge {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 6px;
+  color: #FFFFFF;
+  font-weight: 600;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+:root:not(.dark) .sidebar-text-badge-strong {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 8px;
+  color: #FFFFFF;
+  font-weight: 700;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
 }
 
 /* ─────────────────────────────────────────────
-   KPI CARD
+   KPI CARD - Dolphin Executive Premium Style
 ───────────────────────────────────────────── */
 .kpi-card {
   position: relative;
@@ -191,6 +431,17 @@ input::placeholder {
   border-radius: var(--radius-xl);
   overflow: hidden;
   transition: all var(--transition-normal);
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(107, 122, 144, 0.15);
+  box-shadow: var(--shadow-md);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+}
+
+:root:not(.dark) .kpi-card {
+  background: rgba(255, 255, 255, 0.4);
+  border-color: rgba(255, 255, 255, 0.3);
+  box-shadow: var(--shadow-md);
 }
 
 .kpi-card::before {
@@ -207,6 +458,31 @@ input::placeholder {
 
 .kpi-card:hover::before {
   opacity: 1;
+}
+
+.kpi-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-glow);
+  border-color: rgba(86, 204, 242, 0.4);
+}
+
+:root:not(.dark) .kpi-card:hover {
+  box-shadow: 0 0 30px rgba(102, 126, 234, 0.4), 0 0 60px rgba(118, 75, 162, 0.3);
+}
+
+.kpi-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left 0.5s;
+}
+
+.kpi-card:hover::after {
+  left: 100%;
 }
 
 /* ─────────────────────────────────────────────
@@ -254,7 +530,7 @@ input::placeholder {
 }
 
 /* ─────────────────────────────────────────────
-   BUTTONS
+   BUTTONS - Dolphin Executive Premium Style
 ───────────────────────────────────────────── */
 .btn {
   display: inline-flex;
@@ -264,32 +540,50 @@ input::placeholder {
   font-family: 'Inter', system-ui, sans-serif;
   font-weight: 600;
   border: none;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-button);
   cursor: pointer;
   white-space: nowrap;
   -webkit-user-select: none;
   user-select: none;
   transition: all var(--transition-fast);
   will-change: transform;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left 0.5s;
+}
+
+.btn:hover::before {
+  left: 100%;
 }
 
 .btn-primary {
-  background: var(--color-primary);
-  color: #fff;
+  background: linear-gradient(135deg, #56CCF2 0%, #1E88E5 100%);
+  color: #1F3556;
   font-weight: 700;
   padding: 0.75rem 1.6rem;
-  border-radius: var(--radius-2xl);
+  border-radius: var(--radius-button);
   border: none;
   cursor: pointer;
   transition: all var(--transition-fast);
-  box-shadow: 0 4px 12px rgba(0, 102, 255, 0.3);
+  box-shadow: var(--glow-primary);
   letter-spacing: -0.01em;
+  position: relative;
 }
 
 .btn-primary:hover {
-  background: var(--color-primary-light);
-  transform: translateY(-1.5px);
-  box-shadow: 0 8px 24px rgba(0, 102, 255, 0.4);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-glow);
+  background: linear-gradient(135deg, #7ED6F5 0%, #2E98E5 100%);
 }
 
 .btn-primary:active {
@@ -298,20 +592,24 @@ input::placeholder {
 }
 
 .btn-secondary {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: white;
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(107, 122, 144, 0.2);
+  color: #1F3556;
   font-weight: 600;
   padding: 0.6rem 1.25rem;
-  border-radius: var(--radius-2xl);
+  border-radius: var(--radius-button);
   cursor: pointer;
   transition: all var(--transition-fast);
+  box-shadow: var(--shadow-sm);
+  position: relative;
 }
 
 .btn-secondary:hover {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
-  background: rgba(30, 144, 255, 0.06);
+  border-color: #56CCF2;
+  color: #1E88E5;
+  background: rgba(86, 204, 242, 0.1);
+  box-shadow: var(--glow-accent);
+  transform: translateY(-1px);
 }
 
 .dark .btn-secondary {
@@ -324,34 +622,38 @@ input::placeholder {
   border-color: var(--color-primary-light);
   color: #60afff;
   background: rgba(30, 144, 255, 0.1);
+  box-shadow: var(--glow-primary);
 }
 
 .btn-outline {
   background: transparent;
-  border: 1.5px solid var(--color-primary);
-  color: var(--color-primary);
+  border: 1.5px solid #56CCF2;
+  color: #1E88E5;
   padding: 0.6rem 1.25rem;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-button);
   cursor: pointer;
   transition: all var(--transition-fast);
+  position: relative;
 }
 
 .btn-outline:hover {
-  background: rgba(30, 144, 255, 0.08);
+  background: rgba(86, 204, 242, 0.1);
+  box-shadow: var(--glow-primary);
+  transform: translateY(-1px);
 }
 
 .btn-ghost {
   background: transparent;
   color: var(--color-text-secondary);
   padding: 0.6rem 1rem;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-button);
   cursor: pointer;
   transition: all var(--transition-fast);
 }
 
 .btn-ghost:hover {
-  background: rgba(30, 144, 255, 0.06);
-  color: var(--color-primary);
+  background: rgba(86, 204, 242, 0.08);
+  color: #1E88E5;
 }
 
 .btn-lg {
@@ -364,27 +666,30 @@ input::placeholder {
 }
 
 /* ─────────────────────────────────────────────
-   INPUTS
+   INPUTS - Dolphin Executive Premium Style
 ───────────────────────────────────────────── */
 .input-field,
 .input {
-  background: #fff;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(107, 122, 144, 0.2);
+  border-radius: var(--radius-button);
   padding: 0.625rem 0.9rem;
   font-size: 0.9rem;
   width: 100%;
   transition: all var(--transition-fast);
-  color: var(--color-text);
+  color: var(--color-text-primary);
   font-family: 'Inter', system-ui, sans-serif;
+  box-shadow: var(--shadow-sm);
+  position: relative;
 }
 
 .input-field:focus,
 .input:focus {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(30, 144, 255, 0.15);
+  border-color: #56CCF2;
+  box-shadow: 0 0 0 3px rgba(86, 204, 242, 0.15), var(--glow-primary);
   outline: none;
-  background: rgba(240, 247, 255, 0.6);
+  background: rgba(255, 255, 255, 0.9);
+  transform: translateY(-1px);
 }
 
 .input::placeholder,
@@ -394,7 +699,7 @@ input::placeholder {
 
 .input:disabled,
 .input-field:disabled {
-  background: var(--color-surface-alt);
+  background: rgba(209, 216, 230, 0.5);
   cursor: not-allowed;
   opacity: 0.7;
 }
@@ -409,7 +714,7 @@ input::placeholder {
 .dark .input-field:focus,
 .dark .input:focus {
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(30, 144, 255, 0.2);
+  box-shadow: 0 0 0 3px rgba(30, 144, 255, 0.2), var(--glow-primary);
   background: rgba(10, 22, 40, 0.8);
 }
 
@@ -557,54 +862,110 @@ input::placeholder {
 }
 
 /* ─────────────────────────────────────────────
-   BADGES
+   BADGES - Dolphin Executive Premium Style
 ───────────────────────────────────────────── */
 .badge {
   display: inline-flex;
   align-items: center;
   padding: 0.2rem 0.65rem;
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-badge);
   font-size: 0.7rem;
   font-weight: 700;
   letter-spacing: 0.03em;
   white-space: nowrap;
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  position: relative;
+  overflow: hidden;
+  transition: all var(--transition-fast);
+}
+
+.badge::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  transition: left 0.5s;
+}
+
+.badge:hover::before {
+  left: 100%;
 }
 
 .badge-primary {
-  background: rgba(30, 144, 255, 0.12);
-  color: var(--color-primary);
-  border: 1px solid rgba(30, 144, 255, 0.25);
+  background: rgba(86, 204, 242, 0.2);
+  color: #1E88E5;
+  border: 1px solid rgba(86, 204, 242, 0.4);
+  box-shadow: 0 0 10px rgba(86, 204, 242, 0.3);
+}
+
+.badge-primary:hover {
+  box-shadow: var(--glow-primary);
+  transform: scale(1.05);
 }
 
 .badge-success {
-  background: rgba(16, 185, 129, 0.1);
-  color: var(--color-success);
-  border: 1px solid rgba(16, 185, 129, 0.22);
+  background: rgba(39, 174, 96, 0.2);
+  color: #27AE60;
+  border: 1px solid rgba(39, 174, 96, 0.4);
+  box-shadow: 0 0 10px rgba(39, 174, 96, 0.3);
+}
+
+.badge-success:hover {
+  box-shadow: 0 0 15px rgba(39, 174, 96, 0.5);
+  transform: scale(1.05);
 }
 
 .badge-warning {
-  background: rgba(245, 158, 11, 0.1);
-  color: var(--color-warning);
-  border: 1px solid rgba(245, 158, 11, 0.22);
+  background: rgba(243, 156, 18, 0.2);
+  color: #F39C12;
+  border: 1px solid rgba(243, 156, 18, 0.4);
+  box-shadow: 0 0 10px rgba(243, 156, 18, 0.3);
+}
+
+.badge-warning:hover {
+  box-shadow: 0 0 15px rgba(243, 156, 18, 0.5);
+  transform: scale(1.05);
 }
 
 .badge-danger,
 .badge-error {
-  background: rgba(239, 68, 68, 0.1);
-  color: var(--color-danger);
-  border: 1px solid rgba(239, 68, 68, 0.22);
+  background: rgba(231, 76, 60, 0.2);
+  color: #E74C3C;
+  border: 1px solid rgba(231, 76, 60, 0.4);
+  box-shadow: 0 0 10px rgba(231, 76, 60, 0.3);
+}
+
+.badge-danger:hover,
+.badge-error:hover {
+  box-shadow: 0 0 15px rgba(231, 76, 60, 0.5);
+  transform: scale(1.05);
 }
 
 .badge-info {
-  background: rgba(59, 130, 246, 0.1);
-  color: var(--color-info);
-  border: 1px solid rgba(59, 130, 246, 0.22);
+  background: rgba(52, 152, 219, 0.2);
+  color: #3498DB;
+  border: 1px solid rgba(52, 152, 219, 0.4);
+  box-shadow: 0 0 10px rgba(52, 152, 219, 0.3);
+}
+
+.badge-info:hover {
+  box-shadow: 0 0 15px rgba(52, 152, 219, 0.5);
+  transform: scale(1.05);
 }
 
 .dark .badge-primary {
-  background: rgba(30, 144, 255, 0.15);
+  background: rgba(30, 144, 255, 0.2);
   color: #60afff;
-  border-color: rgba(30, 144, 255, 0.3);
+  border-color: rgba(30, 144, 255, 0.4);
+  box-shadow: 0 0 10px rgba(30, 144, 255, 0.3);
+}
+
+.dark .badge-primary:hover {
+  box-shadow: var(--glow-primary);
 }
 
 /* ─────────────────────────────────────────────

@@ -1,4 +1,4 @@
-﻿ 
+ 
 import { STATUS_META, type StatusKey } from './statusRegistry';
 
 // Normalize helper partagé depuis l'ancien fichier
@@ -40,13 +40,12 @@ export const normalizeStatus = (status?: string): string => {
   if (s.includes('non conforme')) return 'Non conforme';
   if (s.includes('conforme')) return 'Contrôle conforme';
   if (s.includes('termine')) return 'Contrôle conforme';
-  if (s.includes('install')) return 'Installé'; 
   if (s.includes('eligible')) return 'Eligible';
 
   if (s.includes('interieur')) return 'Intérieur terminé';
   if (s.includes('reseau')) return 'Réseau terminé';
   if (s.includes('mur')) return 'Murs terminés';
-  if (s.includes('livraison')) return 'Livraison effectuée';
+  if (s.includes('livraison') || s.includes('install')) return 'Livraison effectuée';
 
   if (s.includes('attente') || s.includes('plan')) return 'En attente';
 

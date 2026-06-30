@@ -14,7 +14,19 @@ export const ROLES = {
     EMPLOYE: "EMPLOYE",
     CLIENT_LSE: "CLIENT_LSE",
     SUPERVISEUR: "SUPERVISEUR",
-    CONTROLEUR: "CONTROLEUR"
+    CONTROLEUR: "CONTROLEUR",
+    // Rôles Mode Gouvernement
+    MINISTRE: "MINISTRE",
+    DIRECTEUR_GENERAL: "DIRECTEUR_GENERAL",
+    INSPECTEUR_GENERAL: "INSPECTEUR_GENERAL",
+    // Rôles Mode ONG
+    COORDINATEUR: "COORDINATEUR",
+    RESPONSABLE_IMPACT: "RESPONSABLE_IMPACT",
+    PROTECTION_BENEFICIAIRES: "PROTECTION_BENEFICIAIRES",
+    // Rôles Mode Bailleur
+    COMPLIANCE_OFFICER: "COMPLIANCE_OFFICER",
+    REPRESENTANT_BAILLEUR: "REPRESENTANT_BAILLEUR",
+    AUDITEUR_EXTERNE: "AUDITEUR_EXTERNE",
 };
 
 export const PERMISSIONS = {
@@ -59,6 +71,8 @@ export const PERMISSIONS = {
     TOOLBOX_SUBMISSION_DELETE: "toolbox.submission.delete",
     TOOLBOX_SETTINGS_READ: "toolbox.settings.read",
     TOOLBOX_SETTINGS_MANAGE: "toolbox.settings.manage",
+    // Household export
+    HOUSEHOLD_EXPORT: "household.export",
 };
 
 export const ROLE_PERMISSIONS = {
@@ -67,7 +81,7 @@ export const ROLE_PERMISSIONS = {
     [ROLES.ADMIN_ALT]: Object.values(PERMISSIONS),
     // DIRECTEUR: accès complet sauf gestion des utilisateurs et paramètres
     [ROLES.DIRECTEUR]: Object.values(PERMISSIONS).filter(
-      p => p !== PERMISSIONS.GERER_UTILISATEURS && p !== PERMISSIONS.GERER_PARAMETRES
+        p => p !== PERMISSIONS.GERER_UTILISATEURS && p !== PERMISSIONS.GERER_PARAMETRES
     ),
 
     // 🚀 OPÉRATIONNELS: Tout sauf suppression de projet (peuvent créer)
@@ -156,7 +170,95 @@ export const ROLE_PERMISSIONS = {
         PERMISSIONS.VOIR_CARTE,
         PERMISSIONS.GERER_LOGISTIQUE,
         PERMISSIONS.VOIR_MISSIONS
-    ]
+    ],
+
+    // 🏛️ RÔLES MODE GOUVERNEMENT
+    [ROLES.MINISTRE]: [
+        // Accès complet pour décisions stratégiques
+        ...Object.values(PERMISSIONS).filter(p => p !== PERMISSIONS.GERER_UTILISATEURS && p !== PERMISSIONS.GERER_PARAMETRES),
+    ],
+    [ROLES.DIRECTEUR_GENERAL]: [
+        // Transmission au ministère, validation niveau directeur
+        PERMISSIONS.VOIR_CARTE,
+        PERMISSIONS.VOIR_RAPPORTS,
+        PERMISSIONS.VOIR_MISSIONS,
+        PERMISSIONS.VALIDER_MISSION,
+        PERMISSIONS.APPROBATION_FINALE_DG,
+        PERMISSIONS.VOIR_FINANCES,
+        PERMISSIONS.GERER_LOGISTIQUE,
+        PERMISSIONS.MES_VALIDATE,
+        PERMISSIONS.MES_EXPORT,
+    ],
+    [ROLES.INSPECTEUR_GENERAL]: [
+        // Audit légal, accès lecture seule
+        PERMISSIONS.VOIR_CARTE,
+        PERMISSIONS.VOIR_RAPPORTS,
+        PERMISSIONS.VOIR_MISSIONS,
+        PERMISSIONS.VOIR_FINANCES,
+        PERMISSIONS.MES_CONTROL,
+        PERMISSIONS.MES_EXPORT,
+    ],
+
+    // 🤝 RÔLES MODE ONG
+    [ROLES.COORDINATEUR]: [
+        // Évaluation impact, validation bénéficiaires
+        PERMISSIONS.VOIR_CARTE,
+        PERMISSIONS.VOIR_RAPPORTS,
+        PERMISSIONS.VOIR_MISSIONS,
+        PERMISSIONS.CREER_MISSION,
+        PERMISSIONS.VALIDER_MISSION,
+        PERMISSIONS.GERER_LOGISTIQUE,
+        PERMISSIONS.MES_CREATE,
+        PERMISSIONS.MES_UPDATE,
+        PERMISSIONS.MES_VALIDATE,
+        PERMISSIONS.TOOLBOX_SUBMISSION_CREATE,
+        PERMISSIONS.TOOLBOX_SUBMISSION_EDIT,
+        PERMISSIONS.TOOLBOX_SUBMISSION_VALIDATE,
+    ],
+    [ROLES.RESPONSABLE_IMPACT]: [
+        // Mesure impact uniquement, rapports sociaux
+        PERMISSIONS.VOIR_RAPPORTS,
+        PERMISSIONS.VOIR_MISSIONS,
+        PERMISSIONS.MES_EXPORT,
+        PERMISSIONS.MES_VALIDATE,
+    ],
+    [ROLES.PROTECTION_BENEFICIAIRES]: [
+        // Accès restreint données sensibles, validation éthique
+        PERMISSIONS.VOIR_MISSIONS,
+        PERMISSIONS.VOIR_RAPPORTS,
+        PERMISSIONS.MES_CONTROL,
+        // Pas d'accès aux données personnelles par défaut
+    ],
+
+    // 🌍 RÔLES MODE BAILLEUR
+    [ROLES.COMPLIANCE_OFFICER]: [
+        // Vérification conformité uniquement, standards BM/BAD/UE
+        PERMISSIONS.VOIR_RAPPORTS,
+        PERMISSIONS.VOIR_MISSIONS,
+        PERMISSIONS.VOIR_FINANCES,
+        PERMISSIONS.MES_CONTROL,
+        PERMISSIONS.MES_EXPORT,
+        PERMISSIONS.TOOLBOX_SUBMISSION_VALIDATE,
+    ],
+    [ROLES.REPRESENTANT_BAILLEUR]: [
+        // Validation finale bailleur, reporting standardisé
+        PERMISSIONS.VOIR_RAPPORTS,
+        PERMISSIONS.VOIR_MISSIONS,
+        PERMISSIONS.VALIDER_MISSION,
+        PERMISSIONS.APPROBATION_FINALE_DG,
+        PERMISSIONS.VOIR_FINANCES,
+        PERMISSIONS.MES_EXPORT,
+        PERMISSIONS.MES_VALIDATE,
+    ],
+    [ROLES.AUDITEUR_EXTERNE]: [
+        // Audit externe uniquement, accès lecture seule
+        PERMISSIONS.VOIR_CARTE,
+        PERMISSIONS.VOIR_RAPPORTS,
+        PERMISSIONS.VOIR_MISSIONS,
+        PERMISSIONS.VOIR_FINANCES,
+        PERMISSIONS.MES_CONTROL,
+        PERMISSIONS.MES_EXPORT,
+    ],
 };
 
 /**
@@ -169,7 +271,7 @@ export const isSuperAdminEmail = (email) => {
     if (!email) return false;
     const superAdminEmails = process.env.SUPER_ADMIN_EMAIL;
     if (!superAdminEmails) return false;
-    
+
     // Split by comma and trim whitespace
     const emailList = superAdminEmails.split(',').map(e => e.trim());
     return emailList.includes(email.trim());

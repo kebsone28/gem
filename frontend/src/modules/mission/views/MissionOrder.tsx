@@ -149,7 +149,7 @@ export default function MissionOrder() {
     }
   });
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-  
+
   const toggleSidebar = () =>
     setSidebarCollapsed((prev) => {
       const next = !prev;
@@ -182,6 +182,8 @@ export default function MissionOrder() {
   // Business Logic Hooks
   const missionState = useMissionState();
   const { state } = missionState;
+
+  const hasNoSelection = !state.currentMissionId;
 
   const { handleSaveMission, handleSyncFromServer } = useMissionSync(
     state,
@@ -627,16 +629,24 @@ export default function MissionOrder() {
     try {
       const blob = await generateMissionReportPDF(state.formData as MissionOrderData, true);
       missionState.addAuditEntry('Rapport PDF généré', 'Système');
-      
+
       // Automatisation : Upload vers Sharedoc
       try {
         const folderId = await getOrCreateArchivesFolder();
-        const pdfFile = new File([blob as Blob], `${getMissionFileStem(state.formData)}_Rapport.pdf`, { type: 'application/pdf' });
-        await sharedocService.uploadDocument(pdfFile, folderId, 'Rapport de mission archivé automatiquement');
+        const pdfFile = new File(
+          [blob as Blob],
+          `${getMissionFileStem(state.formData)}_Rapport.pdf`,
+          { type: 'application/pdf' }
+        );
+        await sharedocService.uploadDocument(
+          pdfFile,
+          folderId,
+          'Rapport de mission archivé automatiquement'
+        );
         toast.success('Rapport archivé dans Sharedoc.', { icon: '📁' });
       } catch (uploadErr) {
         logger.error('Erreur archivage Rapport Sharedoc:', uploadErr);
-        toast.error('Le rapport est généré mais l\'archivage a échoué.');
+        toast.error("Le rapport est généré mais l'archivage a échoué.");
       }
     } catch (e) {
       toast.error('Erreur lors de la génération du rapport PDF');
@@ -740,6 +750,11 @@ export default function MissionOrder() {
     try {
       const syncResult = await handleSaveMission({ isSubmitted: true });
 
+      if (syncResult === null) {
+        // La validation a échoué — le toast est déjà affiché par handleSaveMission
+        return;
+      }
+
       if (syncResult?.serverSuccess === true) {
         missionState.setSubmitted(true);
         missionState.addAuditEntry(
@@ -754,7 +769,8 @@ export default function MissionOrder() {
         setWorkflow(refreshedWorkflow as any);
         toast.success('Mission envoyée en approbation');
       } else {
-        toast.error("Échec de la soumission. Le serveur n'a pas confirmé l'entrée en workflow.");
+        // Le toast d'erreur est déjà affiché par handleSaveMission
+        // On ne fait rien pour éviter le doublon
       }
     } catch (error) {
       logger.error('Erreur soumission:', error);
@@ -854,14 +870,21 @@ export default function MissionOrder() {
         try {
           const folderId = await getOrCreateArchivesFolder();
           const pdfBlob = await generateMissionOrderPDF(state.formData as MissionOrderData, false);
-          const pdfFile = new File([pdfBlob], `${getMissionFileStem(state.formData)}_OM_certifie.pdf`, { type: 'application/pdf' });
-          await sharedocService.uploadDocument(pdfFile, folderId, 'Ordre de mission validé automatiquement par le workflow');
+          const pdfFile = new File(
+            [pdfBlob],
+            `${getMissionFileStem(state.formData)}_OM_certifie.pdf`,
+            { type: 'application/pdf' }
+          );
+          await sharedocService.uploadDocument(
+            pdfFile,
+            folderId,
+            'Ordre de mission validé automatiquement par le workflow'
+          );
           toast.success('Ordre de mission archivé dans Sharedoc.', { icon: '📁' });
         } catch (uploadErr) {
           logger.error('Erreur archivage Sharedoc:', uploadErr);
-          toast.error('La validation a réussi mais l\'archivage automatique a échoué.');
+          toast.error("La validation a réussi mais l'archivage automatique a échoué.");
         }
-
       } else {
         toast.error('Échec de la validation finale.');
       }
@@ -880,20 +903,20 @@ export default function MissionOrder() {
     }
 
     try {
-      const updated = await missionService.assignMissionToProject(state.currentMissionId, projectId);
+      const updated = await missionService.assignMissionToProject(
+        state.currentMissionId,
+        projectId
+      );
       if (updated) {
         missionState.updateFormField('projectId', projectId);
-        missionState.addAuditEntry(
-          `Mission affectée au projet`,
-          user?.name || 'Utilisateur'
-        );
+        missionState.addAuditEntry(`Mission affectée au projet`, user?.name || 'Utilisateur');
         toast.success('Mission affectée avec succès');
       } else {
-        toast.error('Erreur lors de l\'affectation de la mission');
+        toast.error("Erreur lors de l'affectation de la mission");
       }
     } catch (error) {
       logger.error('Erreur affectation projet:', error);
-      toast.error('Erreur lors de l\'affectation');
+      toast.error("Erreur lors de l'affectation");
     }
   };
 
@@ -957,812 +980,1036 @@ export default function MissionOrder() {
   }
 
   return (
-    <PageContainer>
-      <PageHeader
-        title="Ordre de Mission"
-        subtitle="Configuration & Déploiement Terrain"
-        icon={<ClipboardList className="text-indigo-500" />}
-      />
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
+    >
+      <PageContainer>
+        <motion.div
+          initial={{ opacity: 0, x: -10 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.4, delay: 0.05 }}
+        >
+          <PageHeader
+            title="Ordre de Mission"
+            subtitle="Configuration & Déploiement Terrain"
+            icon={<ClipboardList className="text-indigo-500" />}
+          />
+        </motion.div>
 
-      <ContentArea className="!p-3 sm:!p-6 lg:!p-8">
-        {/* BARRE D'ACTIONS - HAUTE PRIORITÉ Z-INDEX */}
-        <div className="relative z-50 mb-4 sm:mb-6 lg:mb-8 no-print">
-          <WidgetErrorBoundary title="Barre d'Actions">
-            <MissionOrderActionBar
-              formData={state.formData}
-              currentMissionId={state.currentMissionId}
-              role={role || ''}
-              projectId={state.formData.projectId}
-              isSyncing={state.isSyncing}
-              isSyncingServer={state.isSyncingServer}
-              isDirty={missionState.isDirty}
-              syncStatus={state.syncStatus}
-              showTemplates={showTemplates}
-              showConfig={showConfig}
-              showAudit={showAudit}
-              PERMISSIONS={PERMISSIONS}
-              peut={peut}
-              onNewMission={handleNewMission}
-              onDuplicate={handleDuplicate}
-              onTemplateToggle={() => setShowTemplates(!showTemplates)}
-              onTemplateSelect={handleTemplateSelect}
-              onConfigToggle={() => setShowConfig(!showConfig)}
-              onToggleFeature={handleToggleFeature}
-              onToggleSimplifiedMode={missionState.setSimplifiedMode}
-              isSimplifiedMode={state.isSimplifiedMode}
-              onNotificationsToggle={() => setShowNotifications(!showNotifications)}
-              onAuditToggle={() => setShowAudit(!showAudit)}
-              unreadCount={unreadCount}
-              onSyncFromServer={handleSyncFromServer}
-              onArchive={() => {}}
-              onDelete={() => {}}
-              onExportExcel={handleExportExcel}
-              onExportWord={handleExportWord}
-              onExportPDF={handleExportPDF}
-              onSave={() => {
-                if (window.confirm('Voulez-vous enregistrer les modifications ?')) {
-                  handleSaveMission();
-                }
-              }}
-              onValidate={handleMissionCertify}
-              onSubmit={handleMissionSubmit}
-              onAssignProject={handleAssignProject}
-              isCertified={effectiveIsCertified}
-              isSubmitted={effectiveIsSubmitted}
-            />
-          </WidgetErrorBoundary>
-        </div>
-
-        {/* MOBILE SIDEBAR DRAWER */}
-        <AnimatePresence>
-          {isMobileSidebarOpen && (
-            <>
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                onClick={() => setIsMobileSidebarOpen(false)}
-                className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-[100] lg:hidden"
+        <ContentArea className="!p-3 sm:!p-6 lg:!p-8">
+          {/* BARRE D'ACTIONS - HAUTE PRIORITÉ Z-INDEX */}
+          <div className="relative z-50 mb-4 sm:mb-6 lg:mb-8 no-print">
+            <WidgetErrorBoundary title="Barre d'Actions">
+              <MissionOrderActionBar
+                formData={state.formData}
+                currentMissionId={state.currentMissionId}
+                role={role || ''}
+                projectId={state.formData.projectId}
+                isSyncing={state.isSyncing}
+                isSyncingServer={state.isSyncingServer}
+                isDirty={missionState.isDirty}
+                syncStatus={state.syncStatus}
+                showTemplates={showTemplates}
+                showConfig={showConfig}
+                showAudit={showAudit}
+                PERMISSIONS={PERMISSIONS}
+                peut={peut}
+                onNewMission={handleNewMission}
+                onDuplicate={handleDuplicate}
+                onTemplateToggle={() => setShowTemplates(!showTemplates)}
+                onTemplateSelect={handleTemplateSelect}
+                onConfigToggle={() => setShowConfig(!showConfig)}
+                onToggleFeature={handleToggleFeature}
+                onToggleSimplifiedMode={missionState.setSimplifiedMode}
+                isSimplifiedMode={state.isSimplifiedMode}
+                onNotificationsToggle={() => setShowNotifications(!showNotifications)}
+                onAuditToggle={() => setShowAudit(!showAudit)}
+                unreadCount={unreadCount}
+                onSyncFromServer={handleSyncFromServer}
+                onArchive={() => {}}
+                onDelete={() => {}}
+                onExportExcel={handleExportExcel}
+                onExportWord={handleExportWord}
+                onExportPDF={handleExportPDF}
+                onSave={() => {
+                  if (window.confirm('Voulez-vous enregistrer les modifications ?')) {
+                    handleSaveMission();
+                  }
+                }}
+                onValidate={handleMissionCertify}
+                onSubmit={handleMissionSubmit}
+                onAssignProject={handleAssignProject}
+                isCertified={effectiveIsCertified}
+                isSubmitted={effectiveIsSubmitted}
               />
-              <motion.div
-                initial={{ x: '-100%' }}
-                animate={{ x: 0 }}
-                exit={{ x: '-100%' }}
-                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                className="fixed inset-y-0 left-0 w-[280px] bg-slate-900 border-r border-white/10 z-[101] lg:hidden p-4 shadow-2xl"
-              >
-                <div className="flex items-center justify-between mb-6">
-                  <span className="text-xs font-black uppercase tracking-widest text-indigo-400">
-                    Missions Disponibles
-                  </span>
-                  <button
-                    onClick={() => setIsMobileSidebarOpen(false)}
-                    className="p-2 hover:bg-white/5 rounded-xl text-slate-400"
-                  >
-                    <PanelLeftClose size={20} />
-                  </button>
-                </div>
-                <MissionListSidebar
-                  savedMissions={savedMissions}
-                  currentMissionId={state.currentMissionId}
-                  onLoadMission={(m) => {
-                    handleLoadMission(m);
-                    setIsMobileSidebarOpen(false);
-                  }}
-                  onDeleteMission={handleDeleteMission}
-                  isCertifiedByWorkflow={effectiveIsCertified}
-                  role={role || user?.role}
-                  onPurgeAll={handlePurgeAllMissions}
-                />
-              </motion.div>
-            </>
-          )}
-        </AnimatePresence>
+            </WidgetErrorBoundary>
+          </div>
 
-        {/* GRILLE PRINCIPALE */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 relative z-10">
-          {/* SIDEBAR GAUCHE : desktop seulement */}
-          {!focusMode && (
-            <div
-              className={`hidden lg:block no-print transition-all duration-300 ${sidebarCollapsed ? 'lg:col-span-1' : 'lg:col-span-2'}`}
+          {/* 🎯 EMPTY STATE PREMIUM — quand aucune mission n'est sélectionnée */}
+          {hasNoSelection && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
+              className="relative overflow-hidden rounded-[2.5rem] border border-white/[0.06] bg-gradient-to-br from-slate-900/80 via-slate-900/60 to-indigo-950/40 backdrop-blur-xl shadow-2xl"
             >
-              <div className="sticky top-4">
-                {/* Toggle button */}
-                <div className="flex items-center justify-between mb-3">
-                  {!sidebarCollapsed && (
-                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                      Missions
-                    </span>
-                  )}
-                  <button
-                    onClick={toggleSidebar}
-                    className="ml-auto p-2 rounded-xl text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10 transition-all border border-transparent hover:border-indigo-500/20"
-                    title={sidebarCollapsed ? 'Afficher la liste' : 'Réduire la liste'}
-                  >
-                    {sidebarCollapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
-                  </button>
-                </div>
-                {!sidebarCollapsed ? (
-                  <div className="bg-slate-900/50 backdrop-blur-xl border border-white/5 rounded-[1.5rem] p-1 overflow-hidden">
-                    <MissionListSidebar
-                      savedMissions={savedMissions}
-                      currentMissionId={state.currentMissionId}
-                      onLoadMission={handleLoadMission}
-                      onDeleteMission={handleDeleteMission}
-                      isCertifiedByWorkflow={effectiveIsCertified}
-                      role={role || user?.role}
-                      onPurgeAll={handlePurgeAllMissions}
-                    />
-                  </div>
-                ) : (
-                  /* Mini sidebar – points de statut */
-                  <div className="space-y-2 max-h-[80vh] overflow-y-auto no-scrollbar py-2">
-                    {savedMissions.slice(0, 30).map((m: any) => {
-                      const isActive = state.currentMissionId === m.id;
-                      const isCert =
-                        m.isCertified ||
-                        m.data?.isCertified ||
-                        m.status === 'certified' ||
-                        m.status === 'approuvee';
-                      const isPend =
-                        !isCert && (m.isSubmitted || m.data?.isSubmitted || m.status === 'soumise');
-                      const dotColor = isCert
-                        ? 'bg-emerald-500 shadow-emerald-500/40'
-                        : isPend
-                          ? 'bg-amber-500 shadow-amber-500/40'
-                          : 'bg-slate-500 shadow-slate-500/40';
-                      return (
-                        <button
-                          key={m.id}
-                          onClick={() => handleLoadMission(m)}
-                          title={m.purpose || m.title || m.orderNumber || 'Mission'}
-                          className={`w-full flex items-center justify-center p-2.5 rounded-2xl transition-all ${
-                            isActive
-                              ? 'bg-indigo-600 shadow-xl shadow-indigo-600/30 ring-2 ring-white/10'
-                              : 'bg-white/5 border border-white/5 hover:border-white/20'
-                          }`}
-                        >
-                          <span
-                            className={`w-2.5 h-2.5 rounded-full shadow-sm ${isActive ? 'bg-white' : dotColor}`}
-                          />
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
+              {/* Arrière-plan décoratif */}
+              <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                <div className="absolute -top-40 -right-40 w-80 h-80 bg-indigo-500/10 rounded-full blur-[120px]" />
+                <div className="absolute -bottom-32 -left-32 w-64 h-64 bg-emerald-500/8 rounded-full blur-[100px]" />
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-blue-500/5 rounded-full blur-[80px]" />
               </div>
-            </div>
+
+              <div className="relative z-10 flex flex-col items-center justify-center py-24 px-6 text-center">
+                {/* Icône animée */}
+                <motion.div
+                  initial={{ scale: 0, rotate: -15 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={{ delay: 0.15, type: 'spring', stiffness: 200, damping: 15 }}
+                  className="mb-8 relative"
+                >
+                  <div className="w-24 h-24 rounded-[2rem] bg-gradient-to-br from-indigo-500/20 to-indigo-600/10 border border-indigo-400/20 flex items-center justify-center shadow-2xl shadow-indigo-500/10">
+                    <ClipboardList className="w-12 h-12 text-indigo-400" />
+                  </div>
+                  <motion.div
+                    animate={{ y: [0, -6, 0], opacity: [0.6, 1, 0.6] }}
+                    transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+                    className="absolute -top-2 -right-2 w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center"
+                  >
+                    <span className="text-emerald-400 text-lg">✨</span>
+                  </motion.div>
+                </motion.div>
+
+                {/* Titre */}
+                <motion.h2
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.25 }}
+                  className="text-3xl font-black text-white mb-3 tracking-tight"
+                >
+                  Gestion des Ordres de Mission
+                </motion.h2>
+
+                <motion.p
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.35 }}
+                  className="text-sm text-slate-400 max-w-md mb-10 leading-relaxed"
+                >
+                  Créez, planifiez et suivez vos missions terrain. Utilisez le bouton{' '}
+                  <span className="font-bold text-indigo-300">« Nouvelle Mission »</span> ci-dessus
+                  pour démarrer ou sélectionnez une mission existante dans la liste.
+                </motion.p>
+
+                {/* Grille de fonctionnalités */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.45 }}
+                  className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl w-full"
+                >
+                  {[
+                    {
+                      icon: '📋',
+                      title: 'Préparation',
+                      desc: 'Renseignez les infos, équipe, itinéraire et budget',
+                    },
+                    {
+                      icon: '📝',
+                      title: 'Rapport',
+                      desc: 'Documentez les observations et générez les comptes rendus',
+                    },
+                    {
+                      icon: '✅',
+                      title: 'Approbation',
+                      desc: 'Soumettez pour validation et archivez les missions',
+                    },
+                  ].map((feat, i) => (
+                    <div
+                      key={feat.title}
+                      className="group p-5 rounded-2xl bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.06] hover:border-indigo-500/20 transition-all duration-300"
+                    >
+                      <div className="text-2xl mb-3 group-hover:scale-110 transition-transform duration-300">
+                        {feat.icon}
+                      </div>
+                      <h3 className="text-[11px] font-black uppercase tracking-widest text-white mb-1.5">
+                        {feat.title}
+                      </h3>
+                      <p className="text-[10px] text-slate-500 leading-relaxed">{feat.desc}</p>
+                    </div>
+                  ))}
+                </motion.div>
+
+                {/* Astuce */}
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.6 }}
+                  className="mt-10 flex items-center gap-2 px-5 py-3 rounded-2xl bg-amber-500/8 border border-amber-500/15"
+                >
+                  <span className="text-amber-400 text-sm">💡</span>
+                  <p className="text-[10px] font-medium text-amber-300/80">
+                    Astuce : utilisez les modèles de mission pour gagner du temps
+                  </p>
+                </motion.div>
+              </div>
+            </motion.div>
           )}
 
-          {/* CONTENU PRINCIPAL */}
-          <div
-            className={`transition-all duration-300 ${
-              focusMode ? 'lg:col-span-12' : sidebarCollapsed ? 'lg:col-span-11' : 'lg:col-span-10'
-            }`}
-          >
-            <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 sm:gap-6 items-start">
-              {/* FORMULAIRE : s'étend selon le focus mode */}
-              <div
-                className={`space-y-4 sm:space-y-6 ${
-                  focusMode ? 'xl:col-span-12' : 'xl:col-span-9'
-                }`}
-              >
-                {(effectiveIsSubmitted || effectiveIsCertified) && (
-                  <MissionApprovalStatusBanner workflow={workflow} />
-                )}
-
-                {/* QR Code de vérification — affiché après certification */}
-                {effectiveIsCertified && verificationQR && (
-                  <div className="flex items-center gap-4 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl mb-3">
-                    <img
-                      src={verificationQR}
-                      alt="QR Code vérification"
-                      className="w-16 h-16 rounded-xl border border-emerald-500/30 shrink-0"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[11px] font-black text-emerald-400 uppercase tracking-widest mb-1">
-                        Mission Certifiée — QR de Vérification
-                      </p>
-                      <p className="text-[10px] text-slate-400 truncate font-mono">
-                        {verificationUrl}
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          navigator.clipboard
-                            .writeText(verificationUrl || '')
-                            .then(() => toast.success('Lien copié'))
-                        }
-                        className="mt-1.5 text-[9px] text-emerald-400 hover:text-emerald-300 font-bold uppercase tracking-widest transition-colors"
-                      >
-                        📋 Copier le lien
-                      </button>
-                    </div>
+          {/* MOBILE SIDEBAR DRAWER */}
+          <AnimatePresence>
+            {isMobileSidebarOpen && (
+              <>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setIsMobileSidebarOpen(false)}
+                  className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-[100] lg:hidden"
+                />
+                <motion.div
+                  initial={{ x: '-100%' }}
+                  animate={{ x: 0 }}
+                  exit={{ x: '-100%' }}
+                  transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                  className="fixed inset-y-0 left-0 w-[280px] bg-slate-900 border-r border-white/10 z-[101] lg:hidden p-4 shadow-2xl"
+                >
+                  <div className="flex items-center justify-between mb-6">
+                    <span className="text-xs font-black uppercase tracking-widest text-indigo-400">
+                      Missions Disponibles
+                    </span>
+                    <button
+                      onClick={() => setIsMobileSidebarOpen(false)}
+                      className="p-2 hover:bg-white/5 rounded-xl text-slate-400"
+                    >
+                      <PanelLeftClose size={20} />
+                    </button>
                   </div>
-                )}
+                  <MissionListSidebar
+                    savedMissions={savedMissions}
+                    currentMissionId={state.currentMissionId}
+                    onLoadMission={(m) => {
+                      handleLoadMission(m);
+                      setIsMobileSidebarOpen(false);
+                    }}
+                    onDeleteMission={handleDeleteMission}
+                    isCertifiedByWorkflow={effectiveIsCertified}
+                    role={role || user?.role}
+                    onPurgeAll={handlePurgeAllMissions}
+                  />
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
 
-                {/* BARRE ONGLETS STICKY + BOUTON FOCUS */}
-                <div className="sticky top-0 z-40 py-3 -mx-4 px-4 sm:mx-0 sm:px-0 flex items-center gap-2.5">
-                  {/* Mobile sidebar trigger */}
-                  <button
-                    onClick={() => setIsMobileSidebarOpen(true)}
-                    className="lg:hidden p-2.5 bg-white/[0.04] border border-white/[0.07] rounded-xl text-slate-500 hover:text-white hover:bg-white/[0.07] transition-all shrink-0"
-                    title="Voir les missions"
-                  >
-                    <List size={17} />
-                  </button>
-
-                  {/* Segmented control */}
-                  <div className="flex-1 flex gap-1 p-1 bg-[#0d1117]/90 backdrop-blur-xl border border-white/[0.07] rounded-2xl min-w-0 overflow-x-auto no-scrollbar shadow-inner">
-                    {[
-                      { key: 'prep',     label: 'Préparation', icon: '📋', show: !isDG || (orgConfig?.mission_panels_dg || []).includes('prep'),     activeCls: 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/25' },
-                      { key: 'report',   label: 'Rapport',     icon: '📝', show: !isDG || (orgConfig?.mission_panels_dg || []).includes('report'),   activeCls: 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/25' },
-                      { key: 'approval', label: 'Approbation', icon: '✅', show: !isDG || (orgConfig?.mission_panels_dg || []).includes('approval'), activeCls: 'bg-amber-600 text-white shadow-lg shadow-amber-600/25' },
-                    ].filter(t => t.show).map(tab => (
-                      <button
-                        key={tab.key}
-                        onClick={() => setActiveTab(tab.key)}
-                        className={`flex-1 shrink-0 flex items-center justify-center gap-2 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all duration-200 whitespace-nowrap ${
-                          activeTab === tab.key
-                            ? tab.activeCls
-                            : 'text-slate-600 hover:text-slate-300 hover:bg-white/[0.04]'
-                        }`}
-                      >
-                        <span>{tab.icon}</span>
-                        <span className="hidden sm:inline">{tab.label}</span>
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Focus mode toggle */}
-                  <button
-                    onClick={() => setFocusMode((f) => !f)}
-                    title={focusMode ? 'Quitter le mode plein écran' : 'Mode plein écran'}
-                    className={`shrink-0 p-2.5 rounded-xl transition-all border ${
-                      focusMode
-                        ? 'bg-blue-600 text-white border-blue-500/50 shadow-lg shadow-blue-600/25'
-                        : 'text-slate-600 hover:text-white border-white/[0.07] hover:border-white/20 bg-white/[0.03] hover:bg-white/[0.06]'
-                    }`}
-                  >
-                    {focusMode ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
-                  </button>
-                </div>
-
-                {/* CONTENU SELON L'ONGLET */}
-
-                {activeTab === 'prep' && (
-                  <>
-                    <MissionInfoSection
-                      formData={state.formData}
-                      isReadOnly={effectiveIsCertified || effectiveIsSubmitted}
-                      onUpdateField={missionState.updateFormField}
-                    />
-                    {state.formData.features?.map && (
-                      <section className="glass-card !p-0 !rounded-[2.5rem] overflow-hidden border-2 border-indigo-500/10 shadow-2xl shadow-indigo-500/5">
-                        <div className="p-4 bg-slate-900 border-b border-white/5 flex justify-between items-center">
-                          <h2 className="!text-[9px] font-black uppercase tracking-widest text-indigo-400">
-                            Preview SIG Intelligente
-                          </h2>
-                          <MapPin size={14} className="text-indigo-400" />
-                        </div>
-                        <MissionMiniMap region={state.formData.region || ''} />
-                      </section>
-                    )}
-
-                    <MissionTeamEditor
-                      members={state.members}
-                      isReadOnly={effectiveIsCertified || effectiveIsSubmitted}
-                      onUpdateMember={handleMemberUpdate}
-                      onRemoveMember={handleRemoveMember}
-                      onAddMember={handleAddMember}
-                      onSyncDuration={() => {}}
-                    />
-
-                    <MissionItineraryEditor
-                      planning={state.formData.planning || []}
-                      isReadOnly={effectiveIsCertified || effectiveIsSubmitted}
-                      onUpdateStep={(i: number, text: string) => {
-                        const newPlanning = [...(state.formData.planning || [])];
-                        newPlanning[i] = text;
-                        missionState.updateFormField('planning', newPlanning);
-                      }}
-                      onAddStep={() => {
-                        const newPlanning = [...(state.formData.planning || []), ''];
-                        missionState.updateFormField('planning', newPlanning);
-                      }}
-                      onRemoveStep={(i: number) => {
-                        const newPlanning = (state.formData.planning || []).filter(
-                          (_, idx) => idx !== i
-                        );
-                        missionState.updateFormField('planning', newPlanning);
-                      }}
-                    />
-
-                    {showAudit && <MissionAuditTrail entries={state.auditTrail} />}
-                  </>
-                )}
-
-                {/* ONGLET RAPPORT POST-MISSION */}
-                {activeTab === 'report' && (
-                  <div className="space-y-6">
-                    <div className="glass-card !p-5 sm:!p-8">
-                      <h3 className="text-clamp-title text-slate-900 dark:text-white mb-4 flex items-center gap-3">
-                        <span className="w-2 h-8 bg-emerald-500 rounded-full shadow-lg shadow-emerald-500/20"></span>
-                        Rapport Post-Mission
-                      </h3>
-
-                      <div className="space-y-4">
-                        <div>
-                          <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
-                            Observations générales
-                          </label>
-                          <textarea
-                            value={state.formData.reportObservations || ''}
-                            onChange={(e) =>
-                              missionState.updateFormField('reportObservations', e.target.value)
-                            }
-                            rows={6}
-                            className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                            placeholder="Saisissez les observations et conclusions de la mission..."
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
-                            Mode de Reporting
-                          </label>
-                          <div className="flex gap-2 p-1 bg-slate-950/40 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl mb-4">
-                            <button
-                              onClick={() => missionState.updateFormField('reportingMode', 'daily')}
-                              className={`flex-1 py-2 px-4 rounded-lg text-xs font-bold transition-all ${
-                                (state.formData.reportingMode || 'daily') === 'daily'
-                                  ? 'bg-emerald-500 text-white shadow-lg'
-                                  : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
-                              }`}
-                            >
-                              Suivi Journalier (Jalons)
-                            </button>
-                            <button
-                              onClick={() => {
-                                missionState.updateFormField('reportingMode', 'narrative');
-                                if (!state.formData.narrativeReport) {
-                                  missionState.updateFormField(
-                                    'narrativeReport',
-                                    KAFFRINE_TEMPLATE
-                                  );
-                                }
-                              }}
-                              className={`flex-1 py-2 px-4 rounded-lg text-xs font-bold transition-all ${
-                                state.formData.reportingMode === 'narrative'
-                                  ? 'bg-emerald-500 text-white shadow-lg'
-                                  : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
-                              }`}
-                            >
-                              Rapport Global de Synthèse
-                            </button>
-                          </div>
-                        </div>
-
-                        {(state.formData.reportingMode || 'daily') === 'daily' ? (
-                          <div>
-                            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
-                              Rapports journaliers
-                            </label>
-                            {(state.formData.reportDays || []).map((day: any, idx: number) => (
-                              <div
-                                key={idx}
-                                className="mb-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700"
-                              >
-                                <div className="flex justify-between items-center mb-2">
-                                  <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400">
-                                    Jour {idx + 1}
-                                  </span>
-                                  <button
-                                    onClick={() => {
-                                      const days = [...(state.formData.reportDays || [])];
-                                      days.splice(idx, 1);
-                                      missionState.updateFormField('reportDays', days);
-                                    }}
-                                    className="text-red-500 hover:text-red-700 text-xs font-bold"
-                                  >
-                                    Supprimer
-                                  </button>
-                                </div>
-                                <textarea
-                                  value={day.notes || ''}
-                                  onChange={(e) => {
-                                    const days = [...(state.formData.reportDays || [])];
-                                    days[idx] = { ...day, notes: e.target.value };
-                                    missionState.updateFormField('reportDays', days);
-                                  }}
-                                  rows={3}
-                                  className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm"
-                                  placeholder="Notes du jour..."
-                                />
-
-                                {/* Zone photos responsive */}
-                                <div className="mt-2">
-                                  <div className="flex flex-wrap gap-2 items-center">
-                                    {(day.photos || []).map(
-                                      (
-                                        photo: import('./mission/core/missionTypes').MissionPhoto,
-                                        pidx: number
-                                      ) => (
-                                        <div
-                                          key={photo.id || pidx}
-                                          className="relative group w-16 h-16 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-900 flex flex-col items-center justify-center"
-                                        >
-                                          <img
-                                            src={photo.data || photo.url}
-                                            alt={`Photo ${pidx + 1}`}
-                                            className="object-cover w-full h-2/3"
-                                          />
-                                          <input
-                                            type="text"
-                                            value={photo.comment || ''}
-                                            onChange={(e) => {
-                                              const days = [...(state.formData.reportDays || [])];
-                                              const photos = [...(days[idx].photos || [])];
-                                              photos[pidx] = {
-                                                ...photos[pidx],
-                                                comment: e.target.value,
-                                              };
-                                              days[idx].photos =
-                                                photos as import('./mission/core/missionTypes').MissionPhoto[];
-                                              missionState.updateFormField('reportDays', days);
-                                            }}
-                                            placeholder="Commentaire..."
-                                            className="w-full px-1 py-0.5 text-[10px] rounded-b bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-indigo-400 photo-comment-input"
-                                          />
-                                        </div>
-                                      )
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
-                            <button
-                              onClick={() => {
-                                const days = [
-                                  ...(state.formData.reportDays || []),
-                                  {
-                                    day: (state.formData.reportDays?.length || 0) + 1,
-                                    title: 'Nouveau jour',
-                                    notes: '',
-                                    photos: [],
-                                  },
-                                ];
-                                missionState.updateFormField('reportDays', days);
-                              }}
-                              className="mt-2 px-4 py-2 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 rounded-lg text-sm font-bold hover:bg-emerald-200 dark:hover:bg-emerald-900/50"
-                            >
-                              + Ajouter un jour
-                            </button>
-                          </div>
-                        ) : (
-                          <div>
-                            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
-                              Synthèse narrative (Rapport Global)
-                            </label>
-                            <textarea
-                              value={state.formData.narrativeReport || ''}
-                              onChange={(e) =>
-                                missionState.updateFormField('narrativeReport', e.target.value)
-                              }
-                              rows={15}
-                              className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-mono text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                              placeholder="Rédigez votre synthèse globale ici..."
-                            />
-                          </div>
-                        )}
-
-                        <div className="flex gap-3 pt-4">
-                          <button
-                            onClick={handleExportReportWord}
-                            className="flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl flex items-center justify-center gap-2"
-                          >
-                            <span>📄</span> Exporter Word Rapport
-                          </button>
-                          <button
-                            onClick={handleExportReportPDF}
-                            className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl flex items-center justify-center gap-2"
-                          >
-                            <span>📑</span> Exporter PDF Rapport
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* ONGLET ARCHIVAGE */}
-                {activeTab === 'approval' && (
-                  <div className="space-y-6">
-                    {/* Sélecteur de mission */}
-                    <div className="glass-card !p-5 sm:!p-8">
-                      <h3 className="text-clamp-title text-slate-900 dark:text-white mb-4 flex items-center gap-3">
-                        <span className="w-2 h-8 bg-indigo-500 rounded-full shadow-lg shadow-indigo-500/20"></span>
-                        Archivage & Rapports
-                      </h3>
-
-                      <div className="mb-4">
-                        <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
-                          Sélectionner une mission
-                        </label>
-                        <select
-                          value={selectedArchiveMission || ''}
-                          onChange={(e) => {
-                            const value = e.target.value || null;
-                            setSelectedArchiveMission(value);
-                            if (value) {
-                              const mission = savedMissions.find((m: any) => m.id === value);
-                              if (mission) {
-                                handleLoadMission(mission);
-                              }
-                            }
-                          }}
-                          className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
-                          title="Sélectionner une mission archivée"
-                        >
-                          <option value="">-- Choisir une mission --</option>
-                          {savedMissions
-                            .sort((a: any, b: any) => {
-                              const titleA = (a.title || a.orderNumber || '').toLowerCase();
-                              const titleB = (b.title || b.orderNumber || '').toLowerCase();
-                              return titleA.localeCompare(titleB);
-                            })
-                            .map((m: any) => {
-                              const missionDate = m.date || m.missionDate || m.createdAt || null;
-                              const dateStr = missionDate
-                                ? new Date(missionDate).toLocaleDateString('fr-FR', {
-                                    day: '2-digit',
-                                    month: 'short',
-                                    year: 'numeric',
-                                  })
-                                : 'Date non définie';
-                              return (
-                                <option key={m.id} value={m.id}>
-                                  {m.title || m.orderNumber || 'Sans titre'} - {dateStr}
-                                </option>
-                              );
-                            })}
-                        </select>
-                      </div>
-
-                      {!selectedArchiveMission ? (
-                        <div className="text-center py-8 text-slate-500 dark:text-slate-400">
-                          <span className="text-4xl mb-2 block">📁</span>
-                          <p className="text-sm">Sélectionnez une mission pour voir ses rapports</p>
-                        </div>
-                      ) : (
-                        <div className="space-y-4">
-                          <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/10 p-3">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-indigo-200">
-                              Mission active pour export
-                            </p>
-                            <p className="mt-1 text-sm font-bold text-white">
-                              {String(
-                                selectedArchiveMissionData?.title ||
-                                  selectedArchiveMissionData?.orderNumber ||
-                                  selectedArchiveMission ||
-                                  ''
-                              )}
-                            </p>
-                          </div>
-                          {/* Rapport Word Post-Mission */}
-                          <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
-                                  <span className="text-xl">📄</span>
-                                </div>
-                                <div>
-                                  <p className="text-sm font-bold text-slate-900 dark:text-white">
-                                    Rapport Post-Mission (Word/PDF)
-                                  </p>
-                                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                                    Généré le {new Date().toLocaleDateString('fr-FR')}
-                                  </p>
-                                </div>
-                              </div>
-                              <div className="flex gap-2">
-                                <button
-                                  onClick={handleExportReportWord}
-                                  disabled={!selectedArchiveMission}
-                                  className="px-3 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 text-xs font-bold rounded-lg"
-                                >
-                                  Modifier
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Ordre de Mission Word */}
-                          <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg flex items-center justify-center">
-                                  <span className="text-xl">📋</span>
-                                </div>
-                                <div>
-                                  <p className="text-sm font-bold text-slate-900 dark:text-white">
-                                    Ordre de Mission
-                                  </p>
-                                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                                    Document officiel
-                                  </p>
-                                </div>
-                              </div>
-                              <div className="flex gap-2">
-                                <button
-                                  onClick={handleExportWord}
-                                  disabled={!selectedArchiveMission}
-                                  className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg flex items-center gap-1"
-                                >
-                                  <span>⬇️</span> Télécharger
-                                </button>
-                                <button
-                                  onClick={() => setActiveTab('prep')}
-                                  className="px-3 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 text-xs font-bold rounded-lg"
-                                >
-                                  Modifier
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* PDF Rapport */}
-                          <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-red-100 dark:bg-red-900/30 rounded-lg flex items-center justify-center">
-                                  <span className="text-xl">📑</span>
-                                </div>
-                                <div>
-                                  <p className="text-sm font-bold text-slate-900 dark:text-white">
-                                    Rapport PDF
-                                  </p>
-                                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                                    Version imprimable
-                                  </p>
-                                </div>
-                              </div>
-                              <div className="flex gap-2">
-                                <button
-                                  onClick={handleExportPDF}
-                                  disabled={!selectedArchiveMission}
-                                  className="px-3 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg flex items-center gap-1"
-                                >
-                                  <span>⬇️</span> Télécharger
-                                </button>
-                                <button
-                                  onClick={() => setActiveTab('report')}
-                                  className="px-3 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 text-xs font-bold rounded-lg"
-                                >
-                                  Modifier
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Statut de la mission */}
-                          <div className="mt-6 p-4 bg-indigo-950/30 dark:bg-indigo-900/20 rounded-xl border border-indigo-500/20 dark:border-indigo-800">
-                            <div className="flex items-center gap-3">
-                              <div
-                                className={`w-3 h-3 rounded-full ${effectiveIsCertified ? 'bg-emerald-500' : effectiveIsSubmitted ? 'bg-blue-500' : 'bg-amber-500'}`}
-                              ></div>
-                              <div>
-                                <p className="text-sm font-bold text-white dark:text-indigo-300">
-                                  {effectiveIsCertified
-                                    ? 'Mission validée et archivée'
-                                    : effectiveIsSubmitted
-                                      ? 'Mission soumise en attente de validation'
-                                      : 'En attente de soumission'}
-                                </p>
-                                <p className="text-xs text-indigo-400/70 dark:text-indigo-400">
-                                  {effectiveIsCertified
-                                    ? `Archivée le ${new Date().toLocaleDateString('fr-FR')}`
-                                    : effectiveIsSubmitted
-                                      ? 'Validation finale attendue par la direction ou l’administration'
-                                      : 'Enregistrez puis soumettez la mission pour démarrer le workflow'}
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* WIDGETS : COL-3 sticky – masqués en focus mode */}
+          {/* GRILLE PRINCIPALE — masquée en empty state */}
+          {!hasNoSelection && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.45, ease: [0.25, 0.1, 0.25, 1], delay: 0.1 }}
+              className="grid grid-cols-1 lg:grid-cols-12 gap-6 relative z-10"
+            >
+              {/* SIDEBAR GAUCHE : desktop seulement */}
               {!focusMode && (
-                <div className="xl:col-span-3 space-y-4 sm:space-y-6">
+                <div
+                  className={`hidden lg:block no-print transition-all duration-300 ${sidebarCollapsed ? 'lg:col-span-1' : 'lg:col-span-2'}`}
+                >
                   <div className="sticky top-4">
-                    <MissionBudgetPanel
-                      totalFrais={totalFrais}
-                      projectBudget={projectBudget}
-                      members={state.members}
-                      excludeFromFinance={state.formData.excludeFromFinance}
-                    />
-                    <WidgetErrorBoundary title="Indicateurs de Statut">
-                      <MissionStatusWidget
-                        data={state.formData}
-                        members={state.members}
-                        isCertified={effectiveIsCertified}
-                        isSubmitted={effectiveIsSubmitted}
-                        isSyncing={state.isSyncingServer}
-                        lastSync={state.lastSavedAt || 'Synchronisé'}
-                        version={state.version}
-                        isDirty={missionState.isDirty}
-                        healthScore={healthScore}
-                        healthStatus={healthStatus}
-                        budgetVariance={budgetVariance}
-                      />
-                    </WidgetErrorBoundary>
+                    {/* Toggle button */}
+                    <div className="flex items-center justify-between mb-3">
+                      {!sidebarCollapsed && (
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                          Missions
+                        </span>
+                      )}
+                      <button
+                        onClick={toggleSidebar}
+                        className="ml-auto p-2 rounded-xl text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10 transition-all border border-transparent hover:border-indigo-500/20"
+                        title={sidebarCollapsed ? 'Afficher la liste' : 'Réduire la liste'}
+                      >
+                        {sidebarCollapsed ? (
+                          <PanelLeftOpen size={18} />
+                        ) : (
+                          <PanelLeftClose size={18} />
+                        )}
+                      </button>
+                    </div>
+                    {!sidebarCollapsed ? (
+                      <div className="bg-slate-900/50 backdrop-blur-xl border border-white/5 rounded-[1.5rem] p-1 overflow-hidden">
+                        <MissionListSidebar
+                          savedMissions={savedMissions}
+                          currentMissionId={state.currentMissionId}
+                          onLoadMission={handleLoadMission}
+                          onDeleteMission={handleDeleteMission}
+                          isCertifiedByWorkflow={effectiveIsCertified}
+                          role={role || user?.role}
+                          onPurgeAll={handlePurgeAllMissions}
+                        />
+                      </div>
+                    ) : (
+                      /* Mini sidebar – points de statut */
+                      <div className="space-y-2 max-h-[80vh] overflow-y-auto no-scrollbar py-2">
+                        {savedMissions.slice(0, 30).map((m: any) => {
+                          const isActive = state.currentMissionId === m.id;
+                          const isCert =
+                            m.isCertified ||
+                            m.data?.isCertified ||
+                            m.status === 'certified' ||
+                            m.status === 'approuvee';
+                          const isPend =
+                            !isCert &&
+                            (m.isSubmitted || m.data?.isSubmitted || m.status === 'soumise');
+                          const dotColor = isCert
+                            ? 'bg-emerald-500 shadow-emerald-500/40'
+                            : isPend
+                              ? 'bg-amber-500 shadow-amber-500/40'
+                              : 'bg-slate-500 shadow-slate-500/40';
+                          return (
+                            <button
+                              key={m.id}
+                              onClick={() => handleLoadMission(m)}
+                              title={m.purpose || m.title || m.orderNumber || 'Mission'}
+                              className={`w-full flex items-center justify-center p-2.5 rounded-2xl transition-all ${
+                                isActive
+                                  ? 'bg-indigo-600 shadow-xl shadow-indigo-600/30 ring-2 ring-white/10'
+                                  : 'bg-white/5 border border-white/5 hover:border-white/20'
+                              }`}
+                            >
+                              <span
+                                className={`w-2.5 h-2.5 rounded-full shadow-sm ${isActive ? 'bg-white' : dotColor}`}
+                              />
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
+
+              {/* CONTENU PRINCIPAL */}
+              <div
+                className={`transition-all duration-300 ${
+                  focusMode
+                    ? 'lg:col-span-12'
+                    : sidebarCollapsed
+                      ? 'lg:col-span-11'
+                      : 'lg:col-span-10'
+                }`}
+              >
+                <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 sm:gap-6 items-start">
+                  {/* FORMULAIRE : s'étend selon le focus mode */}
+                  <div
+                    className={`space-y-4 sm:space-y-6 ${
+                      focusMode ? 'xl:col-span-12' : 'xl:col-span-9'
+                    }`}
+                  >
+                    {(effectiveIsSubmitted || effectiveIsCertified) && (
+                      <MissionApprovalStatusBanner workflow={workflow} />
+                    )}
+
+                    {/* QR Code de vérification — affiché après certification */}
+                    {effectiveIsCertified && verificationQR && (
+                      <div className="flex items-center gap-4 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl mb-3">
+                        <img
+                          src={verificationQR}
+                          alt="QR Code vérification"
+                          className="w-16 h-16 rounded-xl border border-emerald-500/30 shrink-0"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[11px] font-black text-emerald-400 uppercase tracking-widest mb-1">
+                            Mission Certifiée — QR de Vérification
+                          </p>
+                          <p className="text-[10px] text-slate-400 truncate font-mono">
+                            {verificationUrl}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              navigator.clipboard
+                                .writeText(verificationUrl || '')
+                                .then(() => toast.success('Lien copié'))
+                            }
+                            className="mt-1.5 text-[9px] text-emerald-400 hover:text-emerald-300 font-bold uppercase tracking-widest transition-colors"
+                          >
+                            📋 Copier le lien
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* BARRE ONGLETS STICKY + BOUTON FOCUS */}
+                    <div className="sticky top-0 z-40 py-3 -mx-4 px-4 sm:mx-0 sm:px-0 flex items-center gap-2.5">
+                      {/* Mobile sidebar trigger */}
+                      <button
+                        onClick={() => setIsMobileSidebarOpen(true)}
+                        className="lg:hidden p-2.5 bg-white/[0.04] border border-white/[0.07] rounded-xl text-slate-500 hover:text-white hover:bg-white/[0.07] transition-all shrink-0"
+                        title="Voir les missions"
+                      >
+                        <List size={17} />
+                      </button>
+
+                      {/* Segmented control */}
+                      <div className="flex-1 flex gap-1 p-1 bg-[#0d1117]/90 backdrop-blur-xl border border-white/[0.07] rounded-2xl min-w-0 overflow-x-auto no-scrollbar shadow-inner">
+                        {[
+                          {
+                            key: 'prep',
+                            label: 'Préparation',
+                            icon: '📋',
+                            show: !isDG || (orgConfig?.mission_panels_dg || []).includes('prep'),
+                            activeCls: 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/25',
+                          },
+                          {
+                            key: 'report',
+                            label: 'Rapport',
+                            icon: '📝',
+                            show: !isDG || (orgConfig?.mission_panels_dg || []).includes('report'),
+                            activeCls: 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/25',
+                          },
+                          {
+                            key: 'approval',
+                            label: 'Approbation',
+                            icon: '✅',
+                            show:
+                              !isDG || (orgConfig?.mission_panels_dg || []).includes('approval'),
+                            activeCls: 'bg-amber-600 text-white shadow-lg shadow-amber-600/25',
+                          },
+                        ]
+                          .filter((t) => t.show)
+                          .map((tab) => (
+                            <motion.button
+                              key={tab.key}
+                              whileHover={{ scale: 1.02 }}
+                              whileTap={{ scale: 0.96 }}
+                              onClick={() => setActiveTab(tab.key)}
+                              className={`flex-1 shrink-0 flex items-center justify-center gap-2 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all duration-200 whitespace-nowrap ${
+                                activeTab === tab.key
+                                  ? tab.activeCls
+                                  : 'text-slate-600 hover:text-slate-300 hover:bg-white/[0.04]'
+                              }`}
+                            >
+                              <span>{tab.icon}</span>
+                              <span className="hidden sm:inline">{tab.label}</span>
+                            </motion.button>
+                          ))}
+                      </div>
+
+                      {/* Focus mode toggle */}
+                      <button
+                        onClick={() => setFocusMode((f) => !f)}
+                        title={focusMode ? 'Quitter le mode plein écran' : 'Mode plein écran'}
+                        className={`shrink-0 p-2.5 rounded-xl transition-all border ${
+                          focusMode
+                            ? 'bg-blue-600 text-white border-blue-500/50 shadow-lg shadow-blue-600/25'
+                            : 'text-slate-600 hover:text-white border-white/[0.07] hover:border-white/20 bg-white/[0.03] hover:bg-white/[0.06]'
+                        }`}
+                      >
+                        {focusMode ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+                      </button>
+                    </div>
+
+                    {/* CONTENU SELON L'ONGLET — avec transitions animées */}
+
+                    <AnimatePresence mode="wait">
+                      {activeTab === 'prep' && (
+                        <motion.div
+                          key="prep"
+                          initial={{ opacity: 0, y: 12 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -8 }}
+                          transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
+                        >
+                          <MissionInfoSection
+                            formData={state.formData}
+                            isReadOnly={effectiveIsCertified || effectiveIsSubmitted}
+                            onUpdateField={missionState.updateFormField}
+                          />
+                          {state.formData.features?.map && (
+                            <section className="glass-card !p-0 !rounded-[2.5rem] overflow-hidden border-2 border-indigo-500/10 shadow-2xl shadow-indigo-500/5">
+                              <div className="p-4 bg-slate-900 border-b border-white/5 flex justify-between items-center">
+                                <h2 className="!text-[9px] font-black uppercase tracking-widest text-indigo-400">
+                                  Preview SIG Intelligente
+                                </h2>
+                                <MapPin size={14} className="text-indigo-400" />
+                              </div>
+                              <MissionMiniMap region={state.formData.region || ''} />
+                            </section>
+                          )}
+
+                          <MissionTeamEditor
+                            members={state.members}
+                            isReadOnly={effectiveIsCertified || effectiveIsSubmitted}
+                            onUpdateMember={handleMemberUpdate}
+                            onRemoveMember={handleRemoveMember}
+                            onAddMember={handleAddMember}
+                            onSyncDuration={() => {}}
+                          />
+
+                          <MissionItineraryEditor
+                            planning={state.formData.planning || []}
+                            isReadOnly={effectiveIsCertified || effectiveIsSubmitted}
+                            onUpdateStep={(i: number, text: string) => {
+                              const newPlanning = [...(state.formData.planning || [])];
+                              newPlanning[i] = text;
+                              missionState.updateFormField('planning', newPlanning);
+                            }}
+                            onAddStep={() => {
+                              const newPlanning = [...(state.formData.planning || []), ''];
+                              missionState.updateFormField('planning', newPlanning);
+                            }}
+                            onRemoveStep={(i: number) => {
+                              const newPlanning = (state.formData.planning || []).filter(
+                                (_, idx) => idx !== i
+                              );
+                              missionState.updateFormField('planning', newPlanning);
+                            }}
+                          />
+
+                          {showAudit && <MissionAuditTrail entries={state.auditTrail} />}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    {/* ONGLET RAPPORT POST-MISSION */}
+                    <AnimatePresence mode="wait">
+                      {activeTab === 'report' && (
+                        <motion.div
+                          key="report"
+                          initial={{ opacity: 0, y: 12 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -8 }}
+                          transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
+                        >
+                          <div className="space-y-6">
+                            <div className="glass-card !p-5 sm:!p-8">
+                              <h3 className="text-clamp-title text-slate-900 dark:text-white mb-4 flex items-center gap-3">
+                                <span className="w-2 h-8 bg-emerald-500 rounded-full shadow-lg shadow-emerald-500/20"></span>
+                                Rapport Post-Mission
+                              </h3>
+
+                              <div className="space-y-4">
+                                <div>
+                                  <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+                                    Observations générales
+                                  </label>
+                                  <textarea
+                                    value={state.formData.reportObservations || ''}
+                                    onChange={(e) =>
+                                      missionState.updateFormField(
+                                        'reportObservations',
+                                        e.target.value
+                                      )
+                                    }
+                                    rows={6}
+                                    className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                                    placeholder="Saisissez les observations et conclusions de la mission..."
+                                  />
+                                </div>
+
+                                <div>
+                                  <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+                                    Mode de Reporting
+                                  </label>
+                                  <div className="flex gap-2 p-1 bg-slate-950/40 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl mb-4">
+                                    <button
+                                      onClick={() =>
+                                        missionState.updateFormField('reportingMode', 'daily')
+                                      }
+                                      className={`flex-1 py-2 px-4 rounded-lg text-xs font-bold transition-all ${
+                                        (state.formData.reportingMode || 'daily') === 'daily'
+                                          ? 'bg-emerald-500 text-white shadow-lg'
+                                          : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                                      }`}
+                                    >
+                                      Suivi Journalier (Jalons)
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        missionState.updateFormField('reportingMode', 'narrative');
+                                        if (!state.formData.narrativeReport) {
+                                          missionState.updateFormField(
+                                            'narrativeReport',
+                                            KAFFRINE_TEMPLATE
+                                          );
+                                        }
+                                      }}
+                                      className={`flex-1 py-2 px-4 rounded-lg text-xs font-bold transition-all ${
+                                        state.formData.reportingMode === 'narrative'
+                                          ? 'bg-emerald-500 text-white shadow-lg'
+                                          : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                                      }`}
+                                    >
+                                      Rapport Global de Synthèse
+                                    </button>
+                                  </div>
+                                </div>
+
+                                {(state.formData.reportingMode || 'daily') === 'daily' ? (
+                                  <div>
+                                    <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+                                      Rapports journaliers
+                                    </label>
+                                    {(state.formData.reportDays || []).map(
+                                      (day: any, idx: number) => (
+                                        <div
+                                          key={idx}
+                                          className="mb-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700"
+                                        >
+                                          <div className="flex justify-between items-center mb-2">
+                                            <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400">
+                                              Jour {idx + 1}
+                                            </span>
+                                            <button
+                                              onClick={() => {
+                                                const days = [...(state.formData.reportDays || [])];
+                                                days.splice(idx, 1);
+                                                missionState.updateFormField('reportDays', days);
+                                              }}
+                                              className="text-red-500 hover:text-red-700 text-xs font-bold"
+                                            >
+                                              Supprimer
+                                            </button>
+                                          </div>
+                                          <textarea
+                                            value={day.notes || ''}
+                                            onChange={(e) => {
+                                              const days = [...(state.formData.reportDays || [])];
+                                              days[idx] = { ...day, notes: e.target.value };
+                                              missionState.updateFormField('reportDays', days);
+                                            }}
+                                            rows={3}
+                                            className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm"
+                                            placeholder="Notes du jour..."
+                                          />
+
+                                          {/* Zone photos responsive */}
+                                          <div className="mt-2">
+                                            <div className="flex flex-wrap gap-2 items-center">
+                                              {(day.photos || []).map(
+                                                (
+                                                  photo: import('./mission/core/missionTypes').MissionPhoto,
+                                                  pidx: number
+                                                ) => (
+                                                  <div
+                                                    key={photo.id || pidx}
+                                                    className="relative group w-16 h-16 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-900 flex flex-col items-center justify-center"
+                                                  >
+                                                    <img
+                                                      src={photo.data || photo.url}
+                                                      alt={`Photo ${pidx + 1}`}
+                                                      className="object-cover w-full h-2/3"
+                                                    />
+                                                    <input
+                                                      type="text"
+                                                      value={photo.comment || ''}
+                                                      onChange={(e) => {
+                                                        const days = [
+                                                          ...(state.formData.reportDays || []),
+                                                        ];
+                                                        const photos = [
+                                                          ...(days[idx].photos || []),
+                                                        ];
+                                                        photos[pidx] = {
+                                                          ...photos[pidx],
+                                                          comment: e.target.value,
+                                                        };
+                                                        days[idx].photos =
+                                                          photos as import('./mission/core/missionTypes').MissionPhoto[];
+                                                        missionState.updateFormField(
+                                                          'reportDays',
+                                                          days
+                                                        );
+                                                      }}
+                                                      placeholder="Commentaire..."
+                                                      className="w-full px-1 py-0.5 text-[10px] rounded-b bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-indigo-400 photo-comment-input"
+                                                    />
+                                                  </div>
+                                                )
+                                              )}
+                                            </div>
+                                          </div>
+                                        </div>
+                                      )
+                                    )}
+                                    <button
+                                      onClick={() => {
+                                        const days = [
+                                          ...(state.formData.reportDays || []),
+                                          {
+                                            day: (state.formData.reportDays?.length || 0) + 1,
+                                            title: 'Nouveau jour',
+                                            notes: '',
+                                            photos: [],
+                                          },
+                                        ];
+                                        missionState.updateFormField('reportDays', days);
+                                      }}
+                                      className="mt-2 px-4 py-2 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 rounded-lg text-sm font-bold hover:bg-emerald-200 dark:hover:bg-emerald-900/50"
+                                    >
+                                      + Ajouter un jour
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div>
+                                    <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+                                      Synthèse narrative (Rapport Global)
+                                    </label>
+                                    <textarea
+                                      value={state.formData.narrativeReport || ''}
+                                      onChange={(e) =>
+                                        missionState.updateFormField(
+                                          'narrativeReport',
+                                          e.target.value
+                                        )
+                                      }
+                                      rows={15}
+                                      className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-mono text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                                      placeholder="Rédigez votre synthèse globale ici..."
+                                    />
+                                  </div>
+                                )}
+
+                                <div className="flex gap-3 pt-4">
+                                  <motion.button
+                                    whileHover={{ scale: 1.02 }}
+                                    whileTap={{ scale: 0.96 }}
+                                    onClick={handleExportReportWord}
+                                    className="flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20"
+                                  >
+                                    <span>📄</span> Exporter Word Rapport
+                                  </motion.button>
+                                  <motion.button
+                                    whileHover={{ scale: 1.02 }}
+                                    whileTap={{ scale: 0.96 }}
+                                    onClick={handleExportReportPDF}
+                                    className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-red-600/20"
+                                  >
+                                    <span>📑</span> Exporter PDF Rapport
+                                  </motion.button>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    {/* ONGLET ARCHIVAGE */}
+                    <AnimatePresence mode="wait">
+                      {activeTab === 'approval' && (
+                        <motion.div
+                          key="approval"
+                          initial={{ opacity: 0, y: 12 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -8 }}
+                          transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
+                        >
+                          <div className="space-y-6">
+                            {/* Sélecteur de mission */}
+                            <div className="glass-card !p-5 sm:!p-8">
+                              <h3 className="text-clamp-title text-slate-900 dark:text-white mb-4 flex items-center gap-3">
+                                <span className="w-2 h-8 bg-indigo-500 rounded-full shadow-lg shadow-indigo-500/20"></span>
+                                Archivage & Rapports
+                              </h3>
+
+                              <div className="mb-4">
+                                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+                                  Sélectionner une mission
+                                </label>
+                                <select
+                                  value={selectedArchiveMission || ''}
+                                  onChange={(e) => {
+                                    const value = e.target.value || null;
+                                    setSelectedArchiveMission(value);
+                                    if (value) {
+                                      const mission = savedMissions.find(
+                                        (m: any) => m.id === value
+                                      );
+                                      if (mission) {
+                                        handleLoadMission(mission);
+                                      }
+                                    }
+                                  }}
+                                  className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                                  title="Sélectionner une mission archivée"
+                                >
+                                  <option value="">-- Choisir une mission --</option>
+                                  {savedMissions
+                                    .sort((a: any, b: any) => {
+                                      const titleA = (a.title || a.orderNumber || '').toLowerCase();
+                                      const titleB = (b.title || b.orderNumber || '').toLowerCase();
+                                      return titleA.localeCompare(titleB);
+                                    })
+                                    .map((m: any) => {
+                                      const missionDate =
+                                        m.date || m.missionDate || m.createdAt || null;
+                                      const dateStr = missionDate
+                                        ? new Date(missionDate).toLocaleDateString('fr-FR', {
+                                            day: '2-digit',
+                                            month: 'short',
+                                            year: 'numeric',
+                                          })
+                                        : 'Date non définie';
+                                      return (
+                                        <option key={m.id} value={m.id}>
+                                          {m.title || m.orderNumber || 'Sans titre'} - {dateStr}
+                                        </option>
+                                      );
+                                    })}
+                                </select>
+                              </div>
+
+                              {!selectedArchiveMission ? (
+                                <div className="text-center py-8 text-slate-500 dark:text-slate-400">
+                                  <span className="text-4xl mb-2 block">📁</span>
+                                  <p className="text-sm">
+                                    Sélectionnez une mission pour voir ses rapports
+                                  </p>
+                                </div>
+                              ) : (
+                                <div className="space-y-4">
+                                  <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/10 p-3">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-indigo-200">
+                                      Mission active pour export
+                                    </p>
+                                    <p className="mt-1 text-sm font-bold text-white">
+                                      {String(
+                                        selectedArchiveMissionData?.title ||
+                                          selectedArchiveMissionData?.orderNumber ||
+                                          selectedArchiveMission ||
+                                          ''
+                                      )}
+                                    </p>
+                                  </div>
+                                  {/* Rapport Word Post-Mission */}
+                                  <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+                                          <span className="text-xl">📄</span>
+                                        </div>
+                                        <div>
+                                          <p className="text-sm font-bold text-slate-900 dark:text-white">
+                                            Rapport Post-Mission (Word/PDF)
+                                          </p>
+                                          <p className="text-xs text-slate-500 dark:text-slate-400">
+                                            Généré le {new Date().toLocaleDateString('fr-FR')}
+                                          </p>
+                                        </div>
+                                      </div>
+                                      <div className="flex gap-2">
+                                        <button
+                                          onClick={handleExportReportWord}
+                                          disabled={!selectedArchiveMission}
+                                          className="px-3 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 text-xs font-bold rounded-lg"
+                                        >
+                                          Modifier
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Ordre de Mission Word */}
+                                  <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg flex items-center justify-center">
+                                          <span className="text-xl">📋</span>
+                                        </div>
+                                        <div>
+                                          <p className="text-sm font-bold text-slate-900 dark:text-white">
+                                            Ordre de Mission
+                                          </p>
+                                          <p className="text-xs text-slate-500 dark:text-slate-400">
+                                            Document officiel
+                                          </p>
+                                        </div>
+                                      </div>
+                                      <div className="flex gap-2">
+                                        <motion.button
+                                          whileHover={{ scale: 1.04 }}
+                                          whileTap={{ scale: 0.94 }}
+                                          onClick={handleExportWord}
+                                          disabled={!selectedArchiveMission}
+                                          className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg flex items-center gap-1 shadow-lg shadow-emerald-600/20"
+                                        >
+                                          <span>⬇️</span> Télécharger
+                                        </motion.button>
+                                        <motion.button
+                                          whileHover={{ scale: 1.04 }}
+                                          whileTap={{ scale: 0.94 }}
+                                          onClick={() => setActiveTab('prep')}
+                                          className="px-3 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 text-xs font-bold rounded-lg"
+                                        >
+                                          Modifier
+                                        </motion.button>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* PDF Rapport */}
+                                  <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 bg-red-100 dark:bg-red-900/30 rounded-lg flex items-center justify-center">
+                                          <span className="text-xl">📑</span>
+                                        </div>
+                                        <div>
+                                          <p className="text-sm font-bold text-slate-900 dark:text-white">
+                                            Rapport PDF
+                                          </p>
+                                          <p className="text-xs text-slate-500 dark:text-slate-400">
+                                            Version imprimable
+                                          </p>
+                                        </div>
+                                      </div>
+                                      <div className="flex gap-2">
+                                        <motion.button
+                                          whileHover={{ scale: 1.04 }}
+                                          whileTap={{ scale: 0.94 }}
+                                          onClick={handleExportPDF}
+                                          disabled={!selectedArchiveMission}
+                                          className="px-3 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg flex items-center gap-1 shadow-lg shadow-red-600/20"
+                                        >
+                                          <span>⬇️</span> Télécharger
+                                        </motion.button>
+                                        <motion.button
+                                          whileHover={{ scale: 1.04 }}
+                                          whileTap={{ scale: 0.94 }}
+                                          onClick={() => setActiveTab('report')}
+                                          className="px-3 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 text-xs font-bold rounded-lg"
+                                        >
+                                          Modifier
+                                        </motion.button>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Statut de la mission */}
+                                  <div className="mt-6 p-4 bg-indigo-950/30 dark:bg-indigo-900/20 rounded-xl border border-indigo-500/20 dark:border-indigo-800">
+                                    <div className="flex items-center gap-3">
+                                      <div
+                                        className={`w-3 h-3 rounded-full ${effectiveIsCertified ? 'bg-emerald-500' : effectiveIsSubmitted ? 'bg-blue-500' : 'bg-amber-500'}`}
+                                      ></div>
+                                      <div>
+                                        <p className="text-sm font-bold text-white dark:text-indigo-300">
+                                          {effectiveIsCertified
+                                            ? 'Mission validée et archivée'
+                                            : effectiveIsSubmitted
+                                              ? 'Mission soumise en attente de validation'
+                                              : 'En attente de soumission'}
+                                        </p>
+                                        <p className="text-xs text-indigo-400/70 dark:text-indigo-400">
+                                          {effectiveIsCertified
+                                            ? `Archivée le ${new Date().toLocaleDateString('fr-FR')}`
+                                            : effectiveIsSubmitted
+                                              ? 'Validation finale attendue par la direction ou l’administration'
+                                              : 'Enregistrez puis soumettez la mission pour démarrer le workflow'}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
+                  {/* WIDGETS : COL-3 sticky – masqués en focus mode */}
+                  {!focusMode && (
+                    <div className="xl:col-span-3 space-y-4 sm:space-y-6">
+                      <div className="sticky top-4">
+                        <MissionBudgetPanel
+                          totalFrais={totalFrais}
+                          projectBudget={projectBudget}
+                          members={state.members}
+                          excludeFromFinance={state.formData.excludeFromFinance}
+                        />
+                        <WidgetErrorBoundary title="Indicateurs de Statut">
+                          <MissionStatusWidget
+                            data={state.formData}
+                            members={state.members}
+                            isCertified={effectiveIsCertified}
+                            isSubmitted={effectiveIsSubmitted}
+                            isSyncing={state.isSyncingServer}
+                            lastSync={state.lastSavedAt || 'Synchronisé'}
+                            version={state.version}
+                            isDirty={missionState.isDirty}
+                            healthScore={healthScore}
+                            healthStatus={healthStatus}
+                            budgetVariance={budgetVariance}
+                          />
+                        </WidgetErrorBoundary>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </ContentArea>
+
+        {showNotifications && (
+          <MissionNotificationCenter
+            onClose={() => setShowNotifications(false)}
+            projectId={activeProjectId || undefined}
+          />
+        )}
+
+        {/* MODAL VALIDATION FINALE */}
+        {isPinModalOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-opacity">
+            <div className="bg-slate-900 rounded-3xl shadow-2xl p-8 max-w-md w-full animate-in zoom-in-95 duration-200 border border-white/10 dark:border-slate-700">
+              <div className="flex flex-col items-center text-center">
+                <div className="w-16 h-16 bg-emerald-900/30 rounded-full flex items-center justify-center mb-6 ring-4 ring-slate-800 dark:ring-slate-900 shadow-inner">
+                  <ShieldCheck className="w-8 h-8 text-emerald-400 dark:text-emerald-400" />
+                </div>
+                <h3 className="text-2xl font-black text-white dark:text-white mb-2">
+                  Validation Officielle
+                </h3>
+                <p className="text-sm font-medium text-slate-500 mb-8 max-w-[280px]">
+                  Veuillez saisir votre code PIN pour confirmer la validation finale et générer le
+                  numéro officiel de mission.
+                </p>
+
+                <div className="w-full relative mb-8">
+                  <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+                  <input
+                    type="password"
+                    value={pinCode}
+                    onChange={(e) => setPinCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 4))}
+                    placeholder="• • • •"
+                    className="w-full pl-12 pr-4 py-4 bg-slate-950 dark:bg-slate-800 border-2 border-white/5 dark:border-slate-700 rounded-2xl text-center text-3xl tracking-[1em] font-black text-white dark:text-white focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all font-mono shadow-inner"
+                    autoFocus
+                  />
+                </div>
+
+                <div className="flex gap-3 w-full">
+                  <button
+                    onClick={() => setIsPinModalOpen(false)}
+                    className="flex-1 py-3.5 px-4 bg-slate-800 hover:bg-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-300 dark:text-slate-300 rounded-2xl font-bold transition-all border border-white/5"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    onClick={confirmCertification}
+                    disabled={pinCode.length < 4 || isSubmitting}
+                    className="flex-1 py-3.5 px-4 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 disabled:dark:bg-slate-700 text-white rounded-2xl font-black shadow-lg shadow-emerald-500/30 transition-all disabled:opacity-50"
+                  >
+                    {isSubmitting ? 'Validation...' : 'Valider'}
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      </ContentArea>
-
-      {showNotifications && (
-        <MissionNotificationCenter
-          onClose={() => setShowNotifications(false)}
-          projectId={activeProjectId || undefined}
-        />
-      )}
-
-      {/* MODAL VALIDATION FINALE */}
-      {isPinModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-opacity">
-          <div className="bg-slate-900 rounded-3xl shadow-2xl p-8 max-w-md w-full animate-in zoom-in-95 duration-200 border border-white/10 dark:border-slate-700">
-            <div className="flex flex-col items-center text-center">
-              <div className="w-16 h-16 bg-emerald-900/30 rounded-full flex items-center justify-center mb-6 ring-4 ring-slate-800 dark:ring-slate-900 shadow-inner">
-                <ShieldCheck className="w-8 h-8 text-emerald-400 dark:text-emerald-400" />
-              </div>
-              <h3 className="text-2xl font-black text-white dark:text-white mb-2">
-                Validation Officielle
-              </h3>
-              <p className="text-sm font-medium text-slate-500 mb-8 max-w-[280px]">
-                Veuillez saisir votre code PIN pour confirmer la validation finale et générer le
-                numéro officiel de mission.
-              </p>
-
-              <div className="w-full relative mb-8">
-                <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
-                <input
-                  type="password"
-                  value={pinCode}
-                  onChange={(e) => setPinCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 4))}
-                  placeholder="• • • •"
-                  className="w-full pl-12 pr-4 py-4 bg-slate-950 dark:bg-slate-800 border-2 border-white/5 dark:border-slate-700 rounded-2xl text-center text-3xl tracking-[1em] font-black text-white dark:text-white focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all font-mono shadow-inner"
-                  autoFocus
-                />
-              </div>
-
-              <div className="flex gap-3 w-full">
-                <button
-                  onClick={() => setIsPinModalOpen(false)}
-                  className="flex-1 py-3.5 px-4 bg-slate-800 hover:bg-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-300 dark:text-slate-300 rounded-2xl font-bold transition-all border border-white/5"
-                >
-                  Annuler
-                </button>
-                <button
-                  onClick={confirmCertification}
-                  disabled={pinCode.length < 4 || isSubmitting}
-                  className="flex-1 py-3.5 px-4 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 disabled:dark:bg-slate-700 text-white rounded-2xl font-black shadow-lg shadow-emerald-500/30 transition-all disabled:opacity-50"
-                >
-                  {isSubmitting ? 'Validation...' : 'Valider'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </PageContainer>
+        )}
+      </PageContainer>
+    </motion.div>
   );
 }

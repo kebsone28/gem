@@ -83,13 +83,13 @@ export const useMapFilters = (
     }
   }, [households, searchWorker]);
 
-  // Cleanup worker
-  useMemo(
-    () => () => {
+  // Cleanup worker on unmount
+  useEffect(() => {
+    return () => {
       searchWorker.postMessage({ type: 'TERMINATE' });
-    },
-    [searchWorker]
-  );
+      searchWorker.terminate();
+    };
+  }, [searchWorker]);
 
   const selectedTeamFilters = useMemo(
     () => ['livraison', 'maconnerie', 'reseau', 'installation', 'controle'],

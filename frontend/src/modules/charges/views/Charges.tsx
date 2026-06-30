@@ -26,10 +26,11 @@ import { Database } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import { PageContainer, Section, COMMON_CLASSES } from '@components';
+import { ModuleStatePanel } from '@components/common/ModuleStatePanel';
 
 export default function Charges() {
   const { isLoading, stats, devis, project, toggleClientProvidesMaterials } = useFinances();
-  const { refreshProjects } = useProject();
+  const { refreshProjects, activeProjectId, isLoading: isProjectLoading } = useProject();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'overview' | 'devis' | 'dotations' | 'inventory'>(
     'overview'
@@ -37,6 +38,30 @@ export default function Charges() {
   const { isDarkMode } = useTheme();
 
   const isClientProvided = !!project?.config?.clientProvidesMaterials;
+
+  if (isProjectLoading) {
+    return (
+      <div className={`${COMMON_CLASSES.flexCenter} min-h-[60vh]`}>
+        <div className="relative w-20 h-20">
+          <div className="absolute inset-0 border-4 border-indigo-500/20 rounded-full"></div>
+          <div className="absolute inset-0 border-4 border-t-indigo-500 rounded-full animate-spin"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!activeProjectId) {
+    return (
+      <PageContainer>
+        <ModuleStatePanel
+          title="Aucun projet actif"
+          description="Les données financières sont rattachées à un projet. Sélectionnez un projet pour consulter les charges et budgets."
+          actionLabel="Choisir un projet"
+          actionTo="/projects"
+        />
+      </PageContainer>
+    );
+  }
 
   if (isLoading) {
     return (

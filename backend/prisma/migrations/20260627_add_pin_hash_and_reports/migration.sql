@@ -1,0 +1,8 @@
+ALTER TABLE "User" ADD COLUMN "pinHash" TEXT;
+CREATE TABLE "ScheduledReport" (
+  "id" TEXT PRIMARY KEY,
+  "name" TEXT NOT NULL,
+  "frequency" TEXT NOT NULL,
+  "userId" TEXT REFERENCES "User"("id") ON DELETE CASCADE,
+  "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

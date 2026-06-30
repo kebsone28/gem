@@ -8,7 +8,11 @@ export const manifest: ModuleManifest = {
     icon: 'FileText',
     component: lazyWithRetry(() => import('./views/Cahier'), 'lazy:cahier'),
     route: '/documents/specifications',
-    requiredPermission: [PERMISSIONS.TERRAIN_READ, PERMISSIONS.FINANCE_READ],
+    requiredPermission: [
+      PERMISSIONS.CAHIER_TECHNICAL,
+      PERMISSIONS.CAHIER_CONTRACTS,
+      PERMISSIONS.CAHIER_STRATEGY,
+    ],
     category: 'DOCUMENTS',
     description: 'Consultez les spécifications techniques et les rapports détaillés',
   };

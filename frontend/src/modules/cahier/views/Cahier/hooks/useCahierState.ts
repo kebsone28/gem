@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useAuth } from '@contexts/AuthContext';
 import { useProject } from '@contexts/ProjectContext';
 import { useTeams } from '@hooks/useTeams';
@@ -21,16 +21,73 @@ import {
   sanitizeTaskLibraryForCahier,
 } from '../utils/cahierUtils';
 
+const getDefaultTechnicalLibrary = (): TaskLibrary =>
+  sanitizeTaskLibraryForCahier(DEFAULT_TASK_LIBRARY);
+
+const getDefaultContractLibrary = (): ContractTemplateLibrary =>
+  mergeContractLibraryWithDefaults(DEFAULT_CONTRACT_TEMPLATES);
+
+const getDefaultOperationalStrategy = (): OperationalStrategyTemplate =>
+  DEFAULT_OPERATIONAL_STRATEGY;
+
+const loadBaseTechnicalLibrary = (): TaskLibrary => {
+  try {
+    const saved = safeStorage.getItem('ged_os_cahier_library');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (parsed?.['Électricien']) {
+        return restoreTaskLibraryIcons(parsed);
+      }
+    }
+  } catch (e) {
+    logger.warn('[useCahierState] Base library load failed', e);
+  }
+  return getDefaultTechnicalLibrary();
+};
+
+const loadBaseContractLibrary = (): ContractTemplateLibrary => {
+  try {
+    const saved = safeStorage.getItem('ged_os_contract_library');
+    if (saved) {
+      const parsed = JSON.parse(saved) as ContractTemplateLibrary;
+      if (parsed?.['LOT A']) {
+        return mergeContractLibraryWithDefaults(parsed);
+      }
+    }
+  } catch (e) {
+    logger.warn('[useCahierState] Base contract load failed', e);
+  }
+  return getDefaultContractLibrary();
+};
+
+const loadBaseOperationalStrategy = (): OperationalStrategyTemplate => {
+  try {
+    const saved = safeStorage.getItem('ged_os_operational_strategy');
+    if (saved) {
+      const parsed = JSON.parse(saved) as OperationalStrategyTemplate;
+      if (Array.isArray(parsed?.content) && parsed.content.length > 0) {
+        return parsed;
+      }
+    }
+  } catch (e) {
+    logger.warn('[useCahierState] Base strategy load failed', e);
+  }
+  return getDefaultOperationalStrategy();
+};
+
 export function useCahierState(projectId: string | undefined, isAdmin: boolean) {
   const { user } = useAuth();
   const { project, updateProject } = useProject();
-  const { teams: allTeams } = useTeams(projectId);
+  const { teams: allTeams, fetchTeams } = useTeams(projectId);
   const migratedProjectRef = useRef<string | null>(null);
 
   const [isSaving, setIsSaving] = useState(false);
 
   // 1. Technical Library
   const [customLibrary, setCustomLibrary] = useState<TaskLibrary>(() => {
+    if (!projectId || !project?.id) {
+      return loadBaseTechnicalLibrary();
+    }
     try {
       const serverLibrary = (project?.config as any)?.cahierLibrary;
       if (serverLibrary?.['Électricien']) {
@@ -44,11 +101,14 @@ export function useCahierState(projectId: string | undefined, isAdmin: boolean) 
     } catch (e) {
       logger.warn('[useCahierState] Library load failed', e);
     }
-    return sanitizeTaskLibraryForCahier(DEFAULT_TASK_LIBRARY);
+    return getDefaultTechnicalLibrary();
   });
 
   // 2. Contract Library
   const [contractLibrary, setContractLibrary] = useState<ContractTemplateLibrary>(() => {
+    if (!projectId || !project?.id) {
+      return loadBaseContractLibrary();
+    }
     try {
       const serverLibrary = (project?.config as any)?.contractLibrary as ContractTemplateLibrary;
       if (serverLibrary?.['LOT A']) return mergeContractLibraryWithDefaults(serverLibrary);
@@ -60,12 +120,15 @@ export function useCahierState(projectId: string | undefined, isAdmin: boolean) 
     } catch (e) {
       logger.warn('[useCahierState] Contract load failed', e);
     }
-    return DEFAULT_CONTRACT_TEMPLATES;
+    return getDefaultContractLibrary();
   });
 
   // 3. Operational Strategy
   const [operationalStrategy, setOperationalStrategy] = useState<OperationalStrategyTemplate>(
     () => {
+      if (!projectId || !project?.id) {
+        return loadBaseOperationalStrategy();
+      }
       try {
         const serverStrategy = (project?.config as any)
           ?.operationalStrategy as OperationalStrategyTemplate;
@@ -80,7 +143,7 @@ export function useCahierState(projectId: string | undefined, isAdmin: boolean) 
       } catch (e) {
         logger.warn('[useCahierState] Strategy load failed', e);
       }
-      return DEFAULT_OPERATIONAL_STRATEGY;
+      return getDefaultOperationalStrategy();
     }
   );
 
@@ -136,9 +199,19 @@ export function useCahierState(projectId: string | undefined, isAdmin: boolean) 
     return null;
   }, [allTeams, project?.config?.costs?.staffRates]);
 
+  useEffect(() => {
+    if (!projectId) return;
+    void fetchTeams();
+  }, [fetchTeams, projectId]);
+
   // Sync from project config changes
   useEffect(() => {
-    if (!project?.id) return;
+    if (!project?.id) {
+      setCustomLibrary(loadBaseTechnicalLibrary());
+      setContractLibrary(loadBaseContractLibrary());
+      setOperationalStrategy(loadBaseOperationalStrategy());
+      return;
+    }
     const config = project.config as any;
     if (config?.cahierLibrary?.['Électricien']) {
       setCustomLibrary(restoreTaskLibraryIcons(config.cahierLibrary));
@@ -207,11 +280,7 @@ export function useCahierState(projectId: string | undefined, isAdmin: boolean) 
     if (Object.keys(updates).length > 0) {
       migratedProjectRef.current = project.id;
       void persistCahierConfig(updates).then(saved => {
-        if (saved) {
-          safeStorage.removeItem('ged_os_cahier_library');
-          safeStorage.removeItem('ged_os_contract_library');
-          safeStorage.removeItem('ged_os_operational_strategy');
-        } else migratedProjectRef.current = null;
+        if (!saved) migratedProjectRef.current = null;
       });
     }
   }, [isAdmin, persistCahierConfig, project?.id, project?.config]);

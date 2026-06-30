@@ -57,6 +57,7 @@ import { compressImage } from '@utils/imageUtils';
 import '../components/MapWidgets.css';
 
 import { ContentArea } from '@components';
+import { ModuleStatePanel } from '@components/common/ModuleStatePanel';
 import { MODULE_ACCENTS } from '@components/dashboards/DashboardComponents';
 
 const Terrain: React.FC = () => {
@@ -65,6 +66,9 @@ const Terrain: React.FC = () => {
   const navigate = useNavigate();
   const {
     households,
+    isLoading: isHouseholdsLoading,
+    error: householdsError,
+    missingProject,
     updateHouseholdStatus,
     updateHouseholdLocation,
     uploadHouseholdPhoto,
@@ -73,7 +77,7 @@ const Terrain: React.FC = () => {
     repairSyncQueue,
   } = useTerrainData();
 
-  const { project } = useProject();
+  const { project, isLoading: isProjectLoading } = useProject();
   const { forceSync } = useSync();
   const { grappesConfig, warehouseStats, teams } = useLogistique(households);
   const { user } = useAuth();
@@ -473,6 +477,7 @@ const Terrain: React.FC = () => {
 
     try {
       const chunkSize = 20;
+      const failedHouseholdIds: string[] = [];
       for (let i = 0; i < lockableConformingHouseholds.length; i += chunkSize) {
         const chunk = lockableConformingHouseholds.slice(i, i + chunkSize);
         for (const household of chunk) {
@@ -486,8 +491,14 @@ const Terrain: React.FC = () => {
             updatedCount += 1;
           } catch (error) {
             failedCount += 1;
+            failedHouseholdIds.push(household.id);
+            logger.error(`[Terrain] Failed to lock household ${household.id}:`, error);
           }
         }
+      }
+
+      if (failedHouseholdIds.length > 0) {
+        logger.warn(`[Terrain] Failed to lock households: ${failedHouseholdIds.join(', ')}`);
       }
 
       if (updatedCount > 0 && failedCount === 0) {
@@ -523,6 +534,7 @@ const Terrain: React.FC = () => {
 
     try {
       const chunkSize = 20;
+      const failedHouseholdIds: string[] = [];
       for (let i = 0; i < unlockableConformingHouseholds.length; i += chunkSize) {
         const chunk = unlockableConformingHouseholds.slice(i, i + chunkSize);
         for (const household of chunk) {
@@ -537,8 +549,14 @@ const Terrain: React.FC = () => {
             updatedCount += 1;
           } catch (error) {
             failedCount += 1;
+            failedHouseholdIds.push(household.id);
+            logger.error(`[Terrain] Failed to unlock household ${household.id}:`, error);
           }
         }
+      }
+
+      if (failedHouseholdIds.length > 0) {
+        logger.warn(`[Terrain] Failed to unlock households: ${failedHouseholdIds.join(', ')}`);
       }
 
       if (updatedCount > 0 && failedCount === 0) {
@@ -743,6 +761,55 @@ const Terrain: React.FC = () => {
 
   const peutVoirDataHub = peut(PERMISSIONS.SYSTEM_USERS) || user?.role === 'ADMIN_PROQUELEC';
 
+  if (isProjectLoading) {
+    return (
+      <div className="min-h-[100dvh] bg-slate-950">
+        <ModuleStatePanel
+          tone="loading"
+          title="Chargement du projet"
+          description="Le contexte projet est en cours d'initialisation pour le module Terrain."
+        />
+      </div>
+    );
+  }
+
+  if (missingProject || !project?.id) {
+    return (
+      <div className="min-h-[100dvh] bg-slate-950">
+        <ModuleStatePanel
+          title="Aucun projet actif"
+          description="Le module Terrain charge les menages, la carte et les affectations du projet selectionne. Choisissez un projet pour continuer."
+          actionLabel="Choisir un projet"
+          actionTo="/projects"
+        />
+      </div>
+    );
+  }
+
+  if (isHouseholdsLoading && (!households || households.length === 0)) {
+    return (
+      <div className="min-h-[100dvh] bg-slate-950">
+        <ModuleStatePanel
+          tone="loading"
+          title="Chargement des donnees terrain"
+          description="Les menages et les couches de la carte sont en cours de synchronisation."
+        />
+      </div>
+    );
+  }
+
+  if (householdsError && (!households || households.length === 0)) {
+    return (
+      <div className="min-h-[100dvh] bg-slate-950">
+        <ModuleStatePanel
+          tone="error"
+          title="Chargement impossible"
+          description={householdsError}
+        />
+      </div>
+    );
+  }
+
   return (
     <div
       className={`relative isolate flex h-full min-h-[100dvh] w-full flex-col overflow-hidden bg-[radial-gradient(circle_at_top,#0b1f1a_0%,#07131a_38%,#030712_100%)] ${terrainAccent.surface}`}
@@ -854,7 +921,7 @@ const Terrain: React.FC = () => {
         project={project}
         onSync={handleManualSync}
         onOpenDataHub={() => {
-          navigate('/settings?tab=datahub');
+          navigate('/admin/settings?tab=datahub');
         }}
         viewMode={viewMode}
         onViewModeChange={setViewMode}
