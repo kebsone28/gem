@@ -1848,7 +1848,8 @@ export const DEFAULT_TASK_LIBRARY: TaskLibrary = {
           'Signaler toute fraude',
         ],
       },
-      koboGuide: [
+    ],
+    koboGuide: [
         {
           title: 'Prérequis avant contrôle',
           intro: 'Le groupe Kobo contrôle qualité commence par la vérification de la conformité des ouvrages avant tout audit détaillé.',
@@ -1883,7 +1884,7 @@ export const DEFAULT_TASK_LIBRARY: TaskLibrary = {
             'Rédiger un PVNC pour toute non-conformité détectée.',
             'Notifier le Titulaire sous 48h.',
             'Photographier les non-conformités.',
-            'Suivre la correction jusqu'à résolution.',
+            'Suivre la correction jusqu\'à résolution.',
           ],
           blockers: [
             'Non-conformité majeure non corrigée.',
