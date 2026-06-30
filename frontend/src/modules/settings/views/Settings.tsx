@@ -107,65 +107,82 @@ export default function Settings() {
     ];
 
     return (
-        <PageContainer className="min-h-screen bg-slate-950 py-8 transition-all duration-500">
+        <PageContainer className="min-h-screen bg-slate-950 transition-all duration-500">
             <PageHeader backLink={{ to: '/admin/hub', label: 'Retour au Centre de Contrôle' }}
                 title="Configuration"
                 subtitle="Paramètres globaux du projet"
                 icon={<SettingsIcon size={24} />}
             />
-            <ContentArea className="space-y-10 p-8 bg-slate-950 border-white/5">
-                <div className="max-w-7xl mx-auto space-y-10">
+            <ContentArea className="space-y-0 p-0 sm:p-4 md:p-8 bg-slate-950 border-white/5">
+                <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
+
                 {/* ── HEADER ── */}
-                <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                    <div className="flex items-center gap-5">
-                        <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center shadow-xl shadow-blue-500/20 shrink-0">
-                            <SettingsIcon size={24} className="text-white" />
+                <header className="px-4 sm:px-0 pt-4 sm:pt-0">
+                    <div className="flex items-center gap-4 mb-4 sm:mb-6">
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-600 rounded-xl sm:rounded-2xl flex items-center justify-center shadow-xl shadow-blue-500/20 shrink-0">
+                            <SettingsIcon size={20} className="text-white" />
                         </div>
                         <div>
-                            <div className="flex items-center gap-3 mb-1">
-                                <h1 className="text-2xl font-black tracking-tight uppercase italic leading-none text-white">Configuration</h1>
-                                <StatusBadge status="info" label="Projet Actif" />
+                            <div className="flex items-center gap-2 sm:gap-3 mb-0.5">
+                                <h1 className="text-lg sm:text-2xl font-black tracking-tight uppercase italic leading-none text-white">Configuration</h1>
+                                <StatusBadge status="info" label="Actif" />
                             </div>
-                            <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] leading-none">Paramètres Globaux & Déploiement</p>
+                            <p className="text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-[0.15em] sm:tracking-[0.2em] leading-none">Paramètres Globaux</p>
                         </div>
                     </div>
-                            {/* ── TABS NAVIGATION ── */}
-                <div className="px-2 sm:px-0">
-                    <div className="flex gap-1 sm:gap-2 p-1 bg-white/5 rounded-xl sm:rounded-2xl border border-white/5 overflow-x-auto no-scrollbar shadow-sm" role="tablist">
-                        {tabs.map((tab) => (
-                            <button
-                                key={tab.id}
-                                role="tab"
-                                aria-selected={activeTab === tab.id}
-                                aria-controls={`panel-${tab.id}`}
-                                id={`tab-${tab.id}`}
-                                onClick={() => setActiveTab(tab.id as TabType)}
-                                className={`flex items-center gap-2 px-4 py-2.5 sm:px-6 sm:py-3 rounded-lg sm:rounded-xl transition-all duration-300 whitespace-nowrap group shrink-0 ${activeTab === tab.id
-                                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
-                                    : 'text-slate-500 hover:text-white hover:bg-white/5'
-                                    }`}
+
+                    {/* ── TABS NAVIGATION ── sticky on mobile */}
+                    <div className="sticky top-0 z-30 -mx-4 sm:mx-0 px-4 sm:px-0 py-2 sm:py-0 bg-slate-950/90 sm:bg-transparent backdrop-blur-xl sm:backdrop-blur-none border-b border-white/5 sm:border-none mb-1 sm:mb-0">
+                        <div className="relative">
+                            <div
+                                className="flex gap-1 p-1 bg-white/5 sm:rounded-2xl border border-white/5 overflow-x-auto no-scrollbar shadow-sm"
+                                role="tablist"
                             >
-                                <tab.icon size={14} className={`${activeTab === tab.id ? 'text-white' : 'text-slate-600 group-hover:text-blue-500'} transition-colors`} />
-                                <span className="font-black text-[10px] uppercase tracking-widest">{tab.label}</span>
-                            </button>
-                        ))}
+                                {tabs.map((tab) => (
+                                    <button
+                                        key={tab.id}
+                                        role="tab"
+                                        aria-selected={activeTab === tab.id}
+                                        aria-controls={`panel-${tab.id}`}
+                                        id={`tab-${tab.id}`}
+                                        onClick={() => setActiveTab(tab.id as TabType)}
+                                        className={`flex items-center gap-1.5 sm:gap-2 px-3 py-2 sm:px-5 sm:py-2.5 rounded-lg sm:rounded-xl transition-all duration-300 whitespace-nowrap shrink-0 group ${
+                                            activeTab === tab.id
+                                                ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
+                                                : 'text-slate-500 hover:text-white hover:bg-white/5'
+                                        }`}
+                                    >
+                                        <tab.icon
+                                            size={14}
+                                            className={`shrink-0 ${
+                                                activeTab === tab.id ? 'text-white' : 'text-slate-500 group-hover:text-blue-400'
+                                            } transition-colors`}
+                                        />
+                                        <span className="font-black text-[9px] sm:text-[10px] uppercase tracking-widest">
+                                            {tab.label}
+                                        </span>
+                                    </button>
+                                ))}
+                            </div>
+                            {/* Fade gradient right edge on mobile to hint scrollability */}
+                            <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-slate-950/80 to-transparent pointer-events-none sm:hidden rounded-r-xl" />
+                        </div>
                     </div>
-                </div>
                 </header>
 
                 {/* ── TAB CONTENT ── */}
-                <main>
+                <main className="pb-safe-area">
                     <AnimatePresence mode="wait">
                         <motion.div
                             key={activeTab}
                             id={`panel-${activeTab}`}
                             role="tabpanel"
                             aria-labelledby={`tab-${activeTab}`}
-                            initial={{ opacity: 0, scale: 0.98 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 1.02 }}
-                            transition={{ duration: 0.3, ease: "circOut" }}
-                            className="bg-white/5 rounded-[1.5rem] sm:rounded-[2.5rem] border border-white/5 p-4 sm:p-8 md:p-12 relative overflow-hidden mx-2 sm:mx-0"
+                            initial={{ opacity: 0, y: 8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -8 }}
+                            transition={{ duration: 0.25, ease: 'easeOut' }}
+                            className="bg-white/5 rounded-xl sm:rounded-[2rem] border border-white/5 p-4 sm:p-6 md:p-10 relative overflow-hidden mx-0"
                         >
                             {/* Decorative background element */}
                             <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/5 blur-[100px] pointer-events-none rounded-full" />
@@ -324,82 +341,89 @@ function TeamsSection({ project }: { project: any }) {
     if (isTeamsLoading && teamTree.length === 0) return <div className="p-8 text-slate-400">Chargement des équipes...</div>;
 
     return (
-        <div className="space-y-12">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                <div>
-                    <h2 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-3 uppercase tracking-tight mb-1">
-                        <Users className="text-blue-500" />
-                        Gestion des Équipes
-                    </h2>
-                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Configuration des effectifs et sous-équipes terrain</p>
+        <div className="space-y-8">
+            {/* Header Teams */}
+            <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                    <div>
+                        <h2 className="text-lg sm:text-xl font-black text-white flex items-center gap-3 uppercase tracking-tight mb-1">
+                            <Users className="text-blue-500 shrink-0" size={20} />
+                            Gestion des Équipes
+                        </h2>
+                        <p className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-widest">Configuration des effectifs et sous-équipes terrain</p>
+                    </div>
+                    <button
+                        onClick={handleAddTeam}
+                        className="self-start sm:self-auto px-4 sm:px-6 py-2.5 sm:py-3 bg-blue-600 text-white text-[10px] sm:text-xs font-black uppercase tracking-widest rounded-xl transition-all shadow-lg shadow-blue-500/10 hover:brightness-110 active:scale-95 shrink-0"
+                    >
+                        + Groupement
+                    </button>
                 </div>
-                <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-100 dark:bg-blue-900/50 rounded-xl border border-blue-600 dark:border-blue-600">
-                        <Users size={12} className="text-blue-700 dark:text-blue-400" />
-                        <span className="text-xs font-black text-blue-900 dark:text-blue-100 uppercase tracking-tight">{stats.total} Équipes</span>
-                    </div>
-                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-100 dark:bg-emerald-900/50 rounded-xl border border-emerald-600 dark:border-emerald-600">
-                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-600 dark:bg-emerald-400" />
-                        <span className="text-xs font-black text-emerald-900 dark:text-emerald-100 uppercase tracking-tight">{stats.active} Actives</span>
-                    </div>
-                    {stats.inactive > 0 && (
-                        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-200 dark:bg-slate-700/50 rounded-xl border border-slate-400 dark:border-slate-600">
-                            <div className="w-1.5 h-1.5 rounded-full bg-slate-400 dark:bg-slate-500" />
-                            <span className="text-xs font-black text-slate-900 dark:text-slate-100 uppercase tracking-tight">{stats.inactive} Inactives</span>
+
+                {/* Stats + Search + Collapse controls */}
+                <div className="flex flex-col xs:flex-row gap-3">
+                    <div className="flex flex-wrap gap-2 items-center flex-1">
+                        <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-900/50 rounded-xl border border-blue-600">
+                            <Users size={11} className="text-blue-400" />
+                            <span className="text-[10px] font-black text-blue-100 uppercase tracking-tight">{stats.total} Équipes</span>
                         </div>
-                    )}
-                </div>
-                <div className="flex flex-wrap gap-3 items-center">
-                    <div className="relative">
-                        <input 
-                            type="text" 
-                            placeholder="Rechercher..." 
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="pl-9 pr-4 py-2.5 bg-white/5 border border-white/5 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500/20 w-64 transition-all text-white"
-                        />
-                        <Users size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-emerald-900/50 rounded-xl border border-emerald-600">
+                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                            <span className="text-[10px] font-black text-emerald-100 uppercase tracking-tight">{stats.active} Actives</span>
+                        </div>
+                        {stats.inactive > 0 && (
+                            <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-700/50 rounded-xl border border-slate-600">
+                                <div className="w-1.5 h-1.5 rounded-full bg-slate-500" />
+                                <span className="text-[10px] font-black text-slate-100 uppercase tracking-tight">{stats.inactive} Inactives</span>
+                            </div>
+                        )}
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 items-center">
+                        <div className="relative flex-1 xs:flex-none">
+                            <input 
+                                type="text" 
+                                placeholder="Rechercher..." 
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="pl-8 pr-3 py-2 bg-white/5 border border-white/10 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500/30 w-full xs:w-44 sm:w-56 transition-all text-white placeholder-slate-600"
+                            />
+                            <Users size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
+                        </div>
                         <button 
                             onClick={() => toggleAllCollapse(true)}
-                            className="p-2.5 bg-gray-50 dark:bg-slate-900/5 text-gray-400 hover:text-blue-500 rounded-xl border border-gray-100 dark:border-white/5 transition-colors"
+                            className="p-2 bg-white/5 text-slate-400 hover:text-blue-400 rounded-xl border border-white/10 transition-colors shrink-0"
                             aria-label="Réduire tout"
+                            title="Réduire tout"
                         >
                             <Layers size={14} />
                         </button>
                         <button 
                             onClick={() => toggleAllCollapse(false)}
-                            className="p-2.5 bg-gray-50 dark:bg-white dark:bg-slate-900/5 text-gray-400 hover:text-blue-500 rounded-xl border border-gray-100 dark:border-white/5 transition-colors"
+                            className="p-2 bg-white/5 text-slate-400 hover:text-blue-400 rounded-xl border border-white/10 transition-colors shrink-0"
                             aria-label="Développer tout"
+                            title="Développer tout"
                         >
                             <ChevronRight size={14} className="rotate-90" />
                         </button>
                     </div>
-                    <button
-                        onClick={handleAddTeam}
-                        className="px-6 py-3 bg-blue-600 dark:bg-blue-600 text-white text-xs font-black uppercase tracking-widest rounded-xl transition-all shadow-lg shadow-blue-500/10 hover:brightness-110 active:scale-95 ml-2"
-                    >
-                        + Nouveau Groupement
-                    </button>
                 </div>
             </div>
 
             {/* ── CADENCES DE PRODUCTION ── */}
-            <div className="bg-white/5 p-4 sm:p-8 rounded-2xl sm:rounded-[2rem] border border-white/5 mb-8">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-                    <div className="flex items-center gap-3">
-                        <Zap size={18} className="text-amber-500" />
-                        <h3 className="text-[10px] sm:text-sm font-black text-white uppercase tracking-widest leading-none">Cadences (Foyers / Jour)</h3>
+            <div className="bg-white/5 p-4 sm:p-6 rounded-2xl border border-white/5">
+                <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-3 mb-5">
+                    <div className="flex items-center gap-2.5">
+                        <Zap size={16} className="text-amber-500 shrink-0" />
+                        <h3 className="text-xs sm:text-sm font-black text-white uppercase tracking-widest leading-none">Cadences (Foyers / Jour)</h3>
                     </div>
                     <button
                         onClick={handleAddProductionRate}
-                        className="px-4 py-2.5 bg-amber-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl transition-all shadow-lg shadow-amber-600/20 active:scale-95"
+                        className="self-start xs:self-auto px-3 py-2 bg-amber-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl transition-all shadow-lg shadow-amber-600/20 active:scale-95 shrink-0"
                     >
                         + Métier
                     </button>
                 </div>
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
                     {Object.entries(productionRates).map(([tradeKey, rate]) => {
                         const labelMap: Record<string, string> = {
                             macons: 'Maçonnerie',
@@ -697,33 +721,36 @@ function CostsSection({ project, onUpdate }: { project: any, onUpdate: any }) {
     };
 
     return (
-        <div className="space-y-12">
-            <div className="space-y-8">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                    <div>
-                        <h2 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-3 uppercase tracking-tight mb-1">
-                            <DollarSign className="text-emerald-500" />
-                            Grille Tarifaire
-                        </h2>
-                        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Barèmes de rémunération par région</p>
-                    </div>
-
-                    <div className="flex items-center gap-4 bg-white dark:bg-slate-950 p-2 rounded-2xl border border-gray-100 dark:border-white/5 shadow-sm dark:shadow-none">
-                        <div className="flex items-center gap-2 px-3">
-                            <MapPin size={16} className="text-blue-500" />
-                            <span className="text-xs font-black text-gray-400 uppercase tracking-widest">Région Active :</span>
+        <div className="space-y-10">
+            <div className="space-y-6">
+                <div className="flex flex-col gap-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div>
+                            <h2 className="text-lg sm:text-xl font-black text-white flex items-center gap-3 uppercase tracking-tight mb-1">
+                                <DollarSign className="text-emerald-500 shrink-0" size={20} />
+                                Grille Tarifaire
+                            </h2>
+                            <p className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-widest">Barèmes de rémunération par région</p>
                         </div>
-                        <select
-                            title="Sélectionner la région"
-                            value={selectedRegionId}
-                            onChange={(e) => setSelectedRegionId(e.target.value)}
-                            className="bg-gray-50 dark:bg-white dark:bg-slate-900/5 border-none rounded-xl px-4 py-2 text-xs font-black text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/20 outline-none"
-                        >
-                            <option value="">Sélectionner...</option>
-                            {regions.map(reg => (
-                                <option key={reg.id} value={reg.id}>{reg.name}</option>
-                            ))}
-                        </select>
+
+                        {/* Region selector — full width on mobile */}
+                        <div className="flex items-center gap-3 bg-slate-950 p-2 rounded-xl border border-white/10 w-full sm:w-auto">
+                            <div className="flex items-center gap-1.5 px-2 shrink-0">
+                                <MapPin size={14} className="text-blue-500" />
+                                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap">Région :</span>
+                            </div>
+                            <select
+                                title="Sélectionner la région"
+                                value={selectedRegionId}
+                                onChange={(e) => setSelectedRegionId(e.target.value)}
+                                className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs font-black text-white focus:ring-2 focus:ring-blue-500/30 outline-none"
+                            >
+                                <option value="">Sélectionner...</option>
+                                {regions.map(reg => (
+                                    <option key={reg.id} value={reg.id}>{reg.name}</option>
+                                ))}
+                            </select>
+                        </div>
                     </div>
                 </div>
 
@@ -1032,31 +1059,31 @@ function ZonesSection({ project, onUpdate }: { project: any, onUpdate: any }) {
     const allSubTeams = project?.config?.teams?.flatMap((t: any) => (t.subTeams || []).map((st: any) => ({ ...st, trade: t.type }))) || [];
 
     return (
-        <div className="space-y-12">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="space-y-8">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h2 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-3 uppercase tracking-tight mb-1">
-                        <MapPin className="text-rose-500" />
+                    <h2 className="text-lg sm:text-xl font-black text-white flex items-center gap-3 uppercase tracking-tight mb-1">
+                        <MapPin className="text-rose-500 shrink-0" size={20} />
                         Découpage Géographique
                     </h2>
-                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Configuration des zones et affectation des grappes</p>
+                    <p className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-widest">Configuration des zones et affectation des grappes</p>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 sm:gap-8">
                 {/* ── LISTE DES ZONES ── */}
-                <div className="lg:col-span-1 space-y-4">
-                    <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest">Périmètres Définis</h3>
+                <div className="lg:col-span-1 space-y-3">
+                    <div className="flex items-center justify-between">
+                        <h3 className="text-[10px] sm:text-xs font-black text-gray-400 uppercase tracking-widest">Périmètres Définis</h3>
                         <button
                             onClick={handleAddZone}
-                            className="text-blue-500 hover:text-blue-600 text-xs font-black uppercase tracking-widest transition-colors"
+                            className="text-blue-500 hover:text-blue-400 text-[10px] sm:text-xs font-black uppercase tracking-widest transition-colors"
                         >
-                            + Nouvelle Zone
+                            + Zone
                         </button>
                     </div>
 
-                    <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2 no-scrollbar">
+                    <div className="space-y-2 max-h-[50vh] lg:max-h-[600px] overflow-y-auto pr-1 no-scrollbar">
                         {zones.map(zone => (
                             <button
                                 key={zone.id}
@@ -1325,44 +1352,45 @@ function DataSection({ project, households, onUpdate }: { project: any, househol
     };
 
     return (
-        <div className="space-y-12">
+        <div className="space-y-10">
             <div>
-                <h2 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-3 uppercase tracking-tight mb-1">
-                    <Database className="text-indigo-500" />
+                <h2 className="text-lg sm:text-xl font-black text-white flex items-center gap-3 uppercase tracking-tight mb-1">
+                    <Database className="text-indigo-500 shrink-0" size={20} />
                     Administration des Données
                 </h2>
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Import/Export de configuration et maintenance</p>
+                <p className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-widest">Import/Export de configuration et maintenance</p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                 {/* ── EXPORT ── */}
-                <div className="bg-gray-50 dark:bg-white dark:bg-slate-900/5 p-8 rounded-[2rem] border border-gray-100 dark:border-white/5 flex flex-col justify-between">
-                    <div className="mb-6">
-                        <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest flex items-center gap-2 mb-2">
-                            <Download size={16} className="text-blue-500" />
+                <div className="bg-white/5 p-5 sm:p-7 rounded-2xl border border-white/5 flex flex-col justify-between gap-5">
+                    <div>
+                        <h3 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2 mb-2">
+                            <Download size={15} className="text-blue-500" />
                             Sauvegarde
                         </h3>
-                        <p className="text-xs text-gray-500 font-bold">Télécharger la configuration actuelle du projet au format JSON.</p>
+                        <p className="text-xs text-gray-400 font-bold">Télécharger la configuration actuelle du projet au format JSON.</p>
                     </div>
                     <button
                         onClick={handleExportData}
                         aria-label="Démarrer l'exportation"
-                        className="w-full py-4 bg-slate-950 border border-white/5 rounded-2xl text-xs font-black uppercase tracking-widest text-white hover:bg-white/10 transition-all flex items-center justify-center gap-3"
+                        className="w-full py-3.5 bg-slate-950 border border-white/10 rounded-xl text-xs font-black uppercase tracking-widest text-white hover:bg-white/10 transition-all flex items-center justify-center gap-2"
                     >
+                        <Download size={14} />
                         Exporter (.json)
                     </button>
                 </div>
 
                 {/* ── IMPORT ── */}
-                <div className="bg-gray-50 dark:bg-white dark:bg-slate-900/5 p-8 rounded-[2rem] border border-gray-100 dark:border-white/5 flex flex-col justify-between">
-                    <div className="mb-6">
-                        <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest flex items-center gap-2 mb-2">
-                            <Upload size={16} className="text-emerald-500" />
+                <div className="bg-white/5 p-5 sm:p-7 rounded-2xl border border-white/5 flex flex-col justify-between gap-5">
+                    <div>
+                        <h3 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2 mb-2">
+                            <Upload size={15} className="text-emerald-500" />
                             Restauration
                         </h3>
-                        <p className="text-xs text-gray-500 font-bold">Importer un fichier de configuration pour mettre à jour les paramètres.</p>
+                        <p className="text-xs text-gray-400 font-bold">Importer un fichier de configuration pour mettre à jour les paramètres.</p>
                     </div>
-                    <label className="w-full">
+                    <label className="w-full cursor-pointer">
                         <input
                             type="file"
                             accept=".json"
@@ -1370,61 +1398,69 @@ function DataSection({ project, households, onUpdate }: { project: any, househol
                             className="hidden"
                             aria-label="Choisir un fichier JSON"
                         />
-                        <div className="w-full py-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl text-xs font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 transition-all flex items-center justify-center gap-3 cursor-pointer">
+                        <div className="w-full py-3.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-xs font-black uppercase tracking-widest text-emerald-400 hover:bg-emerald-500/20 active:scale-95 transition-all flex items-center justify-center gap-2">
+                            <Upload size={14} />
                             Choisir & Importer
                         </div>
                     </label>
                 </div>
             </div>
 
-            <div className="h-px bg-gray-100 dark:bg-white dark:bg-slate-900/5" />
+            <div className="h-px bg-white/5" />
 
-            <div className="space-y-8">
-                <div className="bg-blue-600 p-10 rounded-[2.5rem] text-white relative overflow-hidden shadow-2xl shadow-blue-500/20">
-                    <div className="absolute top-0 right-0 p-12 opacity-10 rotate-12">
-                        <Layers size={200} />
+            <div className="space-y-5">
+                {/* Clustering card */}
+                <div className="bg-blue-600 p-6 sm:p-8 rounded-2xl sm:rounded-[2rem] text-white relative overflow-hidden shadow-2xl shadow-blue-500/20">
+                    <div className="absolute top-0 right-0 p-6 sm:p-12 opacity-10 rotate-12">
+                        <Layers size={120} className="sm:hidden" />
+                        <Layers size={200} className="hidden sm:block" />
                     </div>
-                    <div className="relative z-10 max-w-2xl">
-                        <h3 className="text-2xl font-black uppercase tracking-tight mb-4 flex items-center gap-3">
+                    <div className="relative z-10">
+                        <h3 className="text-lg sm:text-2xl font-black uppercase tracking-tight mb-3 flex items-center gap-3 flex-wrap">
                             Algorithme de Clustering
                             <StatusBadge status="info" label="BÊTA" />
                         </h3>
-                        <p className="text-blue-100/80 text-sm font-bold leading-relaxed mb-8">
+                        <p className="text-blue-100/80 text-xs sm:text-sm font-bold leading-relaxed mb-6">
                             Recalculer dynamiquement le regroupement des ménages selon leur position GPS (algorithme k-means).
-                            Cette action réorganisera l'ensemble du déploiement opérationnel.
                         </p>
                         <button
                             onClick={handleReorganizeGrappes}
                             disabled={isProcessing}
-                            className={`px-10 py-5 bg-slate-950 text-blue-400 rounded-2xl text-xs font-black uppercase tracking-widest transition-all active:scale-95 shadow-xl shadow-black/10 flex items-center gap-3 ${isProcessing ? 'opacity-70 cursor-wait' : 'hover:bg-white/10'}`}
+                            className={`w-full sm:w-auto px-6 sm:px-10 py-3.5 sm:py-4 bg-slate-950 text-blue-400 rounded-xl sm:rounded-2xl text-xs font-black uppercase tracking-widest transition-all active:scale-95 shadow-xl shadow-black/10 flex items-center justify-center sm:justify-start gap-3 ${
+                                isProcessing ? 'opacity-70 cursor-wait' : 'hover:bg-white/10'
+                            }`}
                         >
                             {isProcessing ? (
                                 <>
-                                    <RefreshCw size={16} className="animate-spin" />
+                                    <RefreshCw size={15} className="animate-spin" />
                                     Calcul en cours...
                                 </>
                             ) : (
-                                "Démarrer le Calcul des Grappes"
+                                <>
+                                    <HardDrive size={15} />
+                                    Démarrer le Calcul
+                                </>
                             )}
                         </button>
                     </div>
                 </div>
 
-                <div className="bg-rose-500/10 border border-rose-500/20 p-8 md:p-10 rounded-[2.5rem] flex flex-col md:flex-row items-center justify-between gap-8 group">
-                    <div className="flex items-center gap-6">
-                        <div className="w-14 h-14 bg-rose-500/10 rounded-[1.25rem] flex items-center justify-center text-rose-500 shadow-inner group-hover:scale-110 transition-transform">
-                            <Trash2 size={24} />
+                {/* Danger zone */}
+                <div className="bg-rose-500/10 border border-rose-500/20 p-5 sm:p-8 rounded-2xl sm:rounded-[2rem] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
+                    <div className="flex items-center gap-4">
+                        <div className="w-11 h-11 bg-rose-500/15 rounded-xl flex items-center justify-center text-rose-500 shrink-0">
+                            <Trash2 size={20} />
                         </div>
                         <div>
-                            <h4 className="text-white font-black uppercase tracking-tight text-sm mb-1">Zone de Danger</h4>
-                            <p className="text-rose-500/60 text-xs font-bold uppercase tracking-widest">Toutes les données locales seront supprimées. Cette action est irréversible.</p>
+                            <h4 className="text-white font-black uppercase tracking-tight text-sm mb-0.5">Zone de Danger</h4>
+                            <p className="text-rose-400/70 text-[10px] sm:text-xs font-bold uppercase tracking-widest leading-relaxed">Toutes les données locales seront supprimées. Irréversible.</p>
                         </div>
                     </div>
                     <button
                         aria-label="Réinitialiser la base de données locale"
-                        className="px-8 py-4 bg-rose-500 text-white text-xs font-black uppercase tracking-widest rounded-2xl transition-all shadow-lg shadow-rose-500/20 hover:brightness-110 active:scale-95 whitespace-nowrap"
+                        className="w-full sm:w-auto px-6 py-3.5 bg-rose-500 text-white text-xs font-black uppercase tracking-widest rounded-xl transition-all shadow-lg shadow-rose-500/20 hover:brightness-110 active:scale-95 whitespace-nowrap"
                     >
-                        Réinitialiser la Base Locale
+                        Réinitialiser
                     </button>
                 </div>
             </div>
@@ -1559,9 +1595,9 @@ function LogisticsSection({ project, onUpdate }: { project: any, onUpdate: any }
     const allSubTeams = teams.filter((t: any) => t.parentTeamId !== null);
 
     return (
-        <div className="space-y-12">
+        <div className="space-y-8">
             {/* ERP Elite Settings */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                 <div className="bg-white/5 p-8 rounded-[2rem] border border-white/5 shadow-xl">
                     <div className="flex items-center gap-4 mb-6">
                         <div className="p-3 bg-indigo-500/10 rounded-xl">
@@ -1646,49 +1682,48 @@ function LogisticsSection({ project, onUpdate }: { project: any, onUpdate: any }
             </div>
 
             <div>
-                <h2 className="text-xl font-black text-white flex items-center gap-3 uppercase tracking-tight mb-1">
-                    <Truck className="text-amber-500" />
-                    Dotations Standard (Théoriques)
+                <h2 className="text-lg sm:text-xl font-black text-white flex items-center gap-3 uppercase tracking-tight mb-1">
+                    <Truck className="text-amber-500 shrink-0" size={20} />
+                    Dotations Standard
                 </h2>
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Affectation type du matériel par unité opérationnelle (Configuration)</p>
+                <p className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-widest">Affectation type du matériel par unité opérationnelle</p>
             </div>
 
             {allSubTeams.length === 0 ? (
-                <div className="bg-gray-50 dark:bg-white dark:bg-slate-900/5 p-12 rounded-[2.5rem] border border-dashed border-gray-200 dark:border-white/10 text-center">
+                <div className="bg-white/5 p-10 rounded-2xl border border-dashed border-white/10 text-center">
                     <p className="text-xs font-black text-gray-400 uppercase tracking-[0.3em]">Aucune sous-équipe terrain disponible</p>
                 </div>
             ) : (
-                <div className="space-y-8">
+                <div className="space-y-5 sm:space-y-6">
                     {allSubTeams.map((st: any) => {
                         const stAllocations = allocations[st.id] || [];
                         const availableCatalog = materialCatalog.filter(c => !stAllocations.find((a: any) => a.itemId === c.id));
 
                         return (
-                            <div key={st.id} className="bg-white/5 p-8 rounded-[2rem] border border-white/5 shadow-xl">
-                                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-6">
-                                    <div>
-                                        <div className="flex items-center gap-4 mb-2">
-                                            <h3 className="text-white font-black uppercase tracking-tight text-lg">{st.name}</h3>
-                                            <StatusBadge status="info" label={st.parentTeam.type} />
-                                        </div>
-                                        <div className="flex items-center gap-4">
-                                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest italic">{st.parentTeam.name}</p>
-                                            <p className="text-xs font-black text-blue-500 uppercase tracking-widest">Chef: {st.leader || 'N/A'}</p>
+                            <div key={st.id} className="bg-white/5 p-4 sm:p-6 rounded-2xl border border-white/5 shadow-xl">
+                                <div className="flex flex-col gap-4 mb-6">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2 flex-wrap mb-1">
+                                                <h3 className="text-white font-black uppercase tracking-tight text-sm sm:text-base truncate">{st.name}</h3>
+                                                <StatusBadge status="info" label={st.parentTeam.type} />
+                                            </div>
+                                            <p className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-widest">{st.parentTeam.name}</p>
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-3 w-full md:w-auto">
+                                    <div className="flex flex-col xs:flex-row items-stretch xs:items-center gap-2">
                                         <button
                                             onClick={() => handleAutoFillEquipment(st.id, st.parentTeam.type)}
                                             aria-label="Remplissage Automatique"
-                                            className="px-5 py-3 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-black uppercase tracking-widest rounded-xl transition-all border border-emerald-500/20 flex items-center gap-2"
+                                            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-black uppercase tracking-widest rounded-xl transition-all border border-emerald-500/20 shrink-0"
                                         >
-                                            <Zap size={14} />
+                                            <Zap size={13} />
                                             Auto
                                         </button>
                                         <select
                                             title="Ajouter matériel"
                                             onChange={(e) => { handleAddAllocation(st.id, e.target.value); e.target.value = ""; }}
-                                            className="w-full md:w-64 bg-slate-950 border border-white/5 rounded-xl px-4 py-3 text-xs font-bold text-white outline-none"
+                                            className="flex-1 bg-slate-950 border border-white/10 rounded-xl px-3 py-2.5 text-xs font-bold text-white outline-none"
                                         >
                                             <option value="">+ Allouer Matériel...</option>
                                             {availableCatalog.map(item => (
