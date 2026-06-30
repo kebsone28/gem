@@ -1843,12 +1843,10 @@ export const DEFAULT_TASK_LIBRARY: TaskLibrary = {
           'PV signé = condition de paiement',
         ],
         safetyPoints: [
-          qualityPoints: [
-            'Ne pas valider un ouvrage non conforme',
-            'Rester indépendant et objectif',
-            'Signaler toute fraude',
-          ],
-        },
+          'Ne pas valider un ouvrage non conforme',
+          'Rester indépendant et objectif',
+          'Signaler toute fraude',
+        ],
       ],
       koboGuide: [
         {

@@ -66,19 +66,7 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({ imageUrl, onSave, onCa
     },
   });
 
-  // Load image
-  useEffect(() => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => {
-      setImage(img);
-      imageRef.current = img;
-      drawCanvas();
-    };
-    img.src = imageUrl;
-  }, [imageUrl]);
-
-  // Draw canvas with filters and transforms
+  // Draw canvas with filters and transforms — declared before useEffect to avoid TDZ
   const drawCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext('2d');
@@ -119,10 +107,21 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({ imageUrl, onSave, onCa
     ctx.restore();
   }, [filters, transforms]);
 
-  // Redraw when filters or transforms change
+  // Load image — drawCanvas will be triggered by the [drawCanvas] effect below
+  useEffect(() => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      setImage(img);
+      imageRef.current = img;
+    };
+    img.src = imageUrl;
+  }, [imageUrl]);
+
+  // Redraw when filters, transforms, or image changes
   useEffect(() => {
     drawCanvas();
-  }, [drawCanvas]);
+  }, [drawCanvas, image]);
 
   // Handle filter changes
   const handleFilterChange = (key: keyof ImageFilters, value: any) => {

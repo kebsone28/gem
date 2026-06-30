@@ -1,4 +1,4 @@
-﻿import { AlignmentType, Document, HeadingLevel, Packer, Paragraph, TextRun, BorderStyle, Header, Footer, ImageRun, SectionType, PageNumber } from 'docx';
+import { AlignmentType, Document, HeadingLevel, Packer, Paragraph, TextRun, BorderStyle, Header, Footer, ImageRun, SectionType, PageNumber } from 'docx';
 import { saveAs } from 'file-saver';
 import { isContractHeading, isStrategyHeading } from './cahierUtils';
 import type { OperationalStrategyTemplate } from '@/data/operationalStrategyTemplates';
@@ -33,7 +33,7 @@ function classifyLine(line: string, index: number, totalLines: number): DocLineT
   if (/^\d+\.\s+[A-Z]/.test(t)) return 'subheading';
 
   // BULLETS EXPLICITES (marqueurs visuels)
-  if (/^(\-|\•|\*)\s+/.test(t)) return 'bullet';
+  if (/^(-|•|\*)\s+/.test(t)) return 'bullet';
 
   // BULLETS IMPLICITES (se termine par ; et commence par minuscule)
   if (/;\s*$/.test(t) && /^[a-zéèêëàâäùûüôöîïç]/.test(t)) return 'bullet';
