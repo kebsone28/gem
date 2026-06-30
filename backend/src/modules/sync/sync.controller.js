@@ -63,13 +63,29 @@ const { email, id: userId, role: userRole } = req.user;
             );
         }
 
-        const rawHouseholds = await prisma.household.findMany({
-            where: {
-                organizationId,
-                updatedAt: { gt: lastSync }
-            },
-            select: LEGACY_SAFE_HOUSEHOLD_READ_SELECT
-        });
+        let rawHouseholds = [];
+        try {
+            rawHouseholds = await prisma.household.findMany({
+                where: {
+                    organizationId,
+                    updatedAt: { gt: lastSync }
+                },
+                select: LEGACY_SAFE_HOUSEHOLD_READ_SELECT
+            });
+        } catch (householdSelectError) {
+            logger.warn('[SYNC PULL] household.findMany with full select failed (schema drift?), trying minimal select:', householdSelectError.message);
+            // Fallback: minimal select for older schema (VPS may not have projectId, grappeId yet)
+            rawHouseholds = await prisma.household.findMany({
+                where: { organizationId, updatedAt: { gt: lastSync } },
+                select: {
+                    id: true, zoneId: true, organizationId: true, name: true, phone: true,
+                    region: true, departement: true, village: true, status: true,
+                    location: true, owner: true, koboData: true, source: true,
+                    version: true, updatedAt: true, deletedAt: true,
+                    zone: { select: { name: true, projectId: true } }
+                }
+            });
+        }
 
         // Flatten projectId for frontend compatibility & SANITIZE coordinates for Mapbox
         const households = rawHouseholds.map((rawHousehold) => {
@@ -100,12 +116,18 @@ const { email, id: userId, role: userRole } = req.user;
             }
         });
 
-        const teams = await prisma.team.findMany({
-            where: {
-                organizationId,
-                updatedAt: { gt: lastSync }
-            }
-        });
+        let teams = [];
+        try {
+            teams = await prisma.team.findMany({
+                where: {
+                    organizationId,
+                    updatedAt: { gt: lastSync }
+                }
+            });
+        } catch (teamError) {
+            // team model may not have organizationId on older VPS migration
+            logger.warn('[SYNC PULL] team.findMany failed (schema drift?), returning empty:', teamError.message);
+        }
 
         res.json({
             timestamp: new Date().toISOString(),
@@ -118,8 +140,16 @@ const { email, id: userId, role: userRole } = req.user;
         });
 
     } catch (error) {
-        logger.error('Sync pull error:', error);
-        res.status(500).json({ error: 'Failed to pull changes' });
+        logger.error('Sync pull error details:', {
+            message: error.message,
+            code: error.code,
+            meta: error.meta,
+            stack: error.stack?.split('\n').slice(0, 5).join('\n')
+        });
+        res.status(500).json({ 
+            error: 'Failed to pull changes',
+            detail: error.message
+        });
     }
 };
 
