@@ -223,11 +223,13 @@ app.get('/health', async (req, res) => {
     };
   }
 
-  try {
-    const ping = await redisConnection.ping();
-    if (ping === 'PONG') health.services.redis = 'UP';
-  } catch {
-    health.status = 'PARTIAL';
+  if (redisConnection) {
+    try {
+      const ping = await redisConnection.ping();
+      if (ping === 'PONG') health.services.redis = 'UP';
+    } catch {
+      health.status = 'PARTIAL';
+    }
   }
 
   const statusCode = health.status === 'UP' ? 200 : 503;
