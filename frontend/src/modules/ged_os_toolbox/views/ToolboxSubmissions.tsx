@@ -218,7 +218,6 @@ const koboTableColumns: KoboTableColumn[] = [
 const projectSectors = [
   'Energie',
   'Eau et assainissement',
-  'Sante',
   'Education',
   'Infrastructure',
   'Autre',

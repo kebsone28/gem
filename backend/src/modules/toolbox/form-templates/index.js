@@ -4,13 +4,11 @@
  * Inspiré des templates KoboToolbox, adaptés aux besoins terrain GED OS
  */
 import electrifTemplate from './electrification.js';
-import santeTemplate from './sante.js';
 import eauTemplate from './eau-assainissement.js';
 import educationTemplate from './education.js';
 
 export const FORM_TEMPLATES = [
   electrifTemplate,
-  santeTemplate,
   eauTemplate,
   educationTemplate,
 ];

@@ -88,7 +88,6 @@ export const koboTableColumns: KoboTableColumn[] = [
 export const projectSectors = [
   'Energie',
   'Eau et assainissement',
-  'Sante',
   'Education',
   'Infrastructure',
   'Autre',
