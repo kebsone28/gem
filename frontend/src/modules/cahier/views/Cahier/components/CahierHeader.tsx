@@ -1,16 +1,16 @@
 import React from 'react';
-import { 
-  History, 
-  Save, 
-  RefreshCw, 
-  Settings, 
-  FileText, 
+import {
+  History,
+  Save,
+  RefreshCw,
+  Settings,
+  FileText,
   ChevronRight,
   ShieldCheck,
   AlertCircle,
   Loader2,
   Clock,
-  Layers3
+  Layers3,
 } from 'lucide-react';
 
 interface CahierHeaderProps {
@@ -18,7 +18,7 @@ interface CahierHeaderProps {
   isSaving?: boolean;
   statusLabel?: string;
   statusTone?: 'success' | 'info';
-  selectedRole: string;
+  selectedRoles: string[];
   documentMode: 'cahier' | 'contrat' | 'strategie';
   isEditing: boolean;
   hasUnsavedChanges: boolean;
@@ -39,7 +39,7 @@ export const CahierHeader: React.FC<CahierHeaderProps> = ({
   isSaving = false,
   statusLabel = 'Synchronisé au Cloud',
   statusTone = 'success',
-  selectedRole,
+  selectedRoles,
   documentMode,
   isEditing,
   hasUnsavedChanges,
@@ -61,7 +61,7 @@ export const CahierHeader: React.FC<CahierHeaderProps> = ({
         {/* Glow Effects */}
         <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/20 blur-[100px] rounded-full pointer-events-none -translate-y-1/2 translate-x-1/3" />
         <div className="absolute bottom-0 left-0 w-64 h-64 bg-emerald-500/10 blur-[80px] rounded-full pointer-events-none translate-y-1/3 -translate-x-1/3" />
-        
+
         <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="flex flex-col gap-3">
             <div className="flex items-center gap-2">
@@ -72,14 +72,18 @@ export const CahierHeader: React.FC<CahierHeaderProps> = ({
                 Workspace
               </span>
             </div>
-            
+
             <h1 className="text-3xl font-black text-white md:text-4xl lg:text-5xl tracking-tight">
               {isEditing ? 'Édition : ' : ''}
-              {documentMode === 'cahier' ? 'Cahier des Charges' : documentMode === 'contrat' ? 'Contrat de Prestation' : 'Modèle de Stratégie'}
+              {documentMode === 'cahier'
+                ? 'Cahier des Charges'
+                : documentMode === 'contrat'
+                  ? 'Contrat de Prestation'
+                  : 'Modèle de Stratégie'}
             </h1>
-            
+
             <p className="text-slate-400 text-sm font-medium flex items-center gap-2">
-              <span className="text-indigo-400 font-bold">{selectedRole}</span>
+              <span className="text-indigo-400 font-bold">{selectedRoles.join(', ')}</span>
               <span className="w-1 h-1 rounded-full bg-slate-700" />
               <span>Généré et synchronisé automatiquement</span>
             </p>
@@ -90,8 +94,8 @@ export const CahierHeader: React.FC<CahierHeaderProps> = ({
             <button
               onClick={() => setShowHistory(!showHistory)}
               className={`flex items-center gap-2 rounded-2xl border px-5 py-3 text-xs font-bold uppercase tracking-wider transition-all duration-300 hover:scale-[1.02] ${
-                showHistory 
-                  ? 'border-indigo-500/50 bg-indigo-500/10 text-indigo-400 shadow-lg shadow-indigo-500/20' 
+                showHistory
+                  ? 'border-indigo-500/50 bg-indigo-500/10 text-indigo-400 shadow-lg shadow-indigo-500/20'
                   : 'border-white/10 bg-white/5 text-slate-300 hover:bg-white/10'
               }`}
             >
@@ -131,10 +135,10 @@ export const CahierHeader: React.FC<CahierHeaderProps> = ({
             {documentMode === 'cahier' && onToggleFusedMode && (
               <button
                 onClick={onToggleFusedMode}
-                title={isFusedMode ? "Séparer les cahiers" : "Fusionner les cahiers"}
+                title={isFusedMode ? 'Séparer les cahiers' : 'Fusionner les cahiers'}
                 className={`flex items-center gap-2 rounded-2xl border px-4 py-3 text-xs font-bold uppercase tracking-wider transition-all duration-300 hover:scale-[1.02] ${
-                  isFusedMode 
-                    ? 'border-purple-500/50 bg-purple-500/10 text-purple-400 shadow-lg shadow-purple-500/20' 
+                  isFusedMode
+                    ? 'border-purple-500/50 bg-purple-500/10 text-purple-400 shadow-lg shadow-purple-500/20'
                     : 'border-white/10 bg-white/5 text-slate-300 hover:bg-white/10'
                 }`}
               >
@@ -147,8 +151,8 @@ export const CahierHeader: React.FC<CahierHeaderProps> = ({
               onClick={() => setShowAdvancedSections(!showAdvancedSections)}
               title="Paramètres avancés"
               className={`p-3 rounded-2xl border transition-all duration-300 hover:scale-[1.02] ${
-                showAdvancedSections 
-                  ? 'border-amber-500/50 bg-amber-500/10 text-amber-400 shadow-lg shadow-amber-500/20' 
+                showAdvancedSections
+                  ? 'border-amber-500/50 bg-amber-500/10 text-amber-400 shadow-lg shadow-amber-500/20'
                   : 'border-white/10 bg-white/5 text-slate-400 hover:text-white'
               }`}
             >
@@ -170,16 +174,32 @@ export const CahierHeader: React.FC<CahierHeaderProps> = ({
       <div className="flex flex-wrap items-center gap-3 px-2">
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-[10px] font-bold uppercase tracking-widest text-slate-400">
           <span className="text-slate-500">Mode:</span>
-          {isEditing ? <span className="text-amber-400 flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" /> Édition</span> : <span className="text-indigo-400 flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-indigo-400" /> Lecture Seule</span>}
-        </div>
-        
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-          <span className="text-slate-500">Document:</span>
-          <span className="text-white">{documentMode === 'cahier' ? 'Technique' : documentMode === 'contrat' ? 'Juridique' : 'Opérationnel'}</span>
+          {isEditing ? (
+            <span className="text-amber-400 flex items-center gap-1.5">
+              <div className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" /> Édition
+            </span>
+          ) : (
+            <span className="text-indigo-400 flex items-center gap-1.5">
+              <div className="w-1.5 h-1.5 rounded-full bg-indigo-400" /> Lecture Seule
+            </span>
+          )}
         </div>
 
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-          <span className="text-slate-500 flex items-center gap-1.5"><Clock size={12} /> Modifié:</span>
+          <span className="text-slate-500">Document:</span>
+          <span className="text-white">
+            {documentMode === 'cahier'
+              ? 'Technique'
+              : documentMode === 'contrat'
+                ? 'Juridique'
+                : 'Opérationnel'}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+          <span className="text-slate-500 flex items-center gap-1.5">
+            <Clock size={12} /> Modifié:
+          </span>
           <span className="text-white">À l'instant</span>
         </div>
 
@@ -190,14 +210,15 @@ export const CahierHeader: React.FC<CahierHeaderProps> = ({
               Sauvegarde en cours...
             </span>
           ) : (
-            <span className={`${statusTone === 'info' ? 'text-blue-400' : 'text-emerald-400'} flex items-center gap-2`}>
+            <span
+              className={`${statusTone === 'info' ? 'text-blue-400' : 'text-emerald-400'} flex items-center gap-2`}
+            >
               <ShieldCheck size={14} />
               {statusLabel}
             </span>
           )}
         </div>
       </div>
-
     </div>
   );
 };

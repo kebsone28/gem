@@ -6,6 +6,7 @@ import mesAPI, { type MESRecord } from '@services/mesAPI';
 import MESGPSPicker from './MESGPSPicker';
 import MESSignatureCanvas from './MESSignatureCanvas';
 import MESPhotoManager from './MESPhotoManager';
+import DatePickerField from '@components/DatePickerField';
 import toast from 'react-hot-toast';
 
 interface MESFormProps {
@@ -15,7 +16,15 @@ interface MESFormProps {
   onSuccess: () => void;
 }
 
-type MESStatus = 'RECU' | 'PROGRAMME' | 'EN_COURS' | 'REALISE' | 'CONTROLE' | 'VALIDE' | 'FACTURE' | 'PAYE';
+type MESStatus =
+  | 'RECU'
+  | 'PROGRAMME'
+  | 'EN_COURS'
+  | 'REALISE'
+  | 'CONTROLE'
+  | 'VALIDE'
+  | 'FACTURE'
+  | 'PAYE';
 
 const MESForm: React.FC<MESFormProps> = ({ isOpen, onClose, record, onSuccess }) => {
   const [loading, setLoading] = useState(false);
@@ -110,16 +119,18 @@ const MESForm: React.FC<MESFormProps> = ({ isOpen, onClose, record, onSuccess })
       onSuccess();
       onClose();
     } catch (error) {
-      toast.error('Erreur lors de la sauvegarde de l\'enregistrement MES');
+      toast.error("Erreur lors de la sauvegarde de l'enregistrement MES");
       console.error(error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+  ) => {
     const { name, value, type } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value,
     }));
@@ -141,11 +152,11 @@ const MESForm: React.FC<MESFormProps> = ({ isOpen, onClose, record, onSuccess })
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.95, opacity: 0 }}
           className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
-          onClick={e => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
         >
           <div className="sticky top-0 bg-slate-900 border-b border-slate-700 p-6 flex items-center justify-between">
             <h2 className="text-xl font-bold text-white">
-              {record ? 'Modifier l\'enregistrement MES' : 'Nouvel enregistrement MES'}
+              {record ? "Modifier l'enregistrement MES" : 'Nouvel enregistrement MES'}
             </h2>
             <button
               onClick={onClose}
@@ -196,9 +207,7 @@ const MESForm: React.FC<MESFormProps> = ({ isOpen, onClose, record, onSuccess })
               <h3 className="text-lg font-semibold text-white">Informations techniques</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">
-                    Poste *
-                  </label>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">Poste *</label>
                   <input
                     type="text"
                     name="poste"
@@ -210,9 +219,7 @@ const MESForm: React.FC<MESFormProps> = ({ isOpen, onClose, record, onSuccess })
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">
-                    Zone *
-                  </label>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">Zone *</label>
                   <input
                     type="text"
                     name="zone"
@@ -224,9 +231,7 @@ const MESForm: React.FC<MESFormProps> = ({ isOpen, onClose, record, onSuccess })
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">
-                    Type *
-                  </label>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">Type *</label>
                   <select
                     name="type"
                     value={formData.type}
@@ -239,9 +244,7 @@ const MESForm: React.FC<MESFormProps> = ({ isOpen, onClose, record, onSuccess })
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">
-                    Nature *
-                  </label>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">Nature *</label>
                   <select
                     name="nature"
                     value={formData.nature}
@@ -254,9 +257,7 @@ const MESForm: React.FC<MESFormProps> = ({ isOpen, onClose, record, onSuccess })
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">
-                    Câble
-                  </label>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">Câble</label>
                   <input
                     type="text"
                     name="cable"
@@ -267,9 +268,7 @@ const MESForm: React.FC<MESFormProps> = ({ isOpen, onClose, record, onSuccess })
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">
-                    Statut *
-                  </label>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">Statut *</label>
                   <select
                     name="status"
                     value={formData.status}
@@ -318,9 +317,7 @@ const MESForm: React.FC<MESFormProps> = ({ isOpen, onClose, record, onSuccess })
               <h3 className="text-lg font-semibold text-white">Intervention</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">
-                    Agent *
-                  </label>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">Agent *</label>
                   <input
                     type="text"
                     name="agent"
@@ -332,14 +329,15 @@ const MESForm: React.FC<MESFormProps> = ({ isOpen, onClose, record, onSuccess })
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">
-                    Date *
-                  </label>
-                  <input
-                    type="date"
-                    name="date"
-                    value={formData.date}
-                    onChange={handleChange}
+                  <label className="block text-sm font-medium text-slate-300 mb-2">Date *</label>
+                  <DatePickerField
+                    value={formData.date.split('-').reverse().join('/')}
+                    onChange={(value) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        date: value.split('/').reverse().join('-'),
+                      }))
+                    }
                     required
                     className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
@@ -372,8 +370,8 @@ const MESForm: React.FC<MESFormProps> = ({ isOpen, onClose, record, onSuccess })
               <MESGPSPicker
                 lat={formData.gpsLat}
                 lng={formData.gpsLng}
-                onLatChange={(value) => setFormData(prev => ({ ...prev, gpsLat: value }))}
-                onLngChange={(value) => setFormData(prev => ({ ...prev, gpsLng: value }))}
+                onLatChange={(value) => setFormData((prev) => ({ ...prev, gpsLat: value }))}
+                onLngChange={(value) => setFormData((prev) => ({ ...prev, gpsLng: value }))}
               />
             </div>
 
@@ -385,7 +383,7 @@ const MESForm: React.FC<MESFormProps> = ({ isOpen, onClose, record, onSuccess })
               </h3>
               <MESPhotoManager
                 photos={formData.photos}
-                onChange={(photos) => setFormData(prev => ({ ...prev, photos }))}
+                onChange={(photos) => setFormData((prev) => ({ ...prev, photos }))}
                 maxPhotos={10}
               />
             </div>
@@ -398,7 +396,7 @@ const MESForm: React.FC<MESFormProps> = ({ isOpen, onClose, record, onSuccess })
               </h3>
               <MESSignatureCanvas
                 value={formData.clientSignature}
-                onChange={(value) => setFormData(prev => ({ ...prev, clientSignature: value }))}
+                onChange={(value) => setFormData((prev) => ({ ...prev, clientSignature: value }))}
               />
             </div>
 

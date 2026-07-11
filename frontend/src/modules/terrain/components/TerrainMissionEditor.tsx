@@ -4,12 +4,13 @@
  */
 import React, { useEffect, useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  Users, 
-  MapPin, 
-  Calendar, 
-  DollarSign, 
-  Package, 
+import DatePickerField from '@components/DatePickerField';
+import {
+  Users,
+  MapPin,
+  Calendar,
+  DollarSign,
+  Package,
   FileText,
   CheckCircle,
   ChevronRight,
@@ -18,11 +19,11 @@ import {
   Camera,
   Trash2,
   Image as ImageIcon,
-  Loader2
+  Loader2,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { uploadFile } from '@services/uploadService';
-import { KAFFRINE_TEMPLATE } from "@modules/mission/views/mission/core/missionTypes";
+import { KAFFRINE_TEMPLATE } from '@modules/mission/views/mission/core/missionTypes';
 import logger from '@utils/logger';
 import { useProject } from '@contexts/ProjectContext';
 import { useTeams } from '@hooks/useTeams';
@@ -39,23 +40,23 @@ interface MissionContext {
   teamId?: string;
   teamName?: string;
   teamMembers?: { id: string; name: string; role: string }[];
-  
+
   // Localisation
   regionId?: string;
   regionName?: string;
   zoneIds?: string[];
-  
+
   // Période
   startDate?: string;
   endDate?: string;
-  
+
   // Budget
   budget?: number;
   budgetJustification?: string;
-  
+
   // Matériaux
   materials?: { name: string; quantity: number; unit: string }[];
-  
+
   // Ménages cibles
   householdIds?: string[];
   householdCount?: number;
@@ -83,7 +84,7 @@ export const TerrainMissionEditor: React.FC<TerrainMissionEditorProps> = ({
   context,
   onSave,
   onSubmit,
-  isLoading = false
+  isLoading = false,
 }) => {
   const { project } = useProject();
   const { teams, fetchTeams, isLoading: isTeamsLoading } = useTeams(project?.id);
@@ -91,32 +92,32 @@ export const TerrainMissionEditor: React.FC<TerrainMissionEditorProps> = ({
     // Informations de base
     title: '',
     description: '',
-    
+
     // Équipe
     teamId: context.teamId || '',
     teamMembers: context.teamMembers || [],
-    
+
     // Localisation
     regionId: context.regionId || '',
     regionName: context.regionName || '',
     zones: context.zoneIds || [],
-    
+
     // Dates
     startDate: context.startDate || '',
     endDate: context.endDate || '',
-    
+
     // Budget
     budget: context.budget || 0,
     budgetJustification: context.budgetJustification || '',
-    
+
     // Matériaux
     materials: context.materials || [],
     additionalMaterials: '',
-    
+
     // Ménages
     householdIds: context.householdIds || [],
     householdCount: context.householdCount || 0,
-    
+
     // Notes terrain / Reporting
     notes: '',
     photos: [] as { id: string; url: string; comment?: string; timestamp: string }[],
@@ -147,10 +148,7 @@ export const TerrainMissionEditor: React.FC<TerrainMissionEditorProps> = ({
     [project?.config, missionRegionName]
   );
 
-  const activeTeams = useMemo(
-    () => teams.filter(isTeamAvailableForAllocation),
-    [teams]
-  );
+  const activeTeams = useMemo(() => teams.filter(isTeamAvailableForAllocation), [teams]);
 
   const canonicalTeamOptions = useMemo(() => {
     const regionMatchedTeams = activeTeams.filter((team) =>
@@ -201,7 +199,8 @@ export const TerrainMissionEditor: React.FC<TerrainMissionEditorProps> = ({
     if (!recommendedTeam) return;
 
     setFormData((prev) => {
-      const hasValidSelection = !!prev.teamId && activeTeams.some((team) => team.id === prev.teamId);
+      const hasValidSelection =
+        !!prev.teamId && activeTeams.some((team) => team.id === prev.teamId);
       if (hasValidSelection) return prev;
 
       return {
@@ -268,9 +267,9 @@ export const TerrainMissionEditor: React.FC<TerrainMissionEditorProps> = ({
       context: {
         ...context,
         createdAt: new Date().toISOString(),
-      }
+      },
     };
-    
+
     if (asDraft) {
       await onSave(mission);
     } else {
@@ -280,14 +279,17 @@ export const TerrainMissionEditor: React.FC<TerrainMissionEditorProps> = ({
 
   const addMaterial = () => {
     if (formData.additionalMaterials) {
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
-        materials: [...prev.materials, { 
-          name: formData.additionalMaterials, 
-          quantity: 1, 
-          unit: 'unité' 
-        }],
-        additionalMaterials: ''
+        materials: [
+          ...prev.materials,
+          {
+            name: formData.additionalMaterials,
+            quantity: 1,
+            unit: 'unité',
+          },
+        ],
+        additionalMaterials: '',
       }));
     }
   };
@@ -300,7 +302,7 @@ export const TerrainMissionEditor: React.FC<TerrainMissionEditorProps> = ({
       setIsUploading(true);
       const result = await uploadFile(file);
       if (result) {
-        setFormData(prev => ({
+        setFormData((prev) => ({
           ...prev,
           photos: [
             ...prev.photos,
@@ -308,31 +310,31 @@ export const TerrainMissionEditor: React.FC<TerrainMissionEditorProps> = ({
               id: result.key,
               url: result.url,
               comment: '',
-              timestamp: new Date().toISOString()
-            }
-          ]
+              timestamp: new Date().toISOString(),
+            },
+          ],
         }));
         toast.success('Photo ajoutée au rapport');
       }
     } catch (e) {
       logger.error('[TerrainMissionEditor] Upload failed', e);
-      toast.error('Erreur lors de l\'upload');
+      toast.error("Erreur lors de l'upload");
     } finally {
       setIsUploading(false);
     }
   };
 
   const removePhoto = (id: string) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      photos: prev.photos.filter(p => p.id !== id)
+      photos: prev.photos.filter((p) => p.id !== id),
     }));
   };
 
   const updatePhotoComment = (id: string, comment: string) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      photos: prev.photos.map(p => p.id === id ? { ...p, comment } : p)
+      photos: prev.photos.map((p) => (p.id === id ? { ...p, comment } : p)),
     }));
   };
 
@@ -346,20 +348,18 @@ export const TerrainMissionEditor: React.FC<TerrainMissionEditorProps> = ({
               onClick={() => validation[step as keyof typeof validation] && setStep(s.id)}
               disabled={!validation[step as keyof typeof validation] && s.id > step}
               className={`flex flex-col items-center gap-1 ${
-                step === s.id 
-                  ? 'text-blue-400' 
-                  : step > s.id 
-                    ? 'text-green-400' 
-                    : 'text-slate-500'
+                step === s.id ? 'text-blue-400' : step > s.id ? 'text-green-400' : 'text-slate-500'
               }`}
             >
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                step === s.id 
-                  ? 'bg-blue-500/20 border-2 border-blue-500' 
-                  : step > s.id 
-                    ? 'bg-green-500/20 border-2 border-green-500' 
-                    : 'bg-slate-700 border-2 border-slate-600'
-              }`}>
+              <div
+                className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                  step === s.id
+                    ? 'bg-blue-500/20 border-2 border-blue-500'
+                    : step > s.id
+                      ? 'bg-green-500/20 border-2 border-green-500'
+                      : 'bg-slate-700 border-2 border-slate-600'
+                }`}
+              >
                 {step > s.id ? <CheckCircle className="w-4 h-4" /> : s.icon}
               </div>
               <span className="text-xs hidden md:block">{s.title}</span>
@@ -376,24 +376,26 @@ export const TerrainMissionEditor: React.FC<TerrainMissionEditorProps> = ({
         {step === 1 && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             <h3 className="text-lg font-semibold text-white mb-4">Informations générales</h3>
-            
+
             <div className="space-y-3">
               <div>
                 <label className="block text-sm text-slate-400 mb-1">Titre de la mission *</label>
                 <input
                   type="text"
                   value={formData.title}
-                  onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
                   placeholder="Ex: Installation Kit Phase 2 - Tambacounda"
                   className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white"
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm text-slate-400 mb-1">Description *</label>
                 <textarea
                   value={formData.description}
-                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, description: e.target.value }))
+                  }
                   placeholder="Décrivez l'objectif de la mission..."
                   rows={3}
                   className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white"
@@ -404,7 +406,7 @@ export const TerrainMissionEditor: React.FC<TerrainMissionEditorProps> = ({
                 <label className="block text-sm text-slate-400 mb-1">Priorité</label>
                 <select
                   value={formData.priority}
-                  onChange={(e) => setFormData(prev => ({ ...prev, priority: e.target.value }))}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, priority: e.target.value }))}
                   className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white"
                   title="Priorité de la mission"
                 >
@@ -421,7 +423,7 @@ export const TerrainMissionEditor: React.FC<TerrainMissionEditorProps> = ({
         {step === 2 && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             <h3 className="text-lg font-semibold text-white mb-4">Équipe terrain</h3>
-            
+
             <div className="space-y-3">
               <div>
                 <label className="block text-sm text-slate-400 mb-1">Équipe *</label>
@@ -442,7 +444,9 @@ export const TerrainMissionEditor: React.FC<TerrainMissionEditorProps> = ({
                 {recommendedTeam ? (
                   <p className="mt-2 text-xs text-slate-400">
                     Suggestion canonique :
-                    <span className="ml-1 font-semibold text-slate-200">{recommendedTeam.name}</span>
+                    <span className="ml-1 font-semibold text-slate-200">
+                      {recommendedTeam.name}
+                    </span>
                     <span className="ml-2 rounded-full border border-slate-700 bg-slate-900 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
                       {recommendedSource === 'manual'
                         ? 'Contexte terrain'
@@ -456,7 +460,7 @@ export const TerrainMissionEditor: React.FC<TerrainMissionEditorProps> = ({
 
               <div className="bg-slate-700/50 rounded-lg p-3">
                 <h4 className="text-sm text-slate-400 mb-2">
-                  {resolvedTeamMembers.length > 0 ? "Responsables d'équipe" : "Équipe terrain"}
+                  {resolvedTeamMembers.length > 0 ? "Responsables d'équipe" : 'Équipe terrain'}
                 </h4>
                 {isTeamsLoading ? (
                   <p className="text-slate-500 text-sm">Chargement des équipes...</p>
@@ -478,11 +482,14 @@ export const TerrainMissionEditor: React.FC<TerrainMissionEditorProps> = ({
                       </span>
                     </div>
                     <p className="text-xs text-slate-500">
-                      Aucun membre nominatif disponible, mais l'équipe peut être soumise telle quelle.
+                      Aucun membre nominatif disponible, mais l'équipe peut être soumise telle
+                      quelle.
                     </p>
                   </div>
                 ) : (
-                  <p className="text-slate-500 text-sm">Aucune équipe disponible pour cette région</p>
+                  <p className="text-slate-500 text-sm">
+                    Aucune équipe disponible pour cette région
+                  </p>
                 )}
               </div>
             </div>
@@ -492,14 +499,20 @@ export const TerrainMissionEditor: React.FC<TerrainMissionEditorProps> = ({
         {step === 3 && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             <h3 className="text-lg font-semibold text-white mb-4">Localisation & Dates</h3>
-            
+
             <div className="space-y-3">
               <div>
                 <label className="block text-sm text-slate-400 mb-1">Région *</label>
                 <input
                   type="text"
                   value={formData.regionName}
-                  onChange={(e) => setFormData(prev => ({ ...prev, regionName: e.target.value, regionId: e.target.value }))}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      regionName: e.target.value,
+                      regionId: e.target.value,
+                    }))
+                  }
                   placeholder="Ex: Tambacounda"
                   className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white"
                 />
@@ -508,20 +521,28 @@ export const TerrainMissionEditor: React.FC<TerrainMissionEditorProps> = ({
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm text-slate-400 mb-1">Date début *</label>
-                  <input
-                    type="date"
-                    value={formData.startDate}
-                    onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
+                  <DatePickerField
+                    value={formData.startDate.split('-').reverse().join('/')}
+                    onChange={(value) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        startDate: value.split('/').reverse().join('-'),
+                      }))
+                    }
                     className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white"
                     title="Date de début de la mission"
                   />
                 </div>
                 <div>
                   <label className="block text-sm text-slate-400 mb-1">Date fin *</label>
-                  <input
-                    type="date"
-                    value={formData.endDate}
-                    onChange={(e) => setFormData(prev => ({ ...prev, endDate: e.target.value }))}
+                  <DatePickerField
+                    value={formData.endDate.split('-').reverse().join('/')}
+                    onChange={(value) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        endDate: value.split('/').reverse().join('-'),
+                      }))
+                    }
                     className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white"
                     title="Date de fin de la mission"
                   />
@@ -531,7 +552,9 @@ export const TerrainMissionEditor: React.FC<TerrainMissionEditorProps> = ({
               <div className="bg-slate-700/50 rounded-lg p-3">
                 <div className="flex items-center justify-between">
                   <span className="text-slate-400">Ménages ciblés</span>
-                  <span className="text-white font-medium">{formData.householdCount || context.householdCount || 0}</span>
+                  <span className="text-white font-medium">
+                    {formData.householdCount || context.householdCount || 0}
+                  </span>
                 </div>
               </div>
             </div>
@@ -541,14 +564,16 @@ export const TerrainMissionEditor: React.FC<TerrainMissionEditorProps> = ({
         {step === 4 && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             <h3 className="text-lg font-semibold text-white mb-4">Budget</h3>
-            
+
             <div className="space-y-3">
               <div>
                 <label className="block text-sm text-slate-400 mb-1">Budget estimé (FCFA) *</label>
                 <input
                   type="number"
                   value={formData.budget}
-                  onChange={(e) => setFormData(prev => ({ ...prev, budget: parseInt(e.target.value) || 0 }))}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, budget: parseInt(e.target.value) || 0 }))
+                  }
                   placeholder="0"
                   className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white"
                 />
@@ -558,7 +583,9 @@ export const TerrainMissionEditor: React.FC<TerrainMissionEditorProps> = ({
                 <label className="block text-sm text-slate-400 mb-1">Justification du budget</label>
                 <textarea
                   value={formData.budgetJustification}
-                  onChange={(e) => setFormData(prev => ({ ...prev, budgetJustification: e.target.value }))}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, budgetJustification: e.target.value }))
+                  }
                   placeholder="Expliquez les postes de dépenses..."
                   rows={2}
                   className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white"
@@ -571,16 +598,21 @@ export const TerrainMissionEditor: React.FC<TerrainMissionEditorProps> = ({
         {step === 5 && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             <h3 className="text-lg font-semibold text-white mb-4">Matériaux</h3>
-            
+
             <div className="space-y-3">
               <div>
                 <label className="block text-sm text-slate-400 mb-1">Matériaux requis</label>
                 {formData.materials.length > 0 ? (
                   <div className="space-y-2 mb-3">
                     {formData.materials.map((mat, i) => (
-                      <div key={i} className="flex items-center justify-between bg-slate-700/50 rounded-lg px-3 py-2">
+                      <div
+                        key={i}
+                        className="flex items-center justify-between bg-slate-700/50 rounded-lg px-3 py-2"
+                      >
                         <span className="text-white">{mat.name}</span>
-                        <span className="text-slate-400">{mat.quantity} {mat.unit}</span>
+                        <span className="text-slate-400">
+                          {mat.quantity} {mat.unit}
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -592,7 +624,9 @@ export const TerrainMissionEditor: React.FC<TerrainMissionEditorProps> = ({
                   <input
                     type="text"
                     value={formData.additionalMaterials}
-                    onChange={(e) => setFormData(prev => ({ ...prev, additionalMaterials: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, additionalMaterials: e.target.value }))
+                    }
                     placeholder="Ajouter un matériau..."
                     className="flex-1 bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white"
                   />
@@ -610,7 +644,7 @@ export const TerrainMissionEditor: React.FC<TerrainMissionEditorProps> = ({
               <div>
                 <div className="flex gap-2 p-1 bg-slate-900/50 rounded-lg mb-4">
                   <button
-                    onClick={() => setFormData(prev => ({ ...prev, reportingMode: 'daily' }))}
+                    onClick={() => setFormData((prev) => ({ ...prev, reportingMode: 'daily' }))}
                     className={`flex-1 py-1.5 px-3 rounded-md text-xs font-medium transition-all ${
                       formData.reportingMode === 'daily'
                         ? 'bg-blue-600 text-white shadow-lg'
@@ -620,7 +654,7 @@ export const TerrainMissionEditor: React.FC<TerrainMissionEditorProps> = ({
                     Suivi Journalier
                   </button>
                   <button
-                    onClick={() => setFormData(prev => ({ ...prev, reportingMode: 'narrative' }))}
+                    onClick={() => setFormData((prev) => ({ ...prev, reportingMode: 'narrative' }))}
                     className={`flex-1 py-1.5 px-3 rounded-md text-xs font-medium transition-all ${
                       formData.reportingMode === 'narrative'
                         ? 'bg-blue-600 text-white shadow-lg'
@@ -633,10 +667,12 @@ export const TerrainMissionEditor: React.FC<TerrainMissionEditorProps> = ({
 
                 {formData.reportingMode === 'daily' ? (
                   <>
-                    <label className="block text-sm text-slate-400 mb-1">Notes terrain (Jalons)</label>
+                    <label className="block text-sm text-slate-400 mb-1">
+                      Notes terrain (Jalons)
+                    </label>
                     <textarea
                       value={formData.notes}
-                      onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, notes: e.target.value }))}
                       placeholder="Observations, recommandations par étape..."
                       rows={3}
                       className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white mb-4"
@@ -644,10 +680,14 @@ export const TerrainMissionEditor: React.FC<TerrainMissionEditorProps> = ({
                   </>
                 ) : (
                   <>
-                    <label className="block text-sm text-slate-400 mb-1">Synthèse narrative épurée</label>
+                    <label className="block text-sm text-slate-400 mb-1">
+                      Synthèse narrative épurée
+                    </label>
                     <textarea
                       value={formData.narrativeReport}
-                      onChange={(e) => setFormData(prev => ({ ...prev, narrativeReport: e.target.value }))}
+                      onChange={(e) =>
+                        setFormData((prev) => ({ ...prev, narrativeReport: e.target.value }))
+                      }
                       placeholder="Rédigez votre rapport global ici..."
                       rows={8}
                       className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white font-mono text-xs mb-4"
@@ -656,13 +696,19 @@ export const TerrainMissionEditor: React.FC<TerrainMissionEditorProps> = ({
                 )}
 
                 <div className="flex items-center justify-between mb-2">
-                  <label className="text-sm text-slate-400">Photos Illustratives ({formData.photos.length})</label>
+                  <label className="text-sm text-slate-400">
+                    Photos Illustratives ({formData.photos.length})
+                  </label>
                   <button
                     onClick={() => fileInputRef.current?.click()}
                     disabled={isUploading}
                     className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded flex items-center gap-1"
                   >
-                    {isUploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Camera className="w-3 h-3" />}
+                    {isUploading ? (
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                    ) : (
+                      <Camera className="w-3 h-3" />
+                    )}
                     Ajouter
                   </button>
                   <input
@@ -676,12 +722,11 @@ export const TerrainMissionEditor: React.FC<TerrainMissionEditorProps> = ({
 
                 <div className="grid grid-cols-2 gap-2">
                   {formData.photos.map((photo) => (
-                    <div key={photo.id} className="relative group bg-slate-700 rounded-lg overflow-hidden border border-slate-600">
-                      <img 
-                        src={photo.url} 
-                        alt="Mission" 
-                        className="w-full h-24 object-cover"
-                      />
+                    <div
+                      key={photo.id}
+                      className="relative group bg-slate-700 rounded-lg overflow-hidden border border-slate-600"
+                    >
+                      <img src={photo.url} alt="Mission" className="w-full h-24 object-cover" />
                       <button
                         onClick={() => removePhoto(photo.id)}
                         title="Supprimer la photo"
@@ -723,7 +768,7 @@ export const TerrainMissionEditor: React.FC<TerrainMissionEditorProps> = ({
         >
           ← Retour
         </button>
-        
+
         <div className="flex gap-2">
           <button
             onClick={() => handleSubmit(true)}
@@ -733,7 +778,7 @@ export const TerrainMissionEditor: React.FC<TerrainMissionEditorProps> = ({
             <Save className="w-4 h-4" />
             Sauvegarder
           </button>
-          
+
           {step < 5 ? (
             <button
               onClick={handleNext}
@@ -766,15 +811,19 @@ export const MissionSummary: React.FC<{ mission: MissionLike }> = ({ mission }) 
     <div className="bg-slate-800 rounded-lg p-3 space-y-2">
       <div className="flex items-center justify-between">
         <h4 className="text-white font-medium">{mission.title || 'Mission sans titre'}</h4>
-        <span className={`px-2 py-1 rounded text-xs ${
-          mission.status === 'draft' ? 'bg-slate-600 text-slate-300' :
-          mission.status === 'soumise' ? 'bg-yellow-600 text-white' :
-          'bg-green-600 text-white'
-        }`}>
+        <span
+          className={`px-2 py-1 rounded text-xs ${
+            mission.status === 'draft'
+              ? 'bg-slate-600 text-slate-300'
+              : mission.status === 'soumise'
+                ? 'bg-yellow-600 text-white'
+                : 'bg-green-600 text-white'
+          }`}
+        >
           {mission.status}
         </span>
       </div>
-      
+
       <div className="grid grid-cols-2 gap-2 text-sm">
         <div className="flex items-center gap-1 text-slate-400">
           <Users className="w-3 h-3" />

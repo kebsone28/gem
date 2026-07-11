@@ -1,6 +1,9 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import './MissionList.css';
 import { exportMissionsCSV } from '../utils/missionExport';
+import SwipeableRow from './SwipeableRow';
+import type { SwipeAction } from './SwipeableRow';
+import { useInfiniteScroll } from '../hooks/useInfiniteScroll';
 
 export type Mission = {
   id: string;
@@ -14,7 +17,15 @@ export type Mission = {
 
 type Props = {
   missions: Mission[];
+  /** Callback when the user taps "Archiver" on a mission */
+  onArchive?: (id: string) => void;
+  /** Callback when the user taps "Marquer lu" on a mission */
+  onMarkRead?: (id: string) => void;
+  /** Callback when the user taps "Supprimer" on a mission */
+  onDelete?: (id: string) => void;
 };
+
+const ITEMS_PER_PAGE = 20;
 
 function getYear(iso?: string) {
   if (!iso) return 'unknown';
@@ -25,7 +36,97 @@ function getYear(iso?: string) {
   }
 }
 
-export const MissionList: React.FC<Props> = ({ missions }) => {
+const YearItems: React.FC<{
+  items: Mission[];
+  onShowHistory: (m: Mission) => void;
+  onArchive?: (id: string) => void;
+  onMarkRead?: (id: string) => void;
+  onDelete?: (id: string) => void;
+}> = ({ items, onShowHistory, onArchive, onMarkRead, onDelete }) => {
+  const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
+  const { targetRef, isIntersecting } = useInfiniteScroll();
+
+  useEffect(() => {
+    if (isIntersecting && visibleCount < items.length) {
+      setVisibleCount((prev) => Math.min(prev + ITEMS_PER_PAGE, items.length));
+    }
+  }, [isIntersecting, visibleCount, items.length]);
+
+  return (
+    <>
+      {items.slice(0, visibleCount).map((m) => {
+        const swipeActions: SwipeAction[] = [];
+        if (onArchive) {
+          swipeActions.push({
+            label: 'Archiver',
+            onClick: () => onArchive(m.id),
+            color: 'var(--color-info)',
+          });
+        }
+        if (onMarkRead) {
+          swipeActions.push({
+            label: 'Marquer lu',
+            onClick: () => onMarkRead(m.id),
+            color: 'var(--color-success)',
+          });
+        }
+        if (onDelete) {
+          swipeActions.push({
+            label: 'Supprimer',
+            onClick: () => onDelete(m.id),
+            color: 'var(--color-danger)',
+          });
+        }
+
+        return (
+          <SwipeableRow key={m.id} actions={swipeActions}>
+            <div
+              className="mission-item"
+              tabIndex={0}
+              role="article"
+              aria-labelledby={`mission-${m.id}-title`}
+            >
+              <div className="mission-dot" aria-hidden />
+              <div className="mission-main">
+                <div id={`mission-${m.id}-title`} className="mission-title">
+                  {m.title}
+                </div>
+                <div className="mission-sub">
+                  {m.location || '—'} • {new Date(m.createdAt).toLocaleDateString()}
+                </div>
+              </div>
+              <div className="mission-actions">
+                <button
+                  className="btn-ghost"
+                  onClick={() => onShowHistory(m)}
+                  aria-label={`Historique ${m.title}`}
+                >
+                  Historique
+                </button>
+              </div>
+            </div>
+          </SwipeableRow>
+        );
+      })}
+      {visibleCount < items.length && (
+        <div
+          ref={targetRef}
+          className="mission-load-more"
+          style={{
+            textAlign: 'center',
+            padding: '0.5rem',
+            color: 'var(--color-text-muted)',
+            fontSize: '0.85rem',
+          }}
+        >
+          Chargement...
+        </div>
+      )}
+    </>
+  );
+};
+
+export const MissionList: React.FC<Props> = ({ missions, onArchive, onMarkRead, onDelete }) => {
   const [expandedYears, setExpandedYears] = useState<Record<string, boolean>>({});
   const [selectedHistory, setSelectedHistory] = useState<Mission | null>(null);
   const [sort, setSort] = useState<'newest' | 'oldest' | 'title'>('newest');
@@ -46,7 +147,7 @@ export const MissionList: React.FC<Props> = ({ missions }) => {
   }, [missions, sort]);
 
   function toggleYear(y: string) {
-    setExpandedYears(prev => ({ ...prev, [y]: !prev[y] }));
+    setExpandedYears((prev) => ({ ...prev, [y]: !prev[y] }));
   }
 
   return (
@@ -55,12 +156,16 @@ export const MissionList: React.FC<Props> = ({ missions }) => {
         <div className="mission-list-title">Missions</div>
         <div className="mission-list-controls">
           <label className="sr-only">Trier</label>
-          <select aria-label="Trier" value={sort} onChange={e => setSort(e.target.value as any)}>
+          <select aria-label="Trier" value={sort} onChange={(e) => setSort(e.target.value as any)}>
             <option value="newest">Plus récentes</option>
             <option value="oldest">Plus anciennes</option>
             <option value="title">Par titre</option>
           </select>
-          <button className="btn btn-sm" onClick={() => exportMissionsCSV(missions)} aria-label="Exporter CSV">
+          <button
+            className="btn btn-sm"
+            onClick={() => exportMissionsCSV(missions)}
+            aria-label="Exporter CSV"
+          >
             Exporter CSV
           </button>
         </div>
@@ -79,37 +184,47 @@ export const MissionList: React.FC<Props> = ({ missions }) => {
                 <strong>{year}</strong> <span className="muted">({items.length})</span>
               </button>
             </header>
-            <div id={`year-${year}`} className={`mission-year-list ${expandedYears[year] ? 'expanded' : 'collapsed'}`}>
-              {items.map(m => (
-                <div key={m.id} className="mission-item" tabIndex={0} role="article" aria-labelledby={`mission-${m.id}-title`}>
-                  <div className="mission-dot" aria-hidden />
-                  <div className="mission-main">
-                    <div id={`mission-${m.id}-title`} className="mission-title">{m.title}</div>
-                    <div className="mission-sub">{m.location || '—'} • {new Date(m.createdAt).toLocaleDateString()}</div>
-                  </div>
-                  <div className="mission-actions">
-                    <button className="btn-ghost" onClick={() => setSelectedHistory(m)} aria-label={`Historique ${m.title}`}>Historique</button>
-                  </div>
-                </div>
-              ))}
-            </div>
+            {expandedYears[year] && (
+              <div id={`year-${year}`} className="mission-year-list expanded">
+                <YearItems
+                  items={items}
+                  onShowHistory={setSelectedHistory}
+                  onArchive={onArchive}
+                  onMarkRead={onMarkRead}
+                  onDelete={onDelete}
+                />
+              </div>
+            )}
           </section>
         ))}
       </div>
 
       {selectedHistory && (
-        <div className="mission-history-modal" role="dialog" aria-modal="true" aria-label={`Historique de ${selectedHistory.title}`}>
+        <div
+          className="mission-history-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Historique de ${selectedHistory.title}`}
+        >
           <div className="mission-history-panel">
             <header>
               <h3>Historique — {selectedHistory.title}</h3>
-              <button className="btn-ghost" onClick={() => setSelectedHistory(null)} aria-label="Fermer">✕</button>
+              <button
+                className="btn-ghost"
+                onClick={() => setSelectedHistory(null)}
+                aria-label="Fermer"
+              >
+                ✕
+              </button>
             </header>
             <div className="mission-history-list">
               {selectedHistory.history && selectedHistory.history.length ? (
                 selectedHistory.history.map((h, i) => (
                   <div key={i} className="history-row">
                     <div className="history-date">{new Date(h.when).toLocaleString()}</div>
-                    <div className="history-action"><strong>{h.action}</strong> — {h.by}</div>
+                    <div className="history-action">
+                      <strong>{h.action}</strong> — {h.by}
+                    </div>
                     {h.note && <div className="history-note">{h.note}</div>}
                   </div>
                 ))

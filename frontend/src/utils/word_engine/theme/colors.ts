@@ -6,29 +6,30 @@ export const COLORS = {
   PRIMARY: '#0F4C81',
   SECONDARY: '#00A3E0',
   ACCENT: '#8B5CF6',
-  
+
   // Semantic colors
   SUCCESS: '#2E7D32',
   DANGER: '#C62828',
   WARNING: '#F57C00',
   INFO: '#0288D1',
-  
+
   // Neutral colors
   WHITE: '#FFFFFF',
   SLATE: '#1F2937',
   GRAY: '#6B7280',
   LIGHT_GRAY: '#9CA3AF',
-  
+
   // Background colors
   BG_CARD: '#F8FAFC',
   BG_HEADER: '#E8F1FB',
   BG_SECTION: '#F0F9FF',
   BG_LIGHT: '#FAFAFA',
-  
+  BG_DANGER: '#FEF2F2',
+
   // Border colors
   BORDER: '#D5E3F5',
   BORDER_LIGHT: '#E0F2FE',
-  
+
   // Section-specific backgrounds
   TECHNICAL: 'F0F9FF',
   QUALITY: 'F0FDF4',
@@ -38,7 +39,9 @@ export const COLORS = {
 };
 
 // Color utilities
-export const getSectionColor = (type: 'technical' | 'quality' | 'safety' | 'finance' | 'legal'): string => {
+export const getSectionColor = (
+  type: 'technical' | 'quality' | 'safety' | 'finance' | 'legal'
+): string => {
   return SECTION_COLORS[type];
 };
 

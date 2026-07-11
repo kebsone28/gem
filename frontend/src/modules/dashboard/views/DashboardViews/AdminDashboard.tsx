@@ -1,8 +1,9 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useCallback, useState, useEffect, useMemo } from 'react';
 import toast from 'react-hot-toast';
 import { ShieldCheck, BarChart3, Users, AlertTriangle, Activity, CheckCircle2 } from 'lucide-react';
 import { PageContainer, PageHeader, ContentArea } from '@components';
+import { ModuleStatePanel } from '@components/common/ModuleStatePanel';
 import { useNavigate } from 'react-router-dom';
 import { useProject } from '@contexts/ProjectContext';
 import { usePermissions } from '@hooks/usePermissions';
@@ -53,7 +54,7 @@ const DEFAULT_CONSOLE_SETTINGS: ConsoleSettingsConfig = {
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { project } = useProject();
+  const { project, isLoading: isProjectLoading } = useProject();
   const { peut, PERMISSIONS } = usePermissions();
   const { getLabel } = useLabels();
 
@@ -100,6 +101,31 @@ export default function AdminDashboard() {
 
   const canViewReports = peut(PERMISSIONS.TERRAIN_READ) || peut(PERMISSIONS.FINANCE_READ);
   const projectId = project?.id || '';
+
+  if (isProjectLoading) {
+    return (
+      <PageContainer className="min-h-screen bg-slate-950 text-white">
+        <ModuleStatePanel
+          tone="loading"
+          title="Chargement du projet"
+          description="Le contexte projet est en cours d'initialisation pour la console."
+        />
+      </PageContainer>
+    );
+  }
+
+  if (!projectId) {
+    return (
+      <PageContainer className="min-h-screen bg-slate-950 text-white">
+        <ModuleStatePanel
+          title="Aucun projet actif"
+          description="La console de pilotage charge les indicateurs et les exports du projet selectionne. Choisissez un projet pour afficher les donnees."
+          actionLabel="Choisir un projet"
+          actionTo="/projects"
+        />
+      </PageContainer>
+    );
+  }
 
   // ── BUSINESS HOOKS ──
   const {

@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -36,6 +36,9 @@ import * as safeStorage from '@utils/safeStorage';
 import { db } from '@/store/db';
 import apiClient from '@/api/client';
 import logger from '@services/logger';
+import DatePickerField from '@components/DatePickerField';
+import { ModuleStatePanel } from '@components/common/ModuleStatePanel';
+import { useProject } from '@contexts/ProjectContext';
 
 // Import centralized design system
 import { PageContainer, PageHeader, ContentArea, ActionBar } from '@components';
@@ -54,7 +57,33 @@ const ROLE_LABELS = {
 
 export default function Simulation() {
   const { devis, householdsCount, project } = useFinances();
+  const { activeProjectId, isLoading: isProjectLoading } = useProject();
   const navigate = useNavigate();
+
+  if (isProjectLoading) {
+    return (
+      <PageContainer className="min-h-screen bg-slate-950 text-white">
+        <ModuleStatePanel
+          tone="loading"
+          title="Chargement du projet"
+          description="Le contexte projet est en cours d'initialisation pour la simulation."
+        />
+      </PageContainer>
+    );
+  }
+
+  if (!activeProjectId || !project?.id) {
+    return (
+      <PageContainer className="min-h-screen bg-slate-950 text-white">
+        <ModuleStatePanel
+          title="Aucun projet actif"
+          description="La simulation est calculee par projet (budgets, equipes, planning). Selectionnez un projet pour lancer une simulation."
+          actionLabel="Choisir un projet"
+          actionTo="/projects"
+        />
+      </PageContainer>
+    );
+  }
 
   const roleCapacities = useMemo(
     () => buildRoleCapacities(project?.config?.productionRates),
@@ -1173,11 +1202,13 @@ export default function Simulation() {
                       <label className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest block mb-2">
                         Date de démarrage
                       </label>
-                      <input
+                      <DatePickerField
+                        value={`${String(dateDemarrageInitiale.getDate()).padStart(2, '0')}/${String(dateDemarrageInitiale.getMonth() + 1).padStart(2, '0')}/${dateDemarrageInitiale.getFullYear()}`}
+                        onChange={(value) => {
+                          const [d, m, y] = value.split('/');
+                          setDateDemarrageInitiale(new Date(`${y}-${m}-${d}`));
+                        }}
                         title="Date de démarrage initiale"
-                        type="date"
-                        value={dateDemarrageInitiale.toISOString().split('T')[0]}
-                        onChange={(e) => setDateDemarrageInitiale(new Date(e.target.value))}
                         className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
                       />
                       <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">

@@ -14,13 +14,9 @@ const HOUSEHOLDS_PAGE_SIZE = 2000; // Progressive loading: 2000 per page
 const householdsCache = new Map<string, { data: Household[]; timestamp: number }>();
 const householdsInflight = new Map<string, Promise<Household[]>>();
 
-const getStoredAccessToken = () => {
-  const token = safeStorage.getItem('access_token');
-  if (!token || token === 'undefined' || token === 'null') {
-    return null;
-  }
-  return token;
-};
+// Auth is handled via HttpOnly cookies (withCredentials: true in apiClient).
+// No access_token check needed — always proceed with API call.
+const getStoredAccessToken = () => 'cookie-based';
 
 export function mapToApiPayload(
   household: Partial<Household>,
@@ -96,7 +92,8 @@ const normalizeHousehold = (h: Household): Household => {
 
 type OfflineHouseholdRecord = Partial<Household> & Record<string, unknown>;
 
-const toHousehold = (household: OfflineHouseholdRecord): Household => household as unknown as Household;
+const toHousehold = (household: OfflineHouseholdRecord): Household =>
+  household as unknown as Household;
 
 const updateProjectCache = (
   projectId: string | null | undefined,
@@ -135,7 +132,10 @@ const loadHouseholdsFromLocalFallback = async (projectId: string) => {
 
   const offlineRecords = await getOfflineHouseholds();
   return offlineRecords
-    .filter((household) => String(toHousehold(household as OfflineHouseholdRecord).projectId) === projectId)
+    .filter(
+      (household) =>
+        String(toHousehold(household as OfflineHouseholdRecord).projectId) === projectId
+    )
     .map((household) => normalizeHousehold(toHousehold(household as OfflineHouseholdRecord)));
 };
 
@@ -183,25 +183,7 @@ export function useTerrainData(options: UseTerrainDataOptions = {}) {
       return cached.data;
     }
 
-    const accessToken = getStoredAccessToken();
-    if (!accessToken) {
-      const fallback = await loadHouseholdsFromLocalFallback(currentProjectId);
-      if (fallback.length > 0) {
-        logger.warn(
-          `[TerrainData] Aucun token disponible, utilisation du cache local pour ${currentProjectId} (${fallback.length} ménages)`
-        );
-        householdsCache.set(currentProjectId, { data: fallback, timestamp: Date.now() });
-        setHouseholdsRaw(fallback);
-        setIsLoading(false);
-        setError(null);
-        return fallback;
-      }
-
-      setHouseholdsRaw([]);
-      setIsLoading(false);
-      setError('Session expirée. Réconnectez-vous pour charger les ménages.');
-      return [];
-    }
+    // Auth is via HttpOnly cookies, always proceed with API call
 
     const pending = householdsInflight.get(currentProjectId);
     if (pending) {
@@ -218,7 +200,9 @@ export function useTerrainData(options: UseTerrainDataOptions = {}) {
     }
 
     const request = (async () => {
-      logger.log(`📡 [Server-First] Fetching households for Project: ${currentProjectId} (paginated, ${HOUSEHOLDS_PAGE_SIZE}/page)`);
+      logger.log(
+        `📡 [Server-First] Fetching households for Project: ${currentProjectId} (paginated, ${HOUSEHOLDS_PAGE_SIZE}/page)`
+      );
       try {
         let allHouseholds: Household[] = [];
         let currentPage = 1;
@@ -233,8 +217,8 @@ export function useTerrainData(options: UseTerrainDataOptions = {}) {
             },
           });
 
-          const pageData: Household[] = (response.data.households || []).map(
-            (h: Household) => normalizeHousehold(h)
+          const pageData: Household[] = (response.data.households || []).map((h: Household) =>
+            normalizeHousehold(h)
           );
           allHouseholds = [...allHouseholds, ...pageData];
           hasMore = response.data.hasMore === true;
@@ -250,7 +234,9 @@ export function useTerrainData(options: UseTerrainDataOptions = {}) {
           currentPage++;
         }
 
-        logger.log(`✅ [Server-First] Retrieved ${allHouseholds.length} unique households from backend`);
+        logger.log(
+          `✅ [Server-First] Retrieved ${allHouseholds.length} unique households from backend`
+        );
         householdsCache.set(currentProjectId, { data: allHouseholds, timestamp: Date.now() });
         await persistHouseholdsLocally(currentProjectId, allHouseholds);
 
@@ -338,62 +324,71 @@ export function useTerrainData(options: UseTerrainDataOptions = {}) {
   }, [households]);
 
   // Direct Server Mutations
-  const updateHouseholdStatus = useCallback(async (id: string, newStatus: string) => {
-    try {
-      const response = await apiClient.patch(`households/${id}`, { status: newStatus });
-      const serverHousehold = normalizeHousehold(response.data as Household);
-      // Optimistic state update
-      setHouseholdsRaw((prev) => {
-        const next = prev.map((h) => (h.id === id ? serverHousehold : h));
-        updateProjectCache(currentProjectId, () => next);
-        return next;
-      });
+  const updateHouseholdStatus = useCallback(
+    async (id: string, newStatus: string) => {
+      try {
+        const response = await apiClient.patch(`households/${id}`, { status: newStatus });
+        const serverHousehold = normalizeHousehold(response.data as Household);
+        // Optimistic state update
+        setHouseholdsRaw((prev) => {
+          const next = prev.map((h) => (h.id === id ? serverHousehold : h));
+          updateProjectCache(currentProjectId, () => next);
+          return next;
+        });
 
-      await db.households.put({ ...serverHousehold, syncStatus: 'synced' });
-    } catch (error: any) {
-      logger.error('Failed to update status on server:', error);
-      throw error;
-    }
-  }, [currentProjectId]);
+        await db.households.put({ ...serverHousehold, syncStatus: 'synced' });
+      } catch (error: any) {
+        logger.error('Failed to update status on server:', error);
+        throw error;
+      }
+    },
+    [currentProjectId]
+  );
 
-  const updateHouseholdLocation = useCallback(async (id: string, lat: number, lng: number) => {
-    try {
-      const loc = { type: 'Point', coordinates: [lng, lat] };
-      const response = await apiClient.patch(`households/${id}`, {
-        location: loc,
-        latitude: lat,
-        longitude: lng,
-      });
-      const serverHousehold = normalizeHousehold(response.data as Household);
-      setHouseholdsRaw((prev) => {
-        const next = prev.map((h) => (h.id === id ? serverHousehold : h));
-        updateProjectCache(currentProjectId, () => next);
-        return next;
-      });
+  const updateHouseholdLocation = useCallback(
+    async (id: string, lat: number, lng: number) => {
+      try {
+        const loc = { type: 'Point', coordinates: [lng, lat] };
+        const response = await apiClient.patch(`households/${id}`, {
+          location: loc,
+          latitude: lat,
+          longitude: lng,
+        });
+        const serverHousehold = normalizeHousehold(response.data as Household);
+        setHouseholdsRaw((prev) => {
+          const next = prev.map((h) => (h.id === id ? serverHousehold : h));
+          updateProjectCache(currentProjectId, () => next);
+          return next;
+        });
 
-      await db.households.put({ ...serverHousehold, syncStatus: 'synced' });
-    } catch (err) {
-      logger.error('Failed to update location on server:', err);
-      throw err;
-    }
-  }, [currentProjectId]);
+        await db.households.put({ ...serverHousehold, syncStatus: 'synced' });
+      } catch (err) {
+        logger.error('Failed to update location on server:', err);
+        throw err;
+      }
+    },
+    [currentProjectId]
+  );
 
-  const updateHousehold = useCallback(async (id: string, patch: Partial<Household>) => {
-    try {
-      const response = await apiClient.patch(`households/${id}`, patch);
-      const updated = normalizeHousehold(response.data as Household);
-      setHouseholdsRaw((prev) => {
-        const next = prev.map((h) => (h.id === id ? updated : h));
-        updateProjectCache(currentProjectId, () => next);
-        return next;
-      });
+  const updateHousehold = useCallback(
+    async (id: string, patch: Partial<Household>) => {
+      try {
+        const response = await apiClient.patch(`households/${id}`, patch);
+        const updated = normalizeHousehold(response.data as Household);
+        setHouseholdsRaw((prev) => {
+          const next = prev.map((h) => (h.id === id ? updated : h));
+          updateProjectCache(currentProjectId, () => next);
+          return next;
+        });
 
-      await db.households.put({ ...updated, syncStatus: 'synced' });
-    } catch (err) {
-      logger.error('Failed to update household on server:', err);
-      throw err;
-    }
-  }, [currentProjectId]);
+        await db.households.put({ ...updated, syncStatus: 'synced' });
+      } catch (err) {
+        logger.error('Failed to update household on server:', err);
+        throw err;
+      }
+    },
+    [currentProjectId]
+  );
 
   const uploadHouseholdPhoto = useCallback(
     async (id: string, file: File) => {

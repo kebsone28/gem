@@ -1,68 +1,69 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
-import Tts from 'react-native-tts';
+/**
+ * Voice Assistant – Text‑to‑Speech for accessibility
+ *
+ * Wraps react-native-tts so FormScreen can speak questions aloud.
+ * Gracefully falls back to a no‑op when the module is unavailable.
+ */
+import { useCallback, useMemo, useState } from 'react';
 
-export type VoiceState = 'idle' | 'speaking' | 'paused';
+// ─── SAFE REQUIRE HELPER ───────────────────────────────────────────────
+function safeRequire(name: string): any {
+  try {
+    const mod = require(name);
+    // Both ESM interop ({ __esModule, default }) and RN native module wrappers
+    // ({ default: NativeImpl }) expose the API under .default
+    if (mod && typeof mod === 'object' && 'default' in mod) {
+      return mod.default;
+    }
+    return mod;
+  } catch (e) {
+    if (__DEV__) {
+      console.warn(`[voiceAssistant] Module "${name}" not available:`, e);
+    }
+    return null;
+  }
+}
 
-export function useVoiceAssistant() {
-  const [enabled, setEnabled] = useState(false);
-  const [state, setState] = useState<VoiceState>('idle');
-  const queueRef = useRef<string[]>([]);
-  const speakingRef = useRef(false);
+const TtsModule = safeRequire('react-native-tts');
+const Tts = TtsModule?.default ?? TtsModule;
 
-  useEffect(() => {
+// Initialise once at module level
+let didInit = false;
+function ensureInit() {
+  if (!Tts || didInit) return;
+  didInit = true;
+  try {
     Tts.setDefaultLanguage('fr-FR');
     Tts.setDefaultRate(0.45);
-    Tts.setDefaultPitch(1.0);
-    const onFinish = () => {
-      speakingRef.current = false;
-      setState('idle');
-      processQueue();
-    };
-    Tts.addEventListener('finish', onFinish);
-    return () => { Tts.removeEventListener('finish', onFinish); };
-  }, []);
+  } catch {}
+}
 
-  const processQueue = useCallback(() => {
-    if (queueRef.current.length === 0 || !enabled) return;
-    const text = queueRef.current.shift()!;
-    speakingRef.current = true;
-    setState('speaking');
-    Tts.speak(text);
-  }, [enabled]);
+export interface VoiceAssistant {
+  enabled: boolean;
+  speakNow: (text: string) => void;
+  toggle: () => void;
+}
 
-  const speak = useCallback((text: string) => {
-    if (!enabled) return;
-    queueRef.current.push(text);
-    if (!speakingRef.current) processQueue();
-  }, [enabled, processQueue]);
+export function useVoiceAssistant(): VoiceAssistant {
+  const [enabled, setEnabled] = useState(() => !!Tts);
 
-  const speakNow = useCallback((text: string) => {
-    if (!enabled) return;
-    Tts.stop();
-    queueRef.current = [];
-    speakingRef.current = true;
-    setState('speaking');
-    Tts.speak(text);
-  }, [enabled]);
-
-  const stop = useCallback(() => {
-    Tts.stop();
-    queueRef.current = [];
-    speakingRef.current = false;
-    setState('idle');
-  }, []);
-
-  const pause = useCallback(() => {
-    Tts.stop();
-    setState('paused');
-  }, []);
+  const speakNow = useCallback(
+    (text: string) => {
+      if (!Tts || !enabled || !text) return;
+      ensureInit();
+      try {
+        Tts.stop();
+        Tts.speak(text);
+      } catch {
+        // TTS unavailable – silently ignore
+      }
+    },
+    [enabled]
+  );
 
   const toggle = useCallback(() => {
-    setEnabled((prev) => {
-      if (prev) { stop(); }
-      return !prev;
-    });
-  }, [stop]);
+    setEnabled((prev) => !prev);
+  }, []);
 
-  return { enabled, state, speak, speakNow, stop, pause, toggle, setEnabled };
+  return { enabled, speakNow, toggle };
 }

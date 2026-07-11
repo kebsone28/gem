@@ -13,6 +13,11 @@ export const projectCreateSchema = {
       'string.min': 'name must be at least 3 characters',
       'any.required': 'name is required',
     }),
+    client: Joi.string().min(1).max(255).required().messages({
+      'string.min': 'client must be at least 1 character',
+      'any.required': 'client is required',
+    }),
+    mode: Joi.string().valid('enterprise', 'gov', 'ong', 'bailleur').optional(),
     status: Joi.string()
       .valid(...VALID_PROJECT_STATUSES)
       .optional()
@@ -25,6 +30,7 @@ export const projectCreateSchema = {
     organizationId: Joi.string().uuid().optional(),
     startDate: Joi.date().iso().optional(),
     endDate: Joi.date().iso().optional(),
+    config: Joi.object().pattern(Joi.string(), Joi.any()).optional(),
     metadata: Joi.object().pattern(Joi.string(), Joi.any()).optional(),
   }),
 };

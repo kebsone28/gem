@@ -18,7 +18,14 @@ import { FONT_SIZES } from '../theme/typography';
 import { SPACING, INDENTS, MARGINS } from '../theme/spacing';
 import { BORDERS } from '../theme/borders';
 import { ICONS } from '../theme/icons';
-import { createCard, createTwoColumns, createGallery, createChecklist, createHero, createKPIRow } from '../components';
+import {
+  createCard,
+  createTwoColumns,
+  createGallery,
+  createChecklist,
+  createHero,
+  createKPIRow,
+} from '../components';
 import { createTemplateSection } from './templateBasedSection';
 import type { TemplateSectionOptions } from './templateBasedSection';
 
@@ -32,14 +39,78 @@ const SECTION_COLORS = {
 };
 
 const ROLE_TO_LOT_MAPPING: Record<string, string> = {
-  'Préparateur': 'LOT A - Pré-câblage',
-  'Livreur': 'LOT A - Logistique Transport',
-  'Électricien': 'LOT B - Installation Intérieure',
-  'Maçonnerie': 'LOT B - Génie Civil',
-  'Logistique': 'LOT B - Logistique',
+  Préparateur: 'LOT A - Pré-câblage',
+  Livreur: 'LOT A - Logistique Transport',
+  Électricien: 'LOT B - Installation Intérieure',
+  Maçonnerie: 'LOT B - Génie Civil',
+  Logistique: 'LOT B - Logistique',
   'Réseau Extérieur': 'LOT C - Réseau',
   'Audit & Contrôle Qualité (PROQUELEC)': 'Contrôle & Validation',
   'Contrôle & Validation': 'Contrôle & Validation',
+};
+
+// Role to cover image mapping for page de garde
+const ROLE_TO_COVER_IMAGE: Record<string, { path: string; type: 'png' | 'jpeg' }> = {
+  Électricien: { path: '/assets/images/installation-terre.png', type: 'png' },
+  Maçonnerie: { path: '/guide_images/schéma mure.png', type: 'png' },
+  'Réseau Extérieur': { path: '/guide_images/schema_branchement_urbain.jpg', type: 'jpeg' },
+  Préparateur: { path: '/assets/images/preparateur-atelier.png', type: 'png' },
+  Livreur: { path: '/assets/images/livreur-distribution.png', type: 'png' },
+  Logistique: { path: '/assets/images/livreur-distribution.png', type: 'png' },
+  'Audit & Contrôle Qualité (PROQUELEC)': {
+    path: '/assets/images/controle-validation.png',
+    type: 'png',
+  },
+  'Contrôle & Validation': { path: '/assets/images/controle-validation.png', type: 'png' },
+};
+
+// Technical illustrations to inject per role (merged with user-provided images)
+const ROLE_TO_TECHNICAL_IMAGES: Record<string, Array<{ url: string; label: string }>> = {
+  Électricien: [
+    { url: '/guide_images/schema_interieur.png', label: "Schéma d'installation intérieure" },
+    {
+      url: '/guide_images/installation intérieur 1.png',
+      label: 'Installation intérieure - Étape 1',
+    },
+    { url: '/guide_images/pose terre.png', label: 'Schéma de mise à la terre' },
+    { url: '/guide_images/protection_mecanique_pvc.png', label: 'Protection mécanique PVC' },
+  ],
+  Maçonnerie: [
+    { url: '/guide_images/mur tout fini avec potelet.png', label: 'Mur fini avec potelet' },
+    {
+      url: '/guide_images/pose coffret compteur et potelet.png',
+      label: 'Pose coffret compteur et potelet',
+    },
+    { url: '/assets/images/maconnerie-base.png', label: 'Base de maçonnerie' },
+  ],
+  'Réseau Extérieur': [
+    { url: '/guide_images/milieu hurbain.jpg', label: 'Branchement urbain' },
+    { url: '/guide_images/Milieu rural.png', label: 'Branchement rural' },
+    { url: '/guide_images/schema_branchement_rural.png', label: 'Schéma de branchement rural' },
+    { url: '/assets/images/reseau-poteau.png', label: 'Réseau sur poteau' },
+    { url: '/assets/images/reseau-tranchee.png', label: 'Réseau en tranchée' },
+  ],
+  Préparateur: [
+    { url: '/guide_images/precablage_coffret.png', label: 'Pré-câblage coffret' },
+    { url: '/guide_images/précablage coffret.png', label: 'Schéma de pré-câblage' },
+  ],
+  Livreur: [
+    { url: '/guide_images/Livraison KIT.png', label: 'Livraison kit électrique' },
+    { url: '/guide_images/livraison_kit.png', label: 'Remise kit au client' },
+  ],
+  Logistique: [
+    { url: '/guide_images/Livraison KIT.png', label: 'Livraison kit électrique' },
+    { url: '/guide_images/livraison_kit.png', label: 'Remise kit au client' },
+  ],
+  'Audit & Contrôle Qualité (PROQUELEC)': [
+    { url: '/guide_images/exemple_barette_terre.png', label: 'Exemple barrette de terre' },
+    { url: '/guide_images/exemple_coffret_compteur.png', label: 'Exemple coffret compteur' },
+    { url: '/guide_images/anomalie_cables_exterieurs.png', label: 'Anomalie câbles extérieurs' },
+  ],
+  'Contrôle & Validation': [
+    { url: '/guide_images/exemple_barette_terre.png', label: 'Exemple barrette de terre' },
+    { url: '/guide_images/anomalie_cables_exterieurs.png', label: 'Anomalie câbles extérieurs' },
+  ],
 };
 
 interface RoleSectionData {
@@ -86,10 +157,20 @@ interface RoleSectionData {
   }>;
   startDate?: string;
   endDate?: string;
-  pricing?: { dailyRate: number; personnelCount: number; durationDays: number; currency: string; penalties: string; };
+  pricing?: {
+    dailyRate: number;
+    personnelCount: number;
+    durationDays: number;
+    currency: string;
+    penalties: string;
+  };
 }
 
-export const createRoleSection = async (data: RoleSectionData, qrBuffer?: ArrayBuffer | null, useTemplateFormat: boolean = true) => {
+export const createRoleSection = async (
+  data: RoleSectionData,
+  qrBuffer?: ArrayBuffer | null,
+  useTemplateFormat: boolean = true
+) => {
   const {
     role,
     introduction,
@@ -115,19 +196,28 @@ export const createRoleSection = async (data: RoleSectionData, qrBuffer?: ArrayB
   // Use template-based format matching CDC_COMPLET_PROJET_RACCORDEMENT format
   if (useTemplateFormat) {
     // Convert execution guide to phases with full details
-    const phases = executionGuide?.map(step => ({
-      title: step.title,
-      description: step.description,
-      steps: step.steps,
-      checklist: step.checklist,
-      qualityPoints: step.qualityPoints,
-      safetyPoints: step.safetyPoints,
-    })) || [];
+    const phases =
+      executionGuide?.map((step) => ({
+        title: step.title,
+        description: step.description,
+        steps: step.steps,
+        checklist: step.checklist,
+        qualityPoints: step.qualityPoints,
+        safetyPoints: step.safetyPoints,
+      })) || [];
+
+    const coverImage = ROLE_TO_COVER_IMAGE[role];
+
+    // Merge role-specific technical images with any user-provided ones
+    const defaultImages = ROLE_TO_TECHNICAL_IMAGES[role] || [];
+    const mergedTechnicalImages = [...defaultImages, ...(technicalImages || [])];
 
     const templateOptions: TemplateSectionOptions = {
       role,
       reference: `CDC-${role.toUpperCase().replace(/\s/g, '-')}-2026`,
       referentiel: role,
+      coverImagePath: coverImage?.path,
+      coverImageType: coverImage?.type,
       logistique: 'Logistique',
       signataire: responsible || 'Non Assigné',
       periode: `${startDate || 'N/A'} - ${endDate || 'N/A'}`,
@@ -135,7 +225,7 @@ export const createRoleSection = async (data: RoleSectionData, qrBuffer?: ArrayB
       phases,
       material: materials || [],
       hse: hse || [],
-      technicalImages: technicalImages || [],
+      technicalImages: mergedTechnicalImages,
       lot: ROLE_TO_LOT_MAPPING[role] || 'LOT Spécifique',
       missions: missions || [],
       subcontracting: subcontracting || [],
@@ -143,17 +233,19 @@ export const createRoleSection = async (data: RoleSectionData, qrBuffer?: ArrayB
       legal: legal || [],
       koboGuide: koboGuide || [],
       pricing: pricing,
-      qualityGrid: qualityChecklist ? {
-        items: qualityChecklist.map(item => ({
-          criteria: item.item,
-          weight: 10,
-          target: 'Conformité totale',
-          method: 'Inspection visuelle',
-          penalty: 'Retenue de 5% sur paiement',
-        })),
-        totalWeight: qualityChecklist.length * 10,
-        passingScore: 80,
-      } : undefined,
+      qualityGrid: qualityChecklist
+        ? {
+            items: qualityChecklist.map((item) => ({
+              criteria: item.item,
+              weight: 10,
+              target: 'Conformité totale',
+              method: 'Inspection visuelle',
+              penalty: 'Retenue de 5% sur paiement',
+            })),
+            totalWeight: qualityChecklist.length * 10,
+            passingScore: 80,
+          }
+        : undefined,
     };
 
     const templateElements = await createTemplateSection(templateOptions);
@@ -215,7 +307,7 @@ export const createRoleSection = async (data: RoleSectionData, qrBuffer?: ArrayB
     if (galleryImages.length > 0) {
       children.push(createSectionHeader('Standards & Schémas Techniques', COLORS.SUCCESS));
       const galleryTable = await createGallery({
-        images: galleryImages.map(img => ({
+        images: galleryImages.map((img) => ({
           url: img.url,
           label: img.label,
         })),
@@ -272,7 +364,9 @@ export const createRoleSection = async (data: RoleSectionData, qrBuffer?: ArrayB
       if (img.legend && img.legend.length > 0) {
         children.push(
           new Paragraph({
-            children: [createText('LÉGENDE NORMALISÉE', { bold: true, size: 22, color: COLORS.SUCCESS })],
+            children: [
+              createText('LÉGENDE NORMALISÉE', { bold: true, size: 22, color: COLORS.SUCCESS }),
+            ],
             spacing: { before: 240, after: 120 },
           })
         );
@@ -291,24 +385,30 @@ export const createRoleSection = async (data: RoleSectionData, qrBuffer?: ArrayB
   }
 
   // 4. Content Sections
-  const addListSection = (title: string, items: string[], color: string, icon?: keyof typeof ICONS) => {
+  const addListSection = (
+    title: string,
+    items: string[],
+    color: string,
+    icon?: keyof typeof ICONS
+  ) => {
     if (!items || items.length === 0) return;
     children.push(createSectionHeader(title, color));
-    
-    const cardContent = items.map((item) =>
-      new Paragraph({
-        children: [
-          new TextRun({
-            text: `• ${item}`,
-            size: FONT_SIZES.NORMAL,
-            color: COLORS.SLATE,
-          }),
-        ],
-        spacing: { before: SPACING.SMALL, after: SPACING.SMALL },
-        indent: { left: INDENTS.LIST },
-      })
+
+    const cardContent = items.map(
+      (item) =>
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: `• ${item}`,
+              size: FONT_SIZES.NORMAL,
+              color: COLORS.SLATE,
+            }),
+          ],
+          spacing: { before: SPACING.SMALL, after: SPACING.SMALL },
+          indent: { left: INDENTS.LIST },
+        })
     );
-    
+
     children.push(
       createCard({
         icon,
@@ -352,7 +452,9 @@ export const createRoleSection = async (data: RoleSectionData, qrBuffer?: ArrayB
 
       children.push(
         new Paragraph({
-          children: [createText('POINTS À RENSEIGNER', { bold: true, size: 18, color: COLORS.PRIMARY })],
+          children: [
+            createText('POINTS À RENSEIGNER', { bold: true, size: 18, color: COLORS.PRIMARY }),
+          ],
           spacing: { before: 40, after: 40 },
         })
       );
@@ -434,7 +536,7 @@ export const createRoleSection = async (data: RoleSectionData, qrBuffer?: ArrayB
     // Create 2-column layout
     for (let i = 0; i < guideBlocks.length; i += 2) {
       const blocks = [guideBlocks[i], guideBlocks[i + 1]].filter(Boolean);
-      
+
       if (blocks.length === 1) {
         // Single block - full width
         const block = blocks[0];
@@ -454,7 +556,9 @@ export const createRoleSection = async (data: RoleSectionData, qrBuffer?: ArrayB
 
         children.push(
           new Paragraph({
-            children: [createText('ÉTAPES D\'EXÉCUTION', { bold: true, size: 18, color: COLORS.PRIMARY })],
+            children: [
+              createText("ÉTAPES D'EXÉCUTION", { bold: true, size: 18, color: COLORS.PRIMARY }),
+            ],
             spacing: { before: 40, after: 40 },
           })
         );
@@ -470,7 +574,9 @@ export const createRoleSection = async (data: RoleSectionData, qrBuffer?: ArrayB
 
         children.push(
           new Paragraph({
-            children: [createText('CHECKLIST DE CONTRÔLE', { bold: true, size: 18, color: COLORS.SUCCESS })],
+            children: [
+              createText('CHECKLIST DE CONTRÔLE', { bold: true, size: 18, color: COLORS.SUCCESS }),
+            ],
             spacing: { before: 80, after: 40 },
           })
         );
@@ -486,7 +592,9 @@ export const createRoleSection = async (data: RoleSectionData, qrBuffer?: ArrayB
 
         children.push(
           new Paragraph({
-            children: [createText('POINTS DE QUALITÉ', { bold: true, size: 18, color: COLORS.ACCENT })],
+            children: [
+              createText('POINTS DE QUALITÉ', { bold: true, size: 18, color: COLORS.ACCENT }),
+            ],
             spacing: { before: 80, after: 40 },
           })
         );
@@ -502,7 +610,9 @@ export const createRoleSection = async (data: RoleSectionData, qrBuffer?: ArrayB
 
         children.push(
           new Paragraph({
-            children: [createText('POINTS DE SÉCURITÉ', { bold: true, size: 18, color: COLORS.DANGER })],
+            children: [
+              createText('POINTS DE SÉCURITÉ', { bold: true, size: 18, color: COLORS.DANGER }),
+            ],
             spacing: { before: 80, after: 40 },
           })
         );
@@ -518,71 +628,92 @@ export const createRoleSection = async (data: RoleSectionData, qrBuffer?: ArrayB
       } else {
         // Two blocks - true 2-column layout (single table with two cells)
         const tableRows: TableRow[] = [];
-        
+
         tableRows.push(
           new TableRow({
-            children: blocks.map((block) => 
-              new TableCell({
-                shading: { fill: SECTION_COLORS.technical },
-                borders: BORDERS.CARD,
-                children: [
-                  new Paragraph({
-                    children: [createText(block.title.toUpperCase(), { bold: true, size: 22, color })],
-                    alignment: AlignmentType.CENTER,
-                    spacing: { before: 200, after: 100 },
-                  }),
-                  new Paragraph({
-                    children: [createText(block.description, { size: 18, italics: true, color: '666666' })],
-                    alignment: AlignmentType.CENTER,
-                    spacing: { before: 40, after: 120 },
-                  }),
-                  new Paragraph({
-                    children: [createText('ÉTAPES D\'EXÉCUTION', { bold: true, size: 18, color: COLORS.PRIMARY })],
-                    spacing: { before: 80, after: 40 },
-                  }),
-                  ...block.steps.map((step, idx) =>
+            children: blocks.map(
+              (block) =>
+                new TableCell({
+                  shading: { fill: SECTION_COLORS.technical },
+                  borders: BORDERS.CARD,
+                  children: [
                     new Paragraph({
-                      children: [createText(`${idx + 1}. ${step}`, { size: 18 })],
-                      spacing: { before: 20, after: 20 },
-                      indent: { left: 200 },
-                    })
-                  ),
-                  new Paragraph({
-                    children: [createText('CHECKLIST', { bold: true, size: 18, color: COLORS.SUCCESS })],
-                    spacing: { before: 100, after: 40 },
-                  }),
-                  ...block.checklist.map((item) =>
+                      children: [
+                        createText(block.title.toUpperCase(), { bold: true, size: 22, color }),
+                      ],
+                      alignment: AlignmentType.CENTER,
+                      spacing: { before: 200, after: 100 },
+                    }),
                     new Paragraph({
-                      children: [createText(`• ${item}`, { size: 18 })],
-                      spacing: { before: 20, after: 20 },
-                      indent: { left: 200 },
-                    })
-                  ),
-                  new Paragraph({
-                    children: [createText('QUALITÉ', { bold: true, size: 18, color: COLORS.ACCENT })],
-                    spacing: { before: 100, after: 40 },
-                  }),
-                  ...block.qualityPoints.map((item) =>
+                      children: [
+                        createText(block.description, { size: 18, italics: true, color: '666666' }),
+                      ],
+                      alignment: AlignmentType.CENTER,
+                      spacing: { before: 40, after: 120 },
+                    }),
                     new Paragraph({
-                      children: [createText(`• ${item}`, { size: 18 })],
-                      spacing: { before: 20, after: 20 },
-                      indent: { left: 200 },
-                    })
-                  ),
-                  new Paragraph({
-                    children: [createText('SÉCURITÉ', { bold: true, size: 18, color: COLORS.DANGER })],
-                    spacing: { before: 100, after: 40 },
-                  }),
-                  ...block.safetyPoints.map((item) =>
+                      children: [
+                        createText("ÉTAPES D'EXÉCUTION", {
+                          bold: true,
+                          size: 18,
+                          color: COLORS.PRIMARY,
+                        }),
+                      ],
+                      spacing: { before: 80, after: 40 },
+                    }),
+                    ...block.steps.map(
+                      (step, idx) =>
+                        new Paragraph({
+                          children: [createText(`${idx + 1}. ${step}`, { size: 18 })],
+                          spacing: { before: 20, after: 20 },
+                          indent: { left: 200 },
+                        })
+                    ),
                     new Paragraph({
-                      children: [createText(`• ${item}`, { size: 18 })],
-                      spacing: { before: 20, after: 20 },
-                      indent: { left: 200 },
-                    })
-                  ),
-                ],
-                margins: MARGINS.CARD,
-              })
+                      children: [
+                        createText('CHECKLIST', { bold: true, size: 18, color: COLORS.SUCCESS }),
+                      ],
+                      spacing: { before: 100, after: 40 },
+                    }),
+                    ...block.checklist.map(
+                      (item) =>
+                        new Paragraph({
+                          children: [createText(`• ${item}`, { size: 18 })],
+                          spacing: { before: 20, after: 20 },
+                          indent: { left: 200 },
+                        })
+                    ),
+                    new Paragraph({
+                      children: [
+                        createText('QUALITÉ', { bold: true, size: 18, color: COLORS.ACCENT }),
+                      ],
+                      spacing: { before: 100, after: 40 },
+                    }),
+                    ...block.qualityPoints.map(
+                      (item) =>
+                        new Paragraph({
+                          children: [createText(`• ${item}`, { size: 18 })],
+                          spacing: { before: 20, after: 20 },
+                          indent: { left: 200 },
+                        })
+                    ),
+                    new Paragraph({
+                      children: [
+                        createText('SÉCURITÉ', { bold: true, size: 18, color: COLORS.DANGER }),
+                      ],
+                      spacing: { before: 100, after: 40 },
+                    }),
+                    ...block.safetyPoints.map(
+                      (item) =>
+                        new Paragraph({
+                          children: [createText(`• ${item}`, { size: 18 })],
+                          spacing: { before: 20, after: 20 },
+                          indent: { left: 200 },
+                        })
+                    ),
+                  ],
+                  margins: MARGINS.CARD,
+                })
             ),
           })
         );
@@ -610,18 +741,18 @@ export const createRoleSection = async (data: RoleSectionData, qrBuffer?: ArrayB
   children.push(new Paragraph({ children: [], pageBreakBefore: true }));
 
   addListSection('2. Missions et Tâches', missions || [], COLORS.PRIMARY, 'WORKER');
-  
+
   // Page break before execution guide
   if (executionGuide && executionGuide.length > 0) {
     children.push(new Paragraph({ children: [], pageBreakBefore: true }));
   }
-  
+
   addKoboGuideSection('Guide Kobo Terrain', koboGuide || [], COLORS.SUCCESS);
-  addExecutionGuideSection('Guide d\'Exécution Step-by-Step', executionGuide || [], COLORS.ACCENT);
-  
+  addExecutionGuideSection("Guide d'Exécution Step-by-Step", executionGuide || [], COLORS.ACCENT);
+
   // Page break before materials
   children.push(new Paragraph({ children: [], pageBreakBefore: true }));
-  
+
   addListSection('3. Matériels et Logistique', materials || [], COLORS.ACCENT, 'TOOL');
   addListSection('4. Hygiène, Sécurité et Environnement (HSE)', hse || [], COLORS.DANGER, 'SAFETY');
   addListSection('5. Sous-traitance', subcontracting || [], COLORS.SLATE, 'TEAM');
@@ -731,18 +862,18 @@ export const createRoleSection = async (data: RoleSectionData, qrBuffer?: ArrayB
   // 6. Quality Checklist - Custom per trade
   if (qualityChecklist && qualityChecklist.length > 0) {
     children.push(createSectionHeader('Checklist de Contrôle Qualité', COLORS.SLATE));
-    
+
     // Group by category
-    const qualityItems = qualityChecklist.filter(i => i.category === 'quality');
-    const safetyItems = qualityChecklist.filter(i => i.category === 'safety');
-    const technicalItems = qualityChecklist.filter(i => i.category === 'technical');
+    const qualityItems = qualityChecklist.filter((i) => i.category === 'quality');
+    const safetyItems = qualityChecklist.filter((i) => i.category === 'safety');
+    const technicalItems = qualityChecklist.filter((i) => i.category === 'technical');
 
     if (technicalItems.length > 0) {
       children.push(
         createChecklist({
           title: 'Contrôles Techniques',
           icon: 'TOOL',
-          items: technicalItems.map(item => ({ text: item.item })),
+          items: technicalItems.map((item) => ({ text: item.item })),
           backgroundColor: COLORS.TECHNICAL,
           titleColor: COLORS.PRIMARY,
         })
@@ -754,7 +885,7 @@ export const createRoleSection = async (data: RoleSectionData, qrBuffer?: ArrayB
         createChecklist({
           title: 'Contrôles Qualité',
           icon: 'QUALITY',
-          items: qualityItems.map(item => ({ text: item.item })),
+          items: qualityItems.map((item) => ({ text: item.item })),
           backgroundColor: COLORS.QUALITY,
           titleColor: COLORS.SUCCESS,
         })
@@ -766,7 +897,7 @@ export const createRoleSection = async (data: RoleSectionData, qrBuffer?: ArrayB
         createChecklist({
           title: 'Contrôles Sécurité',
           icon: 'SAFETY',
-          items: safetyItems.map(item => ({ text: item.item })),
+          items: safetyItems.map((item) => ({ text: item.item })),
           backgroundColor: COLORS.SAFETY,
           titleColor: COLORS.DANGER,
         })

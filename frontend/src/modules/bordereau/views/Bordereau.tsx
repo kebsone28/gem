@@ -159,7 +159,12 @@ const Bordereau = () => {
   const projectId = project?.id || null;
 
   // Hook centralisé pour les grappes (API + cache offline)
-  const { grappes, loading, error: grappesError, refresh: refreshGrappes } = useGrappes(projectId || undefined);
+  const {
+    grappes,
+    loading,
+    error: grappesError,
+    refresh: refreshGrappes,
+  } = useGrappes(projectId || undefined);
 
   const [syncing, setSyncing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -245,29 +250,14 @@ const Bordereau = () => {
           }
         }
 
-        // Refresh grappes via hook
+        // Refresh grappes via hook (don't access grappes here — it's stale in closure)
         refreshGrappes();
-
-        // Trigger Worker for Stats and Initial Grouping
-        workerRef.current?.postMessage({ action: 'CALCULATE_STATS', data: grappes });
-        workerRef.current?.postMessage({
-          action: 'GROUP_AND_FILTER_GRAPPES',
-          data: grappes,
-          params: { query: '' },
-        });
-
-        const regions = Array.from(new Set(grappes.map((g: any) => g.region || 'Sans Région')));
-        const initialExpanded: any = {};
-        regions.forEach((r: any) => {
-          initialExpanded[r] = true;
-        });
-        setExpandedRegions(initialExpanded);
       } catch (error) {
         logger.error('Error fetching bordereau:', error);
         toast.error('Erreur lors du chargement du bordereau');
       }
     },
-    [projectId, grappes, refreshGrappes]
+    [projectId, refreshGrappes]
   );
 
   useEffect(() => {
@@ -275,6 +265,21 @@ const Bordereau = () => {
       fetchData();
     }
   }, [projectId, fetchData]);
+
+  // When grappes data actually arrives, expand regions and send to worker
+  useEffect(() => {
+    if (grappes.length > 0) {
+      const regions = Array.from(new Set(grappes.map((g: any) => g.region || 'Sans Région')));
+      const initialExpanded: Record<string, boolean> = {};
+      regions.forEach((r: any) => {
+        initialExpanded[r] = true;
+      });
+      setExpandedRegions(initialExpanded);
+
+      // Trigger Worker for Stats only (GROUP_AND_FILTER is handled by the query effect below)
+      workerRef.current?.postMessage({ action: 'CALCULATE_STATS', data: grappes });
+    }
+  }, [grappes]);
 
   // Offload heavy filtering to worker when query changes
   useEffect(() => {

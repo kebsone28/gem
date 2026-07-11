@@ -1,17 +1,20 @@
 @echo off
 REM =====================================================
-REM  Script de build APK GedCollect
+REM  Script de build APK GedCollect (Hermes optimisé)
 REM  Prérequis : JDK 17+, Android SDK 33+, Node.js
+REM  ATTENTION : Le bundling JS + compilation Hermes sont
+REM  gérés automatiquement par le plugin Gradle com.facebook.react
+REM  Ne PAS lancer "react-native bundle" manuellement avant Gradle.
 REM =====================================================
 
-echo [1/5] Installation des dependances npm...
+echo [1/4] Installation des dependances npm...
 call npm install
 if %errorlevel% neq 0 (
   echo ERREUR: npm install a echoue
   exit /b 1
 )
 
-echo [2/5] Verification du keystore...
+echo [2/4] Verification du keystore...
 if not exist android\app\gedcollect-release.keystore (
   echo.
   echo AVERTISSEMENT: Keystore de release introuvable.
@@ -25,38 +28,11 @@ if not exist android\app\gedcollect-release.keystore (
   set BUILD_TYPE=assembleRelease
 )
 
-echo [3/5] Bundling JS...
-call npx react-native bundle --platform android --dev false --entry-file index.js ^
-  --bundle-output android/app/src/main/assets/index.android.bundle ^
-  --assets-dest android/app/src/main/res
-if %errorlevel% neq 0 (
-  echo ERREUR: Bundle JS a echoue
-  exit /b 1
-)
-
-echo [4/5] Nettoyage des ressources dupliquees...
-if exist android\app\src\main\res\drawable-mdpi (
-  rmdir /s /q android\app\src\main\res\drawable-mdpi 2>nul
-)
-if exist android\app\src\main\res\drawable-hdpi (
-  rmdir /s /q android\app\src\main\res\drawable-hdpi 2>nul
-)
-if exist android\app\src\main\res\drawable-xhdpi (
-  rmdir /s /q android\app\src\main\res\drawable-xhdpi 2>nul
-)
-if exist android\app\src\main\res\drawable-xxhdpi (
-  rmdir /s /q android\app\src\main\res\drawable-xxhdpi 2>nul
-)
-if exist android\app\src\main\res\drawable-xxxhdpi (
-  rmdir /s /q android\app\src\main\res\drawable-xxxhdpi 2>nul
-)
-if exist android\app\src\main\res\raw (
-  rmdir /s /q android\app\src\main\res\raw 2>nul
-)
-
-echo [5/5] Build Gradle (%BUILD_TYPE%)...
+echo [3/4] Build Gradle (%BUILD_TYPE%) - bundling + Hermes automatique...
 cd android
-call gradlew %BUILD_TYPE%
+call gradlew --stop 2^>nul
+call gradlew clean
+call gradlew %BUILD_TYPE% --info
 if %errorlevel% neq 0 (
   echo ERREUR: Build Gradle a echoue
   cd ..

@@ -7,6 +7,7 @@ import { CommandPalette } from '../components/common/CommandPalette';
 import { useBackgroundSync } from '../hooks/useBackgroundSync';
 import { HybridChatbot } from '../components/ChatbotWidget/HybridChatbot';
 import { TopBar } from '../components/layout/TopBar';
+import BottomNav from '../components/BottomNav';
 
 /**
  * Layout – Shell principal de l'application GED OS.
@@ -28,6 +29,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   useWebSockets();
   useBackgroundSync();
   const location = useLocation();
+
   const isTerrainImmersive =
     location.pathname === '/operations/map' || location.pathname === '/communication';
   // Sur /communication et /projects on cache entièrement la sidebar pour que le chat
@@ -97,13 +99,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     // h-dvh : viewport height réel (respecte la barre d'adresse mobile)
     // overflow-hidden : empêche tout débordement — le scroll est géré à l'intérieur de <main>
-    <div className="ged-os-app-shell flex h-dvh flex-col overflow-hidden bg-[linear-gradient(135deg,#020817_0%,#071226_38%,#0a1833_72%,#0d2041_100%)] text-[#E8F0FF] md:flex-row">
+    <div className="ged-os-app-shell safe-area-top flex h-dvh flex-col overflow-hidden bg-[linear-gradient(135deg,#020817_0%,#071226_38%,#0a1833_72%,#0d2041_100%)] text-[#E8F0FF] md:flex-row">
       <CommandPalette />
       {/* Sidebar cachée automatiquement sur /communication pour libérer tout l'écran */}
       {!hideSidebar && <Sidebar />}
 
       <main
-        className="relative flex min-w-0 flex-1 flex-col overflow-hidden bg-[radial-gradient(circle_at_top,#17305f_0%,#0a1630_18%,#060c1c_58%,#030712_100%)]"
+        className="safe-area-bottom relative flex min-w-0 flex-1 flex-col overflow-hidden bg-[radial-gradient(circle_at_top,#17305f_0%,#0a1630_18%,#060c1c_58%,#030712_100%)] pb-16 md:pb-0"
         role="main"
       >
         {!hideSidebar && <TopBar />}
@@ -139,6 +141,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </div>
         )}
       </main>
+
+      {/* Bottom Navigation (mobile only) */}
+      <BottomNav />
 
       {/* Hybrid Chatbot Widget - Floating bubble (bottom-right) */}
       <HybridChatbot />

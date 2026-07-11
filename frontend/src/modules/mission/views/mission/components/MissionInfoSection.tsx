@@ -1,7 +1,19 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React from 'react';
-import { Hash, MapPin, CalendarDays, CalendarCheck, Target, Truck, ArrowRight, ArrowLeft, Calculator, Lock } from 'lucide-react';
+import {
+  Hash,
+  MapPin,
+  CalendarDays,
+  CalendarCheck,
+  Target,
+  Truck,
+  ArrowRight,
+  ArrowLeft,
+  Calculator,
+  Lock,
+} from 'lucide-react';
 import type { MissionOrderData } from '../core/missionTypes';
+import DatePickerField from '@components/DatePickerField';
 
 interface MissionInfoSectionProps {
   formData: Partial<MissionOrderData>;
@@ -11,7 +23,11 @@ interface MissionInfoSectionProps {
 
 /* ── Reusable labelled field ── */
 const Field = ({
-  label, icon: Icon, children, locked, span = '',
+  label,
+  icon: Icon,
+  children,
+  locked,
+  span = '',
 }: {
   label: string;
   icon: React.ElementType;
@@ -63,15 +79,21 @@ export const MissionInfoSection: React.FC<MissionInfoSectionProps> = ({
             <Target size={18} className="text-indigo-400" />
           </div>
           <div>
-            <h2 className="text-[12px] font-black text-white uppercase tracking-[0.15em]">Configuration Officielle</h2>
-            <p className="text-[9px] font-semibold text-slate-600 mt-0.5 tracking-wide">Détails administratifs et logistiques</p>
+            <h2 className="text-[12px] font-black text-white uppercase tracking-[0.15em]">
+              Configuration Officielle
+            </h2>
+            <p className="text-[9px] font-semibold text-slate-600 mt-0.5 tracking-wide">
+              Détails administratifs et logistiques
+            </p>
           </div>
         </div>
 
         {/* ── Financial exclusion toggle ── */}
         <button
           type="button"
-          onClick={() => !isLocked && onUpdateField('excludeFromFinance', !formData.excludeFromFinance)}
+          onClick={() =>
+            !isLocked && onUpdateField('excludeFromFinance', !formData.excludeFromFinance)
+          }
           disabled={isLocked}
           className={`flex items-center gap-3 px-4 py-2.5 rounded-xl border transition-all ${
             formData.excludeFromFinance
@@ -79,14 +101,23 @@ export const MissionInfoSection: React.FC<MissionInfoSectionProps> = ({
               : 'bg-white/[0.03] border-white/[0.07] hover:bg-white/[0.05]'
           } ${isLocked ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
         >
-          <Calculator size={13} className={formData.excludeFromFinance ? 'text-amber-400' : 'text-slate-600'} />
+          <Calculator
+            size={13}
+            className={formData.excludeFromFinance ? 'text-amber-400' : 'text-slate-600'}
+          />
           <div className="flex flex-col items-start">
-            <span className="text-[9px] font-black uppercase tracking-wider text-white/80">Exclusion Financière</span>
+            <span className="text-[9px] font-black uppercase tracking-wider text-white/80">
+              Exclusion Financière
+            </span>
             <span className="text-[8px] text-slate-600 font-semibold">Hors budget projet</span>
           </div>
           {/* pill toggle */}
-          <div className={`w-9 h-5 rounded-full relative transition-all duration-200 ml-2 ${formData.excludeFromFinance ? 'bg-amber-500 shadow-md shadow-amber-500/30' : 'bg-slate-800'}`}>
-            <div className={`absolute top-[3px] w-3.5 h-3.5 rounded-full bg-white shadow transition-all duration-200 ${formData.excludeFromFinance ? 'left-[19px]' : 'left-[3px]'}`} />
+          <div
+            className={`w-9 h-5 rounded-full relative transition-all duration-200 ml-2 ${formData.excludeFromFinance ? 'bg-amber-500 shadow-md shadow-amber-500/30' : 'bg-slate-800'}`}
+          >
+            <div
+              className={`absolute top-[3px] w-3.5 h-3.5 rounded-full bg-white shadow transition-all duration-200 ${formData.excludeFromFinance ? 'left-[19px]' : 'left-[3px]'}`}
+            />
           </div>
         </button>
       </div>
@@ -117,21 +148,19 @@ export const MissionInfoSection: React.FC<MissionInfoSectionProps> = ({
         </Field>
 
         <Field label="Début" icon={CalendarDays} locked={isLocked}>
-          <input
-            type="date"
-            readOnly={isLocked}
+          <DatePickerField
             value={formData.startDate || ''}
-            onChange={(e) => onUpdateField('startDate', e.target.value)}
+            onChange={(value) => onUpdateField('startDate', value)}
+            readOnly={isLocked}
             className={inputCls(isLocked)}
           />
         </Field>
 
         <Field label="Fin estimée" icon={CalendarCheck} locked={isLocked}>
-          <input
-            type="date"
-            readOnly={isLocked}
+          <DatePickerField
             value={formData.endDate || ''}
-            onChange={(e) => onUpdateField('endDate', e.target.value)}
+            onChange={(value) => onUpdateField('endDate', value)}
+            readOnly={isLocked}
             className={inputCls(isLocked)}
           />
         </Field>

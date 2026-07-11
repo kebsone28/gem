@@ -7,7 +7,7 @@
     "ios": "react-native run-ios",
     "start": "react-native start",
     "bundle:android": "react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res",
-    "build": "npm run bundle:android && cd android && .\\gradlew.bat assembleRelease"
+    "build": "cd android && .\\gradlew.bat --stop && .\\gradlew.bat clean && .\\gradlew.bat assembleRelease"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^1.23.1",
@@ -20,6 +20,7 @@
     "@react-navigation/native-stack": "^6.9.17",
     "@types/crypto-js": "^4.2.2",
     "crypto-js": "^4.2.0",
+    "pako": "^3.0.0",
     "react": "18.2.0",
     "react-native": "0.74.0",
     "react-native-audio-recorder-player": "^3.5.3",
@@ -45,6 +46,7 @@
     "@babel/runtime": "^7.22.5",
     "@react-native-community/eslint-config": "^3.2.0",
     "@react-native/metro-config": "^0.86.0",
+    "@types/pako": "^2.0.4",
     "@types/react": "^18.3.31",
     "babel-jest": "^29.6.1",
     "babel-plugin-module-resolver": "^5.0.3",

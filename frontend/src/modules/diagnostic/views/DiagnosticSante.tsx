@@ -1,7 +1,6 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from 'react';
 import logger from '@utils/logger';
-import * as safeStorage from '@utils/safeStorage';
 import {
   Activity,
   RefreshCw,
@@ -23,9 +22,11 @@ import { PageContainer, PageHeader, ContentArea } from '@components';
 import { useTheme } from '@contexts/ThemeContext';
 import { fmtNum } from '@utils/format';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useProject } from '@contexts/ProjectContext';
 
 export default function DiagnosticSante() {
   const { isDarkMode } = useTheme();
+  const { activeProjectId } = useProject();
   const [serverData, setServerData] = useState<any>(null);
   const [systemErrors, setSystemErrors] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -35,7 +36,6 @@ export default function DiagnosticSante() {
   // Local Data
   const localLogs = useLiveQuery(() => db.sync_logs.orderBy('id').reverse().limit(50).toArray()) || [];
   const patients = useLiveQuery(() => db.households.toArray()) || [];
-  const activeProjectId = safeStorage.getItem('active_project_id');
   const localHouseholds = patients.filter((h) => !activeProjectId || h.projectId === activeProjectId);
   const localZones = useLiveQuery(() => db.zones.toArray()) || [];
 

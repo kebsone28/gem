@@ -1,12 +1,12 @@
 import React from 'react';
-import { 
-  Target, 
-  Package, 
-  AlertTriangle, 
-  ShieldCheck, 
-  RefreshCw, 
-  Scale, 
-  Zap, 
+import {
+  Target,
+  Package,
+  AlertTriangle,
+  ShieldCheck,
+  RefreshCw,
+  Scale,
+  Zap,
   FileText,
   Smartphone,
   CheckCircle2,
@@ -14,7 +14,7 @@ import {
   ArrowRightCircle,
   ListChecks,
   Wrench,
-  Shield
+  Shield,
 } from 'lucide-react';
 import type { CahierTask } from '@utils/types';
 import { CahierSection } from './CahierSection';
@@ -27,7 +27,7 @@ interface CahierTechnicalViewProps {
   showAdvancedSections: boolean;
   automatedRate: number | null;
   handleExportWord: () => void;
-  selectedRole: string;
+  selectedRoles: string[];
 }
 
 export const CahierTechnicalView: React.FC<CahierTechnicalViewProps> = ({
@@ -38,7 +38,7 @@ export const CahierTechnicalView: React.FC<CahierTechnicalViewProps> = ({
   showAdvancedSections,
   automatedRate,
   handleExportWord,
-  selectedRole,
+  selectedRoles,
 }) => {
   const technicalImages = currentTask.technicalImages || [];
   const synopticSchema = technicalImages[0];
@@ -47,25 +47,37 @@ export const CahierTechnicalView: React.FC<CahierTechnicalViewProps> = ({
 
   return (
     <div className="flex gap-8 relative animate-in fade-in slide-in-from-bottom-4 duration-700 p-8 w-full">
-      
       {/* 📖 Main Document Content */}
       <div className="flex-1 space-y-16 w-full min-w-0">
         <div className="space-y-16">
-          <CahierSection title="Missions & Exigences Techniques" color="#3b82f6" id="section-missions">
+          <CahierSection
+            title="Missions & Exigences Techniques"
+            color="#3b82f6"
+            id="section-missions"
+          >
             <div className="rounded-3xl border border-white/5 bg-white/[0.02] p-5 md:p-8 backdrop-blur-xl">
               {isEditing ? (
                 <div className="flex flex-col rounded-2xl border border-indigo-500/30 bg-slate-950/80 overflow-hidden focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500/50 transition-all shadow-inner">
                   <div className="flex items-center gap-1 border-b border-indigo-500/20 bg-indigo-500/10 px-3 py-2">
                     {['B', 'I', 'U'].map((style) => (
-                      <button key={style} className="h-6 w-6 rounded-md hover:bg-white/10 text-[11px] font-bold text-slate-300">{style}</button>
+                      <button
+                        key={style}
+                        className="h-6 w-6 rounded-md hover:bg-white/10 text-[11px] font-bold text-slate-300"
+                      >
+                        {style}
+                      </button>
                     ))}
                     <div className="w-px h-4 bg-white/10 mx-1" />
-                    <span className="text-[10px] font-mono text-indigo-400/70 ml-2">markdown supported</span>
+                    <span className="text-[10px] font-mono text-indigo-400/70 ml-2">
+                      markdown supported
+                    </span>
                   </div>
                   <textarea
                     title="Modifier les missions"
                     value={editData.missions}
-                    onChange={(e) => setEditData((prev: any) => ({ ...prev, missions: e.target.value }))}
+                    onChange={(e) =>
+                      setEditData((prev: any) => ({ ...prev, missions: e.target.value }))
+                    }
                     className="w-full h-64 bg-transparent p-5 text-slate-200 text-sm outline-none resize-y font-mono leading-relaxed custom-scrollbar placeholder:text-slate-600"
                     placeholder="- Mission 1..."
                   />
@@ -85,7 +97,7 @@ export const CahierTechnicalView: React.FC<CahierTechnicalViewProps> = ({
                     >
                       {/* Subtle hover gradient */}
                       <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/0 via-indigo-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-                      
+
                       <div className="relative p-5 sm:p-6 flex flex-col sm:flex-row items-start gap-4 sm:gap-6 w-full">
                         <div
                           className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl transition-all duration-500 group-hover:scale-110 shadow-inner ${
@@ -94,7 +106,14 @@ export const CahierTechnicalView: React.FC<CahierTechnicalViewProps> = ({
                               : 'bg-slate-950 text-slate-400 group-hover:bg-indigo-500/20 group-hover:text-indigo-400 border border-white/5 group-hover:border-indigo-500/30'
                           }`}
                         >
-                          <Target size={20} className={m.startsWith('ART 1.5') || m.includes('Reporting') ? 'animate-pulse' : ''} />
+                          <Target
+                            size={20}
+                            className={
+                              m.startsWith('ART 1.5') || m.includes('Reporting')
+                                ? 'animate-pulse'
+                                : ''
+                            }
+                          />
                         </div>
                         <div className="min-w-0 flex-1 w-full pt-1">
                           {(() => {
@@ -110,7 +129,9 @@ export const CahierTechnicalView: React.FC<CahierTechnicalViewProps> = ({
                                 </p>
                               </div>
                             ) : (
-                              <p className="text-sm sm:text-base leading-relaxed text-slate-300 pt-2">{m}</p>
+                              <p className="text-sm sm:text-base leading-relaxed text-slate-300 pt-2">
+                                {m}
+                              </p>
                             );
                           })()}
                         </div>
@@ -127,7 +148,9 @@ export const CahierTechnicalView: React.FC<CahierTechnicalViewProps> = ({
               {isEditing ? (
                 <div className="flex flex-col rounded-2xl border border-rose-500/30 bg-slate-950/80 overflow-hidden focus-within:border-rose-500 focus-within:ring-1 focus-within:ring-rose-500/50 transition-all shadow-inner">
                   <div className="flex items-center gap-1 border-b border-rose-500/20 bg-rose-500/10 px-3 py-2">
-                    <span className="text-[10px] font-mono text-rose-400/70 ml-2">markdown supported</span>
+                    <span className="text-[10px] font-mono text-rose-400/70 ml-2">
+                      markdown supported
+                    </span>
                   </div>
                   <textarea
                     title="Modifier les règles HSE"
@@ -165,7 +188,9 @@ export const CahierTechnicalView: React.FC<CahierTechnicalViewProps> = ({
                                 </p>
                               </div>
                             ) : (
-                              <p className="text-sm sm:text-base leading-relaxed text-slate-300 pt-2">{h}</p>
+                              <p className="text-sm sm:text-base leading-relaxed text-slate-300 pt-2">
+                                {h}
+                              </p>
                             );
                           })()}
                         </div>
@@ -184,12 +209,16 @@ export const CahierTechnicalView: React.FC<CahierTechnicalViewProps> = ({
               {isEditing ? (
                 <div className="flex flex-col rounded-2xl border border-amber-500/30 bg-slate-950/80 overflow-hidden focus-within:border-amber-500 focus-within:ring-1 focus-within:ring-amber-500/50 transition-all shadow-inner">
                   <div className="flex items-center gap-1 border-b border-amber-500/20 bg-amber-500/10 px-3 py-2">
-                    <span className="text-[10px] font-mono text-amber-400/70 ml-2">markdown supported</span>
+                    <span className="text-[10px] font-mono text-amber-400/70 ml-2">
+                      markdown supported
+                    </span>
                   </div>
                   <textarea
                     title="Modifier les matériaux"
                     value={editData.materials}
-                    onChange={(e) => setEditData((prev: any) => ({ ...prev, materials: e.target.value }))}
+                    onChange={(e) =>
+                      setEditData((prev: any) => ({ ...prev, materials: e.target.value }))
+                    }
                     className="w-full h-40 bg-transparent p-5 text-amber-200 text-sm outline-none resize-y font-mono leading-relaxed custom-scrollbar placeholder:text-amber-900"
                     placeholder="- Ciment..."
                   />
@@ -206,14 +235,20 @@ export const CahierTechnicalView: React.FC<CahierTechnicalViewProps> = ({
                       }`}
                     >
                       <div className="relative flex items-center gap-4 w-full">
-                        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-transform duration-500 group-hover:scale-110 shadow-inner ${
-                          m.startsWith('- Matériel fourni') ? 'bg-amber-500 text-white shadow-amber-500/20' : 'bg-slate-950 text-amber-500/70 border border-white/5'
-                        }`}>
+                        <div
+                          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-transform duration-500 group-hover:scale-110 shadow-inner ${
+                            m.startsWith('- Matériel fourni')
+                              ? 'bg-amber-500 text-white shadow-amber-500/20'
+                              : 'bg-slate-950 text-amber-500/70 border border-white/5'
+                          }`}
+                        >
                           <Package size={18} />
                         </div>
-                        <span className={`text-sm font-medium flex-1 min-w-0 leading-relaxed ${
-                          m.startsWith('- Matériel fourni') ? 'text-amber-100' : 'text-slate-300'
-                        }`}>
+                        <span
+                          className={`text-sm font-medium flex-1 min-w-0 leading-relaxed ${
+                            m.startsWith('- Matériel fourni') ? 'text-amber-100' : 'text-slate-300'
+                          }`}
+                        >
                           {m.replace('- ', '')}
                         </span>
                       </div>
@@ -232,23 +267,32 @@ export const CahierTechnicalView: React.FC<CahierTechnicalViewProps> = ({
                     <div className="space-y-4">
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-[10px] text-emerald-400 uppercase font-black mb-1.5">Tarif (FCFA)</label>
+                          <label className="block text-[10px] text-emerald-400 uppercase font-black mb-1.5">
+                            Tarif (FCFA)
+                          </label>
                           <div className="relative">
                             <input
                               type="number"
                               value={editData.pricing.dailyRate}
-                              onChange={(e) => setEditData((prev: any) => ({
-                                ...prev,
-                                pricing: { ...prev.pricing, dailyRate: e.target.valueAsNumber || 0 }
-                              }))}
+                              onChange={(e) =>
+                                setEditData((prev: any) => ({
+                                  ...prev,
+                                  pricing: {
+                                    ...prev.pricing,
+                                    dailyRate: e.target.valueAsNumber || 0,
+                                  },
+                                }))
+                              }
                               className="w-full bg-slate-950 border border-emerald-500/30 rounded-xl px-3 py-2.5 text-emerald-300 text-sm focus:border-emerald-500 outline-none"
                             />
                             {automatedRate && editData.pricing.dailyRate !== automatedRate && (
                               <button
-                                onClick={() => setEditData((prev: any) => ({
-                                  ...prev,
-                                  pricing: { ...prev.pricing, dailyRate: automatedRate }
-                                }))}
+                                onClick={() =>
+                                  setEditData((prev: any) => ({
+                                    ...prev,
+                                    pricing: { ...prev.pricing, dailyRate: automatedRate },
+                                  }))
+                                }
                                 className="absolute right-2 top-1/2 -translate-y-1/2 text-emerald-500 hover:text-emerald-400 p-1"
                               >
                                 <RefreshCw size={14} />
@@ -257,24 +301,33 @@ export const CahierTechnicalView: React.FC<CahierTechnicalViewProps> = ({
                           </div>
                         </div>
                         <div>
-                          <label className="block text-[10px] text-emerald-400 uppercase font-black mb-1.5">Effectif</label>
+                          <label className="block text-[10px] text-emerald-400 uppercase font-black mb-1.5">
+                            Effectif
+                          </label>
                           <input
                             type="number"
                             value={editData.pricing.personnelCount}
-                            onChange={(e) => setEditData((prev: any) => ({
-                              ...prev,
-                              pricing: { ...prev.pricing, personnelCount: e.target.valueAsNumber || 0 }
-                            }))}
+                            onChange={(e) =>
+                              setEditData((prev: any) => ({
+                                ...prev,
+                                pricing: {
+                                  ...prev.pricing,
+                                  personnelCount: e.target.valueAsNumber || 0,
+                                },
+                              }))
+                            }
                             className="w-full bg-slate-950 border border-emerald-500/30 rounded-xl px-3 py-2.5 text-emerald-300 text-sm focus:border-emerald-500 outline-none"
                           />
                         </div>
                       </div>
                       <textarea
                         value={editData.pricing.penalties}
-                        onChange={(e) => setEditData((prev: any) => ({
-                          ...prev,
-                          pricing: { ...prev.pricing, penalties: e.target.value }
-                        }))}
+                        onChange={(e) =>
+                          setEditData((prev: any) => ({
+                            ...prev,
+                            pricing: { ...prev.pricing, penalties: e.target.value },
+                          }))
+                        }
                         className="w-full h-24 bg-slate-950 border border-emerald-500/30 rounded-xl p-3 text-emerald-300 text-xs focus:border-emerald-500 outline-none resize-none font-mono"
                         placeholder="Clauses pénales..."
                       />
@@ -282,9 +335,12 @@ export const CahierTechnicalView: React.FC<CahierTechnicalViewProps> = ({
                   ) : (
                     <div className="space-y-4">
                       <div className="flex items-center justify-between rounded-2xl bg-slate-950/50 p-4 border border-white/5">
-                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Coût Unitaire</span>
+                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                          Coût Unitaire
+                        </span>
                         <span className="text-lg font-black text-emerald-400">
-                          {currentTask.pricing?.dailyRate?.toLocaleString()} <span className="text-[10px] text-emerald-600">FCFA</span>
+                          {currentTask.pricing?.dailyRate?.toLocaleString()}{' '}
+                          <span className="text-[10px] text-emerald-600">FCFA</span>
                         </span>
                       </div>
                       <div className="text-[11px] leading-relaxed text-emerald-500/70 italic border-l-2 border-emerald-500/20 pl-3">
@@ -292,13 +348,16 @@ export const CahierTechnicalView: React.FC<CahierTechnicalViewProps> = ({
                       </div>
                       <div className="pt-2">
                         <div className="flex items-center justify-between bg-emerald-500/10 px-4 py-3 rounded-xl border border-emerald-500/20">
-                          <span className="text-[9px] font-black text-emerald-400 uppercase tracking-widest">Total Lot</span>
+                          <span className="text-[9px] font-black text-emerald-400 uppercase tracking-widest">
+                            Total Lot
+                          </span>
                           <span className="text-xl font-black text-emerald-400">
                             {(
                               (currentTask.pricing?.dailyRate || 0) *
                               (currentTask.pricing?.personnelCount || 0) *
                               (currentTask.pricing?.durationDays || 0)
-                            ).toLocaleString()} <span className="text-xs uppercase">FCFA</span>
+                            ).toLocaleString()}{' '}
+                            <span className="text-xs uppercase">FCFA</span>
                           </span>
                         </div>
                       </div>
@@ -311,7 +370,10 @@ export const CahierTechnicalView: React.FC<CahierTechnicalViewProps> = ({
                 <div className="rounded-3xl border border-purple-500/10 bg-purple-500/[0.02] p-6 space-y-3">
                   {currentTask.legal?.map((item: string, i: number) => (
                     <div key={i} className="flex items-start gap-3 group">
-                      <Scale size={14} className="text-purple-500 mt-1 shrink-0 group-hover:scale-110 transition-transform" />
+                      <Scale
+                        size={14}
+                        className="text-purple-500 mt-1 shrink-0 group-hover:scale-110 transition-transform"
+                      />
                       <span className="text-[11px] italic leading-relaxed text-slate-400">
                         {item}
                       </span>
@@ -325,217 +387,284 @@ export const CahierTechnicalView: React.FC<CahierTechnicalViewProps> = ({
 
         {/* SECTION INNOVATION - KOBO GUIDE & SCHÉMA */}
         <div className="pt-10 border-t border-white/5 space-y-16">
-          <CahierSection title="Guide de Saisie Kobo & Contrôles GED OS" color="#22d3ee" id="section-kobo">
+          <CahierSection
+            title="Guide de Saisie Kobo & Contrôles GED OS"
+            color="#22d3ee"
+            id="section-kobo"
+          >
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-2">
-            {currentTask.koboGuide?.map((block, i) => (
-              <div key={i} className="flex flex-col rounded-3xl border border-cyan-500/10 bg-cyan-500/[0.02] p-6 transition-all hover:border-cyan-500/30">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-cyan-500/10 text-cyan-400">
-                    <Smartphone size={20} />
-                  </div>
-                  <h5 className="text-[11px] font-black uppercase tracking-widest text-cyan-200 leading-tight">
-                    {block.title}
-                  </h5>
-                </div>
-                
-                <div className="flex-1 space-y-4">
-                  <div>
-                    <span className="text-[9px] font-black text-emerald-400 uppercase tracking-widest block mb-2">Points de Contrôle</span>
-                    <ul className="space-y-2">
-                      {block.checks.map((c, ci) => (
-                        <li key={ci} className="flex gap-2 text-[11px] text-slate-300 leading-relaxed">
-                          <CheckCircle2 size={12} className="text-emerald-500 shrink-0 mt-0.5" />
-                          <span>{c}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  {block.blockers && block.blockers.length > 0 && (
-                    <div>
-                      <span className="text-[9px] font-black text-rose-400 uppercase tracking-widest block mb-2">Points Bloquants</span>
-                      <ul className="space-y-2">
-                        {block.blockers.map((b, bi) => (
-                          <li key={bi} className="flex gap-2 text-[11px] text-rose-300/80 leading-relaxed">
-                            <XCircle size={12} className="text-rose-500 shrink-0 mt-0.5" />
-                            <span>{b}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </CahierSection>
-
-        {currentTask.executionGuide && currentTask.executionGuide.length > 0 && (
-          <CahierSection title="Guide d'Exécution Step-by-Step" color="#8b5cf6" id="section-execution">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              {currentTask.executionGuide.map((section, i) => (
-                <div key={i} className="flex flex-col rounded-3xl border border-violet-500/10 bg-gradient-to-br from-violet-500/[0.02] to-violet-500/[0.05] p-6 transition-all hover:border-violet-500/30 hover:shadow-[0_8px_30px_rgb(139,92,246,0.1)]">
+              {currentTask.koboGuide?.map((block, i) => (
+                <div
+                  key={i}
+                  className="flex flex-col rounded-3xl border border-cyan-500/10 bg-cyan-500/[0.02] p-6 transition-all hover:border-cyan-500/30"
+                >
                   <div className="flex items-center gap-3 mb-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500/20 to-violet-500/10 text-violet-400 shadow-lg shadow-violet-500/20">
-                      <Wrench size={22} />
+                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-cyan-500/10 text-cyan-400">
+                      <Smartphone size={20} />
                     </div>
-                    <div className="flex-1">
-                      <h5 className="text-[12px] font-black uppercase tracking-widest text-violet-200 leading-tight">
-                        {section.title}
-                      </h5>
-                      <p className="text-[10px] text-violet-400/70 mt-1">{section.description}</p>
-                    </div>
+                    <h5 className="text-[11px] font-black uppercase tracking-widest text-cyan-200 leading-tight">
+                      {block.title}
+                    </h5>
                   </div>
-                  
-                  <div className="space-y-4">
-                    <div className="bg-slate-950/40 rounded-2xl p-4 border border-violet-500/10">
-                      <span className="text-[9px] font-black text-violet-400 uppercase tracking-widest block mb-3 flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-violet-500"></span>
-                        Étapes
-                      </span>
-                      <ol className="space-y-2">
-                        {section.steps.map((step, si) => (
-                          <li key={si} className="flex gap-3 text-[11px] text-slate-300 leading-relaxed">
-                            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500/30 to-violet-500/20 text-violet-400 text-[10px] font-bold border border-violet-500/30">
-                              {si + 1}
-                            </span>
-                            <span>{step}</span>
-                          </li>
-                        ))}
-                      </ol>
-                    </div>
 
-                    <div className="bg-slate-950/40 rounded-2xl p-4 border border-emerald-500/10">
-                      <span className="text-[9px] font-black text-emerald-400 uppercase tracking-widest block mb-3 flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                        Checklist
+                  <div className="flex-1 space-y-4">
+                    <div>
+                      <span className="text-[9px] font-black text-emerald-400 uppercase tracking-widest block mb-2">
+                        Points de Contrôle
                       </span>
                       <ul className="space-y-2">
-                        {section.checklist.map((item, ci) => (
-                          <li key={ci} className="flex gap-2 text-[11px] text-slate-300 leading-relaxed">
+                        {block.checks.map((c, ci) => (
+                          <li
+                            key={ci}
+                            className="flex gap-2 text-[11px] text-slate-300 leading-relaxed"
+                          >
                             <CheckCircle2 size={12} className="text-emerald-500 shrink-0 mt-0.5" />
-                            <span>{item}</span>
+                            <span>{c}</span>
                           </li>
                         ))}
                       </ul>
                     </div>
 
-                    <div className="grid grid-cols-1 gap-3">
-                      <div className="bg-slate-950/40 rounded-xl p-3 border border-cyan-500/10">
-                        <span className="text-[9px] font-black text-cyan-400 uppercase tracking-widest block mb-2 flex items-center gap-2">
-                          <span className="w-1.5 h-1.5 rounded-full bg-cyan-500"></span>
-                          Qualité
+                    {block.blockers && block.blockers.length > 0 && (
+                      <div>
+                        <span className="text-[9px] font-black text-rose-400 uppercase tracking-widest block mb-2">
+                          Points Bloquants
                         </span>
-                        <ul className="space-y-1.5">
-                          {section.qualityPoints.map((qp, qi) => (
-                            <li key={qi} className="flex gap-2 text-[10px] text-slate-400 leading-relaxed">
-                              <ArrowRightCircle size={10} className="text-cyan-500 shrink-0 mt-0.5" />
-                              <span>{qp}</span>
+                        <ul className="space-y-2">
+                          {block.blockers.map((b, bi) => (
+                            <li
+                              key={bi}
+                              className="flex gap-2 text-[11px] text-rose-300/80 leading-relaxed"
+                            >
+                              <XCircle size={12} className="text-rose-500 shrink-0 mt-0.5" />
+                              <span>{b}</span>
                             </li>
                           ))}
                         </ul>
                       </div>
-                      <div className="bg-slate-950/40 rounded-xl p-3 border border-rose-500/10">
-                        <span className="text-[9px] font-black text-rose-400 uppercase tracking-widest block mb-2 flex items-center gap-2">
-                          <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
-                          Sécurité
-                        </span>
-                        <ul className="space-y-1.5">
-                          {section.safetyPoints.map((sp, spi) => (
-                            <li key={spi} className="flex gap-2 text-[10px] text-slate-400 leading-relaxed">
-                              <Shield size={10} className="text-rose-500 shrink-0 mt-0.5" />
-                              <span>{sp}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    </div>
+                    )}
                   </div>
                 </div>
               ))}
             </div>
           </CahierSection>
-        )}
 
-        {technicalImages.length > 0 && (
-          <section className="rounded-[2.5rem] border border-cyan-500/20 bg-slate-950/60 p-6 md:p-10 shadow-2xl">
-            <div className="mb-8">
-              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-cyan-400">Documentation Technique</p>
-              <h4 className="mt-2 text-2xl font-black text-white md:text-3xl">Images & Schémas</h4>
-            </div>
+          {currentTask.executionGuide && currentTask.executionGuide.length > 0 && (
+            <CahierSection
+              title="Guide d'Exécution Step-by-Step"
+              color="#8b5cf6"
+              id="section-execution"
+            >
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {currentTask.executionGuide.map((section, i) => (
+                  <div
+                    key={i}
+                    className="flex flex-col rounded-3xl border border-violet-500/10 bg-gradient-to-br from-violet-500/[0.02] to-violet-500/[0.05] p-6 transition-all hover:border-violet-500/30 hover:shadow-[0_8px_30px_rgb(139,92,246,0.1)]"
+                  >
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500/20 to-violet-500/10 text-violet-400 shadow-lg shadow-violet-500/20">
+                        <Wrench size={22} />
+                      </div>
+                      <div className="flex-1">
+                        <h5 className="text-[12px] font-black uppercase tracking-widest text-violet-200 leading-tight">
+                          {section.title}
+                        </h5>
+                        <p className="text-[10px] text-violet-400/70 mt-1">{section.description}</p>
+                      </div>
+                    </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {technicalImages.map((img, idx) => (
-                <div key={idx} className="space-y-4">
-                  <div className="overflow-hidden rounded-3xl border border-white/5 bg-white p-4 shadow-2xl shadow-cyan-900/20 transition-transform hover:scale-[1.01] duration-500">
-                    <img
-                      src={img.url}
-                      alt={img.label}
-                      className="h-auto w-full rounded-2xl object-contain"
-                    />
-                  </div>
-                  <div className="rounded-2xl border border-white/5 bg-slate-900/40 p-5 transition-all hover:bg-slate-900/60">
-                    <h5 className="mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-cyan-400">{img.label}</h5>
-                    {img.notes?.map((block) => (
-                      <div key={block.title} className="mb-4 last:mb-0">
-                        <h6 className="text-[9px] font-bold text-slate-400 uppercase mb-2">{block.title}</h6>
+                    <div className="space-y-4">
+                      <div className="bg-slate-950/40 rounded-2xl p-4 border border-violet-500/10">
+                        <span className="text-[9px] font-black text-violet-400 uppercase tracking-widest block mb-3 flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-violet-500"></span>
+                          Étapes
+                        </span>
+                        <ol className="space-y-2">
+                          {section.steps.map((step, si) => (
+                            <li
+                              key={si}
+                              className="flex gap-3 text-[11px] text-slate-300 leading-relaxed"
+                            >
+                              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500/30 to-violet-500/20 text-violet-400 text-[10px] font-bold border border-violet-500/30">
+                                {si + 1}
+                              </span>
+                              <span>{step}</span>
+                            </li>
+                          ))}
+                        </ol>
+                      </div>
+
+                      <div className="bg-slate-950/40 rounded-2xl p-4 border border-emerald-500/10">
+                        <span className="text-[9px] font-black text-emerald-400 uppercase tracking-widest block mb-3 flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                          Checklist
+                        </span>
                         <ul className="space-y-2">
-                          {block.lines.map((line) => (
-                            <li key={line} className="flex gap-3 text-sm leading-relaxed text-slate-300">
-                              <ArrowRightCircle size={14} className="text-cyan-500 shrink-0 mt-1" />
-                              <span>{line}</span>
+                          {section.checklist.map((item, ci) => (
+                            <li
+                              key={ci}
+                              className="flex gap-2 text-[11px] text-slate-300 leading-relaxed"
+                            >
+                              <CheckCircle2
+                                size={12}
+                                className="text-emerald-500 shrink-0 mt-0.5"
+                              />
+                              <span>{item}</span>
                             </li>
                           ))}
                         </ul>
                       </div>
-                    ))}
+
+                      <div className="grid grid-cols-1 gap-3">
+                        <div className="bg-slate-950/40 rounded-xl p-3 border border-cyan-500/10">
+                          <span className="text-[9px] font-black text-cyan-400 uppercase tracking-widest block mb-2 flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-cyan-500"></span>
+                            Qualité
+                          </span>
+                          <ul className="space-y-1.5">
+                            {section.qualityPoints.map((qp, qi) => (
+                              <li
+                                key={qi}
+                                className="flex gap-2 text-[10px] text-slate-400 leading-relaxed"
+                              >
+                                <ArrowRightCircle
+                                  size={10}
+                                  className="text-cyan-500 shrink-0 mt-0.5"
+                                />
+                                <span>{qp}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                        <div className="bg-slate-950/40 rounded-xl p-3 border border-rose-500/10">
+                          <span className="text-[9px] font-black text-rose-400 uppercase tracking-widest block mb-2 flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                            Sécurité
+                          </span>
+                          <ul className="space-y-1.5">
+                            {section.safetyPoints.map((sp, spi) => (
+                              <li
+                                key={spi}
+                                className="flex gap-2 text-[10px] text-slate-400 leading-relaxed"
+                              >
+                                <Shield size={10} className="text-rose-500 shrink-0 mt-0.5" />
+                                <span>{sp}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {showAdvancedSections && (
-          <div className="bg-indigo-600/10 border border-indigo-500/20 rounded-[2.5rem] p-8 md:p-12 shadow-2xl relative overflow-hidden group">
-            <div className="absolute top-0 right-0 p-10 opacity-5 group-hover:opacity-10 transition-opacity">
-              <ShieldCheck size={200} className="text-indigo-500" />
-            </div>
-            <div className="relative z-10 max-w-4xl">
-              <div className="flex items-center gap-4 mb-6">
-                <div className="h-12 w-12 rounded-2xl bg-indigo-500 flex items-center justify-center text-white shadow-xl shadow-indigo-900/40">
-                  <ShieldCheck size={28} />
-                </div>
-                <h4 className="text-2xl font-black text-white uppercase tracking-widest">Performance & Garantie</h4>
+                ))}
               </div>
-              <p className="text-lg text-indigo-100/70 leading-relaxed italic mb-10">
-                "Le modèle PROQUELEC repose sur la <span className="text-white font-bold underline decoration-indigo-500 underline-offset-4">Réception Finale Digitale</span>. Chaque donnée saisie via Kobo constitue l'unique preuve contractuelle de la conformité des prestations, libérant les paiements après validation par le Chef de Projet."
-              </p>
-              <button
-                onClick={handleExportWord}
-                className="w-full sm:w-auto bg-white text-indigo-600 font-black px-10 py-5 rounded-2xl flex items-center justify-center gap-4 transition-all hover:bg-indigo-50 hover:scale-[1.02] active:scale-95 shadow-2xl shadow-indigo-500/20 uppercase tracking-widest text-sm"
-              >
-                <FileText size={20} />
-                Générer le bordereau contractuel complet (.docx)
-              </button>
+            </CahierSection>
+          )}
+
+          {technicalImages.length > 0 && (
+            <section className="rounded-[2.5rem] border border-cyan-500/20 bg-slate-950/60 p-6 md:p-10 shadow-2xl">
+              <div className="mb-8">
+                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-cyan-400">
+                  Documentation Technique
+                </p>
+                <h4 className="mt-2 text-2xl font-black text-white md:text-3xl">
+                  Images & Schémas
+                </h4>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {technicalImages.map((img, idx) => (
+                  <div key={idx} className="space-y-4">
+                    <div className="overflow-hidden rounded-3xl border border-white/5 bg-white p-4 shadow-2xl shadow-cyan-900/20 transition-transform hover:scale-[1.01] duration-500">
+                      <img
+                        src={img.url}
+                        alt={img.label}
+                        className="h-auto w-full rounded-2xl object-contain"
+                      />
+                    </div>
+                    <div className="rounded-2xl border border-white/5 bg-slate-900/40 p-5 transition-all hover:bg-slate-900/60">
+                      <h5 className="mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-cyan-400">
+                        {img.label}
+                      </h5>
+                      {img.notes?.map((block) => (
+                        <div key={block.title} className="mb-4 last:mb-0">
+                          <h6 className="text-[9px] font-bold text-slate-400 uppercase mb-2">
+                            {block.title}
+                          </h6>
+                          <ul className="space-y-2">
+                            {block.lines.map((line) => (
+                              <li
+                                key={line}
+                                className="flex gap-3 text-sm leading-relaxed text-slate-300"
+                              >
+                                <ArrowRightCircle
+                                  size={14}
+                                  className="text-cyan-500 shrink-0 mt-1"
+                                />
+                                <span>{line}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {showAdvancedSections && (
+            <div className="bg-indigo-600/10 border border-indigo-500/20 rounded-[2.5rem] p-8 md:p-12 shadow-2xl relative overflow-hidden group">
+              <div className="absolute top-0 right-0 p-10 opacity-5 group-hover:opacity-10 transition-opacity">
+                <ShieldCheck size={200} className="text-indigo-500" />
+              </div>
+              <div className="relative z-10 max-w-4xl">
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="h-12 w-12 rounded-2xl bg-indigo-500 flex items-center justify-center text-white shadow-xl shadow-indigo-900/40">
+                    <ShieldCheck size={28} />
+                  </div>
+                  <h4 className="text-2xl font-black text-white uppercase tracking-widest">
+                    Performance & Garantie
+                  </h4>
+                </div>
+                <p className="text-lg text-indigo-100/70 leading-relaxed italic mb-10">
+                  "Le modèle PROQUELEC repose sur la{' '}
+                  <span className="text-white font-bold underline decoration-indigo-500 underline-offset-4">
+                    Réception Finale Digitale
+                  </span>
+                  . Chaque donnée saisie via Kobo constitue l'unique preuve contractuelle de la
+                  conformité des prestations, libérant les paiements après validation par le Chef de
+                  Projet."
+                </p>
+                <button
+                  onClick={handleExportWord}
+                  className="w-full sm:w-auto bg-white text-indigo-600 font-black px-10 py-5 rounded-2xl flex items-center justify-center gap-4 transition-all hover:bg-indigo-50 hover:scale-[1.02] active:scale-95 shadow-2xl shadow-indigo-500/20 uppercase tracking-widest text-sm"
+                >
+                  <FileText size={20} />
+                  Générer le bordereau contractuel complet (.docx)
+                </button>
+              </div>
             </div>
+          )}
+        </div>
+
+        {/* Signature Section */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-10 border-t border-white/5 opacity-50 grayscale hover:grayscale-0 hover:opacity-100 transition-all duration-500">
+          <div className="border-2 border-dashed border-white/10 p-10 rounded-[2rem] flex flex-col items-center justify-center gap-4">
+            <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">
+              Visa Direction PROQUELEC
+            </span>
+            <div className="h-px w-20 bg-white/10" />
           </div>
-        )}
-      </div>
-
-      {/* Signature Section */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-10 border-t border-white/5 opacity-50 grayscale hover:grayscale-0 hover:opacity-100 transition-all duration-500">
-        <div className="border-2 border-dashed border-white/10 p-10 rounded-[2rem] flex flex-col items-center justify-center gap-4">
-          <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">Visa Direction PROQUELEC</span>
-          <div className="h-px w-20 bg-white/10" />
-        </div>
-        <div className="border-2 border-dashed border-white/10 p-10 rounded-[2rem] flex flex-col items-center justify-center gap-4">
-          <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">Visa Prestataire ({selectedRole})</span>
-          <div className="h-px w-20 bg-white/10" />
+          <div className="border-2 border-dashed border-white/10 p-10 rounded-[2rem] flex flex-col items-center justify-center gap-4">
+            <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">
+              Visa Prestataire ({selectedRoles.join(', ')})
+            </span>
+            <div className="h-px w-20 bg-white/10" />
+          </div>
         </div>
       </div>
-      </div>
-
     </div>
   );
 };

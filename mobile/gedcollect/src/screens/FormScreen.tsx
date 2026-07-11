@@ -194,8 +194,6 @@ const FormScreen: React.FC<Props> = ({ route, navigation }) => {
     ])
   );
 
-
-
   const repeatValueKey = (group: string, index: number, fieldName: string) =>
     `${group}::${index}::${fieldName}`;
 
@@ -257,8 +255,6 @@ const FormScreen: React.FC<Props> = ({ route, navigation }) => {
     }
     return result;
   }, [survey]);
-
-
 
   const filteredFields = useMemo(() => {
     const displayList: any[] = [];
@@ -471,10 +467,23 @@ const FormScreen: React.FC<Props> = ({ route, navigation }) => {
 
   useEffect(() => {
     if (!speechTarget) return;
-    const unsub = onSpeechResults((text) => {
-      if (speechTarget) hv(speechTarget, text);
-    });
-    return unsub;
+    let unsub: (() => void) | undefined;
+    try {
+      unsub = onSpeechResults((text) => {
+        if (speechTarget) hv(speechTarget, text);
+      });
+    } catch (e) {
+      console.warn('[FormScreen] Failed to init speech results:', e);
+    }
+    return () => {
+      if (typeof unsub === 'function') {
+        try {
+          unsub();
+        } catch {
+          /* ignore cleanup errors */
+        }
+      }
+    };
   }, [speechTarget, hv]);
 
   const startNfcScan = useCallback(async () => {
@@ -642,8 +651,6 @@ const FormScreen: React.FC<Props> = ({ route, navigation }) => {
     },
     [currentGeoCoords, isDrawingGeoshape, isDrawingGeotrace, hv]
   );
-
-
 
   const onDate = useCallback(
     (name: string, _: any, d?: Date) => {

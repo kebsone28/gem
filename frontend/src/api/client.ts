@@ -140,4 +140,12 @@ apiClient.interceptors.response.use(
   }
 );
 
+/**
+ * Public helper to proactively refresh the auth session (cookie-based).
+ * Can be called before long operations to ensure the token is fresh.
+ */
+export async function refreshAuthToken(): Promise<void> {
+  await performTokenRefresh();
+}
+
 export default apiClient;

@@ -26,3 +26,6 @@ export { createQRCode } from './QRCode';
 export type { QRCodeOptions } from './QRCode';
 export { createQualityGrid } from './QualityGrid';
 export type { QualityGridOptions, QualityGridItem } from './QualityGrid';
+
+export { createCoverPage } from './CoverPage';
+export type { CoverPageOptions } from './CoverPage';

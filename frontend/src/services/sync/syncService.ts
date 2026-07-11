@@ -14,16 +14,14 @@ import { useAuthStore } from '../../store/authStore';
 import * as safeStorage from '../../utils/safeStorage';
 import { logger } from '../logger';
 import toast from 'react-hot-toast';
-import {
-  countPending,
-} from './queueService';
+import { countPending } from './queueService';
 
 // Module-level guard — prevents concurrent sync across the entire app lifetime
 let _isSyncRunning = false;
 
 // ── CIRCUIT BREAKER ─────────────────────────────────────────────────────────
-const RTT_THRESHOLD_MS = 4000;       // Tolérance accrue pour les zones à faible couverture (4s)
-const CB_FAILURE_LIMIT = 3;          // Déclenchement après 3 échecs consécutifs
+const RTT_THRESHOLD_MS = 4000; // Tolérance accrue pour les zones à faible couverture (4s)
+const CB_FAILURE_LIMIT = 3; // Déclenchement après 3 échecs consécutifs
 const CB_RESET_TIMEOUT_MS = 2 * 60 * 1000; // Tentative de reconnexion après 2 minutes (au lieu de 5)
 
 let _cbFailures = 0;
@@ -66,7 +64,10 @@ async function canSync(): Promise<boolean> {
   if (rtt === null || rtt > RTT_THRESHOLD_MS) {
     _cbFailures++;
     offlineStore.setQualityDegraded(true, rtt);
-    logger.warn('SYNC', `📶 Degraded network detected (RTT=${rtt}ms, failures=${_cbFailures}/${CB_FAILURE_LIMIT})`);
+    logger.warn(
+      'SYNC',
+      `📶 Degraded network detected (RTT=${rtt}ms, failures=${_cbFailures}/${CB_FAILURE_LIMIT})`
+    );
 
     if (_cbFailures >= CB_FAILURE_LIMIT) {
       _cbOpenAt = Date.now();
@@ -77,11 +78,14 @@ async function canSync(): Promise<boolean> {
         icon: '📵',
       });
     } else {
-      toast(`📶 Connexion dégradée (${rtt ?? '?'}ms) — tentative ${_cbFailures}/${CB_FAILURE_LIMIT}`, {
-        id: 'cb-degraded',
-        duration: 4000,
-        style: { background: '#78350f', color: '#fde68a' },
-      });
+      toast(
+        `📶 Connexion dégradée (${rtt ?? '?'}ms) — tentative ${_cbFailures}/${CB_FAILURE_LIMIT}`,
+        {
+          id: 'cb-degraded',
+          duration: 4000,
+          style: { background: '#78350f', color: '#fde68a' },
+        }
+      );
     }
     return false;
   }
@@ -99,8 +103,7 @@ async function canSync(): Promise<boolean> {
 
 export function hasSyncAuthContext(): boolean {
   const { user, isAuthenticated } = useAuthStore.getState();
-  const isOnLoginPage =
-    typeof window !== 'undefined' && window.location.pathname === '/login';
+  const isOnLoginPage = typeof window !== 'undefined' && window.location.pathname === '/login';
 
   return !!user && isAuthenticated && !isOnLoginPage;
 }
@@ -110,15 +113,16 @@ async function pullUpdates(): Promise<void> {
   const lastSync = safeStorage.getItem('last_sync_timestamp');
   logger.info('SYNC', 'Pulling server changes...', { since: lastSync });
 
-  const response = await apiClient.get('sync/pull', {
-    params: { since: lastSync, limit: 1000 },
-  });
+  const params: Record<string, unknown> = { limit: 1000 };
+  if (lastSync) params.since = lastSync;
+
+  const response = await apiClient.get('sync/pull', { params });
 
   const { timestamp, changes } = response.data;
 
   if (changes.projects) await syncData('projects', changes.projects);
 
-  /* 🚫 SERVER-FIRST: Households are no longer pulled into Dexie. 
+  /* 🚫 SERVER-FIRST: Households are no longer pulled into Dexie.
      The API /api/households is now the direct source of truth for the Map.
   if (changes.households?.length > 0) {
     logger.debug('SYNC', `Applying ${changes.households.length} household changes`, {
@@ -151,7 +155,7 @@ async function pullUpdates(): Promise<void> {
 async function triggerKoboSync(): Promise<void> {
   const { user } = useAuthStore.getState();
   const activeProjectId = safeStorage.getItem('active_project_id');
-  
+
   // Guard: Only sync if user has permission to avoid 403 noise
   const hasKoboPerm = user?.permissions?.includes('acces_terminal_kobo');
   if (!hasKoboPerm) {

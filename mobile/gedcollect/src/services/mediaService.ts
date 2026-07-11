@@ -2,12 +2,28 @@ import { launchCamera, launchImageLibrary, ImagePickerResponse } from 'react-nat
 import RNFS from 'react-native-fs';
 import { Platform, PermissionsAndroid, Alert } from 'react-native';
 
-let AudioRecord: any = null;
-try {
-  AudioRecord = require('react-native-audio-recorder-player');
-} catch {}
+// ─── SAFE REQUIRE HELPER ───────────────────────────────────────────────
+function safeRequire(name: string): any {
+  try {
+    const mod = require(name);
+    // Both ESM interop ({ __esModule, default }) and RN native module wrappers
+    // ({ default: NativeImpl }) expose the API under .default
+    if (mod && typeof mod === 'object' && 'default' in mod) {
+      return mod.default;
+    }
+    return mod;
+  } catch (e) {
+    if (__DEV__) {
+      console.warn(`[mediaService] Module "${name}" not available:`, e);
+    }
+    return null;
+  }
+}
 
-const audioRecorder = AudioRecord ? new AudioRecord.default() : null;
+// ─── AUDIO RECORDER ────────────────────────────────────────────────────
+const AudioRecordModule = safeRequire('react-native-audio-recorder-player');
+const AudioRecord = AudioRecordModule?.default ?? AudioRecordModule;
+const audioRecorder = AudioRecord && typeof AudioRecord === 'function' ? new AudioRecord() : null;
 
 export type MediaType = 'photo' | 'video' | 'audio' | 'barcode';
 
@@ -53,20 +69,39 @@ function pickerToResult(response: ImagePickerResponse, type: MediaType): MediaCa
 export const MediaService = {
   async capturePhoto(): Promise<MediaCaptureResult | null> {
     const ok = await requestCameraPermission();
-    if (!ok) { Alert.alert('Permission', 'Permission caméra requise'); return null; }
-    const response = await launchCamera({ mediaType: 'photo', quality: 0.8, maxWidth: 2048, maxHeight: 2048 });
+    if (!ok) {
+      Alert.alert('Permission', 'Permission caméra requise');
+      return null;
+    }
+    const response = await launchCamera({
+      mediaType: 'photo',
+      quality: 0.8,
+      maxWidth: 2048,
+      maxHeight: 2048,
+    });
     return pickerToResult(response, 'photo');
   },
 
   async pickPhoto(): Promise<MediaCaptureResult | null> {
-    const response = await launchImageLibrary({ mediaType: 'photo', quality: 0.8, selectionLimit: 1 });
+    const response = await launchImageLibrary({
+      mediaType: 'photo',
+      quality: 0.8,
+      selectionLimit: 1,
+    });
     return pickerToResult(response, 'photo');
   },
 
   async captureVideo(): Promise<MediaCaptureResult | null> {
     const ok = await requestCameraPermission();
-    if (!ok) { Alert.alert('Permission', 'Permission caméra requise'); return null; }
-    const response = await launchCamera({ mediaType: 'video', videoQuality: 'high', durationLimit: 120 });
+    if (!ok) {
+      Alert.alert('Permission', 'Permission caméra requise');
+      return null;
+    }
+    const response = await launchCamera({
+      mediaType: 'video',
+      videoQuality: 'high',
+      durationLimit: 120,
+    });
     return pickerToResult(response, 'video');
   },
 
@@ -77,17 +112,23 @@ export const MediaService = {
 
   async startAudioRecording(): Promise<string | null> {
     if (!audioRecorder) {
-      Alert.alert('Indisponible', 'react-native-audio-recorder-player non installé. Rebuild requis.');
+      Alert.alert(
+        'Indisponible',
+        'react-native-audio-recorder-player non installé. Rebuild requis.'
+      );
       return null;
     }
     const ok = await requestAudioPermission();
-    if (!ok) { Alert.alert('Permission', 'Permission microphone requise'); return null; }
+    if (!ok) {
+      Alert.alert('Permission', 'Permission microphone requise');
+      return null;
+    }
     const path = `${RNFS.DocumentDirectoryPath}/audio_${Date.now()}.m4a`;
     try {
       await audioRecorder.startRecorder(path);
       return path;
     } catch (e) {
-      Alert.alert('Erreur', 'Impossible de démarrer l\'enregistrement audio');
+      Alert.alert('Erreur', "Impossible de démarrer l'enregistrement audio");
       return null;
     }
   },
@@ -111,21 +152,31 @@ export const MediaService = {
 
   async playAudio(uri: string): Promise<void> {
     if (!audioRecorder) return;
-    try { await audioRecorder.startPlayer(uri); } catch {}
+    try {
+      await audioRecorder.startPlayer(uri);
+    } catch {}
   },
 
   async stopAudio(): Promise<void> {
     if (!audioRecorder) return;
-    try { await audioRecorder.stopPlayer(); } catch {}
+    try {
+      await audioRecorder.stopPlayer();
+    } catch {}
   },
 
   fileToDataUrl: async (uri: string): Promise<string> => {
     const base64 = await RNFS.readFile(uri, 'base64');
     const ext = (uri.split('.').pop() || 'bin').toLowerCase();
     const mimeMap: Record<string, string> = {
-      jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png',
-      webp: 'image/webp', gif: 'image/gif', mp4: 'video/mp4',
-      m4a: 'audio/m4a', mp3: 'audio/mp3', wav: 'audio/wav',
+      jpg: 'image/jpeg',
+      jpeg: 'image/jpeg',
+      png: 'image/png',
+      webp: 'image/webp',
+      gif: 'image/gif',
+      mp4: 'video/mp4',
+      m4a: 'audio/m4a',
+      mp3: 'audio/mp3',
+      wav: 'audio/wav',
     };
     return `data:${mimeMap[ext] || 'application/octet-stream'};base64,${base64}`;
   },

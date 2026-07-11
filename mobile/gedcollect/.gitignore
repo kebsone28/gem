@@ -12,4 +12,4 @@ debug.keystore
 Thumbs.db
 *.hprof
 *.jks
-
+secrets.properties

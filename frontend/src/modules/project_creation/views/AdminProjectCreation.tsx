@@ -9,6 +9,7 @@ import { normalizeRole, ROLES } from '@core/security/permissions';
 import { db } from '@/store/db';
 import logger from '@services/logger';
 import toast from 'react-hot-toast';
+import { refreshAuthToken } from '@/api/client';
 import { PageContainer, PageHeader, ContentArea } from '@components';
 import { LoadingSkeleton } from '@components/LoadingSkeleton';
 import * as LucideIcons from 'lucide-react';
@@ -93,8 +94,9 @@ interface ProjectFeature {
 const FALLBACK_TEMPLATES: ProjectTemplate[] = [
   {
     id: 'gem_electrification',
-    name: "GEM — Électrification de Masse",
-    description: "Gestionnaire d'Électrification Massive — terrain, raccordements, logistique et pilotage.",
+    name: 'GEM — Électrification de Masse',
+    description:
+      "Gestionnaire d'Électrification Massive — terrain, raccordements, logistique et pilotage.",
     client: 'SOCIÉTÉ ÉLEC / AGER',
     defaultModules: ['dashboard', 'terrain', 'mission', 'logistique', 'approval'],
     defaultUsers: ['ADMIN', 'INGENIEUR_BT'],
@@ -105,8 +107,9 @@ const FALLBACK_TEMPLATES: ProjectTemplate[] = [
   },
   {
     id: 'mes_service',
-    name: "MES — Mise En Service",
-    description: "Gestion des mises en service électriques — branchement, pose compteur, contrôle qualité.",
+    name: 'MES — Mise En Service',
+    description:
+      'Gestion des mises en service électriques — branchement, pose compteur, contrôle qualité.',
     client: 'SOCIÉTÉ ÉLEC / AGER',
     defaultModules: ['dashboard', 'mes', 'mission', 'approval'],
     defaultUsers: ['ADMIN', 'TECHNICIEN'],
@@ -120,10 +123,12 @@ const FALLBACK_TEMPLATES: ProjectTemplate[] = [
 // Dynamically generate PROJECT_FEATURES from the core registry
 const GET_CORE_FEATURES = (): ProjectFeature[] => {
   return getAllModules()
-    .filter(m => m.isPackage)
-    .filter(m => m.category !== 'ADMIN' && m.category !== 'PROJECTS' && m.category !== 'UTILITAIRE')
-    .filter(m => m.key !== 'home' && m.key !== 'help')
-    .map(m => ({
+    .filter((m) => m.isPackage)
+    .filter(
+      (m) => m.category !== 'ADMIN' && m.category !== 'PROJECTS' && m.category !== 'UTILITAIRE'
+    )
+    .filter((m) => m.key !== 'home' && m.key !== 'help')
+    .map((m) => ({
       id: m.key,
       name: m.name,
       description: m.description,
@@ -131,10 +136,9 @@ const GET_CORE_FEATURES = (): ProjectFeature[] => {
       module: m.key,
       enabled: m.required || false,
       required: m.required,
-      tags: m.tags || []
+      tags: m.tags || [],
     }));
 };
-
 
 export default function AdminProjectCreation() {
   const { user } = useAuth();
@@ -148,7 +152,7 @@ export default function AdminProjectCreation() {
   const [complexity, setComplexity] = useState<'essential' | 'advanced'>('essential');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedTemplate, setSelectedTemplate] = useState<ProjectTemplate | null>(null);
-  
+
   const [projectData, setProjectData] = useState({
     name: '',
     description: '',
@@ -162,28 +166,36 @@ export default function AdminProjectCreation() {
   });
 
   const [selectedFeatures, setSelectedFeatures] = useState<ProjectFeature[]>(GET_CORE_FEATURES());
-  const [domainModulesConfig, setDomainModulesConfig] = useState<Record<string, Record<string, ModuleConfig>>>({});
+  const [domainModulesConfig, setDomainModulesConfig] = useState<
+    Record<string, Record<string, ModuleConfig>>
+  >({});
   const [templates, setTemplates] = useState<ProjectTemplate[]>(FALLBACK_TEMPLATES);
 
   // Charger les templates depuis l'API
   useEffect(() => {
-    templateService.list().then(setTemplates).catch(() => setTemplates(FALLBACK_TEMPLATES));
+    templateService
+      .list()
+      .then(setTemplates)
+      .catch(() => setTemplates(FALLBACK_TEMPLATES));
   }, []);
 
   // Charger la config des modules par domaine pour adapter les templates
   useEffect(() => {
-    modulesManagementService.getDomainModulesConfig().then(setDomainModulesConfig).catch(() => {});
+    modulesManagementService
+      .getDomainModulesConfig()
+      .then(setDomainModulesConfig)
+      .catch(() => {});
   }, []);
 
   // Adapter le template selon le domaine passé en paramètre
   useEffect(() => {
     if (!domainTypeParam || selectedTemplate) return;
     const domain = domainTypeParam.replace('SECTOR_', '').toLowerCase();
-    const matching = templates.find(t => t.id.startsWith(domain));
+    const matching = templates.find((t) => t.id.startsWith(domain));
     if (matching) {
       const domainCfg = domainModulesConfig[domain] || {};
       setSelectedTemplate(matching);
-      setProjectData(prev => ({
+      setProjectData((prev) => ({
         ...prev,
         name: matching.name,
         description: matching.description,
@@ -191,49 +203,53 @@ export default function AdminProjectCreation() {
         labels: matching.defaultLabels || {},
         customFields: matching.defaultFields || [],
       }));
-      setSelectedFeatures(GET_CORE_FEATURES().map(f => ({
-        ...f,
-        enabled: (domainCfg[f.module]?.enabled !== false) && (matching.defaultModules.includes(f.module) || f.required)
-      })));
+      setSelectedFeatures(
+        GET_CORE_FEATURES().map((f) => ({
+          ...f,
+          enabled:
+            domainCfg[f.module]?.enabled !== false &&
+            (matching.defaultModules.includes(f.module) || f.required),
+        }))
+      );
       setStep(2);
     }
   }, [domainTypeParam, domainModulesConfig]);
 
   // 🧠 SCORE D'ARCHITECTURE & ANALYSE
   const architectureAnalysis = useMemo(() => {
-    const activeModules = selectedFeatures.filter(f => f.enabled).map(f => f.module);
+    const activeModules = selectedFeatures.filter((f) => f.enabled).map((f) => f.module);
     let score = 70; // Base score
     const points: string[] = [];
     const warnings: string[] = [];
 
     if (activeModules.includes('terrain')) {
       score += 10;
-      points.push("Moteur SIG activé");
+      points.push('Moteur SIG activé');
     }
-    
+
     if (activeModules.includes('mission') && !activeModules.includes('terrain')) {
       score -= 15;
-      warnings.push("Missions sans support Terrain (SIG recommandé)");
+      warnings.push('Missions sans support Terrain (SIG recommandé)');
     }
 
     if (activeModules.includes('logistique')) {
       score += 5;
-      points.push("Gestion des stocks intégrée");
+      points.push('Gestion des stocks intégrée');
     }
 
     if (activeModules.includes('simulation') || activeModules.includes('dashboard')) {
       score += 10;
-      points.push("Analytique & IA activés");
+      points.push('Analytique & IA activés');
     }
 
     if (activeModules.length < 3) {
       score -= 10;
-      warnings.push("Architecture minimale (risque de manque de données)");
+      warnings.push('Architecture minimale (risque de manque de données)');
     }
 
-    return { 
-      score: Math.min(100, Math.max(0, score)), 
-      points, 
+    return {
+      score: Math.min(100, Math.max(0, score)),
+      points,
       warnings,
       isIAReady: activeModules.includes('simulation') || activeModules.includes('dashboard'),
       isOfflineReady: activeModules.includes('terrain'),
@@ -242,7 +258,7 @@ export default function AdminProjectCreation() {
 
   const handleTemplateSelect = (template: ProjectTemplate) => {
     setSelectedTemplate(template);
-    setProjectData(prev => ({
+    setProjectData((prev) => ({
       ...prev,
       name: template.name,
       description: template.description,
@@ -255,10 +271,14 @@ export default function AdminProjectCreation() {
     const domain = template.id.startsWith('mes_') ? 'mes' : 'gem';
     const domainCfg = domainModulesConfig[domain] || {};
 
-    setSelectedFeatures(GET_CORE_FEATURES().map(f => ({
-      ...f,
-      enabled: (domainCfg[f.module]?.enabled !== false) && (template.defaultModules.includes(f.module) || f.required)
-    })));
+    setSelectedFeatures(
+      GET_CORE_FEATURES().map((f) => ({
+        ...f,
+        enabled:
+          domainCfg[f.module]?.enabled !== false &&
+          (template.defaultModules.includes(f.module) || f.required),
+      }))
+    );
     setStep(2);
   };
 
@@ -271,7 +291,12 @@ export default function AdminProjectCreation() {
 
     setLoading(true);
     try {
-      const payload = buildProjectCreationPayload(projectData, selectedFeatures, selectedTemplate?.id, complexity);
+      const payload = buildProjectCreationPayload(
+        projectData,
+        selectedFeatures,
+        selectedTemplate?.id,
+        complexity
+      );
       const newProject = await projectService.createProject(payload);
 
       await refreshProjects(newProject.id);
@@ -281,6 +306,16 @@ export default function AdminProjectCreation() {
       if (selectedTemplate) {
         const sector = selectedTemplate.id.startsWith('mes_') ? 'mes' : 'gem';
         localStorage.setItem('selectedSector', sector);
+      }
+
+      // Proactively refresh auth token to prevent "Session expirée"
+      // when the terrain module loads immediately after navigation.
+      try {
+        await refreshAuthToken();
+      } catch {
+        // If the proactive refresh fails, the apiClient interceptor
+        // will handle it when the actual requests are made.
+        logger.warn('[ProjectCreation] Proactive token refresh failed, will retry on demand');
       }
 
       toast.success('Écosystème GED OS initialisé avec succès');
@@ -321,8 +356,6 @@ export default function AdminProjectCreation() {
       />
 
       <ContentArea className="relative max-w-[1400px] mx-auto px-0 py-6 !bg-transparent border-none">
-
-
         {step === 1 ? (
           <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
             {/* Category Filter */}
@@ -330,7 +363,7 @@ export default function AdminProjectCreation() {
               {[
                 { id: 'all', label: 'Tous les Domaines', icon: Layers },
                 { id: 'energy', label: 'GEM & MES', icon: Zap },
-              ].map(cat => (
+              ].map((cat) => (
                 <button
                   key={cat.id}
                   onClick={() => setSelectedCategory(cat.id)}
@@ -349,8 +382,8 @@ export default function AdminProjectCreation() {
             {/* Templates Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {templates
-                .filter(t => selectedCategory === 'all' || t.category === selectedCategory)
-                .map(template => {
+                .filter((t) => selectedCategory === 'all' || t.category === selectedCategory)
+                .map((template) => {
                   const Icon = (LucideIcons as any)[template.icon] || Zap;
                   return (
                     <motion.button
@@ -369,30 +402,42 @@ export default function AdminProjectCreation() {
                       </div>
 
                       <div className="mb-2 flex items-center gap-2">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">{template.category}</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                          {template.category}
+                        </span>
                         <div className="h-1 w-1 rounded-full bg-slate-700" />
-                        <span className="text-[10px] font-black uppercase tracking-widest text-blue-500">Prêt</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-blue-500">
+                          Prêt
+                        </span>
                       </div>
 
                       <h3 className="text-xl font-black mb-3 text-white group-hover:text-blue-400 transition-colors leading-tight">
                         {template.name}
                       </h3>
-                      
+
                       <p className="text-sm text-slate-400 line-clamp-3 mb-8 leading-relaxed flex-1 italic font-medium">
                         "{template.description}"
                       </p>
 
                       <div className="space-y-4">
                         <div className="flex flex-wrap gap-2">
-                          {template.entities.map(e => (
-                            <span key={e} className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/5 text-[9px] font-black uppercase text-slate-400 tracking-tighter">
+                          {template.entities.map((e) => (
+                            <span
+                              key={e}
+                              className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/5 text-[9px] font-black uppercase text-slate-400 tracking-tighter"
+                            >
                               {e}
                             </span>
                           ))}
                         </div>
                         <div className="pt-4 border-t border-white/5 flex items-center justify-between">
-                          <span className="text-[10px] font-black uppercase text-slate-500">{template.client}</span>
-                          <ChevronRight size={16} className="text-slate-700 group-hover:text-blue-500 transition-colors" />
+                          <span className="text-[10px] font-black uppercase text-slate-500">
+                            {template.client}
+                          </span>
+                          <ChevronRight
+                            size={16}
+                            className="text-slate-700 group-hover:text-blue-500 transition-colors"
+                          />
                         </div>
                       </div>
                     </motion.button>
@@ -422,7 +467,7 @@ export default function AdminProjectCreation() {
                     </label>
                     <input
                       value={projectData.name}
-                      onChange={e => setProjectData(p => ({ ...p, name: e.target.value }))}
+                      onChange={(e) => setProjectData((p) => ({ ...p, name: e.target.value }))}
                       placeholder="Ex: Électrification Nord 2026"
                       className="w-full bg-slate-800/50 border border-white/5 p-4 rounded-2xl focus:ring-2 ring-blue-500 outline-none font-bold text-white transition-all"
                     />
@@ -433,10 +478,10 @@ export default function AdminProjectCreation() {
                       <Globe size={12} /> Pays & Juridiction
                     </label>
                     <div className="grid grid-cols-2 gap-3">
-                      {Object.values(COUNTRY_PACKS).map(cp => (
+                      {Object.values(COUNTRY_PACKS).map((cp) => (
                         <button
                           key={cp.id}
-                          onClick={() => setProjectData(p => ({ ...p, country: cp.id }))}
+                          onClick={() => setProjectData((p) => ({ ...p, country: cp.id }))}
                           className={`flex items-center gap-3 p-3 rounded-2xl border transition-all ${projectData.country === cp.id ? 'bg-white/10 border-white/20 text-white' : 'bg-white/5 border-transparent text-slate-500 hover:bg-white/[0.08]'}`}
                         >
                           <span className="text-xl">{cp.flag}</span>
@@ -449,7 +494,10 @@ export default function AdminProjectCreation() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="space-y-3">
-                    <label htmlFor="project-mode" className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 flex items-center gap-2">
+                    <label
+                      htmlFor="project-mode"
+                      className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 flex items-center gap-2"
+                    >
                       <Target size={12} /> Mode de Gouvernance
                     </label>
                     <select
@@ -457,7 +505,9 @@ export default function AdminProjectCreation() {
                       aria-label="Mode de gouvernance"
                       title="Mode de gouvernance"
                       value={projectData.mode}
-                      onChange={e => setProjectData(p => ({ ...p, mode: e.target.value as any }))}
+                      onChange={(e) =>
+                        setProjectData((p) => ({ ...p, mode: e.target.value as any }))
+                      }
                       className="w-full bg-slate-800/50 border border-white/5 p-4 rounded-2xl outline-none font-bold text-white"
                     >
                       <option value="enterprise">🏢 Mode Entreprise (ROI & Performance)</option>
@@ -467,8 +517,11 @@ export default function AdminProjectCreation() {
                     </select>
                   </div>
                   <div className="space-y-3">
-                    <label htmlFor="project-client" className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 flex items-center gap-2">
-                       Client / Organisation
+                    <label
+                      htmlFor="project-client"
+                      className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 flex items-center gap-2"
+                    >
+                      Client / Organisation
                     </label>
                     <input
                       id="project-client"
@@ -476,7 +529,7 @@ export default function AdminProjectCreation() {
                       title="Client ou organisation"
                       placeholder="Nom du client ou de l'organisation"
                       value={projectData.client}
-                      onChange={e => setProjectData(p => ({ ...p, client: e.target.value }))}
+                      onChange={(e) => setProjectData((p) => ({ ...p, client: e.target.value }))}
                       className="w-full bg-slate-800/50 border border-white/5 p-4 rounded-2xl"
                     />
                   </div>
@@ -492,34 +545,41 @@ export default function AdminProjectCreation() {
                       </div>
                       Concepteur de Données Métier
                     </h2>
-                    <span className="px-3 py-1 rounded-full bg-indigo-400/10 text-[10px] font-black text-indigo-400 uppercase tracking-widest">Low-Code Engine</span>
+                    <span className="px-3 py-1 rounded-full bg-indigo-400/10 text-[10px] font-black text-indigo-400 uppercase tracking-widest">
+                      Low-Code Engine
+                    </span>
                   </div>
-                  
+
                   <div className="space-y-4">
                     {projectData.customFields.map((field, i) => (
-                      <div key={i} className="flex gap-4 p-5 bg-white/5 border border-white/5 rounded-[1.5rem] items-center">
+                      <div
+                        key={i}
+                        className="flex gap-4 p-5 bg-white/5 border border-white/5 rounded-[1.5rem] items-center"
+                      >
                         <div className="flex-1">
                           <input
-                            title={field.label ? `Champ métier: ${field.label}` : `Champ métier ${i + 1}`}
+                            title={
+                              field.label ? `Champ métier: ${field.label}` : `Champ métier ${i + 1}`
+                            }
                             value={field.label}
-                            onChange={e => {
+                            onChange={(e) => {
                               const f = [...projectData.customFields];
                               f[i].label = e.target.value;
                               f[i].id = e.target.value.toLowerCase().replace(/ /g, '_');
-                              setProjectData(p => ({ ...p, customFields: f }));
+                              setProjectData((p) => ({ ...p, customFields: f }));
                             }}
                             className="w-full bg-transparent border-none outline-none font-bold text-white text-lg"
                             placeholder="Nom du champ..."
                           />
                         </div>
-                        <select 
+                        <select
                           aria-label={`Type du champ ${field.label || i + 1}`}
                           title={`Type du champ ${field.label || i + 1}`}
                           value={field.type}
-                          onChange={e => {
+                          onChange={(e) => {
                             const f = [...projectData.customFields];
                             f[i].type = e.target.value;
-                            setProjectData(p => ({ ...p, customFields: f }));
+                            setProjectData((p) => ({ ...p, customFields: f }));
                           }}
                           className="bg-transparent text-slate-500 text-xs font-black uppercase"
                         >
@@ -528,19 +588,32 @@ export default function AdminProjectCreation() {
                           <option value="date">Date</option>
                           <option value="select">Liste</option>
                         </select>
-                        <button 
+                        <button
                           aria-label="Supprimer le champ"
                           title="Supprimer le champ"
-                          onClick={() => setProjectData(p => ({ ...p, customFields: p.customFields.filter((_, idx) => idx !== i) }))}
+                          onClick={() =>
+                            setProjectData((p) => ({
+                              ...p,
+                              customFields: p.customFields.filter((_, idx) => idx !== i),
+                            }))
+                          }
                           className="p-2 hover:bg-rose-500/20 text-rose-500 rounded-lg transition-colors"
                         >
                           <X size={18} />
                         </button>
                       </div>
                     ))}
-                    
+
                     <button
-                      onClick={() => setProjectData(p => ({ ...p, customFields: [...p.customFields, { id: 'new', label: 'Nouveau Champ', type: 'text' }] }))}
+                      onClick={() =>
+                        setProjectData((p) => ({
+                          ...p,
+                          customFields: [
+                            ...p.customFields,
+                            { id: 'new', label: 'Nouveau Champ', type: 'text' },
+                          ],
+                        }))
+                      }
                       className="w-full p-6 border-2 border-dashed border-white/5 rounded-[1.5rem] text-slate-500 hover:text-white hover:border-indigo-500/30 transition-all font-bold text-sm"
                     >
                       + Ajouter une variable spécifique au domaine
@@ -551,17 +624,25 @@ export default function AdminProjectCreation() {
 
               {/* 🧩 DIAGRAMME DE FLUX (DYNAMIC) */}
               <section className="p-8 bg-slate-900/40 border border-white/5 rounded-[2.5rem] space-y-6">
-                <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Architecture du Flux de Données</h2>
+                <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
+                  Architecture du Flux de Données
+                </h2>
                 <div className="flex items-center justify-center gap-4 py-4">
-                  {selectedFeatures.filter(f => f.enabled).map((f, i, arr) => (
-                    <div key={f.id} className="flex items-center gap-4">
-                      <div className="p-4 bg-white/5 rounded-2xl border border-white/5 flex flex-col items-center gap-2">
-                        <f.icon size={20} className="text-blue-400" />
-                        <span className="text-[8px] font-black uppercase text-slate-500">{f.name}</span>
+                  {selectedFeatures
+                    .filter((f) => f.enabled)
+                    .map((f, i, arr) => (
+                      <div key={f.id} className="flex items-center gap-4">
+                        <div className="p-4 bg-white/5 rounded-2xl border border-white/5 flex flex-col items-center gap-2">
+                          <f.icon size={20} className="text-blue-400" />
+                          <span className="text-[8px] font-black uppercase text-slate-500">
+                            {f.name}
+                          </span>
+                        </div>
+                        {i < arr.length - 1 && (
+                          <ChevronRight size={20} className="text-slate-800" />
+                        )}
                       </div>
-                      {i < arr.length - 1 && <ChevronRight size={20} className="text-slate-800" />}
-                    </div>
-                  ))}
+                    ))}
                 </div>
               </section>
             </div>
@@ -572,25 +653,37 @@ export default function AdminProjectCreation() {
                 {/* Architecture Score */}
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Score Architecture</span>
-                    <span className={`text-2xl font-black ${architectureAnalysis.score > 80 ? 'text-emerald-500' : 'text-amber-500'}`}>{architectureAnalysis.score}%</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                      Score Architecture
+                    </span>
+                    <span
+                      className={`text-2xl font-black ${architectureAnalysis.score > 80 ? 'text-emerald-500' : 'text-amber-500'}`}
+                    >
+                      {architectureAnalysis.score}%
+                    </span>
                   </div>
                   <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
-                    <motion.div 
+                    <motion.div
                       initial={{ width: 0 }}
                       animate={{ width: `${architectureAnalysis.score}%` }}
-                      className={`h-full bg-gradient-to-r ${architectureAnalysis.score > 80 ? 'from-emerald-500 to-teal-500' : 'from-amber-500 to-orange-500'}`} 
+                      className={`h-full bg-gradient-to-r ${architectureAnalysis.score > 80 ? 'from-emerald-500 to-teal-500' : 'from-amber-500 to-orange-500'}`}
                     />
                   </div>
-                  
+
                   <div className="space-y-2">
-                    {architectureAnalysis.points.map(p => (
-                      <div key={p} className="flex items-center gap-2 text-[10px] font-bold text-emerald-400">
+                    {architectureAnalysis.points.map((p) => (
+                      <div
+                        key={p}
+                        className="flex items-center gap-2 text-[10px] font-bold text-emerald-400"
+                      >
                         <CheckCircle2 size={12} /> {p}
                       </div>
                     ))}
-                    {architectureAnalysis.warnings.map(w => (
-                      <div key={w} className="flex items-center gap-2 text-[10px] font-bold text-amber-400">
+                    {architectureAnalysis.warnings.map((w) => (
+                      <div
+                        key={w}
+                        className="flex items-center gap-2 text-[10px] font-bold text-amber-400"
+                      >
                         <AlertTriangle size={12} /> {w}
                       </div>
                     ))}
@@ -599,35 +692,53 @@ export default function AdminProjectCreation() {
 
                 {/* Intelligent Summary */}
                 <div className="space-y-6 pt-10 border-t border-white/5">
-                  <h3 className="text-sm font-black uppercase tracking-widest text-white">Résumé GED OS</h3>
+                  <h3 className="text-sm font-black uppercase tracking-widest text-white">
+                    Résumé GED OS
+                  </h3>
                   <div className="grid grid-cols-2 gap-4">
                     <SummaryItem label="Domaine" value={selectedTemplate?.category || 'Expert'} />
                     <SummaryItem label="Mode" value={projectData.mode.toUpperCase()} />
-                    <SummaryItem label="Modules" value={selectedFeatures.filter(f => f.enabled).length} />
+                    <SummaryItem
+                      label="Modules"
+                      value={selectedFeatures.filter((f) => f.enabled).length}
+                    />
                     <SummaryItem label="Pays" value={projectData.country} />
                   </div>
 
                   <div className="flex flex-wrap gap-2">
-                    {architectureAnalysis.isIAReady && <Badge label="IA READY" color="blue" icon={Brain} />}
-                    {architectureAnalysis.isOfflineReady && <Badge label="OFFLINE-FIRST" color="emerald" icon={WifiOff} />}
+                    {architectureAnalysis.isIAReady && (
+                      <Badge label="IA READY" color="blue" icon={Brain} />
+                    )}
+                    {architectureAnalysis.isOfflineReady && (
+                      <Badge label="OFFLINE-FIRST" color="emerald" icon={WifiOff} />
+                    )}
                     <Badge label="ENTERPRISE" color="slate" icon={ShieldCheck} />
                   </div>
                 </div>
 
                 {/* Module Selection (Simplified for Summary) */}
                 <div className="space-y-4 pt-10 border-t border-white/5">
-                  <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Modules Actifs</h3>
+                  <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                    Modules Actifs
+                  </h3>
                   <div className="space-y-2">
                     {(() => {
                       const domain = selectedTemplate?.id?.startsWith('mes_') ? 'mes' : 'gem';
                       const domainCfg = domainModulesConfig[domain] || {};
-                      return selectedFeatures.map(feature => {
+                      return selectedFeatures.map((feature) => {
                         const domainDisabled = domainCfg[feature.module]?.enabled === false;
                         const canToggle = !feature.required && !domainDisabled;
                         return (
                           <button
                             key={feature.id}
-                            onClick={() => canToggle && setSelectedFeatures(prev => prev.map(f => f.id === feature.id ? { ...f, enabled: !f.enabled } : f))}
+                            onClick={() =>
+                              canToggle &&
+                              setSelectedFeatures((prev) =>
+                                prev.map((f) =>
+                                  f.id === feature.id ? { ...f, enabled: !f.enabled } : f
+                                )
+                              )
+                            }
                             className={`w-full p-4 rounded-2xl border transition-all flex items-center justify-between ${
                               domainDisabled
                                 ? 'bg-slate-900/50 border-slate-800/50 text-slate-700 cursor-not-allowed'
@@ -635,15 +746,27 @@ export default function AdminProjectCreation() {
                                   ? 'bg-white/10 border-white/10 text-white'
                                   : 'bg-transparent border-transparent text-slate-600 grayscale hover:border-white/5'
                             }`}
-                            title={domainDisabled ? `Désactivé pour le domaine ${domain.toUpperCase()}` : feature.name}
+                            title={
+                              domainDisabled
+                                ? `Désactivé pour le domaine ${domain.toUpperCase()}`
+                                : feature.name
+                            }
                           >
                             <div className="flex items-center gap-3">
                               <feature.icon size={18} />
-                              <span className="text-[11px] font-black uppercase tracking-tighter">{feature.name}</span>
+                              <span className="text-[11px] font-black uppercase tracking-tighter">
+                                {feature.name}
+                              </span>
                             </div>
                             <div className="flex items-center gap-2">
-                              {feature.tags?.includes('IA') && !domainDisabled && <Zap size={12} className="text-blue-500" />}
-                              {domainDisabled && <span className="text-[8px] font-black uppercase text-slate-600">Verrouillé</span>}
+                              {feature.tags?.includes('IA') && !domainDisabled && (
+                                <Zap size={12} className="text-blue-500" />
+                              )}
+                              {domainDisabled && (
+                                <span className="text-[8px] font-black uppercase text-slate-600">
+                                  Verrouillé
+                                </span>
+                              )}
                             </div>
                           </button>
                         );
@@ -654,21 +777,28 @@ export default function AdminProjectCreation() {
 
                 <div className="space-y-4 pt-10">
                   <button
-                    disabled={loading || !projectData.name}
+                    disabled={loading || !projectData.name || !projectData.client}
                     onClick={handleCreateProject}
                     className="group relative w-full p-6 bg-blue-600 rounded-[2rem] font-black text-xl hover:bg-blue-500 transition-all shadow-[0_20px_60px_rgba(37,99,235,0.3)] disabled:opacity-30 disabled:grayscale overflow-hidden"
                   >
                     <div className="relative z-10 flex items-center justify-center gap-3">
-                      {loading ? <Clock className="animate-spin" /> : <Plus size={24} strokeWidth={3} />}
-                      {loading ? 'INITIALISATION...' : 'LANCER L\'ÉCOSYSTÈME'}
+                      {loading ? (
+                        <Clock className="animate-spin" />
+                      ) : (
+                        <Plus size={24} strokeWidth={3} />
+                      )}
+                      {loading ? 'INITIALISATION...' : "LANCER L'ÉCOSYSTÈME"}
                     </div>
-                    <motion.div 
+                    <motion.div
                       className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
                       animate={{ x: ['-100%', '100%'] }}
                       transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
                     />
                   </button>
-                  <button onClick={() => setStep(1)} className="w-full text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] hover:text-white transition-colors">
+                  <button
+                    onClick={() => setStep(1)}
+                    className="w-full text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] hover:text-white transition-colors"
+                  >
                     ← Revenir au catalogue
                   </button>
                 </div>
@@ -698,7 +828,9 @@ function Badge({ label, color, icon: Icon }: { label: string; color: string; ico
     slate: 'bg-slate-500/10 text-slate-400 border-slate-500/20',
   };
   return (
-    <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-[9px] font-black uppercase tracking-widest ${colors[color]}`}>
+    <div
+      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-[9px] font-black uppercase tracking-widest ${colors[color]}`}
+    >
       <Icon size={12} />
       {label}
     </div>
@@ -708,8 +840,12 @@ function Badge({ label, color, icon: Icon }: { label: string; color: string; ico
 function StatusBadge({ status, label }: { status: string; label: string }) {
   return (
     <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/5">
-      <div className={`w-1.5 h-1.5 rounded-full ${status === 'active' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-slate-500'}`} />
-      <span className="text-[10px] font-black uppercase text-slate-300 tracking-widest">{label}</span>
+      <div
+        className={`w-1.5 h-1.5 rounded-full ${status === 'active' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-slate-500'}`}
+      />
+      <span className="text-[10px] font-black uppercase text-slate-300 tracking-widest">
+        {label}
+      </span>
     </div>
   );
 }

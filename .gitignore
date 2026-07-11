@@ -103,3 +103,7 @@ plan_test.*
 
 # Stakpak session files
 .stakpak/session*
+
+# Windows reserved device names
+nul
+**/nul

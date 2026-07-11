@@ -4,15 +4,46 @@ import { HardHat, Layers3 } from 'lucide-react';
 import { useAuth } from '@contexts/AuthContext';
 import { useProject } from '@contexts/ProjectContext';
 import { usePermissions } from '@hooks/usePermissions';
+import toast from 'react-hot-toast';
 import { exportCahiersToWord } from '@utils/word_engine';
+import type { ExportData } from '@utils/word_engine';
 import type { CahierTask } from '@utils/types';
 
-import {
-  DEFAULT_CONTRACT_TEMPLATES,
-} from '@/data/contractTemplates';
-import {
-  DEFAULT_OPERATIONAL_STRATEGY,
-} from '@/data/operationalStrategyTemplates';
+/**
+ * Maps a CahierTask + contextual info to the ExportData format expected by
+ * the Word export engine. Handles field name differences (e.g. image → imagePath)
+ * and supplies defaults for missing required fields.
+ */
+function mapTaskToExportData(
+  task: CahierTask,
+  role: string,
+  responsible: string,
+  contact: string
+): ExportData {
+  return {
+    role,
+    introduction: task.introduction || '',
+    missions: task.missions || [],
+    materials: task.materials || [],
+    hse: task.hse || [],
+    subcontracting: task.subcontracting || [],
+    finances: task.finances || [],
+    legal: task.legal,
+    startDate: '',
+    endDate: '',
+    responsible,
+    contact,
+    imagePath: task.image,
+    technicalImages: task.technicalImages,
+    koboGuide: task.koboGuide as ExportData['koboGuide'],
+    executionGuide: task.executionGuide as ExportData['executionGuide'],
+    qualityChecklist: task.qualityChecklist as ExportData['qualityChecklist'],
+    pricing: task.pricing as ExportData['pricing'],
+  };
+}
+
+import { DEFAULT_CONTRACT_TEMPLATES } from '@/data/contractTemplates';
+import { DEFAULT_OPERATIONAL_STRATEGY } from '@/data/operationalStrategyTemplates';
 import { DEFAULT_TASK_LIBRARY } from '@/data/cahierTaskLibrary';
 import './Cahier.css';
 
@@ -23,10 +54,7 @@ import {
   buildContractTemplateFromText,
   buildStrategyTemplateFromText,
 } from './Cahier/utils/cahierUtils';
-import {
-  exportContractToWord,
-  exportStrategyToWord,
-} from './Cahier/utils/cahierExportUtils';
+import { exportContractToWord, exportStrategyToWord } from './Cahier/utils/cahierExportUtils';
 
 import { useCahierState } from './Cahier/hooks/useCahierState';
 import { useCahierForm } from './Cahier/hooks/useCahierForm';
@@ -69,7 +97,7 @@ export default function Cahier() {
     return 'cahier';
   });
 
-  const [selectedRole, setSelectedRole] = useState('Électricien');
+  const [selectedRoles, setSelectedRoles] = useState(['Électricien']);
   const [selectedContractLot, setSelectedContractLot] = useState('LOT A');
   const [isContractEditing, setIsContractEditing] = useState(false);
   const [isStrategyEditing, setIsStrategyEditing] = useState(false);
@@ -132,19 +160,15 @@ export default function Cahier() {
           '=== CLAUSES LÉGALES LOGISTIQUE ===',
           ...(logistiqueTask?.legal || []),
         ],
-        finances: [
-          '=== FINANCES ÉLECTRICIEN ===',
-          ...(electricienTask?.finances || []),
-          '',
-          '=== FINANCES MAÇONNERIE ===',
-          ...(maconnerieTask?.finances || []),
-          '',
-          '=== FINANCES LOGISTIQUE ===',
-          ...(logistiqueTask?.finances || []),
-        ],
-        pricing: {
-          dailyRate: (electricienTask?.pricing?.dailyRate || 0) + (maconnerieTask?.pricing?.dailyRate || 0) + (logistiqueTask?.pricing?.dailyRate || 0),
-          personnelCount: (electricienTask?.pricing?.personnelCount || 0) + (maconnerieTask?.pricing?.personnelCount || 0) + (logistiqueTask?.pricing?.personnelCount || 0),
+        finances: {
+          dailyRate:
+            (electricienTask?.pricing?.dailyRate || 0) +
+            (maconnerieTask?.pricing?.dailyRate || 0) +
+            (logistiqueTask?.pricing?.dailyRate || 0),
+          personnelCount:
+            (electricienTask?.pricing?.personnelCount || 0) +
+            (maconnerieTask?.pricing?.personnelCount || 0) +
+            (logistiqueTask?.pricing?.personnelCount || 0),
           durationDays: Math.max(
             electricienTask?.pricing?.durationDays || 0,
             maconnerieTask?.pricing?.durationDays || 0,
@@ -159,25 +183,49 @@ export default function Cahier() {
       };
     }
 
-    // Mode normal : afficher le rôle sélectionné
-    const task = customLibrary[selectedRole];
-    const defaultTask = DEFAULT_TASK_LIBRARY[selectedRole] || DEFAULT_TASK_LIBRARY[Object.keys(DEFAULT_TASK_LIBRARY)[0]];
-    
+    // Mode normal : afficher les tâches des rôles sélectionnés
+    // Filtrer les tâches par les rôles sélectionnés
+    const filteredTasks = Object.entries(customLibrary)
+      .filter(([role]) => {
+        return selectedRoles.includes(role);
+      })
+      .map(([role, task]) => ({
+        ...task,
+        role: role,
+        color: task.color || 'default',
+        icon: task.icon || 'default',
+      }));
+
+    // Si aucune tâche trouvée, utiliser la première tâche par défaut
+    const task = filteredTasks[0];
+    const defaultTask =
+      filteredTasks.find((t) => t.role) ||
+      DEFAULT_TASK_LIBRARY[Object.keys(DEFAULT_TASK_LIBRARY)[0]];
+
     if (task) {
       return {
         ...task,
         technicalImages: task.technicalImages || defaultTask.technicalImages,
       };
     }
-    
-    return sanitizeTaskForCahier(selectedRole, defaultTask);
-  }, [customLibrary, selectedRole, isFusedMode]);
 
-  const automatedRate = useMemo(() => getAutomatedRate(selectedRole), [getAutomatedRate, selectedRole]);
+    return sanitizeTaskForCahier(selectedRoles.join(', '), defaultTask);
+  }, [customLibrary, selectedRoles, isFusedMode]);
 
-  const { editData, setEditData } = useCahierForm(currentTask, customLibrary, automatedRate, isEditing);
+  const automatedRate = useMemo(
+    () => (selectedRoles.length > 0 ? getAutomatedRate(selectedRoles[0]) : null),
+    [getAutomatedRate, selectedRoles]
+  );
 
-  const currentContract = contractLibrary[selectedContractLot] || DEFAULT_CONTRACT_TEMPLATES[selectedContractLot];
+  const { editData, setEditData } = useCahierForm(
+    currentTask,
+    customLibrary,
+    automatedRate,
+    isEditing
+  );
+
+  const currentContract =
+    contractLibrary[selectedContractLot] || DEFAULT_CONTRACT_TEMPLATES[selectedContractLot];
   const [contractDraft, setContractDraft] = useState(currentContract.content.join('\n'));
   const [strategyDraft, setStrategyDraft] = useState(operationalStrategy.content.join('\n'));
 
@@ -190,22 +238,28 @@ export default function Cahier() {
   }, [operationalStrategy]);
 
   const handleRoleChange = useCallback((role: string) => {
-    setSelectedRole(role);
+    setSelectedRoles((prev) =>
+      prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role]
+    );
     setIsEditing(false);
   }, []);
 
   const handleSave = async () => {
     const updatedLibrary = { ...customLibrary };
-    updatedLibrary[selectedRole] = {
-      ...currentTask,
-      introduction: editData.introduction,
-      missions: editData.missions.split('\n').filter(Boolean),
-      materials: editData.materials.split('\n').filter(Boolean),
-      hse: editData.hse.split('\n').filter(Boolean),
-    } as CahierTask;
+    selectedRoles.forEach((role) => {
+      updatedLibrary[role] = {
+        ...currentTask,
+        introduction: editData.introduction,
+        missions: editData.missions.split('\n').filter(Boolean),
+        materials: editData.materials.split('\n').filter(Boolean),
+        hse: editData.hse.split('\n').filter(Boolean),
+      } as CahierTask;
+    });
 
     setCustomLibrary(updatedLibrary);
-    const saved = await persistCahierConfig({ cahierLibrary: serializeTaskLibrary(updatedLibrary) });
+    const saved = await persistCahierConfig({
+      cahierLibrary: serializeTaskLibrary(updatedLibrary),
+    });
     if (saved) setIsEditing(false);
   };
 
@@ -221,7 +275,10 @@ export default function Cahier() {
 
   const handleResetContract = async () => {
     if (!confirm(`Restaurer le modèle ${selectedContractLot} par défaut ?`)) return;
-    const updated = { ...contractLibrary, [selectedContractLot]: DEFAULT_CONTRACT_TEMPLATES[selectedContractLot] };
+    const updated = {
+      ...contractLibrary,
+      [selectedContractLot]: DEFAULT_CONTRACT_TEMPLATES[selectedContractLot],
+    };
     setContractLibrary(updated);
     setContractDraft(updated[selectedContractLot].content.join('\n'));
     await persistCahierConfig({ contractLibrary: updated });
@@ -234,7 +291,10 @@ export default function Cahier() {
     if (saved) setIsStrategyEditing(false);
   };
 
-  const finalRolesToDisplay = useMemo(() => getFilteredRolesToDisplay(customLibrary, user, isAdmin), [customLibrary, user, isAdmin]);
+  const finalRolesToDisplay = useMemo(
+    () => getFilteredRolesToDisplay(customLibrary, user, isAdmin),
+    [customLibrary, user, isAdmin]
+  );
 
   return (
     <PageContainer className="overflow-x-hidden !bg-slate-950 relative min-h-screen">
@@ -255,7 +315,7 @@ export default function Cahier() {
             isSaving={hasActiveProject ? isSaving : false}
             statusLabel={hasActiveProject ? 'Synchronisé au Cloud' : 'Base standard du module'}
             statusTone={hasActiveProject ? 'success' : 'info'}
-            selectedRole={isFusedMode ? 'Fusionné' : selectedRole}
+            selectedRoles={selectedRoles}
             documentMode={documentMode}
             isEditing={canCustomizeProject && (isEditing || isContractEditing || isStrategyEditing)}
             hasUnsavedChanges={false}
@@ -263,18 +323,52 @@ export default function Cahier() {
             showHistory={showHistory}
             setShowHistory={setShowHistory}
             setShowAdvancedSections={setShowAdvancedSections}
-            onSave={documentMode === 'cahier' ? handleSave : documentMode === 'contrat' ? handleSaveContract : handleSaveStrategy}
-            onReset={documentMode === 'cahier' ? () => handleRoleChange(selectedRole) : documentMode === 'contrat' ? handleResetContract : () => setOperationalStrategy(DEFAULT_OPERATIONAL_STRATEGY)}
-            onExportWord={documentMode === 'cahier' ? () => exportCahiersToWord([{ ...currentTask, role: isFusedMode ? 'Fusionné' : selectedRole, responsible: user?.name || '' } as any], false, []) : documentMode === 'contrat' ? () => exportContractToWord(['LOT A', 'LOT B', 'LOT C'].map(lot => ({
-              lotName: lot,
-              content: (contractLibrary[lot] || DEFAULT_CONTRACT_TEMPLATES[lot]).content.join('\n'),
-            }))) : () => exportStrategyToWord(operationalStrategy, strategyDraft)}
-            onEditToggle={() => {
-              if (!canCustomizeProject) return;
-              if (documentMode === 'cahier') setIsEditing(!isEditing);
-              else if (documentMode === 'contrat') setIsContractEditing(!isContractEditing);
-              else if (documentMode === 'strategie') setIsStrategyEditing(!isStrategyEditing);
-            }}
+            onSave={
+              documentMode === 'cahier'
+                ? handleSave
+                : documentMode === 'contrat'
+                  ? handleSaveContract
+                  : handleSaveStrategy
+            }
+            onReset={
+              documentMode === 'cahier'
+                ? () => handleRoleChange(selectedRoles[0])
+                : documentMode === 'contrat'
+                  ? handleResetContract
+                  : () => setOperationalStrategy(DEFAULT_OPERATIONAL_STRATEGY)
+            }
+            onExportWord={
+              documentMode === 'cahier'
+                ? () => {
+                    try {
+                      const tasksToExport =
+                        selectedRoles.length > 0
+                          ? selectedRoles
+                              .map((role) => ({ role, task: customLibrary[role] }))
+                              .filter(({ task }) => task)
+                          : Object.entries(customLibrary).map(([role, task]) => ({ role, task }));
+
+                      const exportDataList = tasksToExport.map(({ role, task }) =>
+                        mapTaskToExportData(task, role, user?.name || '', user?.email || '')
+                      );
+                      exportCahiersToWord(exportDataList, false, []);
+                    } catch (err: any) {
+                      console.error('Export Word failed:', err);
+                      toast.error("Échec de l'export Word");
+                    }
+                  }
+                : documentMode === 'contrat'
+                  ? () =>
+                      exportContractToWord(
+                        ['LOT A', 'LOT B', 'LOT C'].map((lot) => ({
+                          lotName: lot,
+                          content: (
+                            contractLibrary[lot] || DEFAULT_CONTRACT_TEMPLATES[lot]
+                          ).content.join('\n'),
+                        }))
+                      )
+                  : () => exportStrategyToWord(operationalStrategy, strategyDraft)
+            }
             isFusedMode={isFusedMode}
             onToggleFusedMode={() => setIsFusedMode(!isFusedMode)}
           />
@@ -282,19 +376,31 @@ export default function Cahier() {
           {/* ⏸️ Workspace Navigation (Middle Panel) */}
           <CahierNavigation
             taskLibrary={customLibrary}
-            selectedRole={selectedRole}
-            setSelectedRole={handleRoleChange}
+            selectedRoles={selectedRoles}
+            setSelectedRoles={setSelectedRoles}
             selectedContractLot={selectedContractLot}
             setSelectedContractLot={setSelectedContractLot}
             documentMode={documentMode}
             setDocumentMode={setDocumentMode}
             isEditing={canCustomizeProject && (isEditing || isContractEditing || isStrategyEditing)}
-            onEditToggle={canCustomizeProject ? () => {
-              if (documentMode === 'cahier') setIsEditing(!isEditing);
-              else if (documentMode === 'contrat') setIsContractEditing(!isContractEditing);
-              else if (documentMode === 'strategie') setIsStrategyEditing(!isStrategyEditing);
-            } : undefined}
-            onSave={canCustomizeProject ? (documentMode === 'cahier' ? handleSave : documentMode === 'contrat' ? handleSaveContract : handleSaveStrategy) : undefined}
+            onEditToggle={
+              canCustomizeProject
+                ? () => {
+                    if (documentMode === 'cahier') setIsEditing(!isEditing);
+                    else if (documentMode === 'contrat') setIsContractEditing(!isContractEditing);
+                    else if (documentMode === 'strategie') setIsStrategyEditing(!isStrategyEditing);
+                  }
+                : undefined
+            }
+            onSave={
+              canCustomizeProject
+                ? documentMode === 'cahier'
+                  ? handleSave
+                  : documentMode === 'contrat'
+                    ? handleSaveContract
+                    : handleSaveStrategy
+                : undefined
+            }
             isFusedMode={isFusedMode}
           />
 
@@ -310,8 +416,20 @@ export default function Cahier() {
                   setEditData={setEditData}
                   showAdvancedSections={showAdvancedSections}
                   automatedRate={automatedRate}
-                  handleExportWord={() => exportCahiersToWord([{ ...currentTask, role: selectedRole, responsible: user?.name || '' } as any], false, [])}
-                  selectedRole={selectedRole}
+                  handleExportWord={() => {
+                    const tasksToExport =
+                      selectedRoles.length > 0
+                        ? selectedRoles
+                            .map((role) => ({ role, task: customLibrary[role] }))
+                            .filter(({ task }) => task)
+                        : Object.entries(customLibrary).map(([role, task]) => ({ role, task }));
+
+                    const exportDataList = tasksToExport.map(({ role, task }) =>
+                      mapTaskToExportData(task, role, user?.name || '', user?.email || '')
+                    );
+                    exportCahiersToWord(exportDataList, false, []);
+                  }}
+                  selectedRoles={selectedRoles}
                 />
               )}
 
@@ -322,7 +440,10 @@ export default function Cahier() {
                   isEditing={canCustomizeProject && isContractEditing}
                   editData={{ ...editData, contractContent: contractDraft } as any}
                   setEditData={(updater: any) => {
-                    const newVal = typeof updater === 'function' ? updater({ contractContent: contractDraft }).contractContent : updater.contractContent;
+                    const newVal =
+                      typeof updater === 'function'
+                        ? updater({ contractContent: contractDraft }).contractContent
+                        : updater.contractContent;
                     setContractDraft(newVal);
                   }}
                 />
@@ -334,7 +455,10 @@ export default function Cahier() {
                   isEditing={canCustomizeProject && isStrategyEditing}
                   editData={{ ...editData, strategyContent: strategyDraft } as any}
                   setEditData={(updater: any) => {
-                    const newVal = typeof updater === 'function' ? updater({ strategyContent: strategyDraft }).strategyContent : updater.strategyContent;
+                    const newVal =
+                      typeof updater === 'function'
+                        ? updater({ strategyContent: strategyDraft }).strategyContent
+                        : updater.strategyContent;
                     setStrategyDraft(newVal);
                   }}
                 />

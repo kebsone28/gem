@@ -579,16 +579,27 @@ export default function Sidebar() {
 
   return (
     <>
-      {/* Mobile Toggle */}
+      {/* Mobile Toggle - safe area, touch target 44px */}
       <button
         type="button"
         onClick={() => setMobileOpen(!mobileOpen)}
         {...{ 'aria-expanded': mobileOpen }}
         aria-label={mobileOpen ? 'Fermer le menu' : 'Ouvrir le menu'}
-        className="lg:hidden fixed right-4 top-4 z-[60] flex h-11 w-11 items-center justify-center rounded-2xl bg-electric-gradient text-white shadow-electric transition-transform active:scale-95"
+        className="touch-target lg:hidden fixed right-4 top-4 z-[60] flex h-11 w-11 items-center justify-center rounded-2xl bg-electric-gradient text-white shadow-electric transition-transform active:scale-95"
+        style={{ top: 'calc(env(safe-area-inset-top, 0px) + 1rem)' }}
       >
         {mobileOpen ? <X size={24} /> : <Menu size={24} />}
       </button>
+
+      {/* Mobile swipe area - invisible grab zone on left edge */}
+      {!mobileOpen && (
+        <div
+          className="fixed left-0 top-0 z-40 h-full w-4 touch-none lg:hidden"
+          onClick={() => setMobileOpen(true)}
+          onTouchStart={() => setMobileOpen(true)}
+          aria-hidden="true"
+        />
+      )}
 
       <aside
         className={`fixed lg:static inset-y-0 left-0 z-50 flex w-[22.75rem] max-w-[94vw] flex-col border-r transition-[width,transform] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${asideWidthClass} ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}
@@ -596,6 +607,7 @@ export default function Sidebar() {
           backgroundColor: 'var(--sidebar-bg)',
           backgroundImage: 'var(--sidebar-bg-gradient)',
           borderColor: 'var(--sidebar-border)',
+          paddingLeft: 'env(safe-area-inset-left, 0px)',
         }}
       >
         <div

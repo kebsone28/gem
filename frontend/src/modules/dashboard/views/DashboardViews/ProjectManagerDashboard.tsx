@@ -1,4 +1,4 @@
-﻿import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import logger from '@services/logger';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '@/api/client';
@@ -22,6 +22,7 @@ import {
    Zap,
 } from 'lucide-react';
 import { PageContainer, PageHeader, ContentArea } from '@components';
+import { ModuleStatePanel } from '@components/common/ModuleStatePanel';
 import {
    DASHBOARD_ACTION_TILE_PRIMARY,
    DASHBOARD_ACTION_TILE_SECONDARY,
@@ -114,9 +115,21 @@ const ViewSelector = ({ selectedView, setSelectedView }: {
 export default function ProjectManagerDashboard() {
    const { peut, PERMISSIONS } = usePermissions();
    const navigate = useNavigate();
-   const { project } = useProject();
-   const households = useLiveQuery(() => db.households.toArray()) || [];
-   const teams = useLiveQuery(() => db.teams.toArray()) || [];
+   const { project, activeProjectId, isLoading: isProjectLoading } = useProject();
+   const households =
+     useLiveQuery(
+       () =>
+         activeProjectId
+           ? db.households.where('projectId').equals(activeProjectId).toArray()
+           : Promise.resolve([]),
+       [activeProjectId]
+     ) || [];
+   const teams =
+     useLiveQuery(
+       () =>
+         activeProjectId ? db.teams.where('projectId').equals(activeProjectId).toArray() : Promise.resolve([]),
+       [activeProjectId]
+     ) || [];
 
    const [selectedView, setSelectedView] = useState<'overview' | 'teams' | 'risks' | 'reports'>(
      'overview'
@@ -129,6 +142,31 @@ export default function ProjectManagerDashboard() {
    const canViewReports = peut(PERMISSIONS.TERRAIN_READ);
    const canManagePlanning = peut(PERMISSIONS.MISSIONS_PLANNING);
    const [realStats, setRealStats] = useState<any>(null);
+
+   if (isProjectLoading) {
+     return (
+       <PageContainer className="min-h-screen bg-slate-950 text-white">
+         <ModuleStatePanel
+           tone="loading"
+           title="Chargement du projet"
+           description="Le contexte projet est en cours d'initialisation pour le tableau de bord."
+         />
+       </PageContainer>
+     );
+   }
+
+   if (!activeProjectId || !project?.id) {
+     return (
+       <PageContainer className="min-h-screen bg-slate-950 text-white">
+         <ModuleStatePanel
+           title="Aucun projet actif"
+           description="Le tableau de bord Projet utilise les menages, equipes et KPI du projet selectionne. Choisissez un projet pour continuer."
+           actionLabel="Choisir un projet"
+           actionTo="/projects"
+         />
+       </PageContainer>
+     );
+   }
 
    // 📡 FETCH REAL ANALYTICS (PHASE 4 ENGINE)
    useEffect(() => {

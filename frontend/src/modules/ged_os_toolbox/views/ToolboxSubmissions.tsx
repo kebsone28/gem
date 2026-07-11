@@ -62,6 +62,7 @@ import {
 } from 'lucide-react';
 import { PageContainer, PageHeader, ContentArea } from '@components';
 import {
+  createtoolboxFormDefinition,
   downloadToolboxMediaExport,
   downloadToolboxSubmissionsExport,
   fetchToolboxDiagnostics,
@@ -998,10 +999,24 @@ export default function ToolboxSubmissions() {
   }, [selectedSubmission]);
 
   const fixedExportColumns = [
-    'id', 'clientSubmissionId', 'numeroOrdre', 'householdName',
-    'telephone', 'region', 'role', 'status', 'syncStatus', 'formVersion',
-    'requiredMissing', 'attachmentCount', 'attachmentUrls',
-    'submittedBy', 'submittedAt', 'savedAt', 'reviewStatus', 'reviewNote',
+    'id',
+    'clientSubmissionId',
+    'numeroOrdre',
+    'householdName',
+    'telephone',
+    'region',
+    'role',
+    'status',
+    'syncStatus',
+    'formVersion',
+    'requiredMissing',
+    'attachmentCount',
+    'attachmentUrls',
+    'submittedBy',
+    'submittedAt',
+    'savedAt',
+    'reviewStatus',
+    'reviewNote',
   ];
 
   const availableExportColumns = useMemo(() => {
@@ -2045,7 +2060,10 @@ export default function ToolboxSubmissions() {
     return filteredGalleryAttachments.slice(start, start + galleryPageSize);
   }, [filteredGalleryAttachments, galleryPage]);
 
-  const galleryTotalPages = Math.max(1, Math.ceil(filteredGalleryAttachments.length / galleryPageSize));
+  const galleryTotalPages = Math.max(
+    1,
+    Math.ceil(filteredGalleryAttachments.length / galleryPageSize)
+  );
 
   const mappedSubmissions = useMemo(
     () =>
@@ -2967,7 +2985,9 @@ export default function ToolboxSubmissions() {
                                         </span>
                                         {column.label}
                                       </span>
-                                      <span className={`text-slate-600 transition-transform ${isSorted ? 'text-blue-600' : ''}`}>
+                                      <span
+                                        className={`text-slate-600 transition-transform ${isSorted ? 'text-blue-600' : ''}`}
+                                      >
                                         {isSorted ? (sortDirection === 'asc' ? '▴' : '▾') : '▾'}
                                       </span>
                                     </div>
@@ -5004,8 +5024,8 @@ export default function ToolboxSubmissions() {
                           {galleryTotalPages > 1 && (
                             <div className="flex items-center justify-between">
                               <span className="text-xs font-semibold text-slate-500">
-                                Page {galleryPage + 1} / {galleryTotalPages}
-                                ({filteredGalleryAttachments.length} total)
+                                Page {galleryPage + 1} / {galleryTotalPages}(
+                                {filteredGalleryAttachments.length} total)
                               </span>
                               <div className="flex gap-2">
                                 <button
@@ -5019,7 +5039,9 @@ export default function ToolboxSubmissions() {
                                 </button>
                                 <button
                                   type="button"
-                                  onClick={() => setGalleryPage((p) => Math.min(galleryTotalPages - 1, p + 1))}
+                                  onClick={() =>
+                                    setGalleryPage((p) => Math.min(galleryTotalPages - 1, p + 1))
+                                  }
                                   disabled={galleryPage >= galleryTotalPages - 1}
                                   className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-black uppercase tracking-[0.08em] text-slate-700 hover:bg-slate-50 disabled:opacity-35"
                                 >
@@ -5127,12 +5149,7 @@ export default function ToolboxSubmissions() {
                                   'geojson',
                                   Map,
                                 ],
-                                [
-                                  'KML',
-                                  'Export pour Google Earth / QGIS / SIG',
-                                  'kml',
-                                  Map,
-                                ],
+                                ['KML', 'Export pour Google Earth / QGIS / SIG', 'kml', Map],
                               ] as const
                             ).map(([label, description, format, Icon]) => (
                               <button
@@ -5186,7 +5203,8 @@ export default function ToolboxSubmissions() {
                                 <button
                                   onClick={() => setSelectedExportColumns([])}
                                   className={`rounded-lg px-2 py-1 text-[10px] font-bold uppercase transition ${
-                                    selectedExportColumns !== null && selectedExportColumns.length === 0
+                                    selectedExportColumns !== null &&
+                                    selectedExportColumns.length === 0
                                       ? 'bg-blue-600 text-white'
                                       : 'bg-white text-slate-500 border border-slate-200'
                                   }`}
@@ -5201,7 +5219,9 @@ export default function ToolboxSubmissions() {
                               </div>
                               <div className="mt-2 max-h-48 overflow-y-auto rounded-xl border border-slate-200 bg-white p-2">
                                 {availableExportColumns.map((col) => {
-                                  const checked = selectedExportColumns === null || selectedExportColumns.includes(col);
+                                  const checked =
+                                    selectedExportColumns === null ||
+                                    selectedExportColumns.includes(col);
                                   return (
                                     <label
                                       key={col}
@@ -5213,7 +5233,9 @@ export default function ToolboxSubmissions() {
                                         onChange={() => {
                                           setSelectedExportColumns((prev) => {
                                             if (prev === null) {
-                                              return availableExportColumns.filter((c) => c !== col);
+                                              return availableExportColumns.filter(
+                                                (c) => c !== col
+                                              );
                                             }
                                             return prev.includes(col)
                                               ? prev.filter((c) => c !== col)
@@ -5275,14 +5297,19 @@ export default function ToolboxSubmissions() {
                           <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_360px]">
                             <div className="relative min-h-[420px] overflow-hidden rounded-2xl border border-slate-200">
                               <MapViewEnhanced
-                                points={mapFilteredSubmissions.map(({ submission, coordinates }) => ({
-                                  id: submission.id,
-                                  coordinates: { lat: coordinates.lat, lon: coordinates.lon },
-                                  label:
-                                    submission.household?.name ||
-                                    `Menage ${submission.numeroOrdre || '-'}`,
-                                  color: selectedSubmission?.id === submission.id ? '#2563eb' : '#06b6d4',
-                                }))}
+                                points={mapFilteredSubmissions.map(
+                                  ({ submission, coordinates }) => ({
+                                    id: submission.id,
+                                    coordinates: { lat: coordinates.lat, lon: coordinates.lon },
+                                    label:
+                                      submission.household?.name ||
+                                      `Menage ${submission.numeroOrdre || '-'}`,
+                                    color:
+                                      selectedSubmission?.id === submission.id
+                                        ? '#2563eb'
+                                        : '#06b6d4',
+                                  })
+                                )}
                                 height={420}
                                 onPointClick={(id) => setSelectedId(id)}
                                 selectedId={selectedSubmission?.id}

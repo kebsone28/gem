@@ -3,7 +3,6 @@ const EMPTY_OBJECT = {};
 export const LEGACY_SAFE_HOUSEHOLD_READ_SELECT = {
   id: true,
   projectId: true,
-  grappeId: true,
   numeroordre: true,
   phone: true,
   name: true,
@@ -21,6 +20,38 @@ export const LEGACY_SAFE_HOUSEHOLD_READ_SELECT = {
   manualOverrides: true,
   assignedTeams: true,
   alerts: true,
+  source: true,
+  version: true,
+  updatedAt: true,
+  deletedAt: true,
+  zone: {
+    select: {
+      name: true,
+      projectId: true,
+    },
+  },
+};
+
+/**
+ * Ultra-safe select that only includes columns guaranteed to exist
+ * across ALL schema versions (no grappeId, koboSync, constructionData,
+ * manualOverrides, assignedTeams which may be absent on older VPS setups).
+ */
+export const MINIMAL_HOUSEHOLD_READ_SELECT = {
+  id: true,
+  projectId: true,
+  numeroordre: true,
+  zoneId: true,
+  organizationId: true,
+  name: true,
+  phone: true,
+  region: true,
+  departement: true,
+  village: true,
+  status: true,
+  location: true,
+  owner: true,
+  koboData: true,
   source: true,
   version: true,
   updatedAt: true,

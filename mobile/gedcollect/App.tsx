@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { AppState, AppStateStatus } from 'react-native';
+import React, { useEffect, useState, Component, ErrorInfo, ReactNode } from 'react';
+import { AppState, AppStateStatus, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import Toast from 'react-native-toast-message';
@@ -19,6 +19,63 @@ import QRScannerScreen from '@screens/QRScannerScreen';
 import SettingsScreen from '@screens/SettingsScreen';
 import SubmissionsScreen from '@screens/SubmissionsScreen';
 import { isBiometricAvailable, authenticateBiometric } from '@services/nativeCapabilities';
+
+// ─── Error Boundary ──────────────────────────────────────────────────────
+interface ErrorBoundaryProps {
+  children: ReactNode;
+}
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
+class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  state: ErrorBoundaryState = { hasError: false, error: null };
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error('[ErrorBoundary]', error, info.componentStack);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <View style={errorStyles.container}>
+          <Text style={errorStyles.title}>😓 Une erreur est survenue</Text>
+          <Text style={errorStyles.message}>{this.state.error?.message}</Text>
+          <TouchableOpacity
+            style={errorStyles.button}
+            onPress={() => this.setState({ hasError: false, error: null })}
+          >
+            <Text style={errorStyles.buttonText}>Réessayer</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+const errorStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+    backgroundColor: '#fff',
+  },
+  title: { fontSize: 22, fontWeight: '700', marginBottom: 12, color: '#333' },
+  message: { fontSize: 14, color: '#666', textAlign: 'center', marginBottom: 24, lineHeight: 20 },
+  button: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 12,
+  },
+  buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+});
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -119,11 +176,13 @@ const App: React.FC = () => {
   if (!ready) return null;
 
   return (
-    <ThemeProvider>
-      <PinLockProvider appState={appState}>
-        <ThemedApp loggedIn={loggedIn} setLoggedIn={setLoggedIn} />
-      </PinLockProvider>
-    </ThemeProvider>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <PinLockProvider appState={appState}>
+          <ThemedApp loggedIn={loggedIn} setLoggedIn={setLoggedIn} />
+        </PinLockProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 };
 

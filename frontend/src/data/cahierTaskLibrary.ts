@@ -26,7 +26,7 @@ export const DEFAULT_TASK_LIBRARY: TaskLibrary = {
       'ART 1.3 - ÉQUIPEMENT TERMINAL : Câblage et pose des douilles, hublots, lampes LED LBC et socles de prises de courant étanches.',
       'ART 1.4 - KIT SECONDAIRE (Optionnel) : Extension de l\'installation via câble armé 3×1.5mm² (10 m) pour éclairage déporté.',
       'ART 1.5 - MISE À LA TERRE : Creusement et enfoncement du piquet cuivre (acier cuivré 1,5 m). Intégration de la barrette de coupure accessible, tube annelé et liaison via cuivre nu Ø25 mm² puis conducteur sous gaine Vert/Jaune 6mm² vers le bornier principal. La résistance de terre mesurée doit être < 1500 Ohms.',
-      'ART 1.6 - REPORTING JOURNALIER : Le Chef d’équipe est responsable de la mise à jour quotidienne, avant 18h00, du formulaire Kobo intégré à GED OS / Kobo, incluant : état d’avancement (en %), photographies géolocalisées des ouvrages, liste des matériaux utilisés, et incidents éventuels. Toute omission ou retard entraîne une pénalité de 2% du montant journalier du lot.',
+      'ART 1.6 - REPORTING JOURNALIER : Le Chef d’équipe est responsable de la mise à jour quotidienne, avant 18h00, du formulaire Kobo intégré à GED OS MINT / Kobo, incluant : état d’avancement (en %), photographies géolocalisées des ouvrages, liste des matériaux utilisés, et incidents éventuels. Toute omission ou retard entraîne une pénalité de 2% du montant journalier du lot.',
     ],
     materials: [
       'Coffret compteur incluant le coupe-circuit',
@@ -157,22 +157,22 @@ export const DEFAULT_TASK_LIBRARY: TaskLibrary = {
       "ART 4.1 - RESPONSABILITÉ : Le Titulaire reste pleinement responsable de la conformité des installations, même en cas de sous-traitance. Il doit obtenir l'accord écrit du Maître d'Ouvrage pour toute sous-traitance et vérifier que le sous-traitant dispose des certifications requises (qualification SENELEC, assurance RC Pro).",
     ],
     finances: [
-      'ART 5.1 - VALIDATION PAR RÉCEPTION FINALE : La réception finale, prononcée par PROQUELEC après vérification de la conformité aux exigences contractuelles, déclenche l\'exigibilité du paiement. Elle est matérialisée par le statut "Réceptionné conforme" dans GED OS / Kobo et la signature d\'un PVR.',
-      "ART 5.2 - OBLIGATION DE SAISIE KOBO : Le Titulaire a l'obligation contractuelle de renseigner quotidiennement le formulaire Kobo avant 18h00. Le Chef de Projet assure la liquidation des règlements hebdomadaires sur la base des données validées dans GED OS / Kobo.",
+      'ART 5.1 - VALIDATION PAR RÉCEPTION FINALE : La réception finale, prononcée par PROQUELEC après vérification de la conformité aux exigences contractuelles, déclenche l\'exigibilité du paiement. Elle est matérialisée par le statut "Réceptionné conforme" dans GED OS MINT / Kobo et la signature d\'un PVR.',
+      "ART 5.2 - OBLIGATION DE SAISIE KOBO : Le Titulaire a l'obligation contractuelle de renseigner quotidiennement le formulaire Kobo avant 18h00. Le Chef de Projet assure la liquidation des règlements hebdomadaires sur la base des données validées dans GED OS MINT / Kobo.",
       "ART 5.3 - CAUTIONNEMENT FLEXIBLE : La retenue de garantie est limitée à 5-10% du montant des prestations. Le Titulaire peut la substituer par une caution d'assurance délivrée par une compagnie agréée (SONAM, ASKIA), sous réserve de transmission de l’attestation correspondante.",
     ],
     legal: [
       'ART E.1 - RESPONSABILITÉ TECHNIQUE : L’électricien est responsable de la conformité totale de l’installation intérieure aux normes NFC 15-100 et NS 01-001. Toute non-conformité engage sa responsabilité civile et pénale.',
       'ART E.2 - RISQUE ÉLECTRIQUE : Toute installation non sécurisée engage sa responsabilité en cas d’incendie, d’électrocution ou de dommage matériel, conformément au Code pénal sénégalais.',
       'ART E.3 - MISE À LA TERRE : L’absence ou la défaillance du système de terre (résistance > 1500 Ohms, conducteur section insuffisante) constitue une faute grave, entraînant le rejet de l’ouvrage et l’application de pénalités de 15% du montant du lot par jour de retard dans la correction.',
-      'ART E.5 - ESSAIS OBLIGATOIRES : Avant validation, des essais de continuité, d’isolement (R > 0,5 MOhms) et de déclenchement du différentiel (IΔn <= 30 mA) doivent être réalisés et consignés dans GED OS / Kobo. Leur absence entraîne le rejet systématique de l’ouvrage.',
+      'ART E.5 - ESSAIS OBLIGATOIRES : Avant validation, des essais de continuité, d’isolement (R > 0,5 MOhms) et de déclenchement du différentiel (IΔn <= 30 mA) doivent être réalisés et consignés dans GED OS MINT / Kobo. Leur absence entraîne le rejet systématique de l’ouvrage.',
     ],
     pricing: {
       dailyRate: 25000,
       personnelCount: 5,
       durationDays: 20,
       penalties:
-        '**PÉNALITÉS POUR RETARD OU NON-CONFORMITÉ**\n- **Retard de réalisation** : 5% du montant du lot par semaine de retard (plafonné à 20%).\n- **Non-conformité majeure** (ex : absence de mise à la terre, résistance > 1500 Ohms) : 10% du montant du lot **par jour** jusqu’à correction, sans dépasser 50% du montant total.\n- **Absence de reporting quotidien (GED OS / Kobo)** : 2% du montant journalier du lot par omission, avec blocage des paiements jusqu’à régularisation.\n- **Falsification des données** (ex : photos truquées, essais non réalisés) : Résiliation immédiate du marché + pénalités de 100% du montant du lot concerné.\n- **Non-respect des EPI** : Arrêt immédiat des travaux + pénalité de 5% du montant journalier du lot par infraction constatée.',
+        '**PÉNALITÉS POUR RETARD OU NON-CONFORMITÉ**\n- **Retard de réalisation** : 5% du montant du lot par semaine de retard (plafonné à 20%).\n- **Non-conformité majeure** (ex : absence de mise à la terre, résistance > 1500 Ohms) : 10% du montant du lot **par jour** jusqu’à correction, sans dépasser 50% du montant total.\n- **Absence de reporting quotidien (GED OS MINT / Kobo)** : 2% du montant journalier du lot par omission, avec blocage des paiements jusqu’à régularisation.\n- **Falsification des données** (ex : photos truquées, essais non réalisés) : Résiliation immédiate du marché + pénalités de 100% du montant du lot concerné.\n- **Non-respect des EPI** : Arrêt immédiat des travaux + pénalité de 5% du montant journalier du lot par infraction constatée.',
       currency: 'FCFA',
     },
     executionGuide: [
@@ -320,7 +320,7 @@ export const DEFAULT_TASK_LIBRARY: TaskLibrary = {
           'Vérifier l\'absence de conducteurs visibles ou exposés',
           'Tester le fonctionnement des appareillages',
           'Photographier l\'installation terminée',
-          'Saisir les données dans GED OS / Kobo',
+          'Saisir les données dans GED OS MINT / Kobo',
         ],
         checklist: [
           '☐ Vérification visuelle OK',
@@ -330,7 +330,7 @@ export const DEFAULT_TASK_LIBRARY: TaskLibrary = {
           '☐ Aucun conducteur exposé',
           '☐ Appareillage fonctionnel',
           '☐ Photos prises',
-          '☐ Données saisies GED OS / Kobo',
+          '☐ Données saisies GED OS MINT / Kobo',
         ],
         qualityPoints: [
           'Installation propre et soignée',
@@ -356,7 +356,7 @@ export const DEFAULT_TASK_LIBRARY: TaskLibrary = {
       { item: 'Mise à la terre conforme (résistance < 1500 Ohms)', category: 'technical' },
       { item: 'Appareillage fonctionnel', category: 'quality' },
       { item: 'Repérage des départs clair', category: 'quality' },
-      { item: 'Documentation GED OS / Kobo complète', category: 'quality' },
+      { item: 'Documentation GED OS MINT / Kobo complète', category: 'quality' },
     ],
   },
   Maçonnerie: {
@@ -490,8 +490,8 @@ export const DEFAULT_TASK_LIBRARY: TaskLibrary = {
       'ART M.4 - FISSURATION POST-RÉCEPTION : Toute fissuration apparue dans les 12 mois suivant la réception engage la responsabilité du Titulaire et donne lieu à une reprise gratuite sous 15 jours, sous peine de pénalités de 5% par semaine de retard.',
     ],
     finances: [
-      'ART 5.1 - VALIDATION PAR RÉCEPTION FINALE : La réception finale est prononcée par PROQUELEC après vérification de la conformité dimensionnelle, mécanique et esthétique des murets. Elle est matérialisée par le statut "Réceptionné conforme" dans GED OS / Kobo et la signature d’un PVR.',
-      'ART 5.2 - OBLIGATION KOBO : Saisie quotidienne obligatoire des murets réalisés (dimensions, photos, contrôles) pour permettre le pilotage de la trésorerie par le Chef de Projet via GED OS / Kobo. Toute absence de saisie entraîne un blocage des paiements jusqu’à régularisation.',
+      'ART 5.1 - VALIDATION PAR RÉCEPTION FINALE : La réception finale est prononcée par PROQUELEC après vérification de la conformité dimensionnelle, mécanique et esthétique des murets. Elle est matérialisée par le statut "Réceptionné conforme" dans GED OS MINT / Kobo et la signature d’un PVR.',
+      'ART 5.2 - OBLIGATION KOBO : Saisie quotidienne obligatoire des murets réalisés (dimensions, photos, contrôles) pour permettre le pilotage de la trésorerie par le Chef de Projet via GED OS MINT / Kobo. Toute absence de saisie entraîne un blocage des paiements jusqu’à régularisation.',
       'ART 5.3 - CAUTIONNEMENT : Acceptation de la caution d’assurance (SONAM/ASKIA) pour l’avance de démarrage, sous réserve de transmission de l’attestation correspondante avant le premier décaissement.',
     ],
     pricing: {
@@ -775,15 +775,15 @@ export const DEFAULT_TASK_LIBRARY: TaskLibrary = {
       'ART R.4 - SÉCURITÉ PUBLIQUE : Le Titulaire est responsable des risques pour les tiers (chute de câble, électrocution) liés à ses installations. Il doit souscrire une assurance spécifique couvrant ces risques et en fournir la preuve avant le démarrage des travaux.',
     ],
     finances: [
-      'ART 5.1 - RÉCEPTION FINALE : Paiement hebdomadaire à l\'unité (par branchement) après réception finale par PROQUELEC et obtention du statut "Réceptionné conforme" dans GED OS / Kobo. Le PVR signé est obligatoire pour le déclenchement du paiement.',
-      "ART 5.2 - FACILITATION GED OS / Kobo : Le système GED OS / Kobo permet un suivi en temps réel des flux de trésorerie, sur la base des formulaires Kobo renseignés quotidiennement par le prestataire. Les retards de saisie bloquent les paiements jusqu'à régularisation.",
+      'ART 5.1 - RÉCEPTION FINALE : Paiement hebdomadaire à l\'unité (par branchement) après réception finale par PROQUELEC et obtention du statut "Réceptionné conforme" dans GED OS MINT / Kobo. Le PVR signé est obligatoire pour le déclenchement du paiement.',
+      "ART 5.2 - FACILITATION GED OS MINT / Kobo : Le système GED OS MINT / Kobo permet un suivi en temps réel des flux de trésorerie, sur la base des formulaires Kobo renseignés quotidiennement par le prestataire. Les retards de saisie bloquent les paiements jusqu'à régularisation.",
     ],
     pricing: {
       dailyRate: 40000,
       personnelCount: 2,
       durationDays: 15,
       penalties:
-        "**PÉNALITÉS POUR NON-RESPECT DES NORMES DE SÉCURITÉ ET DE DÉLAIS**\n- **Retard de branchement** : 10% du montant du lot par semaine (plafonné à 30%).\n- **Non-respect des distances de sécurité** (ex : câble à < 3 m au-dessus d'une voie) : Reprise immédiate + 15% du montant du lot par jour jusqu'à conformité.\n- **Absence de harnais en hauteur** : Arrêt immédiat des travaux + pénalité de 20% du montant journalier du lot.\n- **Branchement non conforme** (ex : absence de coupe-circuit) : Refus de mise en service par SENELEC + 10% du montant du lot par jour de retard.\n- **Non-traçabilité des livraisons** (GED OS / Kobo) : Blocage des paiements + 3% du montant journalier du lot par omission.\n- **Dégâts sur le réseau SENELEC** : Réparation aux frais du Titulaire sous 48h, sinon pénalités de 20% du montant du lot par jour.",
+        "**PÉNALITÉS POUR NON-RESPECT DES NORMES DE SÉCURITÉ ET DE DÉLAIS**\n- **Retard de branchement** : 10% du montant du lot par semaine (plafonné à 30%).\n- **Non-respect des distances de sécurité** (ex : câble à < 3 m au-dessus d'une voie) : Reprise immédiate + 15% du montant du lot par jour jusqu'à conformité.\n- **Absence de harnais en hauteur** : Arrêt immédiat des travaux + pénalité de 20% du montant journalier du lot.\n- **Branchement non conforme** (ex : absence de coupe-circuit) : Refus de mise en service par SENELEC + 10% du montant du lot par jour de retard.\n- **Non-traçabilité des livraisons** (GED OS MINT / Kobo) : Blocage des paiements + 3% du montant journalier du lot par omission.\n- **Dégâts sur le réseau SENELEC** : Réparation aux frais du Titulaire sous 48h, sinon pénalités de 20% du montant du lot par jour.",
       currency: 'FCFA',
     },
     executionGuide: [
@@ -995,7 +995,7 @@ export const DEFAULT_TASK_LIBRARY: TaskLibrary = {
       },
       {
         title: '7. Contrôle de Sécurité Final',
-        description: 'Vérification de l\'absence de dangers, documentation dans GED OS / Kobo',
+        description: 'Vérification de l\'absence de dangers, documentation dans GED OS MINT / Kobo',
         steps: [
           'Vérifier l\'absence de conducteur apparent dangereux',
           'Contrôler qu\'il n\'y a pas de câble en plein air non protégé',
@@ -1003,7 +1003,7 @@ export const DEFAULT_TASK_LIBRARY: TaskLibrary = {
           'Contrôler l\'absence de barrette de terre extérieure interdite',
           'Vérifier l\'absence de surplomb d\'habitation',
           'Photographier l\'installation complète',
-          'Saisir les données dans GED OS / Kobo',
+          'Saisir les données dans GED OS MINT / Kobo',
           'Enregistrer les coordonnées GPS',
           'Noter le numéro d\'ordre',
           'Indiquer les observations et le statut',
@@ -1015,7 +1015,7 @@ export const DEFAULT_TASK_LIBRARY: TaskLibrary = {
           '☐ Pas de barrette interdite',
           '☐ Pas de surplomb',
           '☐ Photos complètes',
-          '☐ Données GED OS / Kobo saisies',
+          '☐ Données GED OS MINT / Kobo saisies',
           '☐ GPS enregistré',
           '☐ Numéro d\'ordre noté',
           '☐ Observations documentées',
@@ -1041,7 +1041,7 @@ export const DEFAULT_TASK_LIBRARY: TaskLibrary = {
       { item: 'Coupe-circuit présent et calibré', category: 'technical' },
       { item: 'Distance de sécurité respectée', category: 'safety' },
       { item: 'Coordination SENELEC effectuée', category: 'safety' },
-      { item: 'Documentation GED OS / Kobo complète', category: 'quality' },
+      { item: 'Documentation GED OS MINT / Kobo complète', category: 'quality' },
     ],
   },
   Logistique: {
@@ -1052,7 +1052,7 @@ export const DEFAULT_TASK_LIBRARY: TaskLibrary = {
     introduction:
       "ARTICLE 1 - OBJET : Gestion des flux de matériel, transport sécurisé, traçabilité des équipements, et gestion des rebuts, conformément aux exigences de traçabilité numérique du projet. Le Titulaire garantit la livraison intacte et dans les délais des matériaux, ainsi que leur stockage sécurisé sur les sites d'intervention.",
     missions: [
-      'ART 4.1 - TRACABILITÉ NUMÉRIQUE : Enregistrement systématique des mouvements de stock (entrées/sorties) dans GED OS / Kobo via les identifiants NumeroOrdre, avec scan des codes-barres et géolocalisation des livraisons. Toute discordance entre les stocks physiques et numériques entraîne un audit immédiat et des pénalités de 5% du montant du lot concerné.',
+      'ART 4.1 - TRACABILITÉ NUMÉRIQUE : Enregistrement systématique des mouvements de stock (entrées/sorties) dans GED OS MINT / Kobo via les identifiants NumeroOrdre, avec scan des codes-barres et géolocalisation des livraisons. Toute discordance entre les stocks physiques et numériques entraîne un audit immédiat et des pénalités de 5% du montant du lot concerné.',
       "ART 4.2 - TRANSPORT SÉCURISÉ : Acheminement des matériaux vers les sites d'intervention avec arrimage certifié des bobines (sangle 2T, protection anti-abrasion), respect des limites de vitesse (40 km/h en zone habitée), et signalisation du convoi. Les véhicules doivent être équipés de systèmes de géolocalisation et de kits de sécurité (extincteurs, trousses de secours).",
       'ART 4.3 - GESTION DES REBUTS : Récupération et tri des chutes de câbles, emballages et matériaux usagés pour traitement centralisé (recyclage ou élimination conforme). Un bordereau de suivi des déchets doit être établi et transmis hebdomadairement au Chef de Projet.',
       'ART 4.4 - CONTRÔLE DES FLUX : Reporting quotidien des quantités livrées vs prévisionnel, avec alerte immédiate en cas de risque de rupture. Les écarts > 10% doivent être justifiés sous 24h, sous peine de pénalités de 3% du montant du lot.',
@@ -1061,7 +1061,7 @@ export const DEFAULT_TASK_LIBRARY: TaskLibrary = {
     materials: [
       'Véhicules de transport équipés (géolocalisation, arrimage certifié, extincteurs)',
       'Systèmes de protection des bobines (sangles, bâches, caisses de transport)',
-      'Terminaux mobiles de scan et logiciels de traçabilité (GED OS / Kobo, Kobo)',
+      'Terminaux mobiles de scan et logiciels de traçabilité (GED OS MINT / Kobo, Kobo)',
       'Équipements de sécurité (gilets haute visibilité, kits de premiers secours)',
     ],
     hse: [
@@ -1156,22 +1156,22 @@ export const DEFAULT_TASK_LIBRARY: TaskLibrary = {
       {
         title: 'Validation Kobo de fin d\'étape',
         checks: [
-          'Saisir toutes les livraisons du jour dans GED OS / Kobo.',
+          'Saisir toutes les livraisons du jour dans GED OS MINT / Kobo.',
           'Signaler toute anomalie constatée.',
         ],
         completion: [
-          'Une journée de livraison validée correspond à des kits livrés, signés et tracés dans GED OS / Kobo.',
+          'Une journée de livraison validée correspond à des kits livrés, signés et tracés dans GED OS MINT / Kobo.',
         ],
       },
     ],
     legal: [
       "ART L.1 - RESPONSABILITÉ DU TRANSPORT : Le Titulaire est responsable des équipements et matériaux du départ du dépôt jusqu'à leur réception sur site. Toute perte, vol ou détérioration sera facturée au prix du marché majoré de 20%.",
-      "ART L.2 - TRACABILITÉ OBLIGATOIRE : Toute sortie de matériel doit être enregistrée dans GED OS / Kobo avant le départ du dépôt. L'absence de traçabilité bloque les paiements jusqu'à régularisation.",
+      "ART L.2 - TRACABILITÉ OBLIGATOIRE : Toute sortie de matériel doit être enregistrée dans GED OS MINT / Kobo avant le départ du dépôt. L'absence de traçabilité bloque les paiements jusqu'à régularisation.",
       "ART L.3 - GESTION DES DÉCHETS : Le non-respect des procédures de tri et d'élimination des rebuts (câbles, emballages) entraîne une pénalité de 5% du montant du lot et peut donner lieu à une exclusion du marché pour non-respect des normes environnementales.",
       "ART L.4 - STOCKAGE SÉCURISÉ : Les matériaux doivent être stockés sur site dans des conditions préservant leur intégrité (abri, protection contre l'humidité). Tout dommage dû à un stockage défectueux est à la charge du Titulaire.",
     ],
     finances: [
-      'ART 5.1 - PAIEMENT : Règlement hebdomadaire après réception finale des flux de matériel et validation des données dans GED OS / Kobo par le Chef de Projet. Les bordereaux de livraison signés et les preuves de traçabilité sont obligatoires.',
+      'ART 5.1 - PAIEMENT : Règlement hebdomadaire après réception finale des flux de matériel et validation des données dans GED OS MINT / Kobo par le Chef de Projet. Les bordereaux de livraison signés et les preuves de traçabilité sont obligatoires.',
       "ART 5.2 - OBLIGATION KOBO : La traçabilité des livraisons via les formulaires Kobo est obligatoire pour déclencher les facilités de trésorerie. Toute absence de saisie bloque les paiements jusqu'à régularisation.",
       "ART 5.3 - GARANTIE : Retenue de garantie limitée à 5-10%, libérable par caution d'assurance (SONAM/ASKIA) sur présentation de l'attestation correspondante.",
     ],
@@ -1180,7 +1180,7 @@ export const DEFAULT_TASK_LIBRARY: TaskLibrary = {
       personnelCount: 2,
       durationDays: 15,
       penalties:
-        '**PÉNALITÉS POUR PERTE, RETARD OU NON-TRACABILITÉ**\n- **Perte ou endommagement de matériel** : Remboursement au prix du marché majoré de 20% + pénalité de 10% du montant du lot par unité perdue.\n- **Retard de livraison** (> 24h) : 5% du montant du lot par jour de retard (plafonné à 30%).\n- **Non-respect des procédures de traçabilité** (GED OS / Kobo) : Blocage des paiements + 5% du montant journalier du lot par omission.\n- **Excès de vitesse ou infraction routière** : 5% du montant journalier du lot par infraction, cumulable en cas de récidive.\n- **Transport de passagers non autorisés** : Immobilisation du véhicule + pénalité de 10% du montant du lot.\n- **Non-gestion des rebuts** (câbles, emballages) : Pénalité de 7% du montant du lot + obligation de nettoyage aux frais du Titulaire.',
+        '**PÉNALITÉS POUR PERTE, RETARD OU NON-TRACABILITÉ**\n- **Perte ou endommagement de matériel** : Remboursement au prix du marché majoré de 20% + pénalité de 10% du montant du lot par unité perdue.\n- **Retard de livraison** (> 24h) : 5% du montant du lot par jour de retard (plafonné à 30%).\n- **Non-respect des procédures de traçabilité** (GED OS MINT / Kobo) : Blocage des paiements + 5% du montant journalier du lot par omission.\n- **Excès de vitesse ou infraction routière** : 5% du montant journalier du lot par infraction, cumulable en cas de récidive.\n- **Transport de passagers non autorisés** : Immobilisation du véhicule + pénalité de 10% du montant du lot.\n- **Non-gestion des rebuts** (câbles, emballages) : Pénalité de 7% du montant du lot + obligation de nettoyage aux frais du Titulaire.',
       currency: 'FCFA',
     },
     executionGuide: [
@@ -1261,7 +1261,7 @@ export const DEFAULT_TASK_LIBRARY: TaskLibrary = {
           'Indiquer le nom du réceptionnaire',
           'Noter l\'état apparent du matériel',
           'Faire signer le bénéficiaire',
-          'Saisir les données dans GED OS / Kobo',
+          'Saisir les données dans GED OS MINT / Kobo',
         ],
         checklist: [
           '☐ Bordereau rempli',
@@ -1272,7 +1272,7 @@ export const DEFAULT_TASK_LIBRARY: TaskLibrary = {
           '☐ Réceptionnaire identifié',
           '☐ État matériel noté',
           '☐ Signature bénéficiaire',
-          '☐ Données saisies GED OS / Kobo',
+          '☐ Données saisies GED OS MINT / Kobo',
         ],
         qualityPoints: [
           'Traçabilité complète',
@@ -1295,7 +1295,7 @@ export const DEFAULT_TASK_LIBRARY: TaskLibrary = {
           'Conserver les éléments de preuve',
           'Ne pas livrer un kit défectueux',
           'Demander un remplacement si nécessaire',
-          'Documenter l\'incident dans GED OS / Kobo',
+          'Documenter l\'incident dans GED OS MINT / Kobo',
         ],
         checklist: [
           '☐ Anomalie identifiée',
@@ -1326,7 +1326,7 @@ export const DEFAULT_TASK_LIBRARY: TaskLibrary = {
       { item: 'Matériel intact à la livraison', category: 'quality' },
       { item: 'Bordereau signé par le bénéficiaire', category: 'quality' },
       { item: 'Photo géolocalisée de la remise', category: 'technical' },
-      { item: 'Anomalies signalées dans GED OS / Kobo', category: 'quality' },
+      { item: 'Anomalies signalées dans GED OS MINT / Kobo', category: 'quality' },
     ],
   },
   'Livreur': {
@@ -1456,7 +1456,7 @@ export const DEFAULT_TASK_LIBRARY: TaskLibrary = {
       `ART L.3 - INTÉGRITÉ DU MATÉRIEL : Le Livreur est responsable de l'intégrité du matériel livré. Tout dommage dû à un arrimage défectueux ou à une conduite imprudente est à sa charge.`,
     ],
     finances: [
-      `ART 5.1 - PAIEMENT : Règlement hebdomadaire après validation des livraisons dans GED OS / Kobo par le Chef de Projet. Les bordereaux de livraison signés sont obligatoires pour déclencher le paiement.`,
+      `ART 5.1 - PAIEMENT : Règlement hebdomadaire après validation des livraisons dans GED OS MINT / Kobo par le Chef de Projet. Les bordereaux de livraison signés sont obligatoires pour déclencher le paiement.`,
       `ART 5.2 - OBLIGATION KOBO : La traçabilité des livraisons via les formulaires Kobo est obligatoire. Toute absence de saisie bloque les paiements jusqu'à régularisation.`,
     ],
     pricing: {
@@ -1604,17 +1604,17 @@ export const DEFAULT_TASK_LIBRARY: TaskLibrary = {
       "ARTICLE 1 - OBJET : Surveillance, essai et validation finale de l'ensemble des ouvrages (Génie Civil, Réseau, Intérieur) pour garantir leur conformité aux normes techniques (NFC 15-100, NS 01-001, doctrine SENELEC) et aux exigences du présent Cahier des Charges. Le contrôleur PROQUELEC agit en totale indépendance et son avis est souverain pour la réception des travaux.",
     missions: [
       "ART 5.1 - AUDIT MAÇONNERIE : Vérification de la verticalité des murs (+/- 2 mm/m), du dosage du béton (350 kg/m3 pour les fondations), de la solidité mécanique des potelets, et de l'étanchéité des coffrets. Les essais de charge (1,5x la charge nominale) sont réalisés en présence du Titulaire.",
-      "ART 5.2 - AUDIT RÉSEAU : Contrôle du branchement (tension mécanique du câble, présence et calibrage du coupe-circuit, étanchéité du hublot SENELEC). Les mesures de résistance d'isolement (R > 0,5 MOhms) et de continuité sont consignées dans GED OS / Kobo.",
+      "ART 5.2 - AUDIT RÉSEAU : Contrôle du branchement (tension mécanique du câble, présence et calibrage du coupe-circuit, étanchéité du hublot SENELEC). Les mesures de résistance d'isolement (R > 0,5 MOhms) et de continuité sont consignées dans GED OS MINT / Kobo.",
       "ART 5.3 - AUDIT ÉLECTRICIEN : Test de déclenchement du différentiel 30mA, vérification du disjoncteur 5/15A, et mesure de la résistance de terre (< 1500 Ohms). Les essais sont réalisés conformément à la norme NFC 15-100 et leurs résultats sont transmis au Maître d'Ouvrage sous 24h.",
       "ART 5.4 - CONFORMITÉ LOT 24 : Inspection visuelle des gaines, canalisations et fixations pour prévenir tout risque d'incendie ou d'électrocution. Les non-conformités sont consignées dans un Procès-Verbal de Non-Conformité (PVNC) et notifiées au Titulaire sous 48h.",
-      "ART 5.5 - VALIDATION NUMÉRIQUE : Signature électronique du PV de réception dans GED OS / Kobo, incluant les photographies géolocalisées des ouvrages, les résultats des essais, et l'avis du contrôleur. Ce PV est une condition préalable à tout paiement.",
+      "ART 5.5 - VALIDATION NUMÉRIQUE : Signature électronique du PV de réception dans GED OS MINT / Kobo, incluant les photographies géolocalisées des ouvrages, les résultats des essais, et l'avis du contrôleur. Ce PV est une condition préalable à tout paiement.",
     ],
     materials: [
       `Mesureur d'isolement 500V (étalonnage à jour)`,
       `Vérificateur d'Absence de Tension — VAT (norme NFC 18-510)`,
       `Telluromètre (mesure résistance de terre)`,
       `Multimètre (étalonnage à jour)`,
-      `Tablette tactile avec applications GED OS / Kobo`,
+      `Tablette tactile avec applications GED OS MINT / Kobo`,
       `Ligne téléphonique / GSM fonctionnelle`,
     ],
     hse: [
@@ -1672,12 +1672,12 @@ export const DEFAULT_TASK_LIBRARY: TaskLibrary = {
     legal: [
       'ART C.1 - INDÉPENDANCE DU CONTRÔLEUR : Le contrôleur PROQUELEC agit de manière autonome et indépendante des équipes de réalisation. Ses décisions sont souveraines et ne peuvent faire l’objet de pression ou d’influence.',
       'ART C.2 - POUVOIR DE REFUS : Tout ouvrage non conforme aux normes ou présentant un risque pour la sécurité est rejeté jusqu’à reprise complète et validation par PROQUELEC. Le Titulaire ne peut contester ce rejet sans preuve écrite de conformité.',
-      'ART C.3 - CERTIFICATION FINALE : La validation dans GED OS / Kobo par le contrôleur PROQUELEC constitue le seul acte déclenchant le processus de paiement. Aucune réception verbale ou partielle n’est opposable au Maître d’Ouvrage.',
+      'ART C.3 - CERTIFICATION FINALE : La validation dans GED OS MINT / Kobo par le contrôleur PROQUELEC constitue le seul acte déclenchant le processus de paiement. Aucune réception verbale ou partielle n’est opposable au Maître d’Ouvrage.',
       'ART C.4 - RESPONSABILITÉ DU CONTRÔLEUR : Le contrôleur engage sa responsabilité en cas de validation d’un ouvrage dangereux ou non conforme. Il doit signaler toute tentative de fraude ou de falsification des données.',
     ],
     finances: [
       'ART 5.1 - HONORAIRES : Règlement basé sur le volume d’ouvrages audités et validés, selon un barème fixe par type de contrôle (maçonnerie, réseau, électricité). Les honoraires sont dus dès la signature du PV de réception.',
-      'ART 5.2 - FACILITATION GED OS / Kobo : Utilisation de GED OS / Kobo pour le suivi des audits et l’accélération des validations. Les retards de saisie des rapports bloquent les paiements jusqu’à régularisation.',
+      'ART 5.2 - FACILITATION GED OS MINT / Kobo : Utilisation de GED OS MINT / Kobo pour le suivi des audits et l’accélération des validations. Les retards de saisie des rapports bloquent les paiements jusqu’à régularisation.',
     ],
     pricing: {
       dailyRate: 50000,
@@ -1698,7 +1698,7 @@ export const DEFAULT_TASK_LIBRARY: TaskLibrary = {
           'Vérifier l\'étanchéité des coffrets de comptage',
           'Réaliser les essais de charge (1,5x la charge nominale)',
           'Photographier chaque ouvrage avec géolocalisation',
-          'Consigner les résultats dans GED OS / Kobo',
+          'Consigner les résultats dans GED OS MINT / Kobo',
         ],
         checklist: [
           '☐ Verticalité conforme (+/- 2 mm/m)',
@@ -1820,9 +1820,9 @@ export const DEFAULT_TASK_LIBRARY: TaskLibrary = {
       },
       {
         title: '5. Validation Numérique',
-        description: 'Signature électronique du PV de réception dans GED OS / Kobo',
+        description: 'Signature électronique du PV de réception dans GED OS MINT / Kobo',
         steps: [
-          'Saisir les résultats des essais dans GED OS / Kobo',
+          'Saisir les résultats des essais dans GED OS MINT / Kobo',
           'Joindre les photographies géolocalisées',
           'Renseigner l\'avis du contrôleur (conforme/NC)',
           'Signer électroniquement le PV de réception',
@@ -1900,7 +1900,7 @@ export const DEFAULT_TASK_LIBRARY: TaskLibrary = {
             'Ne valider que si l\'ouvrage est totalement conforme.',
           ],
           completion: [
-            'Une validation finale correspond à un ouvrage conforme, documenté et signé dans GED OS / Kobo.',
+            'Une validation finale correspond à un ouvrage conforme, documenté et signé dans GED OS MINT / Kobo.',
           ],
         },
       ],
@@ -1914,7 +1914,7 @@ export const DEFAULT_TASK_LIBRARY: TaskLibrary = {
         { item: 'Coupe-circuit présent et calibré', category: 'technical' },
         { item: 'PVNC rédigé si non-conformité', category: 'quality' },
         { item: 'Photos géolocalisées prises', category: 'technical' },
-        { item: 'PV de réception signé dans GED OS / Kobo', category: 'quality' },
+        { item: 'PV de réception signé dans GED OS MINT / Kobo', category: 'quality' },
         { item: 'Port des EPI de catégorie 3', category: 'safety' },
         { item: 'VAT utilisé avant tout contact', category: 'safety' },
       ],
@@ -2011,11 +2011,11 @@ export const DEFAULT_TASK_LIBRARY: TaskLibrary = {
         title: 'Validation Kobo de fin d\'étape',
         checks: [
           'Poser l\'étiquette "Lot A - OK" sur le coffret validé.',
-          'Saisir les données dans GED OS / Kobo.',
+          'Saisir les données dans GED OS MINT / Kobo.',
           'Photographier le kit préparé.',
         ],
         completion: [
-          'Un kit validé correspond à un coffret précâblé, testé, étiqueté et tracé dans GED OS / Kobo.',
+          'Un kit validé correspond à un coffret précâblé, testé, étiqueté et tracé dans GED OS MINT / Kobo.',
         ],
       },
     ],
@@ -2050,8 +2050,8 @@ export const DEFAULT_TASK_LIBRARY: TaskLibrary = {
       'ART P.4 - INTÉGRITÉ DU MATÉRIEL : Le Prestataire est responsable de l\'intégrité du matériel fourni par PROQUELEC. Toute perte ou détérioration sera facturée au prix du marché majoré de 20%.',
     ],
     finances: [
-      'ART 5.1 - PAIEMENT : Règlement hebdomadaire après réception finale des kits préparés et validation des données dans GED OS / Kobo par le Chef de Projet. Les bordereaux de préparation signés sont obligatoires.',
-      'ART 5.2 - OBLIGATION KOBO : Saisie quotidienne obligatoire des kits préparés (numéro d\'ordre, composition, tests) pour permettre le suivi de la production via GED OS / Kobo. Toute absence de saisie entraîne un blocage des paiements jusqu\'à régularisation.',
+      'ART 5.1 - PAIEMENT : Règlement hebdomadaire après réception finale des kits préparés et validation des données dans GED OS MINT / Kobo par le Chef de Projet. Les bordereaux de préparation signés sont obligatoires.',
+      'ART 5.2 - OBLIGATION KOBO : Saisie quotidienne obligatoire des kits préparés (numéro d\'ordre, composition, tests) pour permettre le suivi de la production via GED OS MINT / Kobo. Toute absence de saisie entraîne un blocage des paiements jusqu\'à régularisation.',
       'ART 5.3 - CAUTIONNEMENT : Retenue de garantie limitée à 5-10%, libérable par caution d\'assurance (SONAM/ASKIA) sur présentation de l\'attestation correspondante.',
     ],
     pricing: {
@@ -2250,7 +2250,7 @@ export const DEFAULT_TASK_LIBRARY: TaskLibrary = {
       },
       {
         title: '6. Traçabilité et Documentation',
-        description: 'Renseignement du bordereau, saisie dans GED OS / Kobo',
+        description: 'Renseignement du bordereau, saisie dans GED OS MINT / Kobo',
         steps: [
           'Remplir le bordereau de préparation',
           'Indiquer le numéro d\'ordre du kit',
@@ -2258,7 +2258,7 @@ export const DEFAULT_TASK_LIBRARY: TaskLibrary = {
           'Noter les résultats des tests',
           'Enregistrer la date de préparation',
           'Identifier le préparateur',
-          'Saisir les données dans GED OS / Kobo',
+          'Saisir les données dans GED OS MINT / Kobo',
           'Photographier le kit préparé',
           'Signer le bordereau',
           'Archiver le document',
@@ -2270,7 +2270,7 @@ export const DEFAULT_TASK_LIBRARY: TaskLibrary = {
           '☐ Tests notés',
           '☐ Date enregistrée',
           '☐ Préparateur identifié',
-          '☐ Données saisies GED OS / Kobo',
+          '☐ Données saisies GED OS MINT / Kobo',
           '☐ Photo prise',
           '☐ Bordereau signé',
           '☐ Document archivé',
@@ -2297,7 +2297,7 @@ export const DEFAULT_TASK_LIBRARY: TaskLibrary = {
           'Documenter les corrections effectuées',
           'En cas de défaut imputable au Lot A : réfection complète',
           'Signaler tout défaut non corrigeable',
-          'Mettre à jour la traçabilité GED OS / Kobo',
+          'Mettre à jour la traçabilité GED OS MINT / Kobo',
           'Valider le passage de témoin avec le Lot B',
         ],
         checklist: [

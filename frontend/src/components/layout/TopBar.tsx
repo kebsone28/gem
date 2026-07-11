@@ -55,16 +55,16 @@ export function TopBar() {
           </div>
         )}
 
-        {/* Online Status Dot */}
-        <div 
-          className={`flex h-6 w-6 items-center justify-center rounded-full border ${
-            navigator.onLine 
-              ? 'border-emerald-500/15 bg-emerald-500/10 text-emerald-300' 
+        {/* Online Status Dot - touch target amélioré */}
+        <div
+          className={`touch-target flex h-9 w-9 items-center justify-center rounded-full border ${
+            navigator.onLine
+              ? 'border-emerald-500/15 bg-emerald-500/10 text-emerald-300'
               : 'border-rose-500/15 bg-rose-500/10 text-rose-300'
           }`}
           title={navigator.onLine ? 'En ligne' : 'Hors ligne'}
         >
-          <Activity size={10} className={navigator.onLine ? 'animate-pulse' : ''} />
+          <Activity size={14} className={navigator.onLine ? 'animate-pulse' : ''} />
         </div>
       </div>
     </header>

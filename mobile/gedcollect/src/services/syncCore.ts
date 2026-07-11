@@ -27,50 +27,22 @@ type ErrorCategory = 'network' | 'server' | 'conflict' | 'validation' | 'unknown
 let isSyncing = false;
 let currentBackoff = INITIAL_BACKOFF;
 
-// Try to load pako for gzip compression
-let pako: any = null;
-try { pako = require('pako'); } catch {}
-
-// Custom btoa implementation for React Native environment
-function btoa(input: string): string {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
-  let output = '';
-  for (let block = 0, charCode, i = 0, map = chars;
-       input.charAt(i | 0) || (map = '=', i % 1);
-       output += map.charAt(63 & block >> 8 - i % 1 * 8)) {
-    charCode = input.charCodeAt(i += 3 / 4);
-    if (charCode > 0xFF) {
-      throw new Error("'btoa' failed: The string to be encoded contains characters outside of the Latin1 range.");
-    }
-    block = block << 8 | charCode;
-  }
-  return output;
-}
-
-/**
- * Compress payload with gzip if available, otherwise minify JSON
- */
-function compressPayload(data: any): string | Uint8Array {
-  const json = JSON.stringify(data);
-  if (pako) {
-    const compressed = pako.gzip(json);
-    // Convert to base64 for transport
-    const binary = String.fromCharCode(...new Uint8Array(compressed));
-    return btoa(binary);
-  }
-  // Fallback: minified JSON (remove all whitespace)
-  return json;
-}
-
 /**
  * Categorize error for better handling
  */
 function categorizeError(error: any): ErrorCategory {
   const msg = String(error?.message || error || '').toLowerCase();
-  if (msg.includes('network') || msg.includes('econnrefused') || msg.includes('timeout') ||
-      msg.includes('enotfound') || msg.includes('fetch')) return 'network';
+  if (
+    msg.includes('network') ||
+    msg.includes('econnrefused') ||
+    msg.includes('timeout') ||
+    msg.includes('enotfound') ||
+    msg.includes('fetch')
+  )
+    return 'network';
   if (msg.includes('409') || msg.includes('conflict') || msg.includes('version')) return 'conflict';
-  if (msg.includes('422') || msg.includes('validation') || msg.includes('invalid')) return 'validation';
+  if (msg.includes('422') || msg.includes('validation') || msg.includes('invalid'))
+    return 'validation';
   if (msg.includes('500') || msg.includes('503') || msg.includes('server error')) return 'server';
   return 'unknown';
 }
@@ -128,13 +100,12 @@ export async function performCoreSync(): Promise<SyncResult> {
           photos: sub.photos as Record<string, string[]> | undefined,
         }));
 
-        const compressed = compressPayload(batch);
         // Mark all as syncing
         for (const item of batch) {
           await updateSubmission(item.id, { status: 'syncing' });
         }
 
-        const batchResult = await submitBatchSubmissions({ submissions: batch, compressed });
+        const batchResult = await submitBatchSubmissions({ submissions: batch });
         if (batchResult.success) {
           for (const item of batch) {
             await updateSubmission(item.id, {
@@ -198,7 +169,7 @@ async function syncRemainingIndividually(
   errors: string[],
   failed: number,
   conflicts: number,
-  synced: number,
+  synced: number
 ) {
   for (const sub of pending) {
     const result = await syncSingleSubmission(sub);
@@ -240,14 +211,7 @@ async function syncSingleSubmission(sub: any): Promise<'synced' | 'conflict' | '
       photos: sub.photos as Record<string, string[]> | undefined,
     };
 
-    // Compress payload for large submissions
-    const compressed = JSON.stringify(payload).length > 10240
-      ? compressPayload(payload)
-      : null;
-
-    const result = compressed
-      ? await submitFormData({ ...payload, compressed } as any)
-      : await submitFormData(payload);
+    const result = await submitFormData(payload);
 
     // Success
     await updateSubmission(sub.id, {

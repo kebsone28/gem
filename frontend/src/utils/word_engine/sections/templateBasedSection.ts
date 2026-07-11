@@ -1,5 +1,15 @@
 // Template-based Word generation matching CDC_COMPLET_PROJET_RACCORDEMENT format
-import { Paragraph, Table, TableRow, TableCell, TextRun, AlignmentType, WidthType, ImageRun } from 'docx';
+import {
+  Paragraph,
+  Table,
+  TableRow,
+  TableCell,
+  TextRun,
+  AlignmentType,
+  WidthType,
+  ImageRun,
+  BorderStyle,
+} from 'docx';
 import { createText, createSectionHeader, parseMarkdownText } from '../utils/styles';
 import { fetchImageCached } from '../utils/imageLoader';
 import { COLORS } from '../theme/colors';
@@ -7,9 +17,10 @@ import { FONT_SIZES } from '../theme/typography';
 import { SPACING, MARGINS } from '../theme/spacing';
 import { BORDERS } from '../theme/borders';
 import { ICONS } from '../theme/icons';
-import { createCard, createTwoColumns } from '../components';
+import { createCard, createTwoColumns, createCoverPage } from '../components';
 import { createQualityGrid } from '../components/QualityGrid';
 import type { QualityGridOptions } from '../components/QualityGrid';
+import { extractImageDimensions } from '../utils/imageDimensions';
 
 export interface TemplateSectionOptions {
   role: string;
@@ -19,6 +30,8 @@ export interface TemplateSectionOptions {
   signataire: string;
   periode: string;
   specifications: string;
+  coverImagePath?: string;
+  coverImageType?: 'png' | 'jpeg';
   phases: Array<{
     title: string;
     description: string;
@@ -88,9 +101,27 @@ export const createTemplateSection = async (options: TemplateSectionOptions) => 
     missions,
     koboGuide,
     qualityGrid,
+    coverImagePath,
+    coverImageType = 'png',
   } = options;
 
   const children: any[] = [];
+
+  // 0. Cover Page with image
+  if (coverImagePath) {
+    const coverBuffer = await fetchImageCached(coverImagePath);
+    if (coverBuffer) {
+      const coverElements = createCoverPage({
+        title: role,
+        subtitle: specifications ? specifications.substring(0, 120) + '...' : undefined,
+        role,
+        reference,
+        imageBuffer: coverBuffer,
+        imageType: coverImageType,
+      });
+      children.push(...coverElements);
+    }
+  }
 
   // 1. Unified Header Table matching CDC template exactly
   children.push(
@@ -160,7 +191,11 @@ export const createTemplateSection = async (options: TemplateSectionOptions) => 
                 new Paragraph({
                   spacing: { before: SPACING.TINY, after: SPACING.TINY },
                   children: [
-                    createText('Référentiel  ', { bold: true, size: FONT_SIZES.SMALL, color: COLORS.PRIMARY }),
+                    createText('Référentiel  ', {
+                      bold: true,
+                      size: FONT_SIZES.SMALL,
+                      color: COLORS.PRIMARY,
+                    }),
                     createText(referentiel, { size: FONT_SIZES.SMALL, color: COLORS.SLATE }),
                   ],
                 }),
@@ -173,7 +208,11 @@ export const createTemplateSection = async (options: TemplateSectionOptions) => 
                 new Paragraph({
                   spacing: { before: SPACING.TINY, after: SPACING.TINY },
                   children: [
-                    createText('Logistique  ', { bold: true, size: FONT_SIZES.SMALL, color: COLORS.PRIMARY }),
+                    createText('Logistique  ', {
+                      bold: true,
+                      size: FONT_SIZES.SMALL,
+                      color: COLORS.PRIMARY,
+                    }),
                     createText(logistique, { size: FONT_SIZES.SMALL, color: COLORS.SLATE }),
                   ],
                 }),
@@ -190,7 +229,11 @@ export const createTemplateSection = async (options: TemplateSectionOptions) => 
                 new Paragraph({
                   spacing: { before: SPACING.TINY, after: SPACING.TINY },
                   children: [
-                    createText('Signataire  ', { bold: true, size: FONT_SIZES.SMALL, color: COLORS.PRIMARY }),
+                    createText('Signataire  ', {
+                      bold: true,
+                      size: FONT_SIZES.SMALL,
+                      color: COLORS.PRIMARY,
+                    }),
                     createText(signataire, { size: FONT_SIZES.SMALL, color: COLORS.SLATE }),
                   ],
                 }),
@@ -202,7 +245,11 @@ export const createTemplateSection = async (options: TemplateSectionOptions) => 
                 new Paragraph({
                   spacing: { before: SPACING.TINY, after: SPACING.TINY },
                   children: [
-                    createText('Période  ', { bold: true, size: FONT_SIZES.SMALL, color: COLORS.PRIMARY }),
+                    createText('Période  ', {
+                      bold: true,
+                      size: FONT_SIZES.SMALL,
+                      color: COLORS.PRIMARY,
+                    }),
                     createText(periode, { size: FONT_SIZES.SMALL, color: COLORS.SLATE }),
                   ],
                 }),
@@ -222,9 +269,7 @@ export const createTemplateSection = async (options: TemplateSectionOptions) => 
   children.push(
     new Paragraph({
       spacing: { before: SPACING.SMALL, after: SPACING.MEDIUM },
-      children: [
-        createText(specifications, { size: FONT_SIZES.NORMAL, color: COLORS.SLATE }),
-      ],
+      children: [createText(specifications, { size: FONT_SIZES.NORMAL, color: COLORS.SLATE })],
     })
   );
 
@@ -234,19 +279,22 @@ export const createTemplateSection = async (options: TemplateSectionOptions) => 
       const parts = mission.split(' : ');
       const prefix = parts[0];
       const text = parts.slice(1).join(' : ');
-      
+
       children.push(
         new Paragraph({
           bullet: { level: 0 },
           spacing: { before: 60, after: 60 },
           children: text
             ? [
-                new TextRun({ text: `${prefix} : `, bold: true, color: COLORS.SECONDARY, size: FONT_SIZES.NORMAL }),
+                new TextRun({
+                  text: `${prefix} : `,
+                  bold: true,
+                  color: COLORS.SECONDARY,
+                  size: FONT_SIZES.NORMAL,
+                }),
                 new TextRun({ text, size: FONT_SIZES.NORMAL }),
               ]
-            : [
-                new TextRun({ text: mission, size: FONT_SIZES.NORMAL }),
-              ],
+            : [new TextRun({ text: mission, size: FONT_SIZES.NORMAL })],
         })
       );
     });
@@ -274,7 +322,11 @@ export const createTemplateSection = async (options: TemplateSectionOptions) => 
         new Paragraph({
           spacing: { before: SPACING.SMALL, after: SPACING.SMALL },
           children: [
-            createText(phase.description, { size: FONT_SIZES.NORMAL, color: COLORS.GRAY, italics: true }),
+            createText(phase.description, {
+              size: FONT_SIZES.NORMAL,
+              color: COLORS.GRAY,
+              italics: true,
+            }),
           ],
         })
       );
@@ -287,13 +339,22 @@ export const createTemplateSection = async (options: TemplateSectionOptions) => 
             new Paragraph({
               spacing: { before: 50, after: 50 },
               children: [
-                createText(`  ${idx + 1}. ${step}`, { size: FONT_SIZES.SMALL, color: COLORS.SLATE }),
+                createText(`  ${idx + 1}. ${step}`, {
+                  size: FONT_SIZES.SMALL,
+                  color: COLORS.SLATE,
+                }),
               ],
             })
           );
         });
       } else {
-        leftContent.push(new Paragraph({ children: [createText('Aucune étape définie', { size: FONT_SIZES.SMALL, color: COLORS.GRAY })] }));
+        leftContent.push(
+          new Paragraph({
+            children: [
+              createText('Aucune étape définie', { size: FONT_SIZES.SMALL, color: COLORS.GRAY }),
+            ],
+          })
+        );
       }
 
       const leftCard = createCard({
@@ -326,7 +387,10 @@ export const createTemplateSection = async (options: TemplateSectionOptions) => 
             new Paragraph({
               spacing: { before: 40, after: 40 },
               children: [
-                createText(`  ${ICONS.CHECK || '✔'} ${item}`, { size: FONT_SIZES.SMALL, color: COLORS.SLATE }),
+                createText(`  ${ICONS.CHECK || '✔'} ${item}`, {
+                  size: FONT_SIZES.SMALL,
+                  color: COLORS.SLATE,
+                }),
               ],
             })
           );
@@ -352,7 +416,10 @@ export const createTemplateSection = async (options: TemplateSectionOptions) => 
             new Paragraph({
               spacing: { before: 40, after: 40 },
               children: [
-                createText(`  ${ICONS.STAR || '★'} ${point}`, { size: FONT_SIZES.SMALL, color: COLORS.SLATE }),
+                createText(`  ${ICONS.STAR || '★'} ${point}`, {
+                  size: FONT_SIZES.SMALL,
+                  color: COLORS.SLATE,
+                }),
               ],
             })
           );
@@ -378,7 +445,10 @@ export const createTemplateSection = async (options: TemplateSectionOptions) => 
             new Paragraph({
               spacing: { before: 40, after: 40 },
               children: [
-                createText(`  ${ICONS.SHIELD || '⚠'} ${point}`, { size: FONT_SIZES.SMALL, color: COLORS.SLATE }),
+                createText(`  ${ICONS.SHIELD || '⚠'} ${point}`, {
+                  size: FONT_SIZES.SMALL,
+                  color: COLORS.SLATE,
+                }),
               ],
             })
           );
@@ -386,7 +456,7 @@ export const createTemplateSection = async (options: TemplateSectionOptions) => 
       }
 
       const rightCard = createCard({
-        title: "Contrôles & Exigences",
+        title: 'Contrôles & Exigences',
         icon: 'CHECK',
         content: rightContent,
         backgroundColor: '#F0FDF4', // Light green
@@ -396,7 +466,7 @@ export const createTemplateSection = async (options: TemplateSectionOptions) => 
 
       // Combine in two columns
       children.push(createTwoColumns(leftCard, rightCard));
-      
+
       // Add some space after the two columns
       children.push(new Paragraph({ spacing: { after: SPACING.MEDIUM } }));
     });
@@ -404,7 +474,9 @@ export const createTemplateSection = async (options: TemplateSectionOptions) => 
 
   // Guide de Saisie Kobo & Contrôles GED OS
   if (koboGuide && koboGuide.length > 0) {
-    children.push(createSectionHeader('4. Guide de Saisie Kobo & Contrôles GED OS', COLORS.PRIMARY));
+    children.push(
+      createSectionHeader('4. Guide de Saisie Kobo & Contrôles GED OS', COLORS.PRIMARY)
+    );
 
     koboGuide.forEach((block) => {
       children.push(
@@ -426,7 +498,11 @@ export const createTemplateSection = async (options: TemplateSectionOptions) => 
           new Paragraph({
             spacing: { before: SPACING.SMALL, after: SPACING.SMALL },
             children: [
-              createText(block.intro, { size: FONT_SIZES.SMALL, color: COLORS.GRAY, italics: true }),
+              createText(block.intro, {
+                size: FONT_SIZES.SMALL,
+                color: COLORS.GRAY,
+                italics: true,
+              }),
             ],
           })
         );
@@ -440,18 +516,18 @@ export const createTemplateSection = async (options: TemplateSectionOptions) => 
           koboLeftContent.push(
             new Paragraph({
               spacing: { before: 40, after: 40 },
-              children: [
-                createText(`✔ ${item}`, { size: FONT_SIZES.SMALL, color: COLORS.SLATE }),
-              ],
+              children: [createText(`✔ ${item}`, { size: FONT_SIZES.SMALL, color: COLORS.SLATE })],
             })
           );
         });
       } else {
-        koboLeftContent.push(new Paragraph({ children: [createText('-', { size: FONT_SIZES.SMALL })] }));
+        koboLeftContent.push(
+          new Paragraph({ children: [createText('-', { size: FONT_SIZES.SMALL })] })
+        );
       }
-      
+
       const koboLeftCard = createCard({
-        title: "À renseigner",
+        title: 'À renseigner',
         icon: 'DOCUMENT',
         content: koboLeftContent,
         backgroundColor: '#F8FAFC', // Slate 50
@@ -479,9 +555,7 @@ export const createTemplateSection = async (options: TemplateSectionOptions) => 
           koboRightContent.push(
             new Paragraph({
               spacing: { before: 40, after: 40 },
-              children: [
-                createText(`✘ ${item}`, { size: FONT_SIZES.SMALL, color: COLORS.DANGER }),
-              ],
+              children: [createText(`✘ ${item}`, { size: FONT_SIZES.SMALL, color: COLORS.DANGER })],
             })
           );
         });
@@ -506,15 +580,19 @@ export const createTemplateSection = async (options: TemplateSectionOptions) => 
             new Paragraph({
               spacing: { before: 40, after: 40 },
               children: [
-                createText(`ℹ ${item}`, { size: FONT_SIZES.SMALL, color: COLORS.SLATE, italics: true }),
+                createText(`ℹ ${item}`, {
+                  size: FONT_SIZES.SMALL,
+                  color: COLORS.SLATE,
+                  italics: true,
+                }),
               ],
             })
           );
         });
       }
-      
+
       const koboRightCard = createCard({
-        title: "Règles",
+        title: 'Règles',
         icon: 'SHIELD',
         content: koboRightContent,
         backgroundColor: '#FEF2F2', // Light red
@@ -547,22 +625,72 @@ export const createTemplateSection = async (options: TemplateSectionOptions) => 
         })
       );
 
-      // Load and insert image
+      // Load and insert image with proper aspect ratio
       const buffer = await fetchImageCached(img.url);
       if (buffer) {
+        // Detect image type and dimensions for proper sizing
+        const ext = img.url.split('.').pop()?.toLowerCase();
+        const mimeType =
+          ext === 'jpg' || ext === 'jpeg' ? ('image/jpeg' as const) : ('image/png' as const);
+        const dims = extractImageDimensions(buffer, mimeType);
+        const maxWidth = 450;
+        const maxHeight = 320;
+        let imgWidth = maxWidth;
+        let imgHeight = maxHeight;
+
+        if (dims) {
+          const ratio = dims.width / dims.height;
+          if (ratio > 1) {
+            // Landscape: constrain by width
+            imgWidth = maxWidth;
+            imgHeight = Math.round(maxWidth / ratio);
+          } else {
+            // Portrait or square: constrain by height
+            imgHeight = maxHeight;
+            imgWidth = Math.round(maxHeight * ratio);
+          }
+          // Ensure minimum visibility
+          imgWidth = Math.max(imgWidth, 200);
+          imgHeight = Math.max(imgHeight, 120);
+        }
+
+        // Wrap image in a styled table for a framed/rounded effect
         children.push(
-          new Paragraph({
+          new Table({
+            width: { size: 72, type: WidthType.PERCENTAGE },
             alignment: AlignmentType.CENTER,
-            spacing: { before: 200, after: 300 },
-            children: [
-              new ImageRun({
-                data: buffer,
-                transformation: { width: 450, height: 350 },
-                type: 'png',
-              } as any),
+            borders: {
+              top: { style: BorderStyle.SINGLE, size: 8, color: COLORS.BORDER.replace('#', '') },
+              bottom: { style: BorderStyle.SINGLE, size: 8, color: COLORS.BORDER.replace('#', '') },
+              left: { style: BorderStyle.SINGLE, size: 8, color: COLORS.BORDER.replace('#', '') },
+              right: { style: BorderStyle.SINGLE, size: 8, color: COLORS.BORDER.replace('#', '') },
+            },
+            rows: [
+              new TableRow({
+                children: [
+                  new TableCell({
+                    shading: { fill: COLORS.BG_CARD.replace('#', '') },
+                    children: [
+                      new Paragraph({
+                        alignment: AlignmentType.CENTER,
+                        spacing: { before: 160, after: 160 },
+                        children: [
+                          new ImageRun({
+                            data: buffer,
+                            transformation: { width: imgWidth, height: imgHeight },
+                            type: mimeType === 'image/jpeg' ? 'jpeg' : 'png',
+                          } as any),
+                        ],
+                      }),
+                    ],
+                  }),
+                ],
+              }),
             ],
           })
         );
+
+        children.push(new Paragraph({ spacing: { after: 200 } }));
       }
 
       // Render notes and legend in Two Columns if possible
@@ -585,9 +713,7 @@ export const createTemplateSection = async (options: TemplateSectionOptions) => 
           noteBlock.lines.forEach((line) => {
             notesContent.push(
               new Paragraph({
-                children: [
-                  createText(`• ${line}`, { size: FONT_SIZES.SMALL, color: COLORS.GRAY }),
-                ],
+                children: [createText(`• ${line}`, { size: FONT_SIZES.SMALL, color: COLORS.GRAY })],
                 spacing: { after: 40 },
                 indent: { left: 240 },
               })
@@ -613,21 +739,27 @@ export const createTemplateSection = async (options: TemplateSectionOptions) => 
 
       if (notesContent.length > 0 || legendContent.length > 0) {
         const leftNotesCard = createCard({
-          title: "Détails Techniques",
-          content: notesContent.length > 0 ? notesContent : [new Paragraph({ children: [createText('-')] })],
+          title: 'Détails Techniques',
+          content:
+            notesContent.length > 0
+              ? notesContent
+              : [new Paragraph({ children: [createText('-')] })],
           backgroundColor: '#F8FAFC',
           borderColor: '#E2E8F0',
           titleColor: COLORS.SLATE,
         });
-        
+
         const rightLegendCard = createCard({
-          title: "Légende",
-          content: legendContent.length > 0 ? legendContent : [new Paragraph({ children: [createText('-')] })],
+          title: 'Légende',
+          content:
+            legendContent.length > 0
+              ? legendContent
+              : [new Paragraph({ children: [createText('-')] })],
           backgroundColor: '#F8FAFC',
           borderColor: '#E2E8F0',
           titleColor: COLORS.SLATE,
         });
-        
+
         children.push(createTwoColumns(leftNotesCard, rightLegendCard));
         children.push(new Paragraph({ spacing: { after: SPACING.MEDIUM } }));
       }
@@ -637,7 +769,7 @@ export const createTemplateSection = async (options: TemplateSectionOptions) => 
   // MATÉRIEL & LOGISTIQUE + SÉCURITÉ & HSE — match .dotx order exactly
   if ((material && material.length > 0) || (hse && hse.length > 0)) {
     children.push(createSectionHeader('MATÉRIEL & LOGISTIQUE', COLORS.WARNING));
-    
+
     const matContent: any[] = [];
     if (material && material.length > 0) {
       material.forEach((item) => {
@@ -650,14 +782,18 @@ export const createTemplateSection = async (options: TemplateSectionOptions) => 
         );
       });
     } else {
-      matContent.push(new Paragraph({ children: [createText('Aucun matériel spécifié', { size: FONT_SIZES.SMALL })] }));
+      matContent.push(
+        new Paragraph({
+          children: [createText('Aucun matériel spécifié', { size: FONT_SIZES.SMALL })],
+        })
+      );
     }
 
     children.push(...matContent);
     children.push(new Paragraph({ spacing: { after: SPACING.MEDIUM } }));
 
     children.push(createSectionHeader('SÉCURITÉ & HSE', COLORS.DANGER));
-    
+
     const hseContent: any[] = [];
     if (hse && hse.length > 0) {
       hse.forEach((item) => {
@@ -670,7 +806,11 @@ export const createTemplateSection = async (options: TemplateSectionOptions) => 
         );
       });
     } else {
-      hseContent.push(new Paragraph({ children: [createText('Aucune règle HSE spécifiée', { size: FONT_SIZES.SMALL })] }));
+      hseContent.push(
+        new Paragraph({
+          children: [createText('Aucune règle HSE spécifiée', { size: FONT_SIZES.SMALL })],
+        })
+      );
     }
 
     children.push(...hseContent);
@@ -680,15 +820,15 @@ export const createTemplateSection = async (options: TemplateSectionOptions) => 
   // Quality Grid with Penalties
   if (qualityGrid && qualityGrid.items && qualityGrid.items.length > 0) {
     children.push(createSectionHeader('7. Grille de Contrôle Qualité & Pénalités', COLORS.PRIMARY));
-    
+
     const qualityGridElements = createQualityGrid({
       title: 'Grille de Contrôle Qualité',
-      subtitle: 'Critères d\'évaluation et pénalités associées',
+      subtitle: "Critères d'évaluation et pénalités associées",
       items: qualityGrid.items,
       totalWeight: qualityGrid.totalWeight,
       passingScore: qualityGrid.passingScore,
     });
-    
+
     children.push(...qualityGridElements);
   }
 
@@ -707,13 +847,20 @@ export const createTemplateSection = async (options: TemplateSectionOptions) => 
                 new Paragraph({
                   spacing: { before: SPACING.XL, after: SPACING.SMALL },
                   children: [
-                    createText('VISA DIRECTION TECHNIQUE', { bold: true, size: FONT_SIZES.NORMAL, color: COLORS.PRIMARY }),
+                    createText('VISA DIRECTION TECHNIQUE', {
+                      bold: true,
+                      size: FONT_SIZES.NORMAL,
+                      color: COLORS.PRIMARY,
+                    }),
                   ],
                 }),
                 new Paragraph({
                   spacing: { before: SPACING.SMALL, after: SPACING.SMALL },
                   children: [
-                    createText('Fait à Dakar, le ________________', { size: FONT_SIZES.NORMAL, color: COLORS.GRAY }),
+                    createText('Fait à Dakar, le ________________', {
+                      size: FONT_SIZES.NORMAL,
+                      color: COLORS.GRAY,
+                    }),
                   ],
                 }),
               ],
@@ -725,13 +872,20 @@ export const createTemplateSection = async (options: TemplateSectionOptions) => 
                 new Paragraph({
                   spacing: { before: SPACING.XL, after: SPACING.SMALL },
                   children: [
-                    createText(`VISA PRESTATAIRE (${role.toUpperCase()})`, { bold: true, size: FONT_SIZES.NORMAL, color: COLORS.PRIMARY }),
+                    createText(`VISA PRESTATAIRE (${role.toUpperCase()})`, {
+                      bold: true,
+                      size: FONT_SIZES.NORMAL,
+                      color: COLORS.PRIMARY,
+                    }),
                   ],
                 }),
                 new Paragraph({
                   spacing: { before: SPACING.SMALL, after: SPACING.SMALL },
                   children: [
-                    createText('Signature et Empreinte', { size: FONT_SIZES.NORMAL, color: COLORS.GRAY }),
+                    createText('Signature et Empreinte', {
+                      size: FONT_SIZES.NORMAL,
+                      color: COLORS.GRAY,
+                    }),
                   ],
                 }),
               ],

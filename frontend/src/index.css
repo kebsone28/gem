@@ -61,81 +61,113 @@
 /* Light mode overrides - GED OS Dolphin Executive Premium Theme */
 :root:not(.dark) {
   /* ─── GED OS Dolphin Executive Premium Palette ─── */
-  
-  /* Fond principal - Bleu électrique dégradé premium avec effet wow */
-  --color-surface-elevated: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #56CCF2 75%, #4facfe 100%);
-  --color-surface-alt: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #56CCF2 100%);
+
+  /* Fond principal - Dégradé fixe (pas d'animation sur mobile pour préserver les performances) */
+  --color-surface-elevated: linear-gradient(
+    135deg,
+    #667eea 0%,
+    #764ba2 25%,
+    #f093fb 50%,
+    #56ccf2 75%,
+    #4facfe 100%
+  );
+  --color-surface-alt: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #56ccf2 100%);
   --color-bg-tertiary: rgba(102, 126, 234, 0.1);
-  
+
   /* Textes - avec meilleur contraste */
   --color-text: #0a1628;
   --color-text-primary: #0a1628;
   --color-text-secondary: #1e3a5f;
   --color-text-muted: #2d4a6f;
-  
+
   /* Bordures */
   --color-border: rgba(107, 122, 144, 0.3);
   --color-border-subtle: rgba(107, 122, 144, 0.2);
-  
+
   /* Couleurs fonctionnelles */
-  --color-primary: #56CCF2;
-  --color-primary-light: #7ED6F5;
-  --color-accent: #1E88E5;
-  --color-success: #27AE60;
-  --color-danger: #E74C3C;
-  --color-warning: #F39C12;
-  --color-info: #3498DB;
-  
+  --color-primary: #56ccf2;
+  --color-primary-light: #7ed6f5;
+  --color-accent: #1e88e5;
+  --color-success: #27ae60;
+  --color-danger: #e74c3c;
+  --color-warning: #f39c12;
+  --color-info: #3498db;
+
   /* Surface principale */
-  --color-dark-surface: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #56CCF2 75%, #4facfe 100%);
+  --color-dark-surface: linear-gradient(
+    135deg,
+    #667eea 0%,
+    #764ba2 25%,
+    #f093fb 50%,
+    #56ccf2 75%,
+    #4facfe 100%
+  );
   --color-dark-border: rgba(107, 122, 144, 0.2);
   --color-dark-text-secondary: #1e3a5f;
-  
+
   /* ─── Premium Glow Effects ─── */
   --glow-primary: 0 0 20px rgba(86, 204, 242, 0.5), 0 0 40px rgba(86, 204, 242, 0.3);
   --glow-accent: 0 0 15px rgba(30, 136, 229, 0.4), 0 0 30px rgba(30, 136, 229, 0.2);
   --glow-purple: 0 0 15px rgba(118, 75, 162, 0.4), 0 0 30px rgba(118, 75, 162, 0.2);
-  
+
   /* ─── Soft UI Shadows Premium ─── */
   --shadow-sm: 0 4px 10px rgba(10, 22, 40, 0.1), 0 2px 6px rgba(255, 255, 255, 0.9);
   --shadow-md: 0 12px 30px rgba(10, 22, 40, 0.12), 0 4px 10px rgba(255, 255, 255, 0.7);
   --shadow-lg: 0 20px 40px rgba(10, 22, 40, 0.15), 0 8px 16px rgba(255, 255, 255, 0.6);
   --shadow-glow: 0 0 30px rgba(102, 126, 234, 0.3), 0 0 60px rgba(118, 75, 162, 0.2);
-  
+
   /* ─── Sidebar specific - Dolphin Executive Premium ─── */
-  --sidebar-bg: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #56CCF2 75%, #4facfe 100%);
-  --sidebar-bg-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #56CCF2 75%, #4facfe 100%);
+  --sidebar-bg: linear-gradient(
+    135deg,
+    #667eea 0%,
+    #764ba2 25%,
+    #f093fb 50%,
+    #56ccf2 75%,
+    #4facfe 100%
+  );
+  --sidebar-bg-gradient: linear-gradient(
+    135deg,
+    #667eea 0%,
+    #764ba2 25%,
+    #f093fb 50%,
+    #56ccf2 75%,
+    #4facfe 100%
+  );
   --sidebar-border: rgba(255, 255, 255, 0.4);
   --sidebar-inner-bg: rgba(0, 0, 0, 0.25);
   --sidebar-inner-border: rgba(255, 255, 255, 0.3);
-  
+
   /* Textes sidebar - avec ombre pour contraste */
-  --sidebar-text-primary: #FFFFFF;
+  --sidebar-text-primary: #ffffff;
   --sidebar-text-secondary: rgba(255, 255, 255, 0.95);
   --sidebar-text-muted: rgba(255, 255, 255, 0.85);
-  
+
   /* Badges */
   --sidebar-badge-bg: rgba(0, 0, 0, 0.4);
-  --sidebar-badge-text: #FFFFFF;
+  --sidebar-badge-text: #ffffff;
   --sidebar-badge-border: rgba(255, 255, 255, 0.6);
-  
+
   /* Navigation */
   --sidebar-nav-hover-bg: rgba(0, 0, 0, 0.35);
-  --sidebar-nav-hover-text: #FFFFFF;
+  --sidebar-nav-hover-text: #ffffff;
   --sidebar-nav-active-bg: rgba(0, 0, 0, 0.45);
-  --sidebar-nav-active-text: #FFFFFF;
+  --sidebar-nav-active-text: #ffffff;
   --sidebar-nav-active-border: rgba(255, 255, 255, 0.7);
-  
+
   /* Input */
   --sidebar-input-bg: rgba(0, 0, 0, 0.4);
   --sidebar-input-border: rgba(255, 255, 255, 0.5);
   --sidebar-input-placeholder: rgba(255, 255, 255, 0.75);
-  
+
   /* ─── Glassmorphism Premium ─── */
   --glass-bg: rgba(255, 255, 255, 0.85);
   --glass-blur: blur(16px);
-  --glass-shine: linear-gradient(135deg, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.2) 100%);
-  
+  --glass-shine: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.4) 0%,
+    rgba(255, 255, 255, 0.2) 100%
+  );
+
   /* ─── Coins arrondis ─── */
   --radius-badge: 999px;
   --radius-button: 18px;
@@ -169,24 +201,70 @@
 
 /* Smooth theme transition */
 html {
-  transition: background-color var(--transition-normal), color var(--transition-normal);
+  transition:
+    background-color var(--transition-normal),
+    color var(--transition-normal);
 }
 
-html, body {
+html,
+body {
   background-color: var(--color-bg-tertiary);
   color: var(--color-text);
 }
 
-:root:not(.dark) html, :root:not(.dark) body {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #56CCF2 75%, #4facfe 100%);
-  background-size: 400% 400%;
-  animation: gradientShift 15s ease infinite;
+:root:not(.dark) html,
+:root:not(.dark) body {
+  background: linear-gradient(
+    135deg,
+    #667eea 0%,
+    #764ba2 25%,
+    #f093fb 50%,
+    #56ccf2 75%,
+    #4facfe 100%
+  );
+  /* Animation réduite pour performance mobile - désactivée si l'utilisateur préfère réduire les animations */
+  background-size: 200% 200%;
 }
 
-@keyframes gradientShift {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+@media (prefers-reduced-motion: no-preference) {
+  :root:not(.dark) html,
+  :root:not(.dark) body {
+    background-size: 400% 400%;
+    animation: gradientShift 30s ease infinite; /* Plus lent = moins de jank */
+  }
+
+  @keyframes gradientShift {
+    0% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+    100% {
+      background-position: 0% 50%;
+    }
+  }
+}
+
+/* ─── Responsive font sizes (mobile-first) ─── */
+@media (max-width: 639px) {
+  .text-responsive-xl {
+    font-size: 1.25rem;
+  } /* 20px */
+  .text-responsive-2xl {
+    font-size: 1.5rem;
+  } /* 24px */
+  .text-responsive-3xl {
+    font-size: 1.75rem;
+  } /* 28px */
+
+  /* S'assurer que les textes très petits sont lisibles */
+  .text-mini {
+    font-size: 11px;
+  }
+  .text-tiny {
+    font-size: 10px;
+  }
 }
 
 /* Premium shimmer effect for cards */
@@ -209,8 +287,12 @@ html, body {
 }
 
 @keyframes shimmer {
-  0% { left: -100%; }
-  100% { left: 100%; }
+  0% {
+    left: -100%;
+  }
+  100% {
+    left: 100%;
+  }
 }
 
 /* Floating animation for premium elements */
@@ -219,8 +301,13 @@ html, body {
 }
 
 @keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
 }
 
 /* Pulse glow effect */
@@ -229,12 +316,63 @@ html, body {
 }
 
 @keyframes pulseGlow {
-  0%, 100% { box-shadow: var(--glow-primary); }
-  50% { box-shadow: var(--shadow-glow); }
+  0%,
+  100% {
+    box-shadow: var(--glow-primary);
+  }
+  50% {
+    box-shadow: var(--shadow-glow);
+  }
 }
 
 /* (Tokens and rules below) */
 
+/* ─────────────────────────────────────────────
+   Safe Area Insets pour mobiles (notch iPhone, barre navigation Android)
+   Utilisation : padding: env(safe-area-inset-top) env(safe-area-inset-right)
+                   env(safe-area-inset-bottom) env(safe-area-inset-left);
+───────────────────────────────────────────── */
+@supports (padding: env(safe-area-inset-top)) {
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .safe-area-left {
+    padding-left: env(safe-area-inset-left);
+  }
+  .safe-area-right {
+    padding-right: env(safe-area-inset-right);
+  }
+  .safe-area-all {
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
+      env(safe-area-inset-left);
+  }
+}
+
+/* ─── Améliorations tactiles mobiles ─── */
+/* Taille minimale des cibles tactiles (Material Design recommend 44px) */
+.touch-target {
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Désactiver le double-tap zoom sur les boutons (évite les zoom intempestifs) */
+button,
+a,
+[role='button'] {
+  touch-action: manipulation;
+}
+
+/* Améliorer le scroll sur mobile (momentum + arrêt sur les bords) */
+.custom-scrollbar {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
 
 /* ─────────────────────────────────────────────
    Cross-browser fixes
@@ -276,7 +414,6 @@ button:focus-visible {
 input::placeholder {
   opacity: 0.9;
 }
-
 
 .glass-card:hover {
   box-shadow: var(--shadow-md);
@@ -360,7 +497,14 @@ input::placeholder {
 }
 
 :root:not(.dark) .glass-nav {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #56CCF2 75%, #4facfe 100%);
+  background: linear-gradient(
+    135deg,
+    #667eea 0%,
+    #764ba2 25%,
+    #f093fb 50%,
+    #56ccf2 75%,
+    #4facfe 100%
+  );
   border-right-color: rgba(255, 255, 255, 0.2);
   box-shadow: var(--shadow-glow);
 }
@@ -377,9 +521,15 @@ input::placeholder {
 }
 
 @keyframes navShimmer {
-  0% { left: -100%; }
-  50% { left: 100%; }
-  100% { left: 100%; }
+  0% {
+    left: -100%;
+  }
+  50% {
+    left: 100%;
+  }
+  100% {
+    left: 100%;
+  }
 }
 
 .glass-category-header {
@@ -392,7 +542,9 @@ input::placeholder {
 
 :root:not(.dark) .glass-category-header {
   color: rgba(255, 255, 255, 0.95);
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3), 0 0 10px rgba(255, 255, 255, 0.3);
+  text-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.3),
+    0 0 10px rgba(255, 255, 255, 0.3);
 }
 
 /* Texte avec badge pour meilleure visibilité en mode clair */
@@ -401,7 +553,7 @@ input::placeholder {
   padding: 0.15rem 0.5rem;
   background: rgba(0, 0, 0, 0.35);
   border-radius: 6px;
-  color: #FFFFFF;
+  color: #ffffff;
   font-weight: 600;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
@@ -414,7 +566,7 @@ input::placeholder {
   padding: 0.2rem 0.6rem;
   background: rgba(0, 0, 0, 0.5);
   border-radius: 8px;
-  color: #FFFFFF;
+  color: #ffffff;
   font-weight: 700;
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
@@ -467,7 +619,9 @@ input::placeholder {
 }
 
 :root:not(.dark) .kpi-card:hover {
-  box-shadow: 0 0 30px rgba(102, 126, 234, 0.4), 0 0 60px rgba(118, 75, 162, 0.3);
+  box-shadow:
+    0 0 30px rgba(102, 126, 234, 0.4),
+    0 0 60px rgba(118, 75, 162, 0.3);
 }
 
 .kpi-card::after {
@@ -567,8 +721,8 @@ input::placeholder {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #56CCF2 0%, #1E88E5 100%);
-  color: #1F3556;
+  background: linear-gradient(135deg, #56ccf2 0%, #1e88e5 100%);
+  color: #1f3556;
   font-weight: 700;
   padding: 0.75rem 1.6rem;
   border-radius: var(--radius-button);
@@ -583,7 +737,7 @@ input::placeholder {
 .btn-primary:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-glow);
-  background: linear-gradient(135deg, #7ED6F5 0%, #2E98E5 100%);
+  background: linear-gradient(135deg, #7ed6f5 0%, #2e98e5 100%);
 }
 
 .btn-primary:active {
@@ -594,7 +748,7 @@ input::placeholder {
 .btn-secondary {
   background: rgba(255, 255, 255, 0.6);
   border: 1px solid rgba(107, 122, 144, 0.2);
-  color: #1F3556;
+  color: #1f3556;
   font-weight: 600;
   padding: 0.6rem 1.25rem;
   border-radius: var(--radius-button);
@@ -605,8 +759,8 @@ input::placeholder {
 }
 
 .btn-secondary:hover {
-  border-color: #56CCF2;
-  color: #1E88E5;
+  border-color: #56ccf2;
+  color: #1e88e5;
   background: rgba(86, 204, 242, 0.1);
   box-shadow: var(--glow-accent);
   transform: translateY(-1px);
@@ -627,8 +781,8 @@ input::placeholder {
 
 .btn-outline {
   background: transparent;
-  border: 1.5px solid #56CCF2;
-  color: #1E88E5;
+  border: 1.5px solid #56ccf2;
+  color: #1e88e5;
   padding: 0.6rem 1.25rem;
   border-radius: var(--radius-button);
   cursor: pointer;
@@ -653,7 +807,7 @@ input::placeholder {
 
 .btn-ghost:hover {
   background: rgba(86, 204, 242, 0.08);
-  color: #1E88E5;
+  color: #1e88e5;
 }
 
 .btn-lg {
@@ -685,8 +839,10 @@ input::placeholder {
 
 .input-field:focus,
 .input:focus {
-  border-color: #56CCF2;
-  box-shadow: 0 0 0 3px rgba(86, 204, 242, 0.15), var(--glow-primary);
+  border-color: #56ccf2;
+  box-shadow:
+    0 0 0 3px rgba(86, 204, 242, 0.15),
+    var(--glow-primary);
   outline: none;
   background: rgba(255, 255, 255, 0.9);
   transform: translateY(-1px);
@@ -714,7 +870,9 @@ input::placeholder {
 .dark .input-field:focus,
 .dark .input:focus {
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(30, 144, 255, 0.2), var(--glow-primary);
+  box-shadow:
+    0 0 0 3px rgba(30, 144, 255, 0.2),
+    var(--glow-primary);
   background: rgba(10, 22, 40, 0.8);
 }
 
@@ -897,7 +1055,7 @@ input::placeholder {
 
 .badge-primary {
   background: rgba(86, 204, 242, 0.2);
-  color: #1E88E5;
+  color: #1e88e5;
   border: 1px solid rgba(86, 204, 242, 0.4);
   box-shadow: 0 0 10px rgba(86, 204, 242, 0.3);
 }
@@ -909,7 +1067,7 @@ input::placeholder {
 
 .badge-success {
   background: rgba(39, 174, 96, 0.2);
-  color: #27AE60;
+  color: #27ae60;
   border: 1px solid rgba(39, 174, 96, 0.4);
   box-shadow: 0 0 10px rgba(39, 174, 96, 0.3);
 }
@@ -921,7 +1079,7 @@ input::placeholder {
 
 .badge-warning {
   background: rgba(243, 156, 18, 0.2);
-  color: #F39C12;
+  color: #f39c12;
   border: 1px solid rgba(243, 156, 18, 0.4);
   box-shadow: 0 0 10px rgba(243, 156, 18, 0.3);
 }
@@ -934,7 +1092,7 @@ input::placeholder {
 .badge-danger,
 .badge-error {
   background: rgba(231, 76, 60, 0.2);
-  color: #E74C3C;
+  color: #e74c3c;
   border: 1px solid rgba(231, 76, 60, 0.4);
   box-shadow: 0 0 10px rgba(231, 76, 60, 0.3);
 }
@@ -947,7 +1105,7 @@ input::placeholder {
 
 .badge-info {
   background: rgba(52, 152, 219, 0.2);
-  color: #3498DB;
+  color: #3498db;
   border: 1px solid rgba(52, 152, 219, 0.4);
   box-shadow: 0 0 10px rgba(52, 152, 219, 0.3);
 }
@@ -1185,13 +1343,25 @@ input::placeholder {
 
 /* React Hot Toast Animations */
 @keyframes toast-enter {
-  0% { transform: scale(0.9); opacity: 0; }
-  100% { transform: scale(1); opacity: 1; }
+  0% {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 @keyframes toast-leave {
-  0% { transform: scale(1); opacity: 1; }
-  100% { transform: scale(0.9); opacity: 0; }
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.9);
+    opacity: 0;
+  }
 }
 
 .animate-enter {
@@ -1297,7 +1467,9 @@ input::placeholder {
    (copied inline because Vite 8 can't resolve from node_modules)
 ───────────────────────────────────────────── */
 @keyframes react-loading-skeleton {
-  100% { transform: translateX(100%); }
+  100% {
+    transform: translateX(100%);
+  }
 }
 .react-loading-skeleton {
   --base-color: #ebebeb;
@@ -1323,7 +1495,10 @@ input::placeholder {
   right: 0;
   height: 100%;
   background-repeat: no-repeat;
-  background-image: var(--custom-highlight-background, linear-gradient(90deg, var(--base-color) 0%, var(--highlight-color) 50%, var(--base-color) 100%));
+  background-image: var(
+    --custom-highlight-background,
+    linear-gradient(90deg, var(--base-color) 0%, var(--highlight-color) 50%, var(--base-color) 100%)
+  );
   transform: translateX(-100%);
   animation-name: react-loading-skeleton;
   animation-direction: var(--animation-direction);
@@ -1331,10 +1506,13 @@ input::placeholder {
   animation-timing-function: ease-in-out;
   animation-iteration-count: infinite;
 }
-@media (prefers-reduced-motion) {
-  .react-loading-skeleton { --pseudo-element-display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .react-loading-skeleton {
+    --pseudo-element-display: none;
+  }
 }
+
 .dark .react-loading-skeleton {
   --base-color: rgba(30, 144, 255, 0.06);
   --highlight-color: rgba(30, 144, 255, 0.14);
-} */
+}

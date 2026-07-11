@@ -1,5 +1,4 @@
-﻿ 
-// ═══════════════════════════════════════════════════════════════════════════
+﻿// ═══════════════════════════════════════════════════════════════════════════
 // DESIGN SYSTEM CENTRALISÉ - EXPORT DE TOUS LES COMPOSANTS
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -44,6 +43,18 @@ export {
   Modal,
   Skeleton,
 } from './UI';
+
+// Common Components (new)
+export { default as EmptyState } from './common/EmptyState';
+export { default as MobileBottomDrawer } from './common/MobileBottomDrawer';
+export { default as ResponsiveTable } from './common/ResponsiveTable';
+export {
+  default as MobileFormField,
+  TouchInputClasses,
+  TouchSelectClasses,
+  TouchTextareaClasses,
+} from './common/MobileFormField';
+export { default as PullToRefreshIndicator } from './common/PullToRefreshIndicator';
 
 // Dashboard Components (existing)
 export {
