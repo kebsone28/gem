@@ -28,7 +28,7 @@ export const AI_REGISTRY = {
           label: 'NS 01-001',
           description: 'Conception des installations électriques basse tension au Sénégal.',
           keyPoints: [
-            'Équivalence NF C 15-100',
+            'Norme NS 01-001',
             'Régime de neutre TT obligatoire',
             'DDR 30mA pour les circuits terminaux',
             'Prise de terre avec barrette de mesure accessible'

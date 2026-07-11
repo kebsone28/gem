@@ -11,7 +11,7 @@ const CORE_KNOWLEDGE = [
   'PROQUELEC gère l’électrification de masse au Sénégal via la plateforme GED OS.',
   'GED OS orchestre les missions OM : création, validation par Chef de Projet, certification DG.',
   'La collecte terrain est réalisée via Kobo Collect et synchronisée par numeroordre (clé unique).',
-  'La norme de CONCEPTION est NS 01-001 (BT ≤ 1000 V), équivalente à la NF C 15-100.',
+  'La norme de CONCEPTION est NS 01-001 (BT ≤ 1000 V).',
   'La norme de SÉCURITÉ OPÉRATIONNELLE est la NF C 18-510 (Habilitations, Consignation).',
   'Le régime de neutre standard au Sénégal est le TT.',
   'Le branchement Senelec doit respecter le coffret en limite de propriété et la hauteur du hublot à 1.60m.',

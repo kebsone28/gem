@@ -11,6 +11,7 @@ import {
   Loader2,
   Clock,
   Layers3,
+  PenSquare,
 } from 'lucide-react';
 
 interface CahierHeaderProps {
@@ -120,13 +121,22 @@ export const CahierHeader: React.FC<CahierHeaderProps> = ({
                 </button>
               </>
             ) : (
-              <button
-                onClick={onExportWord}
-                className="flex items-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-xs font-black uppercase tracking-widest text-white transition-all duration-300 hover:bg-blue-500 hover:scale-[1.02] shadow-lg shadow-blue-900/40 active:scale-95"
-              >
-                <FileText size={16} />
-                Export .docx
-              </button>
+              <>
+                <button
+                  onClick={onEditToggle}
+                  className="flex items-center gap-2 rounded-2xl bg-amber-600 px-5 py-3 text-xs font-black uppercase tracking-widest text-white transition-all duration-300 hover:bg-amber-500 hover:scale-[1.02] shadow-lg shadow-amber-900/40 active:scale-95"
+                >
+                  <PenSquare size={16} />
+                  Éditer
+                </button>
+                <button
+                  onClick={onExportWord}
+                  className="flex items-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-xs font-black uppercase tracking-widest text-white transition-all duration-300 hover:bg-blue-500 hover:scale-[1.02] shadow-lg shadow-blue-900/40 active:scale-95"
+                >
+                  <FileText size={16} />
+                  Export .docx
+                </button>
+              </>
             )}
 
             <div className="h-8 w-px bg-white/10 mx-2 hidden sm:block" />

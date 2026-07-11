@@ -188,7 +188,7 @@ export default function Aide() {
       zap: 'text-violet-900 dark:text-violet-100',
       content: [
         "Decision Engine (Cerveau) : Analyse assistée des risques et génération d'insights à partir des données serveur synchronisées.",
-        'Electrician Quran : Base de connaissances immuable intégrant les normes NS 01-001 et NFC 15-100.',
+        'Electrician Quran : Base de connaissances immuable intégrant les normes NS 01-001.',
         'Vision assistée : Analyse photo orientée audit technique, utile pour le pré-diagnostic mais à confirmer humainement.',
         'Mentor Sage Interactif : Chat contextuel branché sur les ménages, équipes et journaux d’audit côté serveur.',
       ],

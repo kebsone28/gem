@@ -11,6 +11,7 @@ import {
   BorderStyle,
   TextRun,
   ImageRun,
+  PageNumber,
   type ISectionOptions,
 } from 'docx';
 import { saveAs } from 'file-saver';
@@ -110,11 +111,9 @@ const DOCUMENT_FOOTER = new Footer({
           size: 16,
           color: COLORS.SLATE,
         }),
-        // @ts-expect-error - PAGE_NUMBER field requires special handling
-        new TextRun({ children: ['PAGE_NUMBER'], field: 'PAGE_NUMBER', size: 16, bold: true }),
+        new TextRun({ children: [PageNumber.CURRENT], size: 16, bold: true }),
         createText(' sur ', { size: 16, color: COLORS.SLATE }),
-        // @ts-expect-error - NUMPAGES field requires special handling
-        new TextRun({ children: ['NUMPAGES'], field: 'NUMPAGES', size: 16, bold: true }),
+        new TextRun({ children: [PageNumber.TOTAL_PAGES], size: 16, bold: true }),
       ],
     }),
   ],

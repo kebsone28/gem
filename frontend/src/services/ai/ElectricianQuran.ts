@@ -439,7 +439,7 @@ export const ELECTRICIAN_GUIDE: Record<string, TechnicalDefinition> = {
     description:
       "Garde du corps de l'installation. Coupe le courant en cas de défaut pour protéger les vies.",
     specs: ['Sensibilité 30mA', 'Pouvoir de coupure 6kA', 'Réglage de calibre'],
-    norm: 'NF C 15-100',
+    norm: 'NS 01-001',
     keywords: ['disjoncteur', 'differentiel', 'coupure', 'courant'],
   },
 

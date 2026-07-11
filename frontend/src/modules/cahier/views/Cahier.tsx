@@ -371,6 +371,15 @@ export default function Cahier() {
             }
             isFusedMode={isFusedMode}
             onToggleFusedMode={() => setIsFusedMode(!isFusedMode)}
+            onEditToggle={
+              canCustomizeProject
+                ? () => {
+                    if (documentMode === 'cahier') setIsEditing(!isEditing);
+                    else if (documentMode === 'contrat') setIsContractEditing(!isContractEditing);
+                    else if (documentMode === 'strategie') setIsStrategyEditing(!isStrategyEditing);
+                  }
+                : undefined
+            }
           />
 
           {/* ⏸️ Workspace Navigation (Middle Panel) */}

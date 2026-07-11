@@ -19,7 +19,7 @@ export const DEFAULT_TASK_LIBRARY: TaskLibrary = {
     image: '/assets/images/installation-terre.png',
     defaultCadence: 'Cadence : 3-5 Foyers / Jour',
     introduction:
-      'ARTICLE 1 - OBJET ET NORMES : Le présent lot couvre l’installation électrique intérieure complète des ménages éligibles, incluant le Kit Principal & Secondaire, la pose du disjoncteur de branchement, et la réalisation des tranchées, le tout conforme aux normes NFC 15-100, NS 01-001, et à la doctrine SENELEC. Le Titulaire garantit la conformité de l’installation aux règles de l’art et aux exigences du présent Cahier des Charges, sous peine de rejet et de pénalités.',
+      'ARTICLE 1 - OBJET ET NORMES : Le présent lot couvre l’installation électrique intérieure complète des ménages éligibles, incluant le Kit Principal & Secondaire, la pose du disjoncteur de branchement, et la réalisation des tranchées, le tout conforme aux normes NS 01-001 et à la doctrine SENELEC. Le Titulaire garantit la conformité de l’installation aux règles de l’art et aux exigences du présent Cahier des Charges, sous peine de rejet et de pénalités.',
     missions: [
       'ART 1.1 - TRAÇAGE & FIXATION : Détermination des cheminements de câbles. Pose en apparent ou saigné sous fourreaux des câbles 2×6mm² FRN05 (15 m) et 3×1.5mm² (4 m) selon NS 01-001.',
       'ART 1.2 - RACCORDEMENT COFFRET : Fixation murale du coffret. Connexion des appareillages modulaires avec serrage dynamométrique : disjoncteur de branchement 5/15A, interrupteur différentiel 25A/30mA, disjoncteurs divisionnaires C10 (lumières) et C20 (prises).',
@@ -37,6 +37,51 @@ export const DEFAULT_TASK_LIBRARY: TaskLibrary = {
       'Câble préassemblé',
       'Câble armé 4mm2',
       'Câble armé 1.5mm2',
+    ],
+    technicalImages: [
+      {
+        url: '/guide_images/schema_interieur.png',
+        label: "Schéma d'installation intérieure",
+        notes: [
+          {
+            title: '1. Arrivée et comptage',
+            lines: [
+              'Réseau monophasé 230 V ~ 50 Hz.',
+              'Câble préassemblé 2x16 mm² vers le coffret de comptage extérieur.',
+              'Coffret de comptage avec compteur monophasé DTM96 et coupe-circuit monophasé.',
+              'Sortie du coupe-circuit vers le coffret principal par câble armé 2x4 mm².',
+            ],
+          },
+          {
+            title: '2. Coffret principal',
+            lines: [
+              'Disjoncteur général 63/15 A type Baco.',
+              'Interrupteur différentiel 30 mA type AC.',
+              'Deux disjoncteurs modulaires : C10 A pour lumières, C16 A pour prises et secondaire.',
+              'Bornier triplet : rouge phase, bleu neutre, vert/jaune terre.',
+            ],
+          },
+          {
+            title: '3. Circuits terminaux',
+            lines: [
+              'Circuit lumières : C10 A, câble armé 3x1,5 mm² vers lampes et interrupteurs.',
+              'Circuit prises : C16 A, câble armé 3x2,5 mm² vers prises murales.',
+              'Circuit secondaire : C16 A, câble armé 3x2,5 mm² vers boîte secondaire.',
+              'Chaque départ est identifié sur le bornier phase, neutre et terre.',
+            ],
+          },
+          {
+            title: '4. Mise à la terre',
+            lines: [
+              'Bornier de terre interne vers conducteur vert/jaune 6 mm².',
+              'Conducteur vers barrette de terre extérieure.',
+              'Barrette de terre vers piquet par fil cuivre nu 25 mm².',
+              'Tous les conducteurs PE des circuits terminaux sont reliés au bornier de terre.',
+            ],
+          },
+        ],
+        legend: ['Rouge = Phase (L)', 'Bleu = Neutre (N)', 'Vert/Jaune = Terre (PE)'],
+      },
     ],
     hse: [
       '**HSE A.1 - ÉQUIPEMENTS DE PROTECTION** : Port obligatoire des EPI suivants : gants isolants classe 00 (norme EN 60903), chaussures de sécurité (norme EN ISO 20345), casque avec jugulaire, et lunettes de protection (norme EN 166).',
@@ -162,7 +207,7 @@ export const DEFAULT_TASK_LIBRARY: TaskLibrary = {
       "ART 5.3 - CAUTIONNEMENT FLEXIBLE : La retenue de garantie est limitée à 5-10% du montant des prestations. Le Titulaire peut la substituer par une caution d'assurance délivrée par une compagnie agréée (SONAM, ASKIA), sous réserve de transmission de l’attestation correspondante.",
     ],
     legal: [
-      'ART E.1 - RESPONSABILITÉ TECHNIQUE : L’électricien est responsable de la conformité totale de l’installation intérieure aux normes NFC 15-100 et NS 01-001. Toute non-conformité engage sa responsabilité civile et pénale.',
+      'ART E.1 - RESPONSABILITÉ TECHNIQUE : L’électricien est responsable de la conformité totale de l’installation intérieure aux normes NS 01-001. Toute non-conformité engage sa responsabilité civile et pénale.',
       'ART E.2 - RISQUE ÉLECTRIQUE : Toute installation non sécurisée engage sa responsabilité en cas d’incendie, d’électrocution ou de dommage matériel, conformément au Code pénal sénégalais.',
       'ART E.3 - MISE À LA TERRE : L’absence ou la défaillance du système de terre (résistance > 1500 Ohms, conducteur section insuffisante) constitue une faute grave, entraînant le rejet de l’ouvrage et l’application de pénalités de 15% du montant du lot par jour de retard dans la correction.',
       'ART E.5 - ESSAIS OBLIGATOIRES : Avant validation, des essais de continuité, d’isolement (R > 0,5 MOhms) et de déclenchement du différentiel (IΔn <= 30 mA) doivent être réalisés et consignés dans GED OS MINT / Kobo. Leur absence entraîne le rejet systématique de l’ouvrage.',
@@ -1601,11 +1646,11 @@ export const DEFAULT_TASK_LIBRARY: TaskLibrary = {
     image: '/assets/images/controleur-final.png',
     defaultCadence: 'Cadence : Selon volume / Jour',
     introduction:
-      "ARTICLE 1 - OBJET : Surveillance, essai et validation finale de l'ensemble des ouvrages (Génie Civil, Réseau, Intérieur) pour garantir leur conformité aux normes techniques (NFC 15-100, NS 01-001, doctrine SENELEC) et aux exigences du présent Cahier des Charges. Le contrôleur PROQUELEC agit en totale indépendance et son avis est souverain pour la réception des travaux.",
+      "ARTICLE 1 - OBJET : Surveillance, essai et validation finale de l'ensemble des ouvrages (Génie Civil, Réseau, Intérieur) pour garantir leur conformité aux normes techniques (NS 01-001, doctrine SENELEC) et aux exigences du présent Cahier des Charges. Le contrôleur PROQUELEC agit en totale indépendance et son avis est souverain pour la réception des travaux.",
     missions: [
       "ART 5.1 - AUDIT MAÇONNERIE : Vérification de la verticalité des murs (+/- 2 mm/m), du dosage du béton (350 kg/m3 pour les fondations), de la solidité mécanique des potelets, et de l'étanchéité des coffrets. Les essais de charge (1,5x la charge nominale) sont réalisés en présence du Titulaire.",
       "ART 5.2 - AUDIT RÉSEAU : Contrôle du branchement (tension mécanique du câble, présence et calibrage du coupe-circuit, étanchéité du hublot SENELEC). Les mesures de résistance d'isolement (R > 0,5 MOhms) et de continuité sont consignées dans GED OS MINT / Kobo.",
-      "ART 5.3 - AUDIT ÉLECTRICIEN : Test de déclenchement du différentiel 30mA, vérification du disjoncteur 5/15A, et mesure de la résistance de terre (< 1500 Ohms). Les essais sont réalisés conformément à la norme NFC 15-100 et leurs résultats sont transmis au Maître d'Ouvrage sous 24h.",
+      "ART 5.3 - AUDIT ÉLECTRICIEN : Test de déclenchement du différentiel 30mA, vérification du disjoncteur 5/15A, et mesure de la résistance de terre (< 1500 Ohms). Les essais sont réalisés conformément à la norme NS 01-001 et leurs résultats sont transmis au Maître d'Ouvrage sous 24h.",
       "ART 5.4 - CONFORMITÉ LOT 24 : Inspection visuelle des gaines, canalisations et fixations pour prévenir tout risque d'incendie ou d'électrocution. Les non-conformités sont consignées dans un Procès-Verbal de Non-Conformité (PVNC) et notifiées au Titulaire sous 48h.",
       "ART 5.5 - VALIDATION NUMÉRIQUE : Signature électronique du PV de réception dans GED OS MINT / Kobo, incluant les photographies géolocalisées des ouvrages, les résultats des essais, et l'avis du contrôleur. Ce PV est une condition préalable à tout paiement.",
     ],
@@ -1653,7 +1698,7 @@ export const DEFAULT_TASK_LIBRARY: TaskLibrary = {
               'Test déclenchement différentiel 30mA',
               'Vérification disjoncteur 5/15A',
               'Mesure résistance terre (< 1500 Ohms)',
-              'Conformité NFC 15-100',
+              'Conformité NS 01-001',
             ],
           },
           {
@@ -1759,7 +1804,7 @@ export const DEFAULT_TASK_LIBRARY: TaskLibrary = {
           'Tester le déclenchement du différentiel 30mA',
           'Vérifier le disjoncteur de branchement 5/15A',
           'Mesurer la résistance de terre (< 1500 Ohms)',
-          'Contrôler la conformité NFC 15-100',
+          'Contrôler la conformité NS 01-001',
           'Vérifier le repérage des départs',
           'Inspecter l\'absence de conducteurs nus',
           'Tester le fonctionnement des appareillages',
@@ -1769,7 +1814,7 @@ export const DEFAULT_TASK_LIBRARY: TaskLibrary = {
           '☐ Différentiel 30mA déclenché',
           '☐ Disjoncteur 5/15A conforme',
           '☐ Résistance terre < 1500 Ohms',
-          '☐ Conformité NFC 15-100',
+          '☐ Conformité NS 01-001',
           '☐ Départs repérés',
           '☐ Aucun conducteur nu',
           '☐ Appareillage fonctionnel',
@@ -1925,7 +1970,7 @@ export const DEFAULT_TASK_LIBRARY: TaskLibrary = {
     image: '/assets/images/preparateur-kit.png',
     defaultCadence: 'Cadence : 20 Kits / Jour',
     introduction:
-      'ARTICLE 1 - OBJET : Le présent contrat définit les modalités de réalisation du pré-câblage de 3 536 coffrets de distribution (Kit Principal) sur le site de stockage de LSE (Kaffrine ou Tambacounda). L\'objectif est de livrer au Lot B des équipements prêts à être raccordés, garantissant une conformité totale aux normes NS 01-001 et NF C 15-100.',
+      'ARTICLE 1 - OBJET : Le présent contrat définit les modalités de réalisation du pré-câblage de 3 536 coffrets de distribution (Kit Principal) sur le site de stockage de LSE (Kaffrine ou Tambacounda). L\'objectif est de livrer au Lot B des équipements prêts à être raccordés, garantissant une conformité totale aux normes NS 01-001.',
     technicalImages: [
       {
         url: '/guide_images/précablage coffret.png',
@@ -2044,7 +2089,7 @@ export const DEFAULT_TASK_LIBRARY: TaskLibrary = {
       '**HSE A.5 - PREMIERS SECOURS** : Présence obligatoire d\'une trousse de secours (norme NF EN 12870) sur le site de préparation. Son absence est sanctionnée par une pénalité de 5% du montant journalier du lot.',
     ],
     legal: [
-      'ART P.1 - RESPONSABILITÉ DU PRÉ-CÂBLAGE : Le Prestataire est responsable de la conformité du pré-câblage des coffrets aux normes NS 01-001 et NF C 15-100. Toute non-conformité détectée par le Lot B entraîne une reprise intégrale aux frais du Titulaire.',
+      'ART P.1 - RESPONSABILITÉ DU PRÉ-CÂBLAGE : Le Prestataire est responsable de la conformité du pré-câblage des coffrets aux normes NS 01-001. Toute non-conformité détectée par le Lot B entraîne une reprise intégrale aux frais du Titulaire.',
       'ART P.2 - TRAÇABILITÉ DES KITS : Chaque kit doit être identifié par un numéro d\'ordre unique et correspondre au ménage bénéficiaire. Toute erreur de traçabilité entraîne une pénalité de 5% du montant du lot par kit concerné.',
       'ART P.3 - QUALITÉ DU CÂBLAGE : Le non-respect des couples de serrage ou l\'absence de test de continuité constitue une non-conformité majeure, entraînant le rejet du lot et des pénalités de 10% par jour de retard dans la correction.',
       'ART P.4 - INTÉGRITÉ DU MATÉRIEL : Le Prestataire est responsable de l\'intégrité du matériel fourni par PROQUELEC. Toute perte ou détérioration sera facturée au prix du marché majoré de 20%.',
@@ -2340,7 +2385,7 @@ export const DEFAULT_TASK_LIBRARY: TaskLibrary = {
       { item: 'Étiquette "Lot A - OK" apposée', category: 'quality' },
       { item: 'Identification du kit par numéro de ménage', category: 'quality' },
       { item: 'Bordereau de préparation renseigné', category: 'quality' },
-      { item: 'Conformité aux normes NS 01-001 et NF C 15-100', category: 'quality' },
+      { item: 'Conformité aux normes NS 01-001', category: 'quality' },
       { item: 'Utilisation d\'EPI (gants isolants, chaussures sécurité, casque, lunettes)', category: 'safety' },
       { item: 'Outils isolés utilisés', category: 'safety' },
       { item: 'Absence de tension vérifiée avant intervention', category: 'safety' },

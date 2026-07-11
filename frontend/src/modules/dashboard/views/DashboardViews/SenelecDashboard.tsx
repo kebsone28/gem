@@ -141,7 +141,7 @@ export default function SenelecDashboard() {
         site: 'Zone A - Lot 123',
         inspecteur: 'Inspecteur SENELEC 1',
         statut: 'conforme',
-        norme: 'NF C 15-100',
+        norme: 'NS 01-001',
         observations: 'Installation conforme aux normes',
         recommandations: ['Maintenance préventive recommandée'],
       },
@@ -151,7 +151,7 @@ export default function SenelecDashboard() {
         site: 'Zone B - Lot 456',
         inspecteur: 'Inspecteur SENELEC 2',
         statut: 'non_conforme',
-        norme: 'NF C 15-100',
+        norme: 'NS 01-001',
         observations: 'Non-conformité détectée sur la mise à la terre',
         recommandations: ['Corriger la mise à la terre', 'Nouvelle inspection requise'],
       },
@@ -161,7 +161,7 @@ export default function SenelecDashboard() {
         site: 'Zone C - Lot 789',
         inspecteur: 'Inspecteur SENELEC 3',
         statut: 'en_attente',
-        norme: 'NF C 15-100',
+        norme: 'NS 01-001',
         observations: 'Inspection en cours de traitement',
         recommandations: ['En attente de validation finale'],
       },
@@ -172,7 +172,7 @@ export default function SenelecDashboard() {
   const complianceData: ComplianceData[] = useMemo(() => {
     return [
       {
-        norme: 'NF C 15-100',
+        norme: 'NS 01-001',
         conformite: 92,
         sitesVerifies: 150,
         nonConformites: 12,

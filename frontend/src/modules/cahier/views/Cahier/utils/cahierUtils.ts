@@ -108,7 +108,7 @@ export function cleanTechnicalLine(line: string): string {
 export function buildTechnicalIntroduction(roleName: string, fallback: string): string {
   const introByRole: Record<string, string> = {
     Électricien:
-      'Référentiel technique pour l’installation intérieure des ménages : tableau, protections, circuits, mise à la terre, essais et traçabilité terrain selon NS 01-001, NF C 15-100 et prescriptions PROQUELEC.',
+      'Référentiel technique pour l’installation intérieure des ménages : tableau, protections, circuits, mise à la terre, essais et traçabilité terrain selon NS 01-001 et prescriptions PROQUELEC.',
     Maçonnerie:
       'Référentiel technique pour les ouvrages du Lot B : mur support, scellements, potelet, coffret de comptage, tranchées et finitions nécessaires à une pose stable, contrôlable et durable.',
     'Réseau Extérieur':
