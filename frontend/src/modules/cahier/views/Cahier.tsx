@@ -391,25 +391,6 @@ export default function Cahier() {
             setSelectedContractLot={setSelectedContractLot}
             documentMode={documentMode}
             setDocumentMode={setDocumentMode}
-            isEditing={canCustomizeProject && (isEditing || isContractEditing || isStrategyEditing)}
-            onEditToggle={
-              canCustomizeProject
-                ? () => {
-                    if (documentMode === 'cahier') setIsEditing(!isEditing);
-                    else if (documentMode === 'contrat') setIsContractEditing(!isContractEditing);
-                    else if (documentMode === 'strategie') setIsStrategyEditing(!isStrategyEditing);
-                  }
-                : undefined
-            }
-            onSave={
-              canCustomizeProject
-                ? documentMode === 'cahier'
-                  ? handleSave
-                  : documentMode === 'contrat'
-                    ? handleSaveContract
-                    : handleSaveStrategy
-                : undefined
-            }
             isFusedMode={isFusedMode}
           />
 

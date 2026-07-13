@@ -10,9 +10,6 @@ interface CahierNavigationProps {
   setSelectedContractLot?: (lot: string) => void;
   documentMode: 'cahier' | 'contrat' | 'strategie';
   setDocumentMode: (mode: 'cahier' | 'contrat' | 'strategie') => void;
-  isEditing?: boolean;
-  onEditToggle?: () => void;
-  onSave?: () => void;
   isFusedMode?: boolean;
 }
 
@@ -24,9 +21,6 @@ export const CahierNavigation: React.FC<CahierNavigationProps> = ({
   setSelectedContractLot,
   documentMode,
   setDocumentMode,
-  isEditing = false,
-  onEditToggle,
-  onSave,
   isFusedMode = false,
 }) => {
   return (

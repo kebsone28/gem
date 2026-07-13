@@ -30,7 +30,7 @@ interface CahierHeaderProps {
   onSave: () => void;
   onReset: () => void;
   onExportWord: () => void;
-  onEditToggle: () => void;
+  onEditToggle?: () => void;
   isFusedMode?: boolean;
   onToggleFusedMode?: () => void;
 }
@@ -113,22 +113,26 @@ export const CahierHeader: React.FC<CahierHeaderProps> = ({
                   <Save size={16} />
                   Enregistrer
                 </button>
-                <button
-                  onClick={onEditToggle}
-                  className="rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-xs font-bold uppercase tracking-wider text-slate-300 transition-all hover:bg-white/10 hover:scale-[1.02]"
-                >
-                  Fermer
-                </button>
+                {onEditToggle && (
+                  <button
+                    onClick={onEditToggle}
+                    className="rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-xs font-bold uppercase tracking-wider text-slate-300 transition-all hover:bg-white/10 hover:scale-[1.02]"
+                  >
+                    Fermer
+                  </button>
+                )}
               </>
             ) : (
               <>
-                <button
-                  onClick={onEditToggle}
-                  className="flex items-center gap-2 rounded-2xl bg-amber-600 px-5 py-3 text-xs font-black uppercase tracking-widest text-white transition-all duration-300 hover:bg-amber-500 hover:scale-[1.02] shadow-lg shadow-amber-900/40 active:scale-95"
-                >
-                  <PenSquare size={16} />
-                  Éditer
-                </button>
+                {onEditToggle && (
+                  <button
+                    onClick={onEditToggle}
+                    className="flex items-center gap-2 rounded-2xl bg-amber-600 px-5 py-3 text-xs font-black uppercase tracking-widest text-white transition-all duration-300 hover:bg-amber-500 hover:scale-[1.02] shadow-lg shadow-amber-900/40 active:scale-95"
+                  >
+                    <PenSquare size={16} />
+                    Éditer
+                  </button>
+                )}
                 <button
                   onClick={onExportWord}
                   className="flex items-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-xs font-black uppercase tracking-widest text-white transition-all duration-300 hover:bg-blue-500 hover:scale-[1.02] shadow-lg shadow-blue-900/40 active:scale-95"
