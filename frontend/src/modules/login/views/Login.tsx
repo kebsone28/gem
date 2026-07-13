@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState, type FormEvent } from 'react';
+import { useState, useEffect, useRef, useCallback, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   User,
@@ -124,6 +124,7 @@ export default function Login() {
   const [info, setInfo] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [emailError, setEmailError] = useState('');
+  const [loginSuccess, setLoginSuccess] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
 
@@ -176,6 +177,80 @@ export default function Login() {
     mouseX.set(e.clientX);
     mouseY.set(e.clientY);
   };
+
+  // -- 3D Tilt on Card --
+  const cardRef = useRef<HTMLDivElement>(null);
+  const cardRotateX = useMotionValue(0);
+  const cardRotateY = useMotionValue(0);
+  const cardSpringX = useSpring(cardRotateX, { damping: 25, stiffness: 150 });
+  const cardSpringY = useSpring(cardRotateY, { damping: 25, stiffness: 150 });
+
+  const handleCardMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!cardRef.current) return;
+    const rect = cardRef.current.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    const rotateY = ((e.clientX - centerX) / (rect.width / 2)) * 4;
+    const rotateX = -((e.clientY - centerY) / (rect.height / 2)) * 4;
+    cardRotateX.set(rotateX);
+    cardRotateY.set(rotateY);
+  }, [cardRotateX, cardRotateY]);
+
+  const handleCardMouseLeave = useCallback(() => {
+    cardRotateX.set(0);
+    cardRotateY.set(0);
+  }, [cardRotateX, cardRotateY]);
+
+  // -- Text Decode Effect (Logo) --
+  const DECODE_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%&*';
+  const LOGO_TEXT = 'GED OS';
+  const [decodedLogo, setDecodedLogo] = useState(LOGO_TEXT.replace(/./g, '█'));
+  const decodeStartedRef = useRef(false);
+
+  useEffect(() => {
+    if (decodeStartedRef.current) return;
+    decodeStartedRef.current = true;
+    let iteration = 0;
+    const maxIterations = 20;
+    const interval = setInterval(() => {
+      setDecodedLogo(
+        LOGO_TEXT.split('')
+          .map((char, idx) => {
+            if (char === ' ') return ' ';
+            if (idx < iteration / 3) return char;
+            return DECODE_CHARS[Math.floor(Math.random() * DECODE_CHARS.length)];
+          })
+          .join('')
+      );
+      iteration++;
+      if (iteration > maxIterations) {
+        setDecodedLogo(LOGO_TEXT);
+        clearInterval(interval);
+      }
+    }, 60);
+    return () => clearInterval(interval);
+  }, []);
+
+  // -- Typewriter Effect (Tagline) --
+  const TAGLINE_FULL = "L'expertise de la sécurit\u00e9 \u00e9lectrique, l'accessibilit\u00e9 d'une solution universelle.";
+  const [typewriterText, setTypewriterText] = useState('');
+  const [typewriterDone, setTypewriterDone] = useState(false);
+  const typewriterStartedRef = useRef(false);
+
+  useEffect(() => {
+    if (typewriterStartedRef.current) return;
+    typewriterStartedRef.current = true;
+    let idx = 0;
+    const timer = setInterval(() => {
+      idx++;
+      setTypewriterText(TAGLINE_FULL.slice(0, idx));
+      if (idx >= TAGLINE_FULL.length) {
+        setTypewriterDone(true);
+        clearInterval(timer);
+      }
+    }, 30);
+    return () => clearInterval(timer);
+  }, []);
 
   // -- Recovery state --
   const [recInput, setRecInput] = useState('');
@@ -242,6 +317,8 @@ export default function Login() {
         userPayload?.permissions,
         userPayload?.organizationId,  // ✅ Pass org UUID so ProjectContext can load projects
       );
+      setLoginSuccess(true);
+      await new Promise((r) => setTimeout(r, 1200));
       navigate(getSectorLandingPath(selectedSector?.key));
     } catch (err: any) {
       setError(getApiErrorMessage(err, 'Identifiant ou mot de passe incorrect.'));
@@ -286,6 +363,8 @@ export default function Login() {
         user.permissions,
         user.organizationId,  // ✅ Pass org UUID from 2FA response
       );
+      setLoginSuccess(true);
+      await new Promise((r) => setTimeout(r, 1200));
       navigate(getSectorLandingPath(selectedSector?.key));
     } catch {
       setError('Réponse de sécurité incorrecte.');
@@ -421,28 +500,106 @@ export default function Login() {
 
         <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] bg-indigo-600/10 blur-[150px] rounded-full" />
         <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] bg-blue-600/10 blur-[150px] rounded-full" />
+
+        {/* Morphing Background Gradient */}
+        <motion.div
+          animate={{
+            background: [
+              'radial-gradient(ellipse at 20% 50%, rgba(67, 56, 202, 0.08) 0%, transparent 60%)',
+              'radial-gradient(ellipse at 80% 30%, rgba(79, 70, 229, 0.10) 0%, transparent 60%)',
+              'radial-gradient(ellipse at 50% 80%, rgba(99, 102, 241, 0.08) 0%, transparent 60%)',
+              'radial-gradient(ellipse at 30% 20%, rgba(67, 56, 202, 0.10) 0%, transparent 60%)',
+            ],
+          }}
+          transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
+          className="absolute inset-0 pointer-events-none"
+        />
       </div>
 
       <div className="relative z-10 flex flex-col items-center justify-center min-h-screen px-4 py-12">
-        {/* Integrated Safety Mission Phrase (Subtle but readable) */}
+        {/* Integrated Safety Mission Phrase (Typewriter Effect) */}
         <div className="mb-12 text-center animate-in fade-in slide-in-from-bottom-4 duration-1000">
           <p className="text-[10px] font-black text-indigo-400/40 uppercase tracking-[0.6em] mb-3">
             Manifeste Opérationnel
           </p>
-          <p className="text-sm sm:text-lg font-light text-slate-300 italic tracking-wide max-w-2xl px-6">
-            "L'expertise de la{' '}
-            <span className="text-white font-bold not-italic">sécurité électrique</span>,
-            l'accessibilité d'une solution{' '}
-            <span className="text-indigo-400 font-bold not-italic">universelle</span>."
+          <p className="text-sm sm:text-lg font-light text-slate-300 italic tracking-wide max-w-2xl px-6 min-h-[1.8em]">
+            &ldquo;{typewriterText}
+            {!typewriterDone && (
+              <motion.span
+                animate={{ opacity: [1, 0] }}
+                transition={{ duration: 0.5, repeat: Infinity }}
+                className="text-indigo-400 font-bold"
+              >
+                |
+              </motion.span>
+            )}
+            {typewriterDone && '&rdquo;'}
           </p>
         </div>
 
-        {/* 3. THE MAIN LOGIN CARD */}
+        {/* 3. THE MAIN LOGIN CARD (3D Tilt) */}
         <motion.div
+          ref={cardRef}
+          onMouseMove={handleCardMouseMove}
+          onMouseLeave={handleCardMouseLeave}
+          style={{
+            rotateX: cardSpringX,
+            rotateY: cardSpringY,
+            perspective: 1200,
+            transformStyle: 'preserve-3d',
+          }}
           animate={error ? { x: [-2, 2, -2, 2, 0] } : {}}
           transition={{ duration: 0.4 }}
           className="w-full max-w-[940px] flex flex-col md:flex-row bg-white/[0.01] backdrop-blur-3xl rounded-[3rem] border border-white/10 shadow-[0_0_100px_rgba(0,0,0,0.5)] overflow-hidden relative group"
         >
+          {/* Success Checkmark Overlay */}
+          <AnimatePresence>
+            {loginSuccess && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm rounded-[3rem]"
+              >
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: 'spring', damping: 12, stiffness: 200, delay: 0.1 }}
+                >
+                  <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
+                    <motion.circle
+                      cx="40" cy="40" r="36"
+                      stroke="#6366f1"
+                      strokeWidth="3"
+                      fill="none"
+                      initial={{ pathLength: 0 }}
+                      animate={{ pathLength: 1 }}
+                      transition={{ duration: 0.6, ease: 'easeInOut' }}
+                    />
+                    <motion.path
+                      d="M24 40 L35 51 L56 29"
+                      stroke="#22c55e"
+                      strokeWidth="3.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      fill="none"
+                      initial={{ pathLength: 0 }}
+                      animate={{ pathLength: 1 }}
+                      transition={{ duration: 0.4, delay: 0.5, ease: 'easeOut' }}
+                    />
+                  </svg>
+                  <motion.p
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.9 }}
+                    className="text-center text-sm font-bold text-emerald-400 mt-3 tracking-wide"
+                  >
+                    Connexion réussie
+                  </motion.p>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
           {/* SCANNER EFFECT (Visible when loading) */}
           <AnimatePresence>
             {loading && (
@@ -467,30 +624,43 @@ export default function Login() {
           {/* Left Panel: Branding (Fixed & Premium) */}
           <div className="hidden md:flex flex-col justify-between w-[38%] p-14 bg-indigo-500/[0.01] border-r border-white/10 relative overflow-hidden">
             <div className="relative z-10">
-              {/* SHIELD PULSE */}
+              {/* SHIELD NEON GLOW */}
               <motion.div
                 whileHover={{ scale: 1.05 }}
                 className="relative w-14 h-14 bg-indigo-500/10 rounded-2xl flex items-center justify-center border border-indigo-500/20 mb-10 group"
               >
+                {/* Outer neon ring */}
                 <motion.div
-                  animate={{ scale: [1, 1.4, 1], opacity: [0.2, 0, 0.2] }}
-                  transition={{ duration: 2, repeat: Infinity }}
+                  animate={{ scale: [1, 1.6, 1], opacity: [0.3, 0, 0.3] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                  className="absolute -inset-2 rounded-2xl border-2 border-indigo-400/40"
+                />
+                {/* Middle glow ring */}
+                <motion.div
+                  animate={{ scale: [1, 1.3, 1], opacity: [0.15, 0, 0.15] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut', delay: 0.3 }}
+                  className="absolute -inset-4 rounded-2xl border border-indigo-500/20"
+                />
+                {/* Inner blur pulse */}
+                <motion.div
+                  animate={{ scale: [1, 1.4, 1], opacity: [0.25, 0, 0.25] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut', delay: 0.15 }}
                   className="absolute inset-0 bg-indigo-500 rounded-2xl blur-md"
                 />
                 <ShieldCheck size={28} className="text-indigo-400 relative z-10" />
               </motion.div>
 
-              {/* LOGO GLITCH EFFECT ON HOVER */}
-              <motion.div whileHover="hover" className="relative cursor-default">
-                <motion.h1
-                  variants={{
-                    hover: { x: [-1, 1, -1, 0], textShadow: '2px 0 #6366f1, -2px 0 #3b82f6' },
-                  }}
-                  className="text-5xl font-black tracking-tighter text-white mb-6 italic leading-tight uppercase select-none"
-                >
-                  GED <span className="text-indigo-500">OS</span>
-                </motion.h1>
-              </motion.div>
+              {/* LOGO DECODE EFFECT */}
+              <div className="relative cursor-default">
+                <h1 className="text-5xl font-black tracking-tighter text-white mb-6 italic leading-tight uppercase select-none">
+                  {decodedLogo.split(' OS').map((part, i) => (
+                    <span key={i}>
+                      {i > 0 && <span className="text-indigo-500"> OS</span>}
+                      {i === 0 && part}
+                    </span>
+                  ))}
+                </h1>
+              </div>
 
               <div className="h-1 w-12 bg-indigo-500 rounded-full mb-6" />
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] leading-relaxed">
@@ -621,7 +791,12 @@ export default function Login() {
               {/* Form Step: Credentials */}
               {step === 'credentials' && (
                 <form onSubmit={handleCredentials} className="space-y-6">
-                  <div className="space-y-2">
+                  <motion.div
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0 }}
+                    className="space-y-2"
+                  >
                     <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">
                       Identifiant
                     </label>
@@ -647,9 +822,14 @@ export default function Login() {
                         <p className="text-[10px] text-red-400 font-bold mt-1 ml-1">{emailError}</p>
                       )}
                     </div>
-                  </div>
+                  </motion.div>
 
-                  <div className="space-y-2">
+                  <motion.div
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 }}
+                    className="space-y-2"
+                  >
                     <div className="flex justify-between items-center px-1">
                       <label
                         htmlFor="login-password"
@@ -694,9 +874,14 @@ export default function Login() {
                         {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
                     </div>
-                  </div>
+                  </motion.div>
 
-                  <motion.button
+                  <motion.div
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                  >
+                    <motion.button
                     whileHover={{ scale: 1.02, boxShadow: '0 0 25px rgba(99, 102, 241, 0.4)' }}
                     whileTap={{ scale: 0.98 }}
                     type="submit"
@@ -728,7 +913,10 @@ export default function Login() {
                     )}
                   </motion.button>
 
-                  <button
+                  <motion.button
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 }}
                     type="button"
                     onClick={() => {
                       setStep('sector-select');
@@ -738,7 +926,7 @@ export default function Login() {
                     className="w-full mt-4 flex items-center justify-center gap-2 text-[9px] font-black text-slate-500 hover:text-white uppercase tracking-widest transition-colors"
                   >
                     <ChevronLeft size={14} /> Retour aux secteurs
-                  </button>
+                  </motion.button>
                 </form>
               )}
 
