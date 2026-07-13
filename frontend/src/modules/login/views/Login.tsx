@@ -548,7 +548,7 @@ export default function Login() {
           }}
           animate={error ? { x: [-2, 2, -2, 2, 0] } : {}}
           transition={{ duration: 0.4 }}
-          className="w-full max-w-[940px] flex flex-col md:flex-row bg-white/[0.01] backdrop-blur-3xl rounded-[3rem] border border-white/10 shadow-[0_0_100px_rgba(0,0,0,0.5)] overflow-hidden relative group"
+          className="w-full max-w-[940px] flex flex-col md:flex-row bg-slate-950/80 rounded-[3rem] border border-white/10 shadow-[0_0_100px_rgba(0,0,0,0.5)] overflow-hidden relative group"
         >
           {/* Success Checkmark Overlay */}
           <AnimatePresence>
@@ -721,7 +721,7 @@ export default function Login() {
               {/* Sector Selection Grid */}
               {step === 'sector-select' && (
                 <div className="space-y-5 animate-in fade-in duration-500">
-                  <div className="rounded-[2rem] border border-white/10 bg-white/[0.06] backdrop-blur-2xl shadow-[0_8px_32px_rgba(0,0,0,0.3)] p-4 md:p-5">
+                  <div className="rounded-[2rem] border border-white/10 bg-white/5 p-4 md:p-5">
                     <div className="flex items-center justify-between gap-4 border-b border-white/6 pb-4">
                       <div>
                         <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
@@ -747,7 +747,7 @@ export default function Login() {
                             setSelectedSector(sector);
                             setStep('credentials');
                           }}
-                          className={`group relative overflow-hidden rounded-[1.75rem] border bg-gradient-to-br ${sector.gradient} ${sector.borderColor} backdrop-blur-xl p-5 text-left transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl`}
+                          className={`group relative overflow-hidden rounded-[1.75rem] border bg-gradient-to-br ${sector.gradient} ${sector.borderColor} p-5 text-left transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl`}
                         >
                           <div className={`absolute -right-10 -top-10 h-28 w-28 rounded-full blur-3xl transition-opacity duration-300 group-hover:opacity-80 ${sector.glowClass}`} />
                           <div className="relative z-10 flex h-full flex-col">
