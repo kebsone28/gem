@@ -231,27 +231,6 @@ export default function Login() {
     return () => clearInterval(interval);
   }, []);
 
-  // -- Typewriter Effect (Tagline) --
-  const TAGLINE_FULL = "L'expertise de la sécurit\u00e9 \u00e9lectrique, l'accessibilit\u00e9 d'une solution universelle.";
-  const [typewriterText, setTypewriterText] = useState('');
-  const [typewriterDone, setTypewriterDone] = useState(false);
-  const typewriterStartedRef = useRef(false);
-
-  useEffect(() => {
-    if (typewriterStartedRef.current) return;
-    typewriterStartedRef.current = true;
-    let idx = 0;
-    const timer = setInterval(() => {
-      idx++;
-      setTypewriterText(TAGLINE_FULL.slice(0, idx));
-      if (idx >= TAGLINE_FULL.length) {
-        setTypewriterDone(true);
-        clearInterval(timer);
-      }
-    }, 30);
-    return () => clearInterval(timer);
-  }, []);
-
   // -- Recovery state --
   const [recInput, setRecInput] = useState('');
   const [recStep, setRecStep] = useState<1 | 2>(1);
@@ -517,24 +496,6 @@ export default function Login() {
       </div>
 
       <div className="relative z-10 flex flex-col items-center justify-center min-h-screen px-4 py-12">
-        {/* Integrated Safety Mission Phrase (Typewriter Effect) */}
-        <div className="mb-12 text-center animate-in fade-in slide-in-from-bottom-4 duration-1000">
-          <p className="text-[10px] font-black text-indigo-400/40 uppercase tracking-[0.6em] mb-3">
-            Manifeste Opérationnel
-          </p>
-          <p className="text-sm sm:text-lg font-light text-slate-300 italic tracking-wide max-w-2xl px-6 min-h-[1.8em]">
-            &ldquo;{typewriterText}
-            {!typewriterDone && (
-              <motion.span
-                animate={{ opacity: [1, 0] }}
-                transition={{ duration: 0.8, repeat: Infinity }}
-                className="inline-block w-[2px] h-[1em] bg-indigo-400/60 align-middle ml-0.5 rounded-full"
-              />
-            )}
-            {typewriterDone && '&rdquo;'}
-          </p>
-        </div>
-
         {/* 3. THE MAIN LOGIN CARD (3D Tilt) */}
         <motion.div
           ref={cardRef}
@@ -620,57 +581,40 @@ export default function Login() {
           />
 
           {/* Left Panel: Branding (Fixed & Premium) */}
-          <div className="hidden md:flex flex-col justify-between w-[38%] p-14 bg-indigo-500/[0.01] border-r border-white/10 relative overflow-hidden">
-            <div className="relative z-10">
-              {/* SHIELD NEON GLOW */}
-              <motion.div
-                whileHover={{ scale: 1.05 }}
-                className="relative w-14 h-14 rounded-2xl flex items-center justify-center border border-white/10 mb-10 group"
-              >
-                {/* Outer neon ring */}
-                <motion.div
-                  animate={{ scale: [1, 1.6, 1], opacity: [0.3, 0, 0.3] }}
-                  transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-                  className="absolute -inset-2 rounded-2xl border-2 border-indigo-400/40"
-                />
-                {/* Middle glow ring */}
-                <motion.div
-                  animate={{ scale: [1, 1.3, 1], opacity: [0.15, 0, 0.15] }}
-                  transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut', delay: 0.3 }}
-                  className="absolute -inset-4 rounded-2xl border border-indigo-500/20"
-                />
-                {/* Inner blur pulse */}
-                <motion.div
-                  animate={{ scale: [1, 1.4, 1], opacity: [0.25, 0, 0.25] }}
-                  transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut', delay: 0.15 }}
-                  className="absolute inset-0 bg-indigo-500 rounded-2xl blur-md"
-                />
-                <img src="/logo-proquelec.png" alt="Proquelec" className="w-8 h-8 relative z-10 object-contain" />
-              </motion.div>
+          <div className="hidden md:flex flex-col justify-between w-[38%] p-14 bg-gradient-to-br from-indigo-950/40 via-slate-950/60 to-slate-950 border-r border-white/5 relative overflow-hidden">
+            {/* Subtle accent orb */}
+            <div className="absolute -top-20 -left-20 w-64 h-64 bg-indigo-500/10 rounded-full blur-[100px]" />
+            <div className="absolute bottom-10 -right-10 w-48 h-48 bg-blue-500/8 rounded-full blur-[80px]" />
 
-              {/* LOGO DECODE EFFECT */}
+            <div className="relative z-10">
+              {/* LOGO */}
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center border border-white/10 bg-white/5 mb-10">
+                <img src="/logo-proquelec.png" alt="Proquelec" className="w-8 h-8 object-contain" />
+              </div>
+
+              {/* BRAND NAME */}
               <div className="relative cursor-default">
                 <h1 className="text-5xl font-black tracking-tighter text-white italic leading-tight uppercase select-none">
                   {decodedLogo.split(' OS').map((part, i) => (
                     <span key={i}>
-                      {i > 0 && <span className="text-indigo-500"> OS</span>}
+                      {i > 0 && <span className="text-indigo-400"> OS</span>}
                       {i === 0 && part}
                     </span>
                   ))}
                 </h1>
               </div>
 
-              <div className="h-1 w-12 bg-indigo-500 rounded-full mt-4 mb-3" />
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] leading-relaxed">
-                Pilotage Stratégique &<br />
+              <div className="h-[2px] w-10 bg-gradient-to-r from-indigo-400 to-indigo-600 rounded-full mt-5 mb-3" />
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] leading-relaxed">
+                Pilotage Strategique &<br />
                 Intelligence Terrain
               </p>
             </div>
 
-            <div className="relative z-10 pt-10">
-              <div className="flex items-center gap-4 text-[9px] font-black text-slate-600 uppercase tracking-[0.3em]">
-                <span className="text-indigo-500/50">V.3.0</span>
-                <span className="w-1 h-1 bg-slate-800 rounded-full" />
+            <div className="relative z-10">
+              <div className="flex items-center gap-4 text-[9px] font-bold text-slate-600 uppercase tracking-[0.3em]">
+                <span className="text-indigo-400/40">V.3.0</span>
+                <span className="w-1 h-1 bg-slate-700 rounded-full" />
                 <span>Encrypted Node</span>
               </div>
             </div>
