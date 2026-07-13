@@ -39,7 +39,7 @@ const SECTORS = [
     label: 'GEM',
     role: "Electrification Massive",
     description: 'Suivi terrain, raccordements, menages, logistique et pilotage.',
-    note: 'Choix du secteur, pas du projet',
+    tagline: 'De l\'etude a la mise en service des infrastructures',
     icon: Zap,
     gradient: 'from-amber-500/20 via-orange-500/10 to-slate-950',
     accent: 'from-amber-400 to-orange-500',
@@ -52,8 +52,8 @@ const SECTORS = [
     key: 'mes',
     label: 'MES',
     role: 'Mise En Service',
-    description: 'Branchement, pose compteur, contrôle qualité et validation.',
-    note: 'Choix du secteur, pas du projet',
+    description: 'Branchement, pose compteur, controle qualite et validation.',
+    tagline: 'Du raccordement du client a la activation du compteur',
     icon: Activity,
     gradient: 'from-sky-500/20 via-indigo-500/10 to-slate-950',
     accent: 'from-sky-400 to-indigo-500',
@@ -695,7 +695,7 @@ export default function Login() {
                 <div className="h-1 w-12 bg-indigo-500 rounded-full mx-auto md:mx-0" />
                 {step === 'sector-select' && (
                   <p className="mt-3 text-sm leading-relaxed text-slate-400 max-w-2xl">
-                    Le secteur definit votre espace metier `GEM` ou `MES`. Le choix du projet se fera ensuite dans l'accueil.
+                    Choisir <strong className="text-slate-200">GEM</strong> pour l'electrification massive ou <strong className="text-slate-200">MES</strong> pour la mise en service. Le projet sera selectionne apres la connexion.
                   </p>
                 )}
               </div>
@@ -730,11 +730,11 @@ export default function Login() {
                           Portes d'entree
                         </p>
                         <h3 className="mt-2 text-lg font-black text-white">
-                          Deux univers, un meme socle GED OS
+                          GEM ou MES — choisissez votre univers metier
                         </h3>
                       </div>
                       <div className="hidden md:flex items-center gap-2 rounded-full border border-indigo-400/20 bg-indigo-500/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-indigo-200">
-                        Secteur puis projet
+                        Secteur d'abord, projet ensuite
                       </div>
                     </div>
                     <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -774,8 +774,8 @@ export default function Login() {
                               </p>
                             </div>
                             <div className="mt-6 flex items-center justify-between">
-                              <span className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">
-                                {sector.note}
+                              <span className="max-w-[70%] text-[10px] font-bold italic text-slate-500">
+                                {sector.tagline}
                               </span>
                               <div className={`h-1.5 w-16 rounded-full bg-gradient-to-r ${sector.accent}`} />
                             </div>
