@@ -468,7 +468,7 @@ export default function Login() {
           style={{ x: watermarkX, y: watermarkY }}
           className="absolute inset-0 flex flex-col items-center justify-center select-none overflow-hidden"
         >
-          <h2 className="text-[14vw] font-black leading-none uppercase tracking-tighter text-center bg-gradient-to-b from-white/[0.06] to-transparent bg-clip-text text-transparent">
+          <h2 className="text-[14vw] font-black leading-none uppercase tracking-tighter text-center bg-gradient-to-b from-white/[0.03] to-transparent bg-clip-text text-transparent">
             SÉCURITÉ
             <br />
             ÉLECTRIQUE
@@ -484,7 +484,7 @@ export default function Login() {
 
         {/* Interlaced Mesh */}
         <svg
-          className="absolute inset-0 w-full h-full opacity-[0.20] pointer-events-none"
+          className="absolute inset-0 w-full h-full opacity-[0.10] pointer-events-none"
           xmlns="http://www.w3.org/2000/svg"
         >
           <motion.path
@@ -498,8 +498,8 @@ export default function Login() {
           />
         </svg>
 
-        <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] bg-indigo-600/10 blur-[150px] rounded-full" />
-        <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] bg-blue-600/10 blur-[150px] rounded-full" />
+        <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] bg-indigo-600/[0.06] blur-[150px] rounded-full" />
+        <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] bg-blue-600/[0.06] blur-[150px] rounded-full" />
 
         {/* Morphing Background Gradient */}
         <motion.div
@@ -527,11 +527,9 @@ export default function Login() {
             {!typewriterDone && (
               <motion.span
                 animate={{ opacity: [1, 0] }}
-                transition={{ duration: 0.5, repeat: Infinity }}
-                className="text-indigo-400 font-bold"
-              >
-                |
-              </motion.span>
+                transition={{ duration: 0.8, repeat: Infinity }}
+                className="inline-block w-[2px] h-[1em] bg-indigo-400/60 align-middle ml-0.5 rounded-full"
+              />
             )}
             {typewriterDone && '&rdquo;'}
           </p>
@@ -614,7 +612,7 @@ export default function Login() {
           </AnimatePresence>
 
           {/* Glass Shine Animation */}
-          <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+          <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent" />
           <motion.div
             animate={{ left: ['-100%', '200%'] }}
             transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
