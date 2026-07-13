@@ -213,7 +213,7 @@ export const exportCahiersToWord = async (
 
   const doc = new Document({
     creator: 'GED OS',
-    title: isMultiple ? 'Cahiers des Charges Complets' : `Cahier des Charges ${tasks[0].role}`,
+    title: isMultiple ? 'Spécifications Techniques Completes' : `Spécifications Techniques ${tasks[0].role}`,
     sections: allSections,
   });
 

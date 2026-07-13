@@ -1,4 +1,4 @@
-import { AlignmentType, Document, HeadingLevel, Packer, Paragraph, TextRun, BorderStyle, Header, Footer, ImageRun, SectionType, PageNumber } from 'docx';
+import { AlignmentType, Document, HeadingLevel, Packer, Paragraph, TextRun, BorderStyle, Header, Footer, ImageRun, SectionType, PageNumber, Table, TableRow, TableCell, WidthType, VerticalAlign, ShadingType } from 'docx';
 import { saveAs } from 'file-saver';
 import { isContractHeading, isStrategyHeading } from './cahierUtils';
 import type { OperationalStrategyTemplate } from '@/data/operationalStrategyTemplates';
@@ -9,6 +9,8 @@ const COLORS = {
   secondary: '2C5282',
   body: '2D3748',
   muted: '718096',
+  tableHeader: 'E2E8F0',
+  tableBorder: 'CBD5E0',
 };
 
 type DocLineType = 'heading' | 'article' | 'bullet' | 'signature' | 'intro' | 'paragraph' | 'subheading';
@@ -35,8 +37,8 @@ function classifyLine(line: string, index: number, totalLines: number): DocLineT
   // BULLETS EXPLICITES (marqueurs visuels)
   if (/^(-|•|\*)\s+/.test(t)) return 'bullet';
 
-  // BULLETS IMPLICITES (se termine par ; et commence par minuscule)
-  if (/;\s*$/.test(t) && /^[a-zéèêëàâäùûüôöîïç]/.test(t)) return 'bullet';
+  // BULLETS IMPLICITES (se termine par ;)
+  if (/;\s*$/.test(t)) return 'bullet';
 
   // INTRO (très limité - exclude articles)
   if (
@@ -49,8 +51,100 @@ function classifyLine(line: string, index: number, totalLines: number): DocLineT
   return 'paragraph';
 }
 
+// ── Table detection ──────────────────────────────────────────────────
+const PIPE = /\|/;
+const SIGNATURE_2COL_RE = /Représentant|Signature|LE PRESTATAIRE|PROQUELEC\s*\|/i;
+
+function pipeCount(line: string): number {
+  return (line.match(/\|/g) || []).length;
+}
+
+function isTableLine(line: string): boolean {
+  if (!PIPE.test(line)) return false;
+  const cnt = pipeCount(line);
+  if (cnt < 2) return false;               // need ≥ 2 pipes = ≥ 3 columns
+  if (SIGNATURE_2COL_RE.test(line)) return false;
+  return true;
+}
+
+function looksLikeTableHeader(line: string): boolean {
+  const cells = line.split('|').map(c => c.trim());
+  return cells.some(c => /Matériel|Prestation|Travaux|Essai|Bordereau|Qté|Conforme|Observation|Source|Description/i.test(c));
+}
+
+function parsePipeRow(line: string): string[] {
+  return line.split('|').map(c => c.trim());
+}
+
+function buildWordTable(rows: string[][]): Table {
+  const colCount = rows[0].length;
+  const totalWidth = 9000;
+  const colWidth = Math.floor(totalWidth / colCount);
+
+  return new Table({
+    width: { size: totalWidth, type: WidthType.DXA },
+    columnWidths: Array(colCount).fill(colWidth),
+    rows: rows.map((row, rowIdx) => {
+      const isHeader = rowIdx === 0;
+      return new TableRow({
+        tableHeader: isHeader,
+        children: row.map(cell => new TableCell({
+          width: { size: colWidth, type: WidthType.DXA },
+          verticalAlign: VerticalAlign.CENTER,
+          shading: isHeader
+            ? { fill: COLORS.tableHeader, type: ShadingType.CLEAR, color: 'auto' }
+            : undefined,
+          borders: {
+            top:    { style: BorderStyle.SINGLE, size: 1, color: COLORS.tableBorder },
+            bottom: { style: BorderStyle.SINGLE, size: 1, color: COLORS.tableBorder },
+            left:   { style: BorderStyle.SINGLE, size: 1, color: COLORS.tableBorder },
+            right:  { style: BorderStyle.SINGLE, size: 1, color: COLORS.tableBorder },
+          },
+          children: [
+            new Paragraph({
+              spacing: { before: 40, after: 40 },
+              children: [
+                new TextRun({
+                  text: cell,
+                  bold: isHeader,
+                  size: isHeader ? 20 : 19,
+                  color: isHeader ? COLORS.primary : COLORS.body,
+                }),
+              ],
+            }),
+          ],
+        })),
+      });
+    }),
+  });
+}
+
+// Group consecutive table lines into blocks of rows
+function groupTableLines(lines: string[]): (string[][])[] {
+  const blocks: string[][][] = [];
+  let current: string[][] | null = null;
+
+  for (const line of lines) {
+    if (isTableLine(line)) {
+      const cells = parsePipeRow(line);
+      if (!current) {
+        current = [cells];
+      } else {
+        current.push(cells);
+      }
+    } else {
+      if (current && current.length >= 2) {
+        blocks.push(current);
+      }
+      current = null;
+    }
+  }
+  if (current && current.length >= 2) blocks.push(current);
+  return blocks;
+}
+
 function buildContractSection(lotName: string, lines: string[]) {
-  const children: import('docx').Paragraph[] = [];
+  const children: (Paragraph | Table)[] = [];
 
   children.push(new Paragraph({
     alignment: AlignmentType.CENTER,
@@ -69,17 +163,47 @@ function buildContractSection(lotName: string, lines: string[]) {
     ],
   }));
 
-  for (let i = 0; i < lines.length; i++) {
-    let trimmed = lines[i].trim();
-    if (!trimmed) continue;
-    trimmed = trimmed.replace(/^•[\s•]*/, '').trim();
+  // ── Pre-scan: identify table blocks ────────────────────────────────
+  const trimmedLines = lines.map(l => l.trim().replace(/^•[\s•]*/, '').trim());
+  const tableGroups = groupTableLines(trimmedLines);
+  const tableLineSet = new Set<string>();
+  for (const group of tableGroups) {
+    for (const row of group) {
+      tableLineSet.add(row.join('|'));
+    }
+  }
+  // Build a map: first-pipe-line → group, so we can detect the start
+  const tableGroupMap = new Map<string, string[][]>();
+  for (const group of tableGroups) {
+    tableGroupMap.set(group[0].join('|'), group);
+  }
 
-    const type = classifyLine(trimmed, i, lines.length);
+  let i = 0;
+  while (i < trimmedLines.length) {
+    const trimmed = trimmedLines[i];
+    if (!trimmed) { i++; continue; }
+
+    // ── Check if this line is part of a table ──
+    const key = trimmed.split('|').map(c => c.trim()).join('|');
+    const group = tableGroupMap.get(key);
+    if (group) {
+      // Render the table
+      children.push(buildWordTable(group));
+      children.push(new Paragraph({ spacing: { after: 120 }, children: [] }));
+      i += group.length;
+      continue;
+    }
+
+    // ── Skip lines already consumed by a table group ──
+    if (tableLineSet.has(key)) { i++; continue; }
+
+    // ── Normal paragraph rendering ──
+    const type = classifyLine(trimmed, i, trimmedLines.length);
 
     switch (type) {
       case 'heading':
         children.push(new Paragraph({
-          alignment: AlignmentType.CENTER,
+          alignment: AlignmentType.LEFT,
           spacing: { before: i === 0 ? 0 : 80, after: i === 2 ? 200 : 80 },
           children: [
             new TextRun({ text: trimmed, bold: true, size: i === 0 ? 30 : 28, color: COLORS.primary }),
@@ -143,6 +267,7 @@ function buildContractSection(lotName: string, lines: string[]) {
           ],
         }));
     }
+    i++;
   }
 
   return {

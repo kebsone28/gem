@@ -230,7 +230,7 @@ export default function Simulation() {
       return next;
     });
     if (synced) {
-      toast.success('Taux mis à jour depuis le cahier des charges', { duration: 2500, icon: '📊' });
+      toast.success('Taux mis à jour depuis les Spécifications Techniques', { duration: 2500, icon: '📊' });
     }
   }, [project?.id]);
 

@@ -52,7 +52,7 @@ const CATEGORY_GROUPS: Record<string, { label: string; permissions: string[] }> 
     permissions: ['docs.read', 'docs.confidential', 'docs.pv'],
   },
   'cahier': {
-    label: '📘 Cahier des Charges',
+    label: '📘 Spécifications Techniques',
     permissions: ['cahier.technical', 'cahier.contracts', 'cahier.strategy'],
   },
   'ia': {

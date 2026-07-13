@@ -57,7 +57,7 @@ const SCREENSHOTS = [
   },
   {
     src: '/aide_pdf_rapport.png',
-    label: 'Rapports & Cahiers (.docx)',
+    label: 'Rapports & Spéc. Techniques (.docx)',
     desc: 'Exports professionnels avec QR code de traçabilité, calculs TVA auto, et moteur de rendu haute performance.',
   },
 ];
@@ -208,7 +208,7 @@ export default function Aide() {
         'Génération Turbo : Création instantanée de PVNC (Non-Conformité), PVR (Réception) et PVHSE.',
         'Détection Automatique : L’algorithme identifie le type de PV nécessaire selon les réponses Kobo (ex: seuils de terre).',
         'Notifications Temps Réel : Envoi automatique d’alertes SMS/Email aux prestataires dès la détection d’une anomalie.',
-        'Juridique & Traçabilité : Tous les PV sont horodatés, géolocalisés et conformes au cahier des charges.',
+        'Juridique & Traçabilité : Tous les PV sont horodatés, géolocalisés et conformes aux Spécifications Techniques.',
       ],
       utility:
         "Sécuriser juridiquement les chantiers et accélérer les levées de réserves. Permet de transformer des données froides (Kobo) en actions administratives immédiates.",
@@ -378,7 +378,7 @@ export default function Aide() {
     },
     {
       id: 'cahier',
-      title: 'Cahier des Charges Opérationnel',
+      title: 'Spécifications Techniques',
       icon: FileText,
       color: 'fuchsia',
       bg: 'bg-fuchsia-100 dark:bg-fuchsia-900/50 text-fuchsia-900 dark:text-fuchsia-100',

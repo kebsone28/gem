@@ -53,7 +53,7 @@ const PAGE_REGISTRY = [
   { title: 'Charges', to: '/finance/budget', icon: BarChart3, category: 'Pages' },
   { title: 'Approbations', to: '/governance/approvals', icon: ShieldCheck, category: 'Pages' },
   { title: 'Documents', to: '/documents/library', icon: FolderOpen, category: 'Pages' },
-  { title: 'Cahier de Charge', to: '/documents/specifications', icon: BookOpen, category: 'Pages' },
+  { title: 'Spécifications Techniques', to: '/documents/specifications', icon: BookOpen, category: 'Pages' },
   { title: 'Administration', to: '/admin/hub', icon: Settings, category: 'Pages' },
   { title: 'Utilisateurs', to: '/admin/users', icon: Users, category: 'Pages' },
   { title: 'Diagnostic Santé', to: '/admin/diagnostic', icon: Activity, category: 'Pages' },
@@ -66,7 +66,7 @@ const QUICK_ACTIONS = [
   { icon: MapIcon, label: 'Ouvrir la Carte', to: '/operations/map' },
   { icon: Activity, label: 'Diagnostic Santé', to: '/admin/diagnostic' },
   { icon: ServerCog, label: 'Agent Local', to: '/admin/agent-local' },
-  { icon: BookOpen, label: 'Cahier de Charge', to: '/documents/specifications' },
+  { icon: BookOpen, label: 'Spécifications Techniques', to: '/documents/specifications' },
   { icon: Settings, label: 'Paramètres', to: '/admin/settings' },
 ];
 

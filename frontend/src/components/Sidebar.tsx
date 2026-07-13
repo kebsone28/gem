@@ -265,7 +265,7 @@ export default function Sidebar() {
       if (module.key === 'simulation') label = t('simulation', 'Simulation');
       if (module.key === 'charges') label = t('charges', 'Charge');
       if (module.key === 'bordereau') label = t('bordereau', 'Bordereau');
-      if (module.key === 'cahier') label = t('cahier', 'Cahier de Charge');
+      if (module.key === 'cahier') label = t('cahier', 'Spécifications Techniques');
       if (module.key === 'sharedoc') label = t('sharedoc', 'Documents Partagés');
       if (module.key === 'pv_automation') label = t('pv_automation', 'Automatisation PV');
       if (module.key === 'terrain') label = t('terrain', 'Terrain');

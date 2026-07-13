@@ -11,7 +11,7 @@ const NAV_ITEMS = [
   { to: '/executive/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/projects', label: 'Projets', icon: Folder },
   { to: '/admin/mission', label: 'Missions', icon: ClipboardList },
-  { to: '/documents/specifications', label: 'Cahier', icon: FileText },
+  { to: '/documents/specifications', label: 'Spéc. Tech.', icon: FileText },
   { to: '/operations/collect', label: 'Collect', icon: Activity },
 ];
 

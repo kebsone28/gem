@@ -1,7 +1,7 @@
 import React from 'react';
 
 /**
- * Composant de section pour le Cahier des Charges
+ * Composant de section pour les Spécifications Techniques
  */
 export const CahierSection: React.FC<{
   title: string;

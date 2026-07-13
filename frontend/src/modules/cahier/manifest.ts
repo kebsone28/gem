@@ -4,7 +4,7 @@ import type { ModuleManifest } from '@core/kernel/types';
 
 export const manifest: ModuleManifest = {
     key: 'cahier',
-    name: 'Cahier de Charge',
+    name: 'Spécifications Techniques',
     icon: 'FileText',
     component: lazyWithRetry(() => import('./views/Cahier'), 'lazy:cahier'),
     route: '/documents/specifications',

@@ -303,7 +303,7 @@ export default function Cahier() {
           {!hasActiveProject && (
             <ModuleStatePanel
               title="Configuration de Base"
-              description="Vous consultez le socle standard du module Cahier de Charge. Cette base reste intacte. Sélectionnez un projet pour appliquer vos adaptations locales sans affecter le module principal."
+              description="Vous consultez le socle standard du module Spécifications Techniques. Cette base reste intacte. Sélectionnez un projet pour appliquer vos adaptations locales sans affecter le module principal."
               actionLabel="Choisir un projet"
               actionTo="/projects"
             />

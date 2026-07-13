@@ -1,7 +1,7 @@
  
 /**
  * SERVICE : ElectricianQuran (V.8.0 THEMATIC) 🛡️🕌🧠🧬🚀✨
- * Le Référentiel Technique & Cahier des Charges de PROQUELEC.
+ * Le Référentiel Technique & Spécifications Techniques de PROQUELEC.
  * "Le Guide de l'Électricien" : Matériel, Géographie et Normes Kobo.
  */
 

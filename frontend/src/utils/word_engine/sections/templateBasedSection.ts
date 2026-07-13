@@ -153,7 +153,7 @@ export const createTemplateSection = async (options: TemplateSectionOptions) => 
                   spacing: { before: SPACING.TINY, after: SPACING.TINY },
                   children: [
                     new TextRun({
-                      text: 'Cahier des Charges',
+                      text: 'Spécifications Techniques',
                       bold: true,
                       size: FONT_SIZES.H2,
                       color: 'FFFFFF',

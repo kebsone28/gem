@@ -332,10 +332,10 @@ export const PERMISSION_LABELS: Record<string, string> = {
   [PERMISSIONS.SETTINGS_DATAHUB]: 'Paramètres (Data Hub)',
   [PERMISSIONS.SETTINGS_SYSTEM]: 'Paramètres (Déploiement & Système)',
 
-  // 📝 Cahier des Charges
-  [PERMISSIONS.CAHIER_TECHNICAL]: 'Cahier (Référentiel Technique)',
-  [PERMISSIONS.CAHIER_CONTRACTS]: 'Cahier (Clauses Contractuelles)',
-  [PERMISSIONS.CAHIER_STRATEGY]: 'Cahier (Stratégie Opérationnelle)',
+  // 📝 Spécifications Techniques
+  [PERMISSIONS.CAHIER_TECHNICAL]: 'Spéc. Tech. (Référentiel Technique)',
+  [PERMISSIONS.CAHIER_CONTRACTS]: 'Spéc. Tech. (Clauses Contractuelles)',
+  [PERMISSIONS.CAHIER_STRATEGY]: 'Spéc. Tech. (Stratégie Opérationnelle)',
 
   // 📦 Logistique Granulaire
   [PERMISSIONS.LOGISTIQUE_READ]: 'Logistique (Vue Globale)',

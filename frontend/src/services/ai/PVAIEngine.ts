@@ -318,7 +318,7 @@ export const PVAIEngine = {
 
     const narrative =
       mode === 'PROVISOIRE'
-        ? `L'ouvrage réalisé pour le compte du ménage ${sub.name} a été soumis à un audit de conformité rigoureux. Les relevés de terrain, notamment la mesure de résistance de terre (${resistance}), témoignent d'une exécution conforme aux spécifications du Cahier des Charges. En conséquence, la réception provisoire est prononcée, ouvrant droit à la phase de garantie.`
+        ? `L'ouvrage réalisé pour le compte du ménage ${sub.name} a été soumis à un audit de conformité rigoureux. Les relevés de terrain, notamment la mesure de résistance de terre (${resistance}), témoignent d'une exécution conforme aux Spécifications Techniques. En conséquence, la réception provisoire est prononcée, ouvrant droit à la phase de garantie.`
         : `Le lot ${sub.numeroordre} a franchi avec succès la période de garantie contractuelle sans incident majeur signalé. L'audit de réception définitive confirme la pérennité de l'installation sous réserve du maintien des conditions d'utilisation normales. Le transfert de propriété et d'exploitation est ici validé sans réserves.`;
 
     return {

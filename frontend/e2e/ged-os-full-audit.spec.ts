@@ -153,7 +153,7 @@ test.describe('📄 Toutes les pages — chargement sans crash', () => {
     { route: '/home', label: 'Home' },
     { route: '/dashboard', label: 'Dashboard' },
     { route: '/terrain', label: 'Terrain' },
-    { route: '/cahier', label: 'Cahier des charges' },
+    { route: '/cahier', label: 'Spécifications Techniques' },
     { route: '/logistique', label: 'Logistique' },
     { route: '/charges', label: 'Finances/Charges' },
     { route: '/rapports', label: 'Rapports' },

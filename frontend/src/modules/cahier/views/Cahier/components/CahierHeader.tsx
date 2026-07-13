@@ -77,9 +77,9 @@ export const CahierHeader: React.FC<CahierHeaderProps> = ({
             <h1 className="text-3xl font-black text-white md:text-4xl lg:text-5xl tracking-tight">
               {isEditing ? 'Édition : ' : ''}
               {documentMode === 'cahier'
-                ? 'Cahier des Charges'
+                ? 'Spécifications Techniques'
                 : documentMode === 'contrat'
-                  ? 'Contrat de Prestation'
+                  ? 'Contrat et Annexe'
                   : 'Modèle de Stratégie'}
             </h1>
 
