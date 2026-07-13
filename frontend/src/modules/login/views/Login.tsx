@@ -625,7 +625,7 @@ export default function Login() {
               {/* SHIELD NEON GLOW */}
               <motion.div
                 whileHover={{ scale: 1.05 }}
-                className="relative w-14 h-14 bg-indigo-500/10 rounded-2xl flex items-center justify-center border border-indigo-500/20 mb-10 group"
+                className="relative w-14 h-14 rounded-2xl flex items-center justify-center border border-white/10 mb-10 group"
               >
                 {/* Outer neon ring */}
                 <motion.div
@@ -645,7 +645,7 @@ export default function Login() {
                   transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut', delay: 0.15 }}
                   className="absolute inset-0 bg-indigo-500 rounded-2xl blur-md"
                 />
-                <ShieldCheck size={28} className="text-indigo-400 relative z-10" />
+                <img src="/logo-proquelec.png" alt="Proquelec" className="w-8 h-8 relative z-10 object-contain" />
               </motion.div>
 
               {/* LOGO DECODE EFFECT */}
