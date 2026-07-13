@@ -912,6 +912,7 @@ export default function Login() {
                       </>
                     )}
                   </motion.button>
+                  </motion.div>
 
                   <motion.button
                     initial={{ opacity: 0, y: 16 }}
