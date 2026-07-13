@@ -652,7 +652,7 @@ export default function Login() {
 
               {/* LOGO DECODE EFFECT */}
               <div className="relative cursor-default">
-                <h1 className="text-5xl font-black tracking-tighter text-white mb-6 italic leading-tight uppercase select-none">
+                <h1 className="text-5xl font-black tracking-tighter text-white italic leading-tight uppercase select-none">
                   {decodedLogo.split(' OS').map((part, i) => (
                     <span key={i}>
                       {i > 0 && <span className="text-indigo-500"> OS</span>}
@@ -662,7 +662,7 @@ export default function Login() {
                 </h1>
               </div>
 
-              <div className="h-1 w-12 bg-indigo-500 rounded-full mb-6" />
+              <div className="h-1 w-12 bg-indigo-500 rounded-full mt-4 mb-3" />
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] leading-relaxed">
                 Pilotage Stratégique &<br />
                 Intelligence Terrain
