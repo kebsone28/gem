@@ -185,6 +185,13 @@ export const PERMISSIONS = {
   SETTINGS_DATAHUB: 'settings.datahub',
   SETTINGS_SYSTEM: 'settings.system',
 
+  // ── PRESTATAIRES & DOSSIERS ──
+  PRESTATAIRES_READ: 'prestataires.read',
+  PRESTATAIRES_MANAGE: 'prestataires.manage',
+  DOSSIERS_READ: 'dossiers.read',
+  DOSSIERS_MANAGE: 'dossiers.manage',
+  GRAPPE_CONFIG: 'grappe.config',
+
   // ── SYSTÈME ──
   SYSTEM_USERS: 'system.users',
   SYSTEM_ROLES: 'system.roles',

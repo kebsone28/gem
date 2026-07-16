@@ -37,6 +37,9 @@ import { manifest as loginManifest } from '../../modules/login/manifest';
 import { manifest as mission_verificationManifest } from '../../modules/mission_verification/manifest';
 import { manifest as mesManifest } from '../../modules/mes/manifest';
 import { manifest as carto_grappesManifest } from '../../modules/carto_grappes/manifest';
+import { manifest as prestatairesManifest } from '../../modules/prestataires/manifest';
+import { manifest as dossiers_prestatairesManifest } from '../../modules/dossiers_prestataires/manifest';
+import { manifest as config_grappesManifest } from '../../modules/config_grappes/manifest';
 
 export const MODULE_REGISTRY: Record<string, ModuleManifest> = {
   home: homeManifest,
@@ -75,6 +78,9 @@ export const MODULE_REGISTRY: Record<string, ModuleManifest> = {
   mes: mesManifest,
   carto_grappes: carto_grappesManifest,
   admin_permissions: admin_permissionsManifest,
+  prestataires: prestatairesManifest,
+  dossiers_prestataires: dossiers_prestatairesManifest,
+  config_grappes: config_grappesManifest,
 };
 
 export const getAllModules = () => Object.values(MODULE_REGISTRY);

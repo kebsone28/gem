@@ -64,10 +64,7 @@ export const PERMISSION_GROUPS = {
     PERMISSIONS.LOGISTIQUE_DEPLOYMENT,
     PERMISSIONS.LOGISTIQUE_MANAGE,
   ],
-  SECTOR_ALL_PACK: [
-    PERMISSIONS.SECTOR_GEM,
-    PERMISSIONS.SECTOR_MES,
-  ],
+  SECTOR_ALL_PACK: [PERMISSIONS.SECTOR_GEM, PERMISSIONS.SECTOR_MES],
 };
 
 const ALL_ATOMIC_PERMISSIONS = Object.values(PERMISSIONS).filter((p) => p.includes('.'));
@@ -102,7 +99,11 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     PERMISSIONS.IA_USE,
     ...PERMISSION_GROUPS.SECTOR_ALL_PACK,
   ],
-  [AppRole.CHEF_EQUIPE]: [...PERMISSION_GROUPS.SOCLE_COMMUN, ...PERMISSION_GROUPS.MISSION_VIEWER, ...PERMISSION_GROUPS.SECTOR_ALL_PACK],
+  [AppRole.CHEF_EQUIPE]: [
+    ...PERMISSION_GROUPS.SOCLE_COMMUN,
+    ...PERMISSION_GROUPS.MISSION_VIEWER,
+    ...PERMISSION_GROUPS.SECTOR_ALL_PACK,
+  ],
   [AppRole.COMPTABLE]: [
     ...PERMISSION_GROUPS.SOCLE_COMMUN,
     ...PERMISSION_GROUPS.MISSION_VIEWER,
@@ -120,7 +121,11 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     PERMISSIONS.UI_TEAMS,
     ...PERMISSION_GROUPS.SECTOR_ALL_PACK,
   ],
-  [AppRole.EMPLOYE]: [...PERMISSION_GROUPS.SOCLE_COMMUN, ...PERMISSION_GROUPS.MISSION_VIEWER, ...PERMISSION_GROUPS.SECTOR_ALL_PACK],
+  [AppRole.EMPLOYE]: [
+    ...PERMISSION_GROUPS.SOCLE_COMMUN,
+    ...PERMISSION_GROUPS.MISSION_VIEWER,
+    ...PERMISSION_GROUPS.SECTOR_ALL_PACK,
+  ],
   [AppRole.SUPERVISEUR]: [
     ...PERMISSION_GROUPS.SOCLE_COMMUN,
     ...PERMISSION_GROUPS.MISSION_VIEWER,
@@ -148,9 +153,9 @@ export const normalizeRole = (role?: string): UserRole | null => {
 export const sameTenant = (user: AuthUser, resource: SecurityResource): boolean =>
   user.tenantId === resource.tenantId;
 export const isPlatformAdmin = (user: AuthUser): boolean =>
-   user?.isPlatformAdmin === true ||
-   normalizeRole(user?.role) === AppRole.PLATFORM_ADMIN ||
-   normalizeRole(user?.role) === AppRole.ADMIN;
+  user?.isPlatformAdmin === true ||
+  normalizeRole(user?.role) === AppRole.PLATFORM_ADMIN ||
+  normalizeRole(user?.role) === AppRole.ADMIN;
 
 export const invalidatePermissionsCache = (userId?: string) => {
   if (userId) {
@@ -175,12 +180,12 @@ export const hasPermission = (user: AuthUser, permission: string | string[]): bo
     const rawPerms = new Set<string>(user.permissions || []);
     if (rawPerms.size === 0 && nRole)
       (ROLE_PERMISSIONS[nRole] || []).forEach((p) => rawPerms.add(p));
-    
+
     // Expansion récursive des dépendances
     const expandedPerms = new Set<string>();
-    rawPerms.forEach(p => {
-        expandedPerms.add(p);
-        resolvePermissionDependencies(p).forEach(dep => expandedPerms.add(dep));
+    rawPerms.forEach((p) => {
+      expandedPerms.add(p);
+      resolvePermissionDependencies(p).forEach((dep) => expandedPerms.add(dep));
     });
 
     PERMS_CACHE.set(cacheKey, expandedPerms);
@@ -189,7 +194,7 @@ export const hasPermission = (user: AuthUser, permission: string | string[]): bo
 
   const check = (p: string): boolean => {
     if (userPerms!.has(p)) return true;
-    
+
     // Vérification des alias legacy
     if (REVERSE_LEGACY_MAPPING[p] && userPerms!.has(REVERSE_LEGACY_MAPPING[p])) return true;
     if (LEGACY_MAPPING[p] && userPerms!.has(LEGACY_MAPPING[p])) return true;
@@ -346,7 +351,7 @@ export const PERMISSION_LABELS: Record<string, string> = {
   [PERMISSIONS.LOGISTIQUE_ATELIER]: 'Atelier de Production',
   [PERMISSIONS.LOGISTIQUE_DEPLOYMENT]: 'Déploiement Terrain',
   [PERMISSIONS.LOGISTIQUE_MANAGE]: 'Logistique (Master)',
-  
+
   // 🗺️ Terrain
   [PERMISSIONS.TERRAIN_MAP]: 'Accès Carte Interactive',
   [PERMISSIONS.TERRAIN_READ]: 'Voir Données Terrain',
@@ -354,6 +359,13 @@ export const PERMISSION_LABELS: Record<string, string> = {
   [PERMISSIONS.TERRAIN_MENAGES]: 'Gestion des Ménages',
   [PERMISSIONS.TERRAIN_TERMINAL]: 'Terminal Collecte Kobo',
   [PERMISSIONS.TERRAIN_REJECT]: 'Rejeter Dossier Kobo',
+
+  // ── PRESTATAIRES & DOSSIERS ──
+  [PERMISSIONS.PRESTATAIRES_READ]: 'Voir Prestataires',
+  [PERMISSIONS.PRESTATAIRES_MANAGE]: 'Gestion Prestataires',
+  [PERMISSIONS.DOSSIERS_READ]: 'Voir Dossiers',
+  [PERMISSIONS.DOSSIERS_MANAGE]: 'Gestion Dossiers',
+  [PERMISSIONS.GRAPPE_CONFIG]: 'Configuration Grappes',
 
   [PERMISSIONS.DOCS_PV]: 'Génération des PV',
   [PERMISSIONS.DOCS_CONFIDENTIAL]: 'Voir Docs Confidentiels',
@@ -377,19 +389,21 @@ export const PERMISSION_DEPENDENCIES: Record<string, string[]> = {
   [PERMISSIONS.TERRAIN_ZONES]: [PERMISSIONS.TERRAIN_READ],
   [PERMISSIONS.TERRAIN_MENAGES]: [PERMISSIONS.TERRAIN_READ],
   [PERMISSIONS.TERRAIN_TERMINAL]: [PERMISSIONS.TERRAIN_READ],
+  [PERMISSIONS.PRESTATAIRES_MANAGE]: [PERMISSIONS.PRESTATAIRES_READ],
+  [PERMISSIONS.DOSSIERS_MANAGE]: [PERMISSIONS.DOSSIERS_READ],
   [PERMISSIONS.TERRAIN_REJECT]: [PERMISSIONS.TERRAIN_READ, PERMISSIONS.TERRAIN_MENAGES],
-  
+
   [PERMISSIONS.LOGISTIQUE_STOCK]: [PERMISSIONS.LOGISTIQUE_READ],
   [PERMISSIONS.LOGISTIQUE_DELIVERIES]: [PERMISSIONS.LOGISTIQUE_READ, PERMISSIONS.LOGISTIQUE_STOCK],
   [PERMISSIONS.LOGISTIQUE_AGENTS]: [PERMISSIONS.LOGISTIQUE_READ],
   [PERMISSIONS.LOGISTIQUE_OM]: [PERMISSIONS.LOGISTIQUE_READ, PERMISSIONS.MISSIONS_CREATE],
   [PERMISSIONS.LOGISTIQUE_ATELIER]: [PERMISSIONS.LOGISTIQUE_READ],
   [PERMISSIONS.LOGISTIQUE_DEPLOYMENT]: [PERMISSIONS.LOGISTIQUE_READ, PERMISSIONS.TERRAIN_READ],
-  
+
   [PERMISSIONS.FINANCE_MANAGE]: [PERMISSIONS.FINANCE_READ],
   [PERMISSIONS.FINANCE_PAYMENTS]: [PERMISSIONS.FINANCE_READ, PERMISSIONS.FINANCE_MANAGE],
   [PERMISSIONS.FINANCE_EXPORT]: [PERMISSIONS.FINANCE_READ],
-  
+
   [PERMISSIONS.MISSIONS_CREATE]: [PERMISSIONS.MISSIONS_READ],
   [PERMISSIONS.MISSIONS_UPDATE]: [PERMISSIONS.MISSIONS_READ],
   [PERMISSIONS.MISSIONS_DELETE]: [PERMISSIONS.MISSIONS_READ, PERMISSIONS.MISSIONS_UPDATE],
@@ -403,13 +417,13 @@ export const PERMISSION_DEPENDENCIES: Record<string, string[]> = {
 export const resolvePermissionDependencies = (p: string, visited = new Set<string>()): string[] => {
   if (visited.has(p)) return [];
   visited.add(p);
-  
+
   const deps = PERMISSION_DEPENDENCIES[p] || [];
   const allDeps = [...deps];
-  
-  deps.forEach(dep => {
+
+  deps.forEach((dep) => {
     allDeps.push(...resolvePermissionDependencies(dep, visited));
   });
-  
+
   return Array.from(new Set(allDeps));
 };
