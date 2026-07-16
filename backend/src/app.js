@@ -24,7 +24,7 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", 'https://puter.com'],
+        scriptSrc: ["'self'", "'unsafe-eval'", 'https://puter.com'],
         styleSrc: ["'self'", "'unsafe-inline'"],
         imgSrc: ["'self'", 'data:', 'https://tiles.openfreemap.org', 'https://kf.kobotoolbox.org'],
         connectSrc: ["'self'", 'https://kf.kobotoolbox.org', 'wss://*.proquelec.sn'],
@@ -141,6 +141,7 @@ import gedcollectReportsRoutes from './modules/gedcollect/reports.routes.js';
 import debugRoutes from './api/routes/debug.routes.js';
 import adminPermissionRoutes from './api/routes/admin.permissions.routes.js';
 import mesRoutes from './api/routes/mes.routes.js';
+import cartoGrappesRoutes from './modules/carto_grappes/carto_grappes.routes.js';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler.js';
 import { tenantResolver } from './middleware/tenantResolver.js';
 import { domainContext } from './middleware/domainContext.js';
@@ -192,6 +193,7 @@ app.use('/api/gedcollect', gedcollectReportsRoutes);
 app.use('/api/gedcollect-admin', gedcollectAdminRoutes);
 app.use('/api/sharedoc', sharedocRoutes);
 app.use('/api/mes', mesRoutes);
+app.use('/api/carto-grappes', cartoGrappesRoutes);
 if (config.env !== 'production') {
   app.use('/api/debug', debugRoutes);
 }

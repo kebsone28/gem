@@ -108,7 +108,7 @@ export function MissionExpenses({ expenses = [], fuelStats, onChange }: MissionE
                 onChange={(e) => setKmStart(Number(e.target.value))}
                 title="Kilométrage au départ"
                 placeholder="0"
-                className="w-full p-3 bg-white dark:bg-slate-800 border-none rounded-xl text-sm font-black focus:ring-2 focus:ring-indigo-500/20"
+                className="w-full p-3 bg-white dark:bg-slate-800 text-slate-800 dark:text-white border-none rounded-xl text-sm font-black focus:ring-2 focus:ring-indigo-500/20"
               />
             </div>
             <div className="space-y-2">
@@ -121,7 +121,7 @@ export function MissionExpenses({ expenses = [], fuelStats, onChange }: MissionE
                 onChange={(e) => setKmEnd(Number(e.target.value))}
                 title="Kilométrage à l'arrivée"
                 placeholder="0"
-                className="w-full p-3 bg-white dark:bg-slate-800 border-none rounded-xl text-sm font-black focus:ring-2 focus:ring-indigo-500/20"
+                className="w-full p-3 bg-white dark:bg-slate-800 text-slate-800 dark:text-white border-none rounded-xl text-sm font-black focus:ring-2 focus:ring-indigo-500/20"
               />
             </div>
           </div>

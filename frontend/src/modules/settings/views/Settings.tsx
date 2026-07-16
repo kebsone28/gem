@@ -1286,7 +1286,8 @@ function DataSection({ project, households, onUpdate }: { project: any, househol
 
         setIsProcessing(true);
         try {
-            const { grappes } = generateDynamicGrappes(households, { 'Kaffrine': 600, 'Tambacounda': 600 });
+            const grappeTarget = 600;
+            const { grappes } = generateDynamicGrappes(households, grappeTarget);
             logger.log(`🗂️ [GRAPPES] Grappes générées: ${grappes.length}`);
 
             if (grappes.length === 0) {

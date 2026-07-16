@@ -1,0 +1,2198 @@
+[2026-07-14T11:18:42.350Z] [WARN] ⚠️  [REDIS] ⚠️  Redis désactivé pour cet environnement. Les jobs asynchrones (BullMQ) sont désactivés. {}
+[2026-07-14T11:18:42.352Z] [WARN] ⚠️  [REDIS]    Définissez REDIS_ENABLED=true ou REDIS_URL dans backend/.env pour activer les queues. {}
+[2026-07-14T11:18:44.641Z] [WARN] ⚠️  [WORKER] Redis non disponible, Simulation Worker est désactivé. {}
+[2026-07-14T11:18:55.507Z] [WARN] ⚠️  [KOBO-SYNC] ⚠️ GPS-REGION MISMATCH - ID: 721724998, Region: Tambacounda, GPS: [13.3259006, -13.5493017] {}
+[2026-07-14T11:18:55.561Z] [ERROR] ❌ [KOBO-SYNC] Error applying submission 721724998: 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Raw query failed. Code: `42804`. Message: `column "location_gis" is of type jsonb but expression is of type geometry`
+[2026-07-14T11:18:55.613Z] [ERROR] ❌ [KOBO-SYNC] Error applying submission 741258079: 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Raw query failed. Code: `42804`. Message: `column "location_gis" is of type jsonb but expression is of type geometry`
+[2026-07-14T11:31:25.619Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-14T11:31:27.166Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-14T11:31:27.760Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-14T11:31:50.228Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-14T11:31:51.591Z] [WARN] ⚠️  [REDIS] ⚠️  Redis désactivé pour cet environnement. Les jobs asynchrones (BullMQ) sont désactivés. {}
+[2026-07-14T11:31:51.592Z] [WARN] ⚠️  [REDIS]    Définissez REDIS_ENABLED=true ou REDIS_URL dans backend/.env pour activer les queues. {}
+[2026-07-14T11:31:53.376Z] [WARN] ⚠️  [WORKER] Redis non disponible, Simulation Worker est désactivé. {}
+[2026-07-14T11:32:04.186Z] [WARN] ⚠️  [KOBO-SYNC] ⚠️ GPS-REGION MISMATCH - ID: 721724998, Region: Tambacounda, GPS: [13.3259006, -13.5493017] {}
+[2026-07-14T11:32:04.221Z] [ERROR] ❌ [KOBO-SYNC] Error applying submission 721724998: 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Raw query failed. Code: `42804`. Message: `column "location_gis" is of type jsonb but expression is of type geometry`
+[2026-07-14T11:32:04.243Z] [ERROR] ❌ [KOBO-SYNC] Error applying submission 741258079: 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Raw query failed. Code: `42804`. Message: `column "location_gis" is of type jsonb but expression is of type geometry`
+[2026-07-14T11:32:14.751Z] [WARN] ⚠️  [REDIS] ⚠️  Redis désactivé pour cet environnement. Les jobs asynchrones (BullMQ) sont désactivés. {}
+[2026-07-14T11:32:14.752Z] [WARN] ⚠️  [REDIS]    Définissez REDIS_ENABLED=true ou REDIS_URL dans backend/.env pour activer les queues. {}
+[2026-07-14T11:32:16.773Z] [WARN] ⚠️  [WORKER] Redis non disponible, Simulation Worker est désactivé. {}
+[2026-07-14T11:32:27.535Z] [WARN] ⚠️  [KOBO-SYNC] ⚠️ GPS-REGION MISMATCH - ID: 721724998, Region: Tambacounda, GPS: [13.3259006, -13.5493017] {}
+[2026-07-14T11:32:27.571Z] [ERROR] ❌ [KOBO-SYNC] Error applying submission 721724998: 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Raw query failed. Code: `42804`. Message: `column "location_gis" is of type jsonb but expression is of type geometry`
+[2026-07-14T11:32:27.623Z] [ERROR] ❌ [KOBO-SYNC] Error applying submission 741258079: 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Raw query failed. Code: `42804`. Message: `column "location_gis" is of type jsonb but expression is of type geometry`
+[2026-07-14T11:32:47.202Z] [WARN] ⚠️  [REDIS] ⚠️  Redis désactivé pour cet environnement. Les jobs asynchrones (BullMQ) sont désactivés. {}
+[2026-07-14T11:32:47.202Z] [WARN] ⚠️  [REDIS]    Définissez REDIS_ENABLED=true ou REDIS_URL dans backend/.env pour activer les queues. {}
+[2026-07-14T11:32:50.693Z] [WARN] ⚠️  [WORKER] Redis non disponible, Simulation Worker est désactivé. {}
+[2026-07-14T11:33:01.732Z] [WARN] ⚠️  [KOBO-SYNC] ⚠️ GPS-REGION MISMATCH - ID: 721724998, Region: Tambacounda, GPS: [13.3259006, -13.5493017] {}
+[2026-07-14T11:33:01.764Z] [ERROR] ❌ [KOBO-SYNC] Error applying submission 721724998: 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Raw query failed. Code: `42804`. Message: `column "location_gis" is of type jsonb but expression is of type geometry`
+[2026-07-14T11:33:01.804Z] [ERROR] ❌ [KOBO-SYNC] Error applying submission 741258079: 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Raw query failed. Code: `42804`. Message: `column "location_gis" is of type jsonb but expression is of type geometry`
+[2026-07-14T11:47:51.608Z] [WARN] ⚠️  [KOBO-SYNC] ⚠️ GPS-REGION MISMATCH - ID: 721724998, Region: Tambacounda, GPS: [13.3259006, -13.5493017] {}
+[2026-07-14T11:47:51.637Z] [ERROR] ❌ [KOBO-SYNC] Error applying submission 721724998: 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Raw query failed. Code: `42804`. Message: `column "location_gis" is of type jsonb but expression is of type geometry`
+[2026-07-14T11:47:51.674Z] [ERROR] ❌ [KOBO-SYNC] Error applying submission 741258079: 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Raw query failed. Code: `42804`. Message: `column "location_gis" is of type jsonb but expression is of type geometry`
+[2026-07-14T11:48:12.669Z] [ERROR] ❌ getVillages error: PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Raw query failed. Code: `42703`. Message: `column "defaultGrappe" does not exist`
+    at zr.handleRequestError (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:8286)
+    at zr.handleAndLogRequestError (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7581)
+    at zr.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7288)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async a (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:75:6862)
+    at async getVillages (file:///C:/Mes-Sites-Web/GED_SAAS/backend/src/modules/carto_grappes/carto_grappes.controller.js:814:22) {
+  code: 'P2010',
+  meta: {
+    driverAdapterError: DriverAdapterError: ColumnNotFound
+        at PrismaPgAdapter.onError (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:642:11)
+        at PrismaPgAdapter.performIO (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:637:12)
+        at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+        at async PrismaPgAdapter.queryRaw (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:568:30)
+        at async e.interpretNode (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:11:44621)
+        at async e.run (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:11:43335)
+        at async e.execute (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:57:815)
+        at async jt.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:58:2401)
+        at async Object.singleLoader (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:6569)
+        at async zr.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7175)
+        at async a (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:75:6862)
+        at async getVillages (file:///C:/Mes-Sites-Web/GED_SAAS/backend/src/modules/carto_grappes/carto_grappes.controller.js:814:22) {
+      cause: [Object]
+    }
+  },
+  clientVersion: '7.8.0'
+}
+[2026-07-14T11:48:12.771Z] [ERROR] ❌ getVillages error: PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Raw query failed. Code: `42703`. Message: `column "defaultGrappe" does not exist`
+    at zr.handleRequestError (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:8286)
+    at zr.handleAndLogRequestError (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7581)
+    at zr.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7288)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async a (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:75:6862)
+    at async getVillages (file:///C:/Mes-Sites-Web/GED_SAAS/backend/src/modules/carto_grappes/carto_grappes.controller.js:814:22) {
+  code: 'P2010',
+  meta: {
+    driverAdapterError: DriverAdapterError: ColumnNotFound
+        at PrismaPgAdapter.onError (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:642:11)
+        at PrismaPgAdapter.performIO (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:637:12)
+        at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+        at async PrismaPgAdapter.queryRaw (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:568:30)
+        at async e.interpretNode (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:11:44621)
+        at async e.run (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:11:43335)
+        at async e.execute (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:57:815)
+        at async jt.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:58:2401)
+        at async Object.singleLoader (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:6569)
+        at async zr.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7175)
+        at async a (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:75:6862)
+        at async getVillages (file:///C:/Mes-Sites-Web/GED_SAAS/backend/src/modules/carto_grappes/carto_grappes.controller.js:814:22) {
+      cause: [Object]
+    }
+  },
+  clientVersion: '7.8.0'
+}
+[2026-07-14T11:52:04.695Z] [ERROR] ❌ getVillages error: PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Raw query failed. Code: `42703`. Message: `column "defaultGrappe" does not exist`
+    at zr.handleRequestError (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:8286)
+    at zr.handleAndLogRequestError (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7581)
+    at zr.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7288)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async a (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:75:6862)
+    at async getVillages (file:///C:/Mes-Sites-Web/GED_SAAS/backend/src/modules/carto_grappes/carto_grappes.controller.js:814:22) {
+  code: 'P2010',
+  meta: {
+    driverAdapterError: DriverAdapterError: ColumnNotFound
+        at PrismaPgAdapter.onError (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:642:11)
+        at PrismaPgAdapter.performIO (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:637:12)
+        at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+        at async PrismaPgAdapter.queryRaw (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:568:30)
+        at async e.interpretNode (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:11:44621)
+        at async e.run (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:11:43335)
+        at async e.execute (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:57:815)
+        at async jt.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:58:2401)
+        at async Object.singleLoader (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:6569)
+        at async zr.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7175)
+        at async a (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:75:6862)
+        at async getVillages (file:///C:/Mes-Sites-Web/GED_SAAS/backend/src/modules/carto_grappes/carto_grappes.controller.js:814:22) {
+      cause: [Object]
+    }
+  },
+  clientVersion: '7.8.0'
+}
+[2026-07-14T11:52:04.800Z] [ERROR] ❌ getVillages error: PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Raw query failed. Code: `42703`. Message: `column "defaultGrappe" does not exist`
+    at zr.handleRequestError (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:8286)
+    at zr.handleAndLogRequestError (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7581)
+    at zr.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7288)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async a (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:75:6862)
+    at async getVillages (file:///C:/Mes-Sites-Web/GED_SAAS/backend/src/modules/carto_grappes/carto_grappes.controller.js:814:22) {
+  code: 'P2010',
+  meta: {
+    driverAdapterError: DriverAdapterError: ColumnNotFound
+        at PrismaPgAdapter.onError (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:642:11)
+        at PrismaPgAdapter.performIO (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:637:12)
+        at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+        at async PrismaPgAdapter.queryRaw (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:568:30)
+        at async e.interpretNode (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:11:44621)
+        at async e.run (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:11:43335)
+        at async e.execute (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:57:815)
+        at async jt.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:58:2401)
+        at async Object.singleLoader (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:6569)
+        at async zr.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7175)
+        at async a (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:75:6862)
+        at async getVillages (file:///C:/Mes-Sites-Web/GED_SAAS/backend/src/modules/carto_grappes/carto_grappes.controller.js:814:22) {
+      cause: [Object]
+    }
+  },
+  clientVersion: '7.8.0'
+}
+[2026-07-14T11:52:13.391Z] [ERROR] ❌ getVillages error: PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Raw query failed. Code: `42703`. Message: `column "defaultGrappe" does not exist`
+    at zr.handleRequestError (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:8286)
+    at zr.handleAndLogRequestError (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7581)
+    at zr.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7288)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async a (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:75:6862)
+    at async getVillages (file:///C:/Mes-Sites-Web/GED_SAAS/backend/src/modules/carto_grappes/carto_grappes.controller.js:814:22) {
+  code: 'P2010',
+  meta: {
+    driverAdapterError: DriverAdapterError: ColumnNotFound
+        at PrismaPgAdapter.onError (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:642:11)
+        at PrismaPgAdapter.performIO (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:637:12)
+        at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+        at async PrismaPgAdapter.queryRaw (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:568:30)
+        at async e.interpretNode (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:11:44621)
+        at async e.run (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:11:43335)
+        at async e.execute (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:57:815)
+        at async jt.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:58:2401)
+        at async Object.singleLoader (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:6569)
+        at async zr.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7175)
+        at async a (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:75:6862)
+        at async getVillages (file:///C:/Mes-Sites-Web/GED_SAAS/backend/src/modules/carto_grappes/carto_grappes.controller.js:814:22) {
+      cause: [Object]
+    }
+  },
+  clientVersion: '7.8.0'
+}
+[2026-07-14T11:52:13.562Z] [ERROR] ❌ getVillages error: PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Raw query failed. Code: `42703`. Message: `column "defaultGrappe" does not exist`
+    at zr.handleRequestError (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:8286)
+    at zr.handleAndLogRequestError (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7581)
+    at zr.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7288)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async a (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:75:6862)
+    at async getVillages (file:///C:/Mes-Sites-Web/GED_SAAS/backend/src/modules/carto_grappes/carto_grappes.controller.js:814:22) {
+  code: 'P2010',
+  meta: {
+    driverAdapterError: DriverAdapterError: ColumnNotFound
+        at PrismaPgAdapter.onError (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:642:11)
+        at PrismaPgAdapter.performIO (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:637:12)
+        at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+        at async PrismaPgAdapter.queryRaw (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:568:30)
+        at async e.interpretNode (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:11:44621)
+        at async e.run (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:11:43335)
+        at async e.execute (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:57:815)
+        at async jt.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:58:2401)
+        at async Object.singleLoader (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:6569)
+        at async zr.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7175)
+        at async a (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:75:6862)
+        at async getVillages (file:///C:/Mes-Sites-Web/GED_SAAS/backend/src/modules/carto_grappes/carto_grappes.controller.js:814:22) {
+      cause: [Object]
+    }
+  },
+  clientVersion: '7.8.0'
+}
+[2026-07-14T11:54:18.386Z] [ERROR] ❌ getVillages error: PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Raw query failed. Code: `42703`. Message: `column "defaultGrappe" does not exist`
+    at zr.handleRequestError (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:8286)
+    at zr.handleAndLogRequestError (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7581)
+    at zr.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7288)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async a (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:75:6862)
+    at async getVillages (file:///C:/Mes-Sites-Web/GED_SAAS/backend/src/modules/carto_grappes/carto_grappes.controller.js:814:22) {
+  code: 'P2010',
+  meta: {
+    driverAdapterError: DriverAdapterError: ColumnNotFound
+        at PrismaPgAdapter.onError (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:642:11)
+        at PrismaPgAdapter.performIO (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:637:12)
+        at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+        at async PrismaPgAdapter.queryRaw (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:568:30)
+        at async e.interpretNode (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:11:44621)
+        at async e.run (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:11:43335)
+        at async e.execute (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:57:815)
+        at async jt.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:58:2401)
+        at async Object.singleLoader (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:6569)
+        at async zr.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7175)
+        at async a (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:75:6862)
+        at async getVillages (file:///C:/Mes-Sites-Web/GED_SAAS/backend/src/modules/carto_grappes/carto_grappes.controller.js:814:22) {
+      cause: [Object]
+    }
+  },
+  clientVersion: '7.8.0'
+}
+[2026-07-14T11:54:18.487Z] [ERROR] ❌ getVillages error: PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Raw query failed. Code: `42703`. Message: `column "defaultGrappe" does not exist`
+    at zr.handleRequestError (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:8286)
+    at zr.handleAndLogRequestError (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7581)
+    at zr.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7288)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async a (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:75:6862)
+    at async getVillages (file:///C:/Mes-Sites-Web/GED_SAAS/backend/src/modules/carto_grappes/carto_grappes.controller.js:814:22) {
+  code: 'P2010',
+  meta: {
+    driverAdapterError: DriverAdapterError: ColumnNotFound
+        at PrismaPgAdapter.onError (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:642:11)
+        at PrismaPgAdapter.performIO (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:637:12)
+        at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+        at async PrismaPgAdapter.queryRaw (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:568:30)
+        at async e.interpretNode (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:11:44621)
+        at async e.run (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:11:43335)
+        at async e.execute (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:57:815)
+        at async jt.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:58:2401)
+        at async Object.singleLoader (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:6569)
+        at async zr.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7175)
+        at async a (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:75:6862)
+        at async getVillages (file:///C:/Mes-Sites-Web/GED_SAAS/backend/src/modules/carto_grappes/carto_grappes.controller.js:814:22) {
+      cause: [Object]
+    }
+  },
+  clientVersion: '7.8.0'
+}
+[2026-07-14T12:02:51.643Z] [WARN] ⚠️  [KOBO-SYNC] ⚠️ GPS-REGION MISMATCH - ID: 721724998, Region: Tambacounda, GPS: [13.3259006, -13.5493017] {}
+[2026-07-14T12:02:51.676Z] [ERROR] ❌ [KOBO-SYNC] Error applying submission 721724998: 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Raw query failed. Code: `42804`. Message: `column "location_gis" is of type jsonb but expression is of type geometry`
+[2026-07-14T12:02:51.714Z] [ERROR] ❌ [KOBO-SYNC] Error applying submission 741258079: 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Raw query failed. Code: `42804`. Message: `column "location_gis" is of type jsonb but expression is of type geometry`
+[2026-07-14T12:04:25.162Z] [ERROR] ❌ getVillages error: PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Raw query failed. Code: `42703`. Message: `column "defaultGrappe" does not exist`
+    at zr.handleRequestError (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:8286)
+    at zr.handleAndLogRequestError (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7581)
+    at zr.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7288)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async a (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:75:6862)
+    at async getVillages (file:///C:/Mes-Sites-Web/GED_SAAS/backend/src/modules/carto_grappes/carto_grappes.controller.js:814:22) {
+  code: 'P2010',
+  meta: {
+    driverAdapterError: DriverAdapterError: ColumnNotFound
+        at PrismaPgAdapter.onError (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:642:11)
+        at PrismaPgAdapter.performIO (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:637:12)
+        at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+        at async PrismaPgAdapter.queryRaw (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:568:30)
+        at async e.interpretNode (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:11:44621)
+        at async e.run (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:11:43335)
+        at async e.execute (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:57:815)
+        at async jt.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:58:2401)
+        at async Object.singleLoader (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:6569)
+        at async zr.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7175)
+        at async a (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:75:6862)
+        at async getVillages (file:///C:/Mes-Sites-Web/GED_SAAS/backend/src/modules/carto_grappes/carto_grappes.controller.js:814:22) {
+      cause: [Object]
+    }
+  },
+  clientVersion: '7.8.0'
+}
+[2026-07-14T12:04:25.262Z] [ERROR] ❌ getVillages error: PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Raw query failed. Code: `42703`. Message: `column "defaultGrappe" does not exist`
+    at zr.handleRequestError (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:8286)
+    at zr.handleAndLogRequestError (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7581)
+    at zr.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7288)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async a (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:75:6862)
+    at async getVillages (file:///C:/Mes-Sites-Web/GED_SAAS/backend/src/modules/carto_grappes/carto_grappes.controller.js:814:22) {
+  code: 'P2010',
+  meta: {
+    driverAdapterError: DriverAdapterError: ColumnNotFound
+        at PrismaPgAdapter.onError (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:642:11)
+        at PrismaPgAdapter.performIO (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:637:12)
+        at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+        at async PrismaPgAdapter.queryRaw (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:568:30)
+        at async e.interpretNode (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:11:44621)
+        at async e.run (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:11:43335)
+        at async e.execute (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:57:815)
+        at async jt.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:58:2401)
+        at async Object.singleLoader (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:6569)
+        at async zr.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7175)
+        at async a (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:75:6862)
+        at async getVillages (file:///C:/Mes-Sites-Web/GED_SAAS/backend/src/modules/carto_grappes/carto_grappes.controller.js:814:22) {
+      cause: [Object]
+    }
+  },
+  clientVersion: '7.8.0'
+}
+[2026-07-14T12:04:47.438Z] [ERROR] ❌ getVillages error: PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Raw query failed. Code: `42703`. Message: `column "defaultGrappe" does not exist`
+    at zr.handleRequestError (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:8286)
+    at zr.handleAndLogRequestError (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7581)
+    at zr.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7288)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async a (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:75:6862)
+    at async getVillages (file:///C:/Mes-Sites-Web/GED_SAAS/backend/src/modules/carto_grappes/carto_grappes.controller.js:814:22) {
+  code: 'P2010',
+  meta: {
+    driverAdapterError: DriverAdapterError: ColumnNotFound
+        at PrismaPgAdapter.onError (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:642:11)
+        at PrismaPgAdapter.performIO (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:637:12)
+        at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+        at async PrismaPgAdapter.queryRaw (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:568:30)
+        at async e.interpretNode (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:11:44621)
+        at async e.run (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:11:43335)
+        at async e.execute (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:57:815)
+        at async jt.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:58:2401)
+        at async Object.singleLoader (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:6569)
+        at async zr.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7175)
+        at async a (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:75:6862)
+        at async getVillages (file:///C:/Mes-Sites-Web/GED_SAAS/backend/src/modules/carto_grappes/carto_grappes.controller.js:814:22) {
+      cause: [Object]
+    }
+  },
+  clientVersion: '7.8.0'
+}
+[2026-07-14T12:04:47.497Z] [ERROR] ❌ getVillages error: PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Raw query failed. Code: `42703`. Message: `column "defaultGrappe" does not exist`
+    at zr.handleRequestError (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:8286)
+    at zr.handleAndLogRequestError (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7581)
+    at zr.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7288)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async a (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:75:6862)
+    at async getVillages (file:///C:/Mes-Sites-Web/GED_SAAS/backend/src/modules/carto_grappes/carto_grappes.controller.js:814:22) {
+  code: 'P2010',
+  meta: {
+    driverAdapterError: DriverAdapterError: ColumnNotFound
+        at PrismaPgAdapter.onError (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:642:11)
+        at PrismaPgAdapter.performIO (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:637:12)
+        at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+        at async PrismaPgAdapter.queryRaw (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:568:30)
+        at async e.interpretNode (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:11:44621)
+        at async e.run (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:11:43335)
+        at async e.execute (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:57:815)
+        at async jt.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:58:2401)
+        at async Object.singleLoader (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:6569)
+        at async zr.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7175)
+        at async a (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:75:6862)
+        at async getVillages (file:///C:/Mes-Sites-Web/GED_SAAS/backend/src/modules/carto_grappes/carto_grappes.controller.js:814:22) {
+      cause: [Object]
+    }
+  },
+  clientVersion: '7.8.0'
+}
+[2026-07-14T12:04:49.667Z] [ERROR] ❌ getVillages error: PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Raw query failed. Code: `42703`. Message: `column "defaultGrappe" does not exist`
+    at zr.handleRequestError (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:8286)
+    at zr.handleAndLogRequestError (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7581)
+    at zr.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7288)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async a (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:75:6862)
+    at async getVillages (file:///C:/Mes-Sites-Web/GED_SAAS/backend/src/modules/carto_grappes/carto_grappes.controller.js:814:22) {
+  code: 'P2010',
+  meta: {
+    driverAdapterError: DriverAdapterError: ColumnNotFound
+        at PrismaPgAdapter.onError (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:642:11)
+        at PrismaPgAdapter.performIO (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:637:12)
+        at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+        at async PrismaPgAdapter.queryRaw (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:568:30)
+        at async e.interpretNode (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:11:44621)
+        at async e.run (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:11:43335)
+        at async e.execute (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:57:815)
+        at async jt.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:58:2401)
+        at async Object.singleLoader (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:6569)
+        at async zr.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7175)
+        at async a (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:75:6862)
+        at async getVillages (file:///C:/Mes-Sites-Web/GED_SAAS/backend/src/modules/carto_grappes/carto_grappes.controller.js:814:22) {
+      cause: [Object]
+    }
+  },
+  clientVersion: '7.8.0'
+}
+[2026-07-14T12:04:49.727Z] [ERROR] ❌ getVillages error: PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Raw query failed. Code: `42703`. Message: `column "defaultGrappe" does not exist`
+    at zr.handleRequestError (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:8286)
+    at zr.handleAndLogRequestError (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7581)
+    at zr.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7288)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async a (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:75:6862)
+    at async getVillages (file:///C:/Mes-Sites-Web/GED_SAAS/backend/src/modules/carto_grappes/carto_grappes.controller.js:814:22) {
+  code: 'P2010',
+  meta: {
+    driverAdapterError: DriverAdapterError: ColumnNotFound
+        at PrismaPgAdapter.onError (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:642:11)
+        at PrismaPgAdapter.performIO (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:637:12)
+        at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+        at async PrismaPgAdapter.queryRaw (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:568:30)
+        at async e.interpretNode (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:11:44621)
+        at async e.run (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:11:43335)
+        at async e.execute (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:57:815)
+        at async jt.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:58:2401)
+        at async Object.singleLoader (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:6569)
+        at async zr.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7175)
+        at async a (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:75:6862)
+        at async getVillages (file:///C:/Mes-Sites-Web/GED_SAAS/backend/src/modules/carto_grappes/carto_grappes.controller.js:814:22) {
+      cause: [Object]
+    }
+  },
+  clientVersion: '7.8.0'
+}
+[2026-07-14T12:04:51.348Z] [ERROR] ❌ getVillages error: PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Raw query failed. Code: `42703`. Message: `column "defaultGrappe" does not exist`
+    at zr.handleRequestError (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:8286)
+    at zr.handleAndLogRequestError (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7581)
+    at zr.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7288)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async a (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:75:6862)
+    at async getVillages (file:///C:/Mes-Sites-Web/GED_SAAS/backend/src/modules/carto_grappes/carto_grappes.controller.js:814:22) {
+  code: 'P2010',
+  meta: {
+    driverAdapterError: DriverAdapterError: ColumnNotFound
+        at PrismaPgAdapter.onError (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:642:11)
+        at PrismaPgAdapter.performIO (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:637:12)
+        at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+        at async PrismaPgAdapter.queryRaw (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:568:30)
+        at async e.interpretNode (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:11:44621)
+        at async e.run (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:11:43335)
+        at async e.execute (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:57:815)
+        at async jt.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:58:2401)
+        at async Object.singleLoader (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:6569)
+        at async zr.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7175)
+        at async a (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:75:6862)
+        at async getVillages (file:///C:/Mes-Sites-Web/GED_SAAS/backend/src/modules/carto_grappes/carto_grappes.controller.js:814:22) {
+      cause: [Object]
+    }
+  },
+  clientVersion: '7.8.0'
+}
+[2026-07-14T12:04:51.461Z] [ERROR] ❌ getVillages error: PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Raw query failed. Code: `42703`. Message: `column "defaultGrappe" does not exist`
+    at zr.handleRequestError (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:8286)
+    at zr.handleAndLogRequestError (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7581)
+    at zr.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7288)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async a (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:75:6862)
+    at async getVillages (file:///C:/Mes-Sites-Web/GED_SAAS/backend/src/modules/carto_grappes/carto_grappes.controller.js:814:22) {
+  code: 'P2010',
+  meta: {
+    driverAdapterError: DriverAdapterError: ColumnNotFound
+        at PrismaPgAdapter.onError (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:642:11)
+        at PrismaPgAdapter.performIO (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:637:12)
+        at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+        at async PrismaPgAdapter.queryRaw (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:568:30)
+        at async e.interpretNode (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:11:44621)
+        at async e.run (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:11:43335)
+        at async e.execute (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:57:815)
+        at async jt.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:58:2401)
+        at async Object.singleLoader (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:6569)
+        at async zr.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7175)
+        at async a (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:75:6862)
+        at async getVillages (file:///C:/Mes-Sites-Web/GED_SAAS/backend/src/modules/carto_grappes/carto_grappes.controller.js:814:22) {
+      cause: [Object]
+    }
+  },
+  clientVersion: '7.8.0'
+}
+[2026-07-14T12:04:53.143Z] [ERROR] ❌ getVillages error: PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Raw query failed. Code: `42703`. Message: `column "defaultGrappe" does not exist`
+    at zr.handleRequestError (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:8286)
+    at zr.handleAndLogRequestError (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7581)
+    at zr.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7288)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async a (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:75:6862)
+    at async getVillages (file:///C:/Mes-Sites-Web/GED_SAAS/backend/src/modules/carto_grappes/carto_grappes.controller.js:814:22) {
+  code: 'P2010',
+  meta: {
+    driverAdapterError: DriverAdapterError: ColumnNotFound
+        at PrismaPgAdapter.onError (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:642:11)
+        at PrismaPgAdapter.performIO (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:637:12)
+        at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+        at async PrismaPgAdapter.queryRaw (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:568:30)
+        at async e.interpretNode (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:11:44621)
+        at async e.run (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:11:43335)
+        at async e.execute (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:57:815)
+        at async jt.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:58:2401)
+        at async Object.singleLoader (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:6569)
+        at async zr.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7175)
+        at async a (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:75:6862)
+        at async getVillages (file:///C:/Mes-Sites-Web/GED_SAAS/backend/src/modules/carto_grappes/carto_grappes.controller.js:814:22) {
+      cause: [Object]
+    }
+  },
+  clientVersion: '7.8.0'
+}
+[2026-07-14T12:04:53.310Z] [ERROR] ❌ getVillages error: PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Raw query failed. Code: `42703`. Message: `column "defaultGrappe" does not exist`
+    at zr.handleRequestError (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:8286)
+    at zr.handleAndLogRequestError (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7581)
+    at zr.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7288)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async a (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:75:6862)
+    at async getVillages (file:///C:/Mes-Sites-Web/GED_SAAS/backend/src/modules/carto_grappes/carto_grappes.controller.js:814:22) {
+  code: 'P2010',
+  meta: {
+    driverAdapterError: DriverAdapterError: ColumnNotFound
+        at PrismaPgAdapter.onError (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:642:11)
+        at PrismaPgAdapter.performIO (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:637:12)
+        at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+        at async PrismaPgAdapter.queryRaw (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:568:30)
+        at async e.interpretNode (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:11:44621)
+        at async e.run (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:11:43335)
+        at async e.execute (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:57:815)
+        at async jt.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:58:2401)
+        at async Object.singleLoader (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:6569)
+        at async zr.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7175)
+        at async a (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:75:6862)
+        at async getVillages (file:///C:/Mes-Sites-Web/GED_SAAS/backend/src/modules/carto_grappes/carto_grappes.controller.js:814:22) {
+      cause: [Object]
+    }
+  },
+  clientVersion: '7.8.0'
+}
+[2026-07-14T12:05:39.423Z] [ERROR] ❌ getVillages error: PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Raw query failed. Code: `42703`. Message: `column "defaultGrappe" does not exist`
+    at zr.handleRequestError (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:8286)
+    at zr.handleAndLogRequestError (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7581)
+    at zr.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7288)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async a (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:75:6862)
+    at async getVillages (file:///C:/Mes-Sites-Web/GED_SAAS/backend/src/modules/carto_grappes/carto_grappes.controller.js:814:22) {
+  code: 'P2010',
+  meta: {
+    driverAdapterError: DriverAdapterError: ColumnNotFound
+        at PrismaPgAdapter.onError (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:642:11)
+        at PrismaPgAdapter.performIO (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:637:12)
+        at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+        at async PrismaPgAdapter.queryRaw (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:568:30)
+        at async e.interpretNode (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:11:44621)
+        at async e.run (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:11:43335)
+        at async e.execute (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:57:815)
+        at async jt.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:58:2401)
+        at async Object.singleLoader (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:6569)
+        at async zr.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7175)
+        at async a (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:75:6862)
+        at async getVillages (file:///C:/Mes-Sites-Web/GED_SAAS/backend/src/modules/carto_grappes/carto_grappes.controller.js:814:22) {
+      cause: [Object]
+    }
+  },
+  clientVersion: '7.8.0'
+}
+[2026-07-14T12:05:39.509Z] [ERROR] ❌ getVillages error: PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Raw query failed. Code: `42703`. Message: `column "defaultGrappe" does not exist`
+    at zr.handleRequestError (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:8286)
+    at zr.handleAndLogRequestError (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7581)
+    at zr.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7288)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async a (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:75:6862)
+    at async getVillages (file:///C:/Mes-Sites-Web/GED_SAAS/backend/src/modules/carto_grappes/carto_grappes.controller.js:814:22) {
+  code: 'P2010',
+  meta: {
+    driverAdapterError: DriverAdapterError: ColumnNotFound
+        at PrismaPgAdapter.onError (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:642:11)
+        at PrismaPgAdapter.performIO (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:637:12)
+        at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+        at async PrismaPgAdapter.queryRaw (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:568:30)
+        at async e.interpretNode (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:11:44621)
+        at async e.run (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:11:43335)
+        at async e.execute (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:57:815)
+        at async jt.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:58:2401)
+        at async Object.singleLoader (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:6569)
+        at async zr.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7175)
+        at async a (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:75:6862)
+        at async getVillages (file:///C:/Mes-Sites-Web/GED_SAAS/backend/src/modules/carto_grappes/carto_grappes.controller.js:814:22) {
+      cause: [Object]
+    }
+  },
+  clientVersion: '7.8.0'
+}
+[2026-07-14T12:11:44.336Z] [WARN] ⚠️  [REDIS] ⚠️  Redis désactivé pour cet environnement. Les jobs asynchrones (BullMQ) sont désactivés. {}
+[2026-07-14T12:11:44.337Z] [WARN] ⚠️  [REDIS]    Définissez REDIS_ENABLED=true ou REDIS_URL dans backend/.env pour activer les queues. {}
+[2026-07-14T12:11:51.267Z] [WARN] ⚠️  [WORKER] Redis non disponible, Simulation Worker est désactivé. {}
+[2026-07-14T12:11:51.729Z] [ERROR] ❌ getVillages error: PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Raw query failed. Code: `42703`. Message: `column "defaultGrappe" does not exist`
+    at zr.handleRequestError (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:8286)
+    at zr.handleAndLogRequestError (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7581)
+    at zr.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7288)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async a (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:75:6862)
+    at async getVillages (file:///C:/Mes-Sites-Web/GED_SAAS/backend/src/modules/carto_grappes/carto_grappes.controller.js:814:22) {
+  code: 'P2010',
+  meta: {
+    driverAdapterError: DriverAdapterError: ColumnNotFound
+        at PrismaPgAdapter.onError (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:642:11)
+        at PrismaPgAdapter.performIO (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:637:12)
+        at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+        at async PrismaPgAdapter.queryRaw (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:568:30)
+        at async e.interpretNode (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:11:44621)
+        at async e.run (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:11:43335)
+        at async e.execute (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:57:815)
+        at async jt.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:58:2401)
+        at async Object.singleLoader (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:6569)
+        at async zr.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7175)
+        at async a (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:75:6862)
+        at async getVillages (file:///C:/Mes-Sites-Web/GED_SAAS/backend/src/modules/carto_grappes/carto_grappes.controller.js:814:22) {
+      cause: [Object]
+    }
+  },
+  clientVersion: '7.8.0'
+}
+[2026-07-14T12:11:51.923Z] [ERROR] ❌ getVillages error: PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Raw query failed. Code: `42703`. Message: `column "defaultGrappe" does not exist`
+    at zr.handleRequestError (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:8286)
+    at zr.handleAndLogRequestError (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7581)
+    at zr.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7288)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async a (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:75:6862)
+    at async getVillages (file:///C:/Mes-Sites-Web/GED_SAAS/backend/src/modules/carto_grappes/carto_grappes.controller.js:814:22) {
+  code: 'P2010',
+  meta: {
+    driverAdapterError: DriverAdapterError: ColumnNotFound
+        at PrismaPgAdapter.onError (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:642:11)
+        at PrismaPgAdapter.performIO (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:637:12)
+        at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+        at async PrismaPgAdapter.queryRaw (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:568:30)
+        at async e.interpretNode (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:11:44621)
+        at async e.run (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:11:43335)
+        at async e.execute (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:57:815)
+        at async jt.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:58:2401)
+        at async Object.singleLoader (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:6569)
+        at async zr.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7175)
+        at async a (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:75:6862)
+        at async getVillages (file:///C:/Mes-Sites-Web/GED_SAAS/backend/src/modules/carto_grappes/carto_grappes.controller.js:814:22) {
+      cause: [Object]
+    }
+  },
+  clientVersion: '7.8.0'
+}
+[2026-07-14T12:11:51.964Z] [WARN] ⚠️  [TIMING] {
+  requestId: '7b22f6f0-7fda-44f5-ba23-6cae5d9c1f99',
+  method: 'POST',
+  path: '/refresh',
+  status: 200,
+  durationMs: 1091,
+  slow: true,
+  userId: undefined,
+  organizationId: undefined,
+  timestamp: '2026-07-14T12:11:51.964Z'
+}
+[2026-07-14T12:11:51.971Z] [WARN] ⚠️  [TIMING] {
+  requestId: 'a09aaeeb-7ee1-44b1-8e45-98c767b18247',
+  method: 'GET',
+  path: '/me',
+  status: 200,
+  durationMs: 1034,
+  slow: true,
+  userId: 'a02f1297-541f-434d-ac71-514188fbbe73',
+  organizationId: 'c15a8abb-8e28-44f4-9c65-a73f72bdc836',
+  timestamp: '2026-07-14T12:11:51.971Z'
+}
+[2026-07-14T12:11:55.353Z] [WARN] ⚠️  [REDIS] ⚠️  Redis désactivé pour cet environnement. Les jobs asynchrones (BullMQ) sont désactivés. {}
+[2026-07-14T12:11:55.355Z] [WARN] ⚠️  [REDIS]    Définissez REDIS_ENABLED=true ou REDIS_URL dans backend/.env pour activer les queues. {}
+[2026-07-14T12:11:57.605Z] [WARN] ⚠️  [WORKER] Redis non disponible, Simulation Worker est désactivé. {}
+[2026-07-14T12:12:00.614Z] [ERROR] ❌ getVillages error: PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Raw query failed. Code: `42703`. Message: `column "defaultGrappe" does not exist`
+    at zr.handleRequestError (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:8286)
+    at zr.handleAndLogRequestError (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7581)
+    at zr.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7288)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async a (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:75:6862)
+    at async getVillages (file:///C:/Mes-Sites-Web/GED_SAAS/backend/src/modules/carto_grappes/carto_grappes.controller.js:814:22) {
+  code: 'P2010',
+  meta: {
+    driverAdapterError: DriverAdapterError: ColumnNotFound
+        at PrismaPgAdapter.onError (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:642:11)
+        at PrismaPgAdapter.performIO (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:637:12)
+        at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+        at async PrismaPgAdapter.queryRaw (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:568:30)
+        at async e.interpretNode (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:11:44621)
+        at async e.run (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:11:43335)
+        at async e.execute (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:57:815)
+        at async jt.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:58:2401)
+        at async Object.singleLoader (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:6569)
+        at async zr.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7175)
+        at async a (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:75:6862)
+        at async getVillages (file:///C:/Mes-Sites-Web/GED_SAAS/backend/src/modules/carto_grappes/carto_grappes.controller.js:814:22) {
+      cause: [Object]
+    }
+  },
+  clientVersion: '7.8.0'
+}
+[2026-07-14T12:12:00.645Z] [ERROR] ❌ getVillages error: PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Raw query failed. Code: `42703`. Message: `column "defaultGrappe" does not exist`
+    at zr.handleRequestError (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:8286)
+    at zr.handleAndLogRequestError (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7581)
+    at zr.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7288)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async a (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:75:6862)
+    at async getVillages (file:///C:/Mes-Sites-Web/GED_SAAS/backend/src/modules/carto_grappes/carto_grappes.controller.js:814:22) {
+  code: 'P2010',
+  meta: {
+    driverAdapterError: DriverAdapterError: ColumnNotFound
+        at PrismaPgAdapter.onError (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:642:11)
+        at PrismaPgAdapter.performIO (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:637:12)
+        at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+        at async PrismaPgAdapter.queryRaw (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:568:30)
+        at async e.interpretNode (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:11:44621)
+        at async e.run (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:11:43335)
+        at async e.execute (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:57:815)
+        at async jt.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:58:2401)
+        at async Object.singleLoader (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:6569)
+        at async zr.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7175)
+        at async a (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:75:6862)
+        at async getVillages (file:///C:/Mes-Sites-Web/GED_SAAS/backend/src/modules/carto_grappes/carto_grappes.controller.js:814:22) {
+      cause: [Object]
+    }
+  },
+  clientVersion: '7.8.0'
+}
+[2026-07-14T12:12:08.636Z] [WARN] ⚠️  [KOBO-SYNC] ⚠️ GPS-REGION MISMATCH - ID: 721724998, Region: Tambacounda, GPS: [13.3259006, -13.5493017] {}
+[2026-07-14T12:12:08.687Z] [ERROR] ❌ [KOBO-SYNC] Error applying submission 721724998: 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Raw query failed. Code: `42804`. Message: `column "location_gis" is of type jsonb but expression is of type geometry`
+[2026-07-14T12:12:08.725Z] [ERROR] ❌ [KOBO-SYNC] Error applying submission 741258079: 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Raw query failed. Code: `42804`. Message: `column "location_gis" is of type jsonb but expression is of type geometry`
+[2026-07-14T12:12:59.010Z] [ERROR] ❌ [PRISMA-ERROR] Failed op=upsert on model=CartoSettings: 
+Invalid `prisma.cartoSettings.upsert()` invocation:
+
+{
+  where: {
+    organizationId: "c15a8abb-8e28-44f4-9c65-a73f72bdc836"
+  },
+  update: {
+    lotModes: {
+      A: "global",
+      B: "individuel",
+      C: "individuel"
+    }
+  },
+  create: {
+    organizationId: "c15a8abb-8e28-44f4-9c65-a73f72bdc836",
+    lotModes: {
+    ~~~~~~~~
+      A: "global",
+      B: "individuel",
+      C: "individuel"
+    },
+?   id?: String,
+?   bareme?: NullableJsonNullValueInput | Json,
+?   lotLabels?: NullableJsonNullValueInput | Json,
+?   featureToggles?: NullableJsonNullValueInput | Json,
+?   createdAt?: DateTime,
+?   updatedAt?: DateTime
+  }
+}
+
+Unknown argument `lotModes`. Available options are marked with ?.
+[2026-07-14T12:12:59.012Z] [ERROR] ❌ updateSettings error: PrismaClientValidationError: 
+Invalid `prisma.cartoSettings.upsert()` invocation:
+
+{
+  where: {
+    organizationId: "c15a8abb-8e28-44f4-9c65-a73f72bdc836"
+  },
+  update: {
+    lotModes: {
+      A: "global",
+      B: "individuel",
+      C: "individuel"
+    }
+  },
+  create: {
+    organizationId: "c15a8abb-8e28-44f4-9c65-a73f72bdc836",
+    lotModes: {
+    ~~~~~~~~
+      A: "global",
+      B: "individuel",
+      C: "individuel"
+    },
+?   id?: String,
+?   bareme?: NullableJsonNullValueInput | Json,
+?   lotLabels?: NullableJsonNullValueInput | Json,
+?   featureToggles?: NullableJsonNullValueInput | Json,
+?   createdAt?: DateTime,
+?   updatedAt?: DateTime
+  }
+}
+
+Unknown argument `lotModes`. Available options are marked with ?.
+    at ar (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:10:1374)
+    at zr.handleRequestError (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7929)
+    at zr.handleAndLogRequestError (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7581)
+    at zr.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7288)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Array.$allOperations (file:///C:/Mes-Sites-Web/GED_SAAS/backend/src/core/utils/prisma.js:131:20)
+    at async a (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:75:6862)
+    at async updateSettings (file:///C:/Mes-Sites-Web/GED_SAAS/backend/src/modules/carto_grappes/carto_grappes.controller.js:373:22) {
+  clientVersion: '7.8.0'
+}
+[2026-07-14T12:13:17.754Z] [ERROR] ❌ [PRISMA-ERROR] Failed op=upsert on model=CartoSettings: 
+Invalid `prisma.cartoSettings.upsert()` invocation:
+
+{
+  where: {
+    organizationId: "c15a8abb-8e28-44f4-9c65-a73f72bdc836"
+  },
+  update: {
+    lotModes: {
+      A: "global",
+      B: "individuel",
+      C: "groupe"
+    }
+  },
+  create: {
+    organizationId: "c15a8abb-8e28-44f4-9c65-a73f72bdc836",
+    lotModes: {
+    ~~~~~~~~
+      A: "global",
+      B: "individuel",
+      C: "groupe"
+    },
+?   id?: String,
+?   bareme?: NullableJsonNullValueInput | Json,
+?   lotLabels?: NullableJsonNullValueInput | Json,
+?   featureToggles?: NullableJsonNullValueInput | Json,
+?   createdAt?: DateTime,
+?   updatedAt?: DateTime
+  }
+}
+
+Unknown argument `lotModes`. Available options are marked with ?.
+[2026-07-14T12:13:17.756Z] [ERROR] ❌ updateSettings error: PrismaClientValidationError: 
+Invalid `prisma.cartoSettings.upsert()` invocation:
+
+{
+  where: {
+    organizationId: "c15a8abb-8e28-44f4-9c65-a73f72bdc836"
+  },
+  update: {
+    lotModes: {
+      A: "global",
+      B: "individuel",
+      C: "groupe"
+    }
+  },
+  create: {
+    organizationId: "c15a8abb-8e28-44f4-9c65-a73f72bdc836",
+    lotModes: {
+    ~~~~~~~~
+      A: "global",
+      B: "individuel",
+      C: "groupe"
+    },
+?   id?: String,
+?   bareme?: NullableJsonNullValueInput | Json,
+?   lotLabels?: NullableJsonNullValueInput | Json,
+?   featureToggles?: NullableJsonNullValueInput | Json,
+?   createdAt?: DateTime,
+?   updatedAt?: DateTime
+  }
+}
+
+Unknown argument `lotModes`. Available options are marked with ?.
+    at ar (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:10:1374)
+    at zr.handleRequestError (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7929)
+    at zr.handleAndLogRequestError (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7581)
+    at zr.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7288)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Array.$allOperations (file:///C:/Mes-Sites-Web/GED_SAAS/backend/src/core/utils/prisma.js:131:20)
+    at async a (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:75:6862)
+    at async updateSettings (file:///C:/Mes-Sites-Web/GED_SAAS/backend/src/modules/carto_grappes/carto_grappes.controller.js:373:22) {
+  clientVersion: '7.8.0'
+}
+[2026-07-14T12:19:21.919Z] [WARN] ⚠️  [REDIS] ⚠️  Redis désactivé pour cet environnement. Les jobs asynchrones (BullMQ) sont désactivés. {}
+[2026-07-14T12:19:21.921Z] [WARN] ⚠️  [REDIS]    Définissez REDIS_ENABLED=true ou REDIS_URL dans backend/.env pour activer les queues. {}
+[2026-07-14T12:19:25.484Z] [WARN] ⚠️  [WORKER] Redis non disponible, Simulation Worker est désactivé. {}
+[2026-07-14T12:19:36.362Z] [WARN] ⚠️  [KOBO-SYNC] ⚠️ GPS-REGION MISMATCH - ID: 721724998, Region: Tambacounda, GPS: [13.3259006, -13.5493017] {}
+[2026-07-14T12:19:36.407Z] [ERROR] ❌ [KOBO-SYNC] Error applying submission 721724998: 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Raw query failed. Code: `42804`. Message: `column "location_gis" is of type jsonb but expression is of type geometry`
+[2026-07-14T12:19:36.472Z] [ERROR] ❌ [KOBO-SYNC] Error applying submission 741258079: 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Raw query failed. Code: `42804`. Message: `column "location_gis" is of type jsonb but expression is of type geometry`
+[2026-07-14T12:21:41.094Z] [ERROR] ❌ getVillages error: PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Raw query failed. Code: `42703`. Message: `column "defaultGrappe" does not exist`
+    at zr.handleRequestError (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:8286)
+    at zr.handleAndLogRequestError (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7581)
+    at zr.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7288)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async a (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:75:6862)
+    at async getVillages (file:///C:/Mes-Sites-Web/GED_SAAS/backend/src/modules/carto_grappes/carto_grappes.controller.js:814:22) {
+  code: 'P2010',
+  meta: {
+    driverAdapterError: DriverAdapterError: ColumnNotFound
+        at PrismaPgAdapter.onError (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:642:11)
+        at PrismaPgAdapter.performIO (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:637:12)
+        at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+        at async PrismaPgAdapter.queryRaw (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:568:30)
+        at async e.interpretNode (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:11:44621)
+        at async e.run (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:11:43335)
+        at async e.execute (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:57:815)
+        at async jt.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:58:2401)
+        at async Object.singleLoader (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:6569)
+        at async zr.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7175)
+        at async a (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:75:6862)
+        at async getVillages (file:///C:/Mes-Sites-Web/GED_SAAS/backend/src/modules/carto_grappes/carto_grappes.controller.js:814:22) {
+      cause: [Object]
+    }
+  },
+  clientVersion: '7.8.0'
+}
+[2026-07-14T12:21:41.487Z] [ERROR] ❌ getVillages error: PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Raw query failed. Code: `42703`. Message: `column "defaultGrappe" does not exist`
+    at zr.handleRequestError (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:8286)
+    at zr.handleAndLogRequestError (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7581)
+    at zr.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7288)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async a (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:75:6862)
+    at async getVillages (file:///C:/Mes-Sites-Web/GED_SAAS/backend/src/modules/carto_grappes/carto_grappes.controller.js:814:22) {
+  code: 'P2010',
+  meta: {
+    driverAdapterError: DriverAdapterError: ColumnNotFound
+        at PrismaPgAdapter.onError (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:642:11)
+        at PrismaPgAdapter.performIO (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:637:12)
+        at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+        at async PrismaPgAdapter.queryRaw (file:///C:/Mes-Sites-Web/GED_SAAS/backend/node_modules/@prisma/adapter-pg/dist/index.mjs:568:30)
+        at async e.interpretNode (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:11:44621)
+        at async e.run (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:11:43335)
+        at async e.execute (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:57:815)
+        at async jt.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:58:2401)
+        at async Object.singleLoader (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:6569)
+        at async zr.request (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:65:7175)
+        at async a (C:\Mes-Sites-Web\GED_SAAS\backend\node_modules\@prisma\client\runtime\client.js:75:6862)
+        at async getVillages (file:///C:/Mes-Sites-Web/GED_SAAS/backend/src/modules/carto_grappes/carto_grappes.controller.js:814:22) {
+      cause: [Object]
+    }
+  },
+  clientVersion: '7.8.0'
+}
+[2026-07-14T12:34:59.658Z] [WARN] ⚠️  [KOBO-SYNC] ⚠️ GPS-REGION MISMATCH - ID: 721724998, Region: Tambacounda, GPS: [13.3259006, -13.5493017] {}
+[2026-07-14T12:34:59.688Z] [ERROR] ❌ [KOBO-SYNC] Error applying submission 721724998: 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Raw query failed. Code: `42804`. Message: `column "location_gis" is of type jsonb but expression is of type geometry`
+[2026-07-14T12:34:59.964Z] [ERROR] ❌ [KOBO-SYNC] Error applying submission 741258079: 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Raw query failed. Code: `42804`. Message: `column "location_gis" is of type jsonb but expression is of type geometry`
+[2026-07-14T12:37:24.579Z] [WARN] ⚠️  [REDIS] ⚠️  Redis désactivé pour cet environnement. Les jobs asynchrones (BullMQ) sont désactivés. {}
+[2026-07-14T12:37:24.580Z] [WARN] ⚠️  [REDIS]    Définissez REDIS_ENABLED=true ou REDIS_URL dans backend/.env pour activer les queues. {}
+[2026-07-14T12:37:29.190Z] [WARN] ⚠️  [WORKER] Redis non disponible, Simulation Worker est désactivé. {}
+[2026-07-14T12:37:39.973Z] [WARN] ⚠️  [KOBO-SYNC] ⚠️ GPS-REGION MISMATCH - ID: 721724998, Region: Tambacounda, GPS: [13.3259006, -13.5493017] {}
+[2026-07-14T12:37:40.006Z] [ERROR] ❌ [KOBO-SYNC] Error applying submission 721724998: 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Raw query failed. Code: `42804`. Message: `column "location_gis" is of type jsonb but expression is of type geometry`
+[2026-07-14T12:37:40.069Z] [ERROR] ❌ [KOBO-SYNC] Error applying submission 741258079: 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Raw query failed. Code: `42804`. Message: `column "location_gis" is of type jsonb but expression is of type geometry`
+[2026-07-14T12:44:10.269Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-14T12:44:28.815Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-14T12:44:35.430Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-14T13:12:17.091Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-14T13:12:30.646Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T04:31:37.417Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T04:31:55.307Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T04:32:03.943Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+(node:50144) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 exit listeners added to [Bus]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit
+(Use `node --trace-warnings ...` to show where the warning was created)
+[2026-07-15T07:04:55.866Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T07:05:09.583Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T07:13:21.939Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T07:13:35.596Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T07:54:11.933Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T07:54:36.846Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T07:55:00.117Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T08:02:04.181Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T08:02:16.925Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T08:10:39.008Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T08:11:01.218Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T08:17:26.080Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T08:19:06.237Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T08:19:23.719Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T08:19:45.935Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T08:19:58.689Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T08:20:25.154Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T08:20:37.703Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T08:20:43.228Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T08:21:07.690Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T08:21:14.031Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T08:21:26.881Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T08:21:38.303Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T08:21:45.395Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T08:21:53.508Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T08:27:23.804Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T08:33:44.337Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T08:34:02.354Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T08:34:18.633Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T08:35:52.642Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T08:36:15.184Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T08:36:38.981Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T08:36:41.860Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T08:36:54.854Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T08:36:57.148Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T08:42:17.792Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T08:42:28.169Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T08:42:50.260Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T08:49:04.364Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T08:49:39.792Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T08:49:46.475Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T08:49:59.007Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T08:50:04.764Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T08:50:17.893Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T08:51:10.196Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T08:54:49.337Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T09:01:01.784Z] [WARN] ⚠️  [REDIS] ⚠️  Redis désactivé pour cet environnement. Les jobs asynchrones (BullMQ) sont désactivés. {}
+[2026-07-15T09:01:01.785Z] [WARN] ⚠️  [REDIS]    Définissez REDIS_ENABLED=true ou REDIS_URL dans backend/.env pour activer les queues. {}
+[2026-07-15T09:01:06.470Z] [WARN] ⚠️  [REDIS] ⚠️  Redis désactivé pour cet environnement. Les jobs asynchrones (BullMQ) sont désactivés. {}
+[2026-07-15T09:01:06.471Z] [WARN] ⚠️  [REDIS]    Définissez REDIS_ENABLED=true ou REDIS_URL dans backend/.env pour activer les queues. {}
+[2026-07-15T09:01:08.923Z] [WARN] ⚠️  [WORKER] Redis non disponible, Simulation Worker est désactivé. {}
+[2026-07-15T09:01:13.124Z] [WARN] ⚠️  [REDIS] ⚠️  Redis désactivé pour cet environnement. Les jobs asynchrones (BullMQ) sont désactivés. {}
+[2026-07-15T09:01:13.125Z] [WARN] ⚠️  [REDIS]    Définissez REDIS_ENABLED=true ou REDIS_URL dans backend/.env pour activer les queues. {}
+[2026-07-15T09:01:15.235Z] [WARN] ⚠️  [WORKER] Redis non disponible, Simulation Worker est désactivé. {}
+[2026-07-15T09:01:26.456Z] [WARN] ⚠️  [KOBO-SYNC] ⚠️ GPS-REGION MISMATCH - ID: 721724998, Region: Tambacounda, GPS: [13.3259006, -13.5493017] {}
+[2026-07-15T09:01:26.489Z] [ERROR] ❌ [KOBO-SYNC] Error applying submission 721724998: 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Raw query failed. Code: `42804`. Message: `column "location_gis" is of type jsonb but expression is of type geometry`
+[2026-07-15T09:01:26.535Z] [ERROR] ❌ [KOBO-SYNC] Error applying submission 741258079: 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Raw query failed. Code: `42804`. Message: `column "location_gis" is of type jsonb but expression is of type geometry`
+[2026-07-15T09:02:51.112Z] [WARN] ⚠️  [REDIS] ⚠️  Redis désactivé pour cet environnement. Les jobs asynchrones (BullMQ) sont désactivés. {}
+[2026-07-15T09:02:51.127Z] [WARN] ⚠️  [REDIS]    Définissez REDIS_ENABLED=true ou REDIS_URL dans backend/.env pour activer les queues. {}
+[2026-07-15T09:02:53.515Z] [WARN] ⚠️  [WORKER] Redis non disponible, Simulation Worker est désactivé. {}
+[2026-07-15T09:03:05.809Z] [WARN] ⚠️  [KOBO-SYNC] ⚠️ GPS-REGION MISMATCH - ID: 721724998, Region: Tambacounda, GPS: [13.3259006, -13.5493017] {}
+[2026-07-15T09:03:05.860Z] [ERROR] ❌ [KOBO-SYNC] Error applying submission 721724998: 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Raw query failed. Code: `42804`. Message: `column "location_gis" is of type jsonb but expression is of type geometry`
+[2026-07-15T09:03:05.928Z] [ERROR] ❌ [KOBO-SYNC] Error applying submission 741258079: 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Raw query failed. Code: `42804`. Message: `column "location_gis" is of type jsonb but expression is of type geometry`
+[2026-07-15T09:03:10.021Z] [WARN] ⚠️  [REDIS] ⚠️  Redis désactivé pour cet environnement. Les jobs asynchrones (BullMQ) sont désactivés. {}
+[2026-07-15T09:03:10.022Z] [WARN] ⚠️  [REDIS]    Définissez REDIS_ENABLED=true ou REDIS_URL dans backend/.env pour activer les queues. {}
+[2026-07-15T09:03:12.540Z] [WARN] ⚠️  [WORKER] Redis non disponible, Simulation Worker est désactivé. {}
+[2026-07-15T09:03:23.234Z] [WARN] ⚠️  [KOBO-SYNC] ⚠️ GPS-REGION MISMATCH - ID: 721724998, Region: Tambacounda, GPS: [13.3259006, -13.5493017] {}
+[2026-07-15T09:03:23.277Z] [ERROR] ❌ [KOBO-SYNC] Error applying submission 721724998: 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Raw query failed. Code: `42804`. Message: `column "location_gis" is of type jsonb but expression is of type geometry`
+[2026-07-15T09:03:23.326Z] [ERROR] ❌ [KOBO-SYNC] Error applying submission 741258079: 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Raw query failed. Code: `42804`. Message: `column "location_gis" is of type jsonb but expression is of type geometry`
+[2026-07-15T09:03:28.492Z] [WARN] ⚠️  [REDIS] ⚠️  Redis désactivé pour cet environnement. Les jobs asynchrones (BullMQ) sont désactivés. {}
+[2026-07-15T09:03:28.493Z] [WARN] ⚠️  [REDIS]    Définissez REDIS_ENABLED=true ou REDIS_URL dans backend/.env pour activer les queues. {}
+[2026-07-15T09:03:31.437Z] [WARN] ⚠️  [WORKER] Redis non disponible, Simulation Worker est désactivé. {}
+[2026-07-15T09:03:33.805Z] [WARN] ⚠️  [REDIS] ⚠️  Redis désactivé pour cet environnement. Les jobs asynchrones (BullMQ) sont désactivés. {}
+[2026-07-15T09:03:33.806Z] [WARN] ⚠️  [REDIS]    Définissez REDIS_ENABLED=true ou REDIS_URL dans backend/.env pour activer les queues. {}
+[2026-07-15T09:03:37.097Z] [WARN] ⚠️  [REDIS] ⚠️  Redis désactivé pour cet environnement. Les jobs asynchrones (BullMQ) sont désactivés. {}
+[2026-07-15T09:03:37.110Z] [WARN] ⚠️  [REDIS]    Définissez REDIS_ENABLED=true ou REDIS_URL dans backend/.env pour activer les queues. {}
+[2026-07-15T09:03:40.077Z] [WARN] ⚠️  [REDIS] ⚠️  Redis désactivé pour cet environnement. Les jobs asynchrones (BullMQ) sont désactivés. {}
+[2026-07-15T09:03:40.078Z] [WARN] ⚠️  [REDIS]    Définissez REDIS_ENABLED=true ou REDIS_URL dans backend/.env pour activer les queues. {}
+[2026-07-15T09:03:42.170Z] [WARN] ⚠️  [WORKER] Redis non disponible, Simulation Worker est désactivé. {}
+[2026-07-15T09:03:48.260Z] [WARN] ⚠️  [REDIS] ⚠️  Redis désactivé pour cet environnement. Les jobs asynchrones (BullMQ) sont désactivés. {}
+[2026-07-15T09:03:48.261Z] [WARN] ⚠️  [REDIS]    Définissez REDIS_ENABLED=true ou REDIS_URL dans backend/.env pour activer les queues. {}
+[2026-07-15T09:03:50.367Z] [WARN] ⚠️  [WORKER] Redis non disponible, Simulation Worker est désactivé. {}
+[2026-07-15T09:03:53.419Z] [WARN] ⚠️  [REDIS] ⚠️  Redis désactivé pour cet environnement. Les jobs asynchrones (BullMQ) sont désactivés. {}
+[2026-07-15T09:03:53.420Z] [WARN] ⚠️  [REDIS]    Définissez REDIS_ENABLED=true ou REDIS_URL dans backend/.env pour activer les queues. {}
+[2026-07-15T09:03:55.708Z] [WARN] ⚠️  [WORKER] Redis non disponible, Simulation Worker est désactivé. {}
+[2026-07-15T09:03:57.844Z] [WARN] ⚠️  [REDIS] ⚠️  Redis désactivé pour cet environnement. Les jobs asynchrones (BullMQ) sont désactivés. {}
+[2026-07-15T09:03:57.845Z] [WARN] ⚠️  [REDIS]    Définissez REDIS_ENABLED=true ou REDIS_URL dans backend/.env pour activer les queues. {}
+[2026-07-15T09:03:59.783Z] [WARN] ⚠️  [WORKER] Redis non disponible, Simulation Worker est désactivé. {}
+[2026-07-15T09:04:10.606Z] [WARN] ⚠️  [KOBO-SYNC] ⚠️ GPS-REGION MISMATCH - ID: 721724998, Region: Tambacounda, GPS: [13.3259006, -13.5493017] {}
+[2026-07-15T09:04:10.643Z] [ERROR] ❌ [KOBO-SYNC] Error applying submission 721724998: 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Raw query failed. Code: `42804`. Message: `column "location_gis" is of type jsonb but expression is of type geometry`
+[2026-07-15T09:04:10.691Z] [ERROR] ❌ [KOBO-SYNC] Error applying submission 741258079: 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Raw query failed. Code: `42804`. Message: `column "location_gis" is of type jsonb but expression is of type geometry`
+[2026-07-15T09:04:19.858Z] [WARN] ⚠️  [REDIS] ⚠️  Redis désactivé pour cet environnement. Les jobs asynchrones (BullMQ) sont désactivés. {}
+[2026-07-15T09:04:19.859Z] [WARN] ⚠️  [REDIS]    Définissez REDIS_ENABLED=true ou REDIS_URL dans backend/.env pour activer les queues. {}
+[2026-07-15T09:04:22.014Z] [WARN] ⚠️  [WORKER] Redis non disponible, Simulation Worker est désactivé. {}
+[2026-07-15T09:04:32.787Z] [WARN] ⚠️  [KOBO-SYNC] ⚠️ GPS-REGION MISMATCH - ID: 721724998, Region: Tambacounda, GPS: [13.3259006, -13.5493017] {}
+[2026-07-15T09:04:32.845Z] [ERROR] ❌ [KOBO-SYNC] Error applying submission 721724998: 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Raw query failed. Code: `42804`. Message: `column "location_gis" is of type jsonb but expression is of type geometry`
+[2026-07-15T09:04:32.928Z] [ERROR] ❌ [KOBO-SYNC] Error applying submission 741258079: 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Raw query failed. Code: `42804`. Message: `column "location_gis" is of type jsonb but expression is of type geometry`
+[2026-07-15T09:05:02.945Z] [WARN] ⚠️  [REDIS] ⚠️  Redis désactivé pour cet environnement. Les jobs asynchrones (BullMQ) sont désactivés. {}
+[2026-07-15T09:05:02.946Z] [WARN] ⚠️  [REDIS]    Définissez REDIS_ENABLED=true ou REDIS_URL dans backend/.env pour activer les queues. {}
+[2026-07-15T09:05:05.210Z] [WARN] ⚠️  [WORKER] Redis non disponible, Simulation Worker est désactivé. {}
+[2026-07-15T09:05:16.107Z] [WARN] ⚠️  [KOBO-SYNC] ⚠️ GPS-REGION MISMATCH - ID: 721724998, Region: Tambacounda, GPS: [13.3259006, -13.5493017] {}
+[2026-07-15T09:05:16.140Z] [ERROR] ❌ [KOBO-SYNC] Error applying submission 721724998: 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Raw query failed. Code: `42804`. Message: `column "location_gis" is of type jsonb but expression is of type geometry`
+[2026-07-15T09:05:16.197Z] [ERROR] ❌ [KOBO-SYNC] Error applying submission 741258079: 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Raw query failed. Code: `42804`. Message: `column "location_gis" is of type jsonb but expression is of type geometry`
+[2026-07-15T09:05:31.707Z] [WARN] ⚠️  [REDIS] ⚠️  Redis désactivé pour cet environnement. Les jobs asynchrones (BullMQ) sont désactivés. {}
+[2026-07-15T09:05:31.713Z] [WARN] ⚠️  [REDIS]    Définissez REDIS_ENABLED=true ou REDIS_URL dans backend/.env pour activer les queues. {}
+[2026-07-15T09:05:33.700Z] [WARN] ⚠️  [WORKER] Redis non disponible, Simulation Worker est désactivé. {}
+[2026-07-15T09:05:36.968Z] [WARN] ⚠️  [REDIS] ⚠️  Redis désactivé pour cet environnement. Les jobs asynchrones (BullMQ) sont désactivés. {}
+[2026-07-15T09:05:36.970Z] [WARN] ⚠️  [REDIS]    Définissez REDIS_ENABLED=true ou REDIS_URL dans backend/.env pour activer les queues. {}
+[2026-07-15T09:05:39.152Z] [WARN] ⚠️  [WORKER] Redis non disponible, Simulation Worker est désactivé. {}
+[2026-07-15T09:05:49.912Z] [WARN] ⚠️  [KOBO-SYNC] ⚠️ GPS-REGION MISMATCH - ID: 721724998, Region: Tambacounda, GPS: [13.3259006, -13.5493017] {}
+[2026-07-15T09:05:49.955Z] [ERROR] ❌ [KOBO-SYNC] Error applying submission 721724998: 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Raw query failed. Code: `42804`. Message: `column "location_gis" is of type jsonb but expression is of type geometry`
+[2026-07-15T09:05:50.018Z] [ERROR] ❌ [KOBO-SYNC] Error applying submission 741258079: 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Raw query failed. Code: `42804`. Message: `column "location_gis" is of type jsonb but expression is of type geometry`
+[2026-07-15T09:06:30.002Z] [WARN] ⚠️  [REDIS] ⚠️  Redis désactivé pour cet environnement. Les jobs asynchrones (BullMQ) sont désactivés. {}
+[2026-07-15T09:06:30.015Z] [WARN] ⚠️  [REDIS]    Définissez REDIS_ENABLED=true ou REDIS_URL dans backend/.env pour activer les queues. {}
+[2026-07-15T09:06:32.067Z] [WARN] ⚠️  [WORKER] Redis non disponible, Simulation Worker est désactivé. {}
+[2026-07-15T09:06:43.014Z] [WARN] ⚠️  [KOBO-SYNC] ⚠️ GPS-REGION MISMATCH - ID: 721724998, Region: Tambacounda, GPS: [13.3259006, -13.5493017] {}
+[2026-07-15T09:06:43.052Z] [ERROR] ❌ [KOBO-SYNC] Error applying submission 721724998: 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Raw query failed. Code: `42804`. Message: `column "location_gis" is of type jsonb but expression is of type geometry`
+[2026-07-15T09:06:43.096Z] [ERROR] ❌ [KOBO-SYNC] Error applying submission 741258079: 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Raw query failed. Code: `42804`. Message: `column "location_gis" is of type jsonb but expression is of type geometry`
+[2026-07-15T09:07:00.359Z] [WARN] ⚠️  [REDIS] ⚠️  Redis désactivé pour cet environnement. Les jobs asynchrones (BullMQ) sont désactivés. {}
+[2026-07-15T09:07:00.360Z] [WARN] ⚠️  [REDIS]    Définissez REDIS_ENABLED=true ou REDIS_URL dans backend/.env pour activer les queues. {}
+[2026-07-15T09:07:03.462Z] [WARN] ⚠️  [WORKER] Redis non disponible, Simulation Worker est désactivé. {}
+[2026-07-15T09:07:14.272Z] [WARN] ⚠️  [KOBO-SYNC] ⚠️ GPS-REGION MISMATCH - ID: 721724998, Region: Tambacounda, GPS: [13.3259006, -13.5493017] {}
+[2026-07-15T09:07:14.327Z] [ERROR] ❌ [KOBO-SYNC] Error applying submission 721724998: 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Raw query failed. Code: `42804`. Message: `column "location_gis" is of type jsonb but expression is of type geometry`
+[2026-07-15T09:07:14.379Z] [ERROR] ❌ [KOBO-SYNC] Error applying submission 741258079: 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Raw query failed. Code: `42804`. Message: `column "location_gis" is of type jsonb but expression is of type geometry`
+[2026-07-15T09:24:14.436Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T09:24:27.301Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T09:24:32.595Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T09:24:49.877Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T09:24:57.338Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T09:25:01.510Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T09:49:35.428Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T09:53:57.342Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+(node:50144) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 exit listeners added to [Bus]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit
+[2026-07-15T09:58:55.225Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T09:59:02.370Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T09:59:07.703Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T10:00:16.283Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T10:00:38.693Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T10:17:06.083Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T10:17:13.897Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T10:17:21.624Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T11:03:33.844Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T11:05:34.609Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T11:05:56.080Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-15T22:41:24.300Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-16T00:18:53.228Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-16T00:20:38.330Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-16T00:23:00.893Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-16T00:25:29.633Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-16T00:30:58.894Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-16T00:37:25.373Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}
+[2026-07-16T00:41:56.496Z] [ERROR] ❌ 🔥 UNCAUGHT EXCEPTION: Error: listen EADDRINUSE: address already in use 0.0.0.0:8888
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8888
+}

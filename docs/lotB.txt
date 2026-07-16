@@ -1,0 +1,395 @@
+CONTRAT DE PRESTATION DE SERVICES – LOT B
+N° : PROQ-AO11-2022-LotB-001
+Livraison, Génie Civil, Pose des Potelets, Coffrets de Comptage et Installation Intérieure
+Préambule
+Dans le cadre de l’AO11-2022 LOTS 1/2 : Travaux de réalisation de dorsales moyenne tension, confié par SENELEC à LSE (Les Spécialistes de l’Énergie), LSE a confié à PROQUELEC (Association pour la Promotion de la Qualité des Installations Électriques Intérieures) la réalisation des prestations de formation, de transport des matériels, de travaux de raccordement et d’installations intérieures auprès des clients potentiels identifiés dans les régions de Kaffrine et de Tambacounda.
+Dans cette optique, PROQUELEC requiert la collaboration de Prestataires extérieurs pour la réalisation d’une partie de ces activités, notamment celles relevant du Lot B, à savoir :
+la livraison des kits et matériels depuis le magasin tampon jusqu’aux ménages bénéficiaires ;
+la réalisation des travaux de génie civil (fouilles, tranchées, murs supports) ;
+la pose des potelets et coffrets de comptage ;
+la réalisation complète de l’installation électrique intérieure.
+TITRE I : DISPOSITIONS GÉNÉRALES
+Article 1 : Objet du contrat
+Le présent contrat a pour objet de définir les conditions techniques, administratives, financières et organisationnelles dans lesquelles le Prestataire exécute les prestations relevant du Lot B, tel que décrit à l’Article 6.
+Article 2 : Définitions
+Pour l’application du présent contrat, on entend par :
+« PROQUELEC » : Association Pour la Promotion de la Qualité des Installations Électriques Intérieures, ayant son siège social à Dakar, 12 rue Saint Michel, Immeuble Coumba Castel, 4ᵉ étage, représentée par Monsieur Moustapha DIEYE, Directeur Général.
+« LSE » : Les Spécialistes de l’Énergie (LSE), société basée à Dakar, titulaire du projet AO11-2022 LOTS 1/2 et ayant confié à PROQUELEC l’exécution de certaines prestations dans le cadre du présent contrat.
+« Prestataire » : L’entreprise signataire du présent contrat, chargée de l’exécution des prestations du Lot B.
+« Ordre de service » : Instruction écrite de PROQUELEC pour le déclenchement ou la modification d’une prestation.
+« Réception » : Acte par lequel PROQUELEC valide la conformité des prestations exécutées par le Prestataire.
+« Non-conformité » : Tout écart entre une prestation exécutée et les exigences du présent contrat ou des normes applicables.
+« Contrôle qualité » : Vérification systématique ou par échantillonnage de la conformité des prestations, réalisée par PROQUELEC ou un organisme mandaté.
+« Kit » : Ensemble des équipements (coffret modulaire, disjoncteurs, lampes, câbles, accessoires) destinés à un ménage, tel que décrit à l’Article 6.2.
+« Mur support » : Mur construit pour supporter le coffret de comptage.
+« Potelet » : Support galvanisé de 4 m pour le coffret de comptage.
+« Installation intérieure » : Ensemble des travaux électriques à l’intérieur du logement, en pose apparente.
+Article 3 : Documents contractuels
+Les documents contractuels incluent, par ordre de priorité :
+le présent contrat ;
+le cahier des charges technique de PROQUELEC ;
+les schémas électriques fournis par PROQUELEC ;
+l’ ordre de service émis par PROQUELEC ;
+les normes applicables (NS 01-001, nouvelles dispositions de branchement de Senelec) ;
+les procès-verbaux de réception et bordereaux de préparation.
+Article 4 : Durée du contrat
+Le présent contrat entre en vigueur à compter de sa date de signature par les Parties.
+Le délai global d'exécution des prestations est fixé à [XX] jours calendaires (ou ouvrables) à compter de l'ordre de service de démarrage.
+Le contrat demeure en vigueur jusqu'à la réalisation de l'un des événements suivants :
+la réception définitive des prestations ;
+l'expiration du délai contractuel d'exécution, y compris les éventuelles prolongations accordées conformément au présent contrat ;
+ou sa résiliation dans les conditions prévues à l'Article 27.
+Article 5 : Prise d’effet
+Le présent contrat prend effet à sa date de signature par les Parties.
+Le Prestataire s'engage à mobiliser les ressources nécessaires et à commencer l'exécution des prestations dans un délai maximum de soixante-douze (72) heures à compter de la date de signature du contrat.
+Le non-respect de ce délai de démarrage pourra entraîner l'application des mesures prévues au présent contrat, notamment les pénalités ou toute autre disposition contractuelle applicable.
+TITRE II : DESCRIPTION DES PRESTATIONS
+Article 6 : Consistance des prestations
+6.1 Livraison des matériels
+Enlèvement des kits et matériels au magasin tampon de LSE ;
+Transport, manutention et stockage temporaire (à la charge du Prestataire) ;
+Sécurisation des espaces de stockage dans les villages ;
+Traçabilité des livraisons (numéro de kit, ménage bénéficiaire).
+6.2 Réalisation des fouilles et tranchées
+Fouilles pour la pose des câbles et la prise de terre ;
+Tranchées conformes aux normes (profondeur, largeur) ;
+Rebouchage et finition des tranchées.
+6.3 Construction des murs supports
+Construction du mur support pour le coffret de comptage (si non existant) ;
+Utilisation de parpaings, ciment, sable (fournis par le Prestataire pour le mur) ;
+Respect des dimensions et normes de stabilité.
+6.4 Pose des potelets
+Pose du potelet galvanisé 4 m (avec arrêtoir, bride de serrage, queue de cochon) ;
+Scellement conforme aux exigences techniques ;
+Stabilité et accessibilité du potelet.
+6.5 Pose des coffrets de comptage
+Pose du coffret de comptage à la limite de propriété ;
+Fixation sécurisée sur le mur support;
+Accessibilité pour les interventions ultérieures (Lot C).
+6.6 Installation électrique intérieure
+Traçage et repérage des cheminements ;
+Pose des câbles d’alimentation et circuits intérieurs ;
+Installation et raccordement :
+Coffret principal (précâblé par le Lot A) ;
+Coffret secondaire (si applicable) ;
+Prises, interrupteurs, points lumineux, boîtes de dérivation ;
+Contrôles de conformité avant réception.
+6.7 Nettoyage et remise en état
+Nettoyage du chantier après intervention ;
+Remise en état des lieux (rebouchage, finitions).
+6.8 Traçabilité
+Renseignement quotidien des formulaires de suivi (statuts, GPS, observations) ;
+Statut d’avancement transmis à PROQUELEC.
+TITRE III : ORGANISATION DES PRESTATIONS
+Article 7 : Organisation des travaux
+Lieu d’exécution : Villages et ménages affectés dans les zones de Kaffrine /Tambacounda ;
+Coordination avec les autres lots (A et C) pour respecter le planning global.
+Article 8 : Personnel du Prestataire
+8.1 Personnel minimum
+Le Prestataire mobilisera des équipes composées au minimum d’un chef d’équipe, d’électriciens qualifiés, de maçons et manœuvres pour le génie civil et d’un responsable logistique.
+8.2 Qualification
+Le personnel chargé de la livraison, du génie civil et de l’installation intérieure doit :
+Être âgé entre 20 et 55 ans ;
+Avoir une aptitude physique compatible avec la manutention, les travaux de tranchée, les reprises murales et la pose électrique intérieure ;
+Disposer d’une compétence démontrée en :
+Installation électrique intérieure BT pour les électriciens;
+Génie civil léger pour les maçons;
+Logistique pour les logisticiens.
+Être habilité ou placé sous la responsabilité directe d’un personnel habilité ;
+Être de bonne moralité.
+8.3 Documents à fournir
+Le Prestataire doit fournir, entre autres :
+Copie de la lettre d’agrément;
+Copies des CNI et CV du personnel;
+Liste d’identification du personnel précisant la mission, le nom, prénom, fonction et N° CNI ;
+Attestation du niveau d’instruction, diplômes ou références d’expérience ;
+Liste du matériel, outillage, véhicules et moyens de sécurité mobilisés.
+8.4 Remplacement
+Le personnel du Prestataire demeure lié exclusivement au Prestataire. Le Prestataire est entièrement responsable des faits et fautes de son personnel.
+PROQUELEC se réserve le droit d'exiger le remplacement d’un ou plusieurs membres du personnel dans un délai maximum de 48 heures. Le remplacement d'un employé doit être notifié à PROQUELEC au moins 48 heures à l’avance et le remplaçant doit satisfaire aux mêmes exigences.
+Article 9 : Objectifs de production
+Le Prestataire s'engage à assurer une cadence minimale de réalisation de :
+deux (2) installations électriques intérieures par jour et par équipe ;
+deux (2) constructions de murs supports de coffrets compteurs par jour et par équipe, lorsque ces travaux sont nécessaires selon les conditions constatées sur site.
+Ces objectifs de production sont établis conformément au planning d'exécution et aux objectifs fixés par PROQUELEC.
+Afin d'assurer l'atteinte de ces objectifs, le Prestataire mobilise les moyens humains nécessaires, notamment des électriciens qualifiés, des maçons, des chefs d'équipe ainsi que les moyens nécessaires au respect des exigences de qualité et de sécurité.
+La cadence pourra être ajustée par PROQUELEC en fonction des contraintes du terrain, de la disponibilité des ménages, des conditions d'accès aux sites et des instructions communiquées au Prestataire.
+Article 10 : Planning
+Le Prestataire s'engage à respecter le planning d'exécution établi par PROQUELEC et communiqué par ordre de service.
+Il organise ses équipes et ses moyens matériels de manière à respecter les délais contractuels et à atteindre les objectifs de production définis au présent contrat.
+TITRE IV : MATÉRIELS ET ÉQUIPEMENTS
+Article 11 : Matériels fournis par PROQUELEC/LSE
+PROQUELEC met à la disposition du Prestataire les matériels nécessaires préparés par le Lot A, notamment :
+Le kit principal :
+Un coffret modulaire avec plastron devant inclure :
+Un modulaire C10 ;
+Un modulaire C20 ;
+Un interrupteur différentiel 25A/30mA ;
+Un disjoncteur de branchement 5/15A ;
+Deux borniers de raccordement Phase ;
+Un bornier de raccordement Neutre ;
+Un bornier de raccordement Terre.
+Deux lampes LBC ou LED ;
+Une douille IP 23 en saillie ;
+Un hublot étanche en saillie ;
+Deux interrupteurs simple allumage en saillie ;
+Une prise électrique en saillie ;
+Un piquet de terre avec collier de serrage ;
+Une barrette de terre ;
+Des câbles et accessoires :
+Câble armé 2 x 6 mm² (estimation 15 m/ménage) ;
+Fil TH (phase, neutre) ;
+Fil TH vert-jaune 6 mm²;
+Fil Cuivre nu 25 mm²
+Tube annelé ;
+Un câble intérieur FRN05 3X1,5 mm² pour les circuits lampe et prises ;
+Cheville 8 mm ;
+Cheville 10 mm ;
+Vis TF 4x25 ;
+Vis TF 6x70 ;
+Attache multiflix 8 mm ;
+Attache multiflix 10 mm ;
+Collier atlas diam 10 ;
+Collier RILSAN 42 ;
+Grillage avertisseur rouge 30 cm ;
+Ruban adhésif.
+Le kit secondaire en option pour certains ménages :
+Une boîte de dérivation ;
+Une lampe LBC avec une douille et un interrupteur simple allumage ;
+Une prise électrique (option) ;
+3 borniers de raccordement (Phase, neutre, terre) ;
+Un câble armé 3x1,5 mm² (estimation 10 m/ménage).
+Le matériel de branchement :
+Le coffret compteur ;
+Un potelet galva 4 m avec (arrêtoir, bride de serrage, queue de cochon, pattes de scellement) ;
+2 kg de ciment plâtre.
+Le Prestataire fournit exclusivement :
+La main-d’œuvre ;
+L’encadrement ;
+L’organisation ;
+Le petit outillage ;
+Les EPI ;
+Les moyens de communication ;
+Les matériaux pour le mur support (parpaings, ciment, sable).
+Article 12 : Remise des matériels
+Les matériels sont remis au Prestataire du lot B sur le site de stockage LSE situés à Tamba/Kaffrine
+L'ensemble des opérations de précâblage et de préparation des kits est réalisé au magasin de stockage de LSE.
+Précision : Les connecteurs CPB1/CT70, les câbles préassemblés 2 × 16 mm², les pinces d'ancrage, les colliers, les coudes ainsi que les tubes PVC sont fournis au Prestataire du Lot C, qui en assure la garde, le transport et la conservation jusqu'à leur livraison sur les sites des ménages bénéficiaires.
+Chaque remise de matériels fait l'objet d'un bordereau de livraison signé par les représentants habilités de PROQUELEC et du Prestataire, attestant de la nature, des quantités et de l'état des matériels remis.
+Article 13 : Conservation des matériels
+Le Prestataire est responsable :
+de la garde et conservation des matériels jusqu’à leur installation ;
+de la sécurisation des espaces de stockage temporaire ;
+de la prévention des pertes, vols ou détériorations.
+Article 14 : Restitution
+Les chutes et excédents de matériels sont restitués à PROQUELEC ;
+Tout manquement entraîne des pénalités (voir Article 26).
+TITRE V : QUALITÉ ET CONTRÔLES
+Article 15 : Exigences de qualité
+Respect des normes NS 01-001 et Nouvelles Dispositions de Branchement de SENELEC ;
+Conformité des murs supports, potelets, coffrets et installations intérieures ;
+Esthétique de pose ;
+Traçabilité complète (formulaires, photos, GPS).
+Article 16 : Contrôle qualité
+PROQUELEC procède à des contrôles par échantillonnage des prestations réalisées par le Prestataire.
+Les résultats des contrôles sont appréciés selon les critères suivants :
+Contrôle positif : le taux d'anomalies non détectées ou non signalées par le Prestataire est inférieur ou égal à 10 % des éléments contrôlés.
+Contrôle négatif : le taux d'anomalies non détectées ou non signalées par le Prestataire est supérieur à 10 % des éléments contrôlés. Dans ce cas, les pénalités prévues à l'Article 26 sont applicables.
+Article 17 : Non-conformités
+Toute non-conformité imputable aux prestations réalisées par le Prestataire dans le cadre du Lot B (ex. : mur non conforme, potelet instable, câble apparent) entraîne :
+Un blocage de la validation du ménage concerné ;
+Une reprise à la charge du Prestataire ;
+Une pénalité de 1 % par jour de retard (plafonnée à 10 %).
+Article 18 : Réception
+La réception est prononcée par PROQUELEC après :
+Validation des ouvrages (mur, potelet, coffret, installation intérieure) ;
+Conformité documentaire (traçabilité, données).
+Un procès-verbal de réception est établi.
+TITRE VI : OBLIGATIONS DES PARTIES
+Article 19 : Obligations du Prestataire
+19.1 Obligations administratives
+Assurer la livraison complète des kits aux ménages affectés ;
+Vérifier la correspondance kit/ménage ;
+Informer PROQUELEC par écrit de toute casse, perte ou anomalie ;
+Maintenir une ligne téléphonique pour les contacts.
+19.2 Obligations techniques
+Réaliser les travaux de génie civil (fouilles, murs, tranchées) ;
+Poser les potelets et coffrets de comptage ;
+Réaliser l’installation intérieure conforme aux normes.
+19.3 Obligations qualité
+Garantir la conformité des ouvrages ;
+Assurer la traçabilité complète.
+19.4 Obligations HSE
+Respecter les règles de sécurité ;
+Nettoyage du chantier ;
+Prévenir les risques pour les tiers et les installations.
+19.5 Obligations sociales
+Respecter la législation du travail en vigueur ;
+Fournir les documents du personnel (CNI, CV, attestations).
+19.6 Obligations documentaires
+Le Prestataire s'engage à assurer la tenue et la transmission des documents nécessaires au suivi et à la traçabilité des prestations. À ce titre, il doit notamment :
+renseigner les bordereaux de préparation et les documents de suivi fournis par PROQUELEC ;
+renseigner les outils de suivi mis à disposition par PROQUELEC, notamment les supports numériques ou fiches de collecte prévus à cet effet ;
+transmettre régulièrement à PROQUELEC l'ensemble des données de traçabilité relatives aux kits, matériels et prestations réalisées.
+Article 20 : Obligations de PROQUELEC
+PROQUELEC s’engage à :
+Assurer la formation complémentaire du personnel ;
+Fournir les listes de ménages, zones, grappes, bordereaux, matériel d’installation ;
+Remettre les ordres de service et consignes techniques ;
+Fournir les supports de collecte de données (fiches de saisie, application) ;
+Remettre au Prestataire une lettre de mission ;
+Fournir un badge nominatif et gilet aux travailleurs ;
+Organiser les contrôles et réceptions ;
+Payer les factures dans les 60 jours fin de mois (sous réserve de conformité).
+TITRE VII : CONDITIONS FINANCIÈRES
+Article 21 : Prix
+Le Prestataire est rémunéré sur la base des prix unitaires suivants :
+Installation électrique comprenant la construction du mur support du coffret compteur : ………………… FCFA par installation.
+Installation électrique réalisée sur un mur support existant fourni par le ménage (sans construction du mur support) : ………………… FCFA par installation.
+Ces prix comprennent l'ensemble des prestations nécessaires à la bonne exécution des travaux, notamment :
+la main-d'œuvre ;
+le chargement, le transport, le déchargement et la manutention des matériels jusqu'au domicile du ménage bénéficiaire ;
+la logistique locale nécessaire à l'exécution des travaux électriques ;
+la fourniture des matériaux et la construction du mur support, uniquement lorsque cette prestation est requise ;
+les opérations de traçabilité ainsi que l'établissement des documents exigés par PROQUELEC.
+Aucune rémunération supplémentaire ne sera due pour les prestations couvertes par les prix ci-dessus.
+Seules les installations conformes, validées et réceptionnées par PROQUELEC donnent lieu à paiement.
+Article 22 : Facturation
+Le Prestataire établit une facture mensuelle correspondant aux prestations réalisées, conformes et réceptionnées par PROQUELEC.
+Chaque facture est accompagnée des pièces justificatives suivantes :
+les bordereaux d'intervention ;
+les fiches de suivi ;
+les procès-verbaux de réception dûment validés ;
+tout autre document exigé par le présent contrat.
+Article 23 : Paiement
+Les factures sont réglées dans un délai de soixante (60) jours fin de mois à compter de leur date de réception par PROQUELEC.
+Le paiement est subordonné à la conformité des prestations réalisées, à la validation des quantités facturées et à la transmission de l'ensemble des pièces justificatives prévues au présent contrat.
+TITRE VIII : RESPONSABILITÉS
+Article 24 : Responsabilités du Prestataire
+Le Prestataire s'engage à assurer la bonne exécution des prestations qui lui sont confiées et veille notamment :
+à la livraison des kits conformément aux exigences de PROQUELEC, dans les délais convenus et dans les conditions prévues au présent contrat ;
+à la réalisation des travaux de génie civil, de pose et d'installation conformément aux prescriptions techniques, aux règles de l'art et aux exigences de qualité définies par PROQUELEC ;
+à la bonne conservation, à la garde et à l'utilisation appropriée des matériels qui lui sont confiés jusqu'à leur utilisation ou leur réception ;
+au respect des délais d'exécution, des exigences de traçabilité et des obligations documentaires associées aux prestations.
+Le Prestataire demeure responsable de la conformité des prestations réalisées jusqu'à leur validation et réception par PROQUELEC.
+Article 25 : Responsabilités de PROQUELEC
+PROQUELEC s'engage à accompagner le Prestataire dans la bonne exécution des prestations et assure notamment :
+la formation préparatoire et l'information du personnel intervenant sur les prestations, selon les besoins identifiés ;
+la mise à disposition des matériels nécessaires à l'exécution des prestations conformément aux dispositions du présent contrat ;
+le contrôle technique, le suivi et la validation des prestations réalisées ;
+la fourniture des supports nécessaires à la collecte et au suivi des données, notamment les fiches de saisie et les outils de collecte prévus à cet effet ;
+la remise au Prestataire des documents nécessaires au démarrage et au suivi des missions, notamment l’ordre de service;
+la fourniture des moyens d'identification des travailleurs intervenant pour le compte du Prestataire, notamment les badges nominatifs et les gilets d'identification.
+PROQUELEC veille à faciliter les conditions nécessaires à la réalisation des prestations dans le respect des exigences de qualité, de sécurité et de traçabilité définies au présent contrat.
+TITRE IX : PÉNALITÉS
+Article 26 : Pénalités
+26.1 Pénalités de retard
+En cas de retard dans l'exécution des prestations par rapport aux délais prévus au présent contrat ou indiqués dans l'ordre de service, le Prestataire est redevable d'une pénalité de retard calculée à hauteur de 1 % par jour calendaire de retard.
+Cette pénalité est appliquée sur le montant des prestations concernées restant à réaliser au titre du retard constaté.
+Le montant total cumulé des pénalités de retard est plafonné à 10 % du montant total du contrat ou de la prestation concernée.
+26.2 Contrôle négatif
+Le contrôle est qualifié de « NÉGATIF » si les vérifications font ressortir des anomalies non signalées sur un échantillon supérieur ou égal à 10 % des éléments contrôlés. La constatation d’un contrôle « NÉGATIF » ouvre droit, au profit de PROQUELEC, à l’application des pénalités prévues à l’Article 26.1 et/ou à la résiliation du contrat selon les modalités de l’Article 27.
+Article 27 : Résiliation
+PROQUELEC peut résilier le contrat de plein droit, aux torts exclusifs du Prestataire, sans préjudice de tous dommages-intérêts auxquels elle pourrait prétendre, dans les cas suivants :
+deux contrôles consécutifs « négatifs » ;
+falsification des données ;
+manquement à l’une des clauses du contrat ;
+cessation de la prestation ;
+comportement portant atteinte au respect des tiers ou à l'image de marque de PROQUELEC;
+faillite, liquidation ou défaillance du prestataire.
+Préavis : 10 jours (sauf résiliation immédiate pour faute grave).
+TITRE X : DISPOSITIONS FINALES
+Article 28 : Confidentialité
+Le Prestataire s'engage à conserver strictement confidentielles toutes les informations techniques, commerciales, administratives ou financières dont il pourrait avoir connaissance dans le cadre de l'exécution du présent contrat. Cette obligation de confidentialité demeure applicable pendant toute la durée du contrat et pendant une période de cinq (5) ans après son expiration ou sa résiliation.
+Article 29 : Force majeure
+Aucune des Parties ne pourra être tenue responsable de l'inexécution ou du retard dans l'exécution de ses obligations lorsqu'il résulte d'un événement de force majeure au sens de la législation applicable. Sont notamment considérés comme cas de force majeure :
+les catastrophes naturelles ;
+les incendies majeurs ;
+les conflits armés ;
+les émeutes ou troubles civils d'une gravité exceptionnelle ;
+les décisions administratives empêchant l'exécution des prestations ;
+tout événement imprévisible, irrésistible et indépendant de la volonté des Parties.
+La Partie invoquant un cas de force majeure informe l'autre Partie dans les meilleurs délais et produit tout justificatif utile. Les obligations affectées par le cas de force majeure sont suspendues pendant la durée de l'événement concerné.
+Article 30 : Règlement des litiges
+Tout litige résultant de l’exécution ou de l’interprétation du contrat sera porté, à défaut d’accord amiable, devant les Juridictions compétentes de Dakar (Sénégal). La procédure ne pourra en aucun cas retarder ou suspendre l’exécution des engagements.
+Article 31 : Dispositions finales
+Le présent contrat est régi et interprété conformément aux dispositions du droit sénégalais.
+Toute modification, complément ou amendement au présent contrat ne pourra être valable qu'après accord écrit et signé par les deux Parties.
+Signatures
+LE PRESTATAIRE | PROQUELEC
+[ENT_ENTREPRISE] | M. Moustapha DIEYE
+[ENT_REPRESENTANT_LEGAL] | Directeur Général
+[ENT_FONCTION_REPRESENTANT] | 
+Téléphone : [ENT_TEL] | +221 77 569 08 16
+E-mail : [ENT_EMAIL] | moustapha.dieye@proquelec.sn
+N° Registre de Commerce : [ENT_NRC] | 
+IFU : [ENT_IFU] | 
+Compte bancaire : [ENT_COMPTE_BANCAIRE] | 
+Forme juridique : [ENT_FORME_JURIDIQUE] | 
+Signature et cachet | Signature et cachet
+Fait à Dakar, le [DATE] , en trois (03) exemplaires originaux.
+Annexes
+Annexe A : Composition détaillée des kits (Lot B)
+Tableau récapitulatif du matériel cité dans le contrat Lot B.
+Matériel | Source / Fournisseur | Commentaires / Usage | Quantité prévue
+Kit principal | PROQUELEC | Coffret modulaire, disjoncteurs, borniers, lampes, douille, hublot, interrupteurs, prise, piquet de terre, barrette, câbles, accessoires | 1 par ménage
+Kit secondaire (optionnel) | PROQUELEC | Boîte de dérivation, lampe LBC + douille + interrupteur, prise optionnelle, 3 borniers, câble 3×1,5 mm² | 1 par ménage optionnel
+Coffret compteur | PROQUELEC | Matériel de branchement transmis au Lot B | 1 par ménage
+Potelet galvanisé 4 m | PROQUELEC | Avec arrêtoir, bride de serrage, queue de cochon, pattes de scellement | 1 par ménage
+Ciment plâtre | PROQUELEC | 2 kg par installation de branchement | 2 kg
+Matériel pour mur support | Prestataire | Parpaings, ciment, sable à la charge du Prestataire | Selon mur support
+Équipements fournis par le Prestataire | Prestataire | Main-d’œuvre, petit outillage, EPI, communication, logistique | Selon chantier
+Annexe B : Schémas électriques des coffrets principaux
+[IMG:ANNEXE_B]
+Annexe C : Modèle de bordereau
+Bordereau N° | ......................................................
+Date | [DATE]
+Référence contrat | [NUM_CONTRAT]
+Site/Grappes | [REGION] – [GRAPPE]
+Ménage / Bénéficiaire | ......................................................
+Identifiant ménage | ......................................................
+Adresse / Localisation | ......................................................
+Kit N° / Réf | ......................................................
+Matériel livré | ......................................................
+Etat colis (OK/DOMMAGE) | ......................................................
+Quantité livrée | ......................................................
+Réception (nom & signature) | ......................................................
+Observations | ......................................................
+Livré par (nom) | ......................................................
+Reçu par (nom) | ......................................................
+Signature | ......................................................
+Annexe D : Modèle de procès-verbal de réception
+PROCÈS-VERBAL DE RÉCEPTION – LOT B : LIVRAISON ET INSTALLATION
+Procès-verbal N° | ......................................................
+Date | [DATE]
+Référence du contrat | [NUM_CONTRAT]
+Région / Site (Grappe) | [REGION] – [GRAPPE]
+Prestataire | [ENT_ENTREPRISE]
+Lieu de réception | ......................................................
+1. Objet de la réception
+Réception des prestations relatives au Lot B – Livraison, installation et raccordement des équipements, conformément aux prescriptions contractuelles et aux spécifications techniques du projet.
+2. Vérification des prestations
+Travaux réceptionnés | Qté livrée | Colis conforme (Oui/Non) | Installation conforme (Oui/Non) | Observations
+Livraison des kits sur site |  |  |  | 
+Réalisation des pans de mur pour support des coffrets compteurs |  |  |  | 
+Installation des potelets et des coffrets compteurs |  |  |  | 
+Réalisation des tranchées, pose du câble armé grillage avertisseur |  |  |  | 
+Installation intérieure (kit principal) |  |  |  | 
+Installation des kits secondaires |  |  |  | 
+Raccordement des installations et mise en service |  |  |  | 
+3. Essais et contrôles
+Essai effectué | Résultat | Opérateur | Observations
+Continuité |  |  | 
+Polarité |  |  | 
+Mise à la terre |  |  | 
+Fonctionnement |  |  | 
+4. Décision de réception
+☐ Réception prononcée sans réserve  ☐ Réception prononcée avec réserves  ☐ Réception refusée
+Réserves (le cas échéant) :
+.......................................................................................................................................................
+5. Signatures
+Représentant de PROQUELEC | Représentant du Prestataire
+M. Moustapha DIEYE | [ENT_ENTREPRISE]
+Nom : ____________________ | Nom : ____________________
+Signature : ______________ | Signature : ______________
+Annexe E : Planning d’exécution

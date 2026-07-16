@@ -290,8 +290,48 @@ export default function DataHubSection({ project, onUpdate }: DataHubSectionProp
         const { read, utils } = await import('../utils/safeExcel');
         const arrayBuffer = await file.arrayBuffer();
         const workbook = await read(arrayBuffer, { type: 'array' });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
+        // Pick the sheet with the most rows and recognizable columns
+        let bestSheetName = workbook.SheetNames[0];
+        let bestRowCount = 0;
+        const knownHeaders = [
+          'numero',
+          'nom',
+          'prenom',
+          'telephone',
+          'phone',
+          'village',
+          'region',
+          'statut',
+          'latitude',
+          'longitude',
+          'ordre',
+        ];
+        for (const sn of workbook.SheetNames) {
+          const ws = workbook.Sheets[sn];
+          const rows = utils.sheet_to_json(ws);
+          if (rows.length > bestRowCount) {
+            // Check if this sheet has recognizable household columns
+            const cols =
+              rows.length > 0
+                ? Object.keys(rows[0]).map((k: string) =>
+                    k
+                      .toLowerCase()
+                      .normalize('NFD')
+                      .replace(/[\u0300-\u036f]/g, '')
+                      .replace(/[^a-z0-9]/g, '')
+                  )
+                : [];
+            const matchCount = cols.filter((c: string) =>
+              knownHeaders.some((h) => c.includes(h))
+            ).length;
+            if (matchCount >= 3 || rows.length > bestRowCount) {
+              bestRowCount = rows.length;
+              bestSheetName = sn;
+            }
+          }
+        }
+        console.log(`[DataHub] Selected sheet: "${bestSheetName}" (${bestRowCount} rows)`);
+        const worksheet = workbook.Sheets[bestSheetName];
         rawData = utils.sheet_to_json(worksheet);
       }
 
@@ -304,7 +344,23 @@ export default function DataHubSection({ project, onUpdate }: DataHubSectionProp
             .toLowerCase()
             .replace(/[^a-z0-9]/g, '');
         const aliases = {
-          id: ['id', 'numeroordre', 'identifiant', 'numero', 'n', 'code', 'num_ordre', 'ordre', 'num', 'no', 'ref', 'reference', 'household_id', 'hh_id', 'householdid'],
+          id: [
+            'id',
+            'numeroordre',
+            'identifiant',
+            'numero',
+            'n',
+            'code',
+            'num_ordre',
+            'ordre',
+            'num',
+            'no',
+            'ref',
+            'reference',
+            'household_id',
+            'hh_id',
+            'householdid',
+          ],
           owner: [
             'owner',
             'nom',
@@ -358,20 +414,26 @@ export default function DataHubSection({ project, onUpdate }: DataHubSectionProp
             const hId = findValue(row, aliases.id);
             const hOwner = findValue(row, aliases.owner);
             const hVillage = findValue(row, aliases.village);
-            
+
             // Log first few rows for debugging
             if (index < 3) {
-              console.log(`[DataHub] Row ${index}: hId=${hId}, hOwner=${hOwner}, hVillage=${hVillage}`);
+              console.log(
+                `[DataHub] Row ${index}: hId=${hId}, hOwner=${hOwner}, hVillage=${hVillage}`
+              );
             }
-            
+
             // If ID is missing, try to use owner name + village as a fallback identifier
             // or generate a sequential ID
             let finalId;
             if (hId === undefined || hId === null || hId === '') {
               if (hOwner || hVillage) {
                 // Generate ID from available data
-                const ownerPart = String(hOwner || '').substring(0, 20).replace(/[^a-zA-Z0-9]/g, '');
-                const villagePart = String(hVillage || '').substring(0, 15).replace(/[^a-zA-Z0-9]/g, '');
+                const ownerPart = String(hOwner || '')
+                  .substring(0, 20)
+                  .replace(/[^a-zA-Z0-9]/g, '');
+                const villagePart = String(hVillage || '')
+                  .substring(0, 15)
+                  .replace(/[^a-zA-Z0-9]/g, '');
                 finalId = `import_${ownerPart}_${villagePart}_${index}`;
                 generatedIdCount++;
                 console.log(`[DataHub] Generated ID for row ${index}: ${finalId}`);
@@ -384,7 +446,7 @@ export default function DataHubSection({ project, onUpdate }: DataHubSectionProp
             } else {
               finalId = String(hId).trim();
             }
-            
+
             return {
               id: finalId,
               numeroordre: finalId,
@@ -414,12 +476,16 @@ export default function DataHubSection({ project, onUpdate }: DataHubSectionProp
         console.log(`[DataHub] Valid households parsed: ${parsedData.length}`);
 
         if (parsedData.length === 0) {
-          toast.error(`Aucun ménage valide trouvé dans le fichier. ${generatedIdCount > 0 ? `${generatedIdCount} IDs générés automatiquement mais aucune donnée valide.` : 'Vérifiez que les colonnes contiennent des données valides.'}`);
+          toast.error(
+            `Aucun ménage valide trouvé dans le fichier. ${generatedIdCount > 0 ? `${generatedIdCount} IDs générés automatiquement mais aucune donnée valide.` : 'Vérifiez que les colonnes contiennent des données valides.'}`
+          );
           return;
         }
 
         if (generatedIdCount > 0) {
-          toast.info(`${generatedIdCount} IDs générés automatiquement (ID manquant dans le fichier)`);
+          toast(`${generatedIdCount} IDs generes automatiquement (ID manquant dans le fichier)`, {
+            icon: '\u2139\uFE0F',
+          });
         }
 
         toast.loading(`Envoi de ${parsedData.length} ménages...`, { id: 'import' });
@@ -431,8 +497,10 @@ export default function DataHubSection({ project, onUpdate }: DataHubSectionProp
         await forceSync();
       }
     } catch (err) {
-      logger.error('Import error', err);
-      toast.error("Erreur d'import", { id: 'import' });
+      const detail =
+        err?.response?.data?.detail || err?.response?.data?.error || err?.message || String(err);
+      logger.error('Import error', detail);
+      toast.error(`Erreur d'import: ${detail}`, { id: 'import', duration: 8000 });
     } finally {
       setIsProcessing(false);
       if (fileInputRef.current) fileInputRef.current.value = '';

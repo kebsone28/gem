@@ -1075,7 +1075,7 @@ export const clearEntityData = async (req, res) => {
 // @route   POST /api/sync/import-bulk
 export const bulkImportHouseholds = async (req, res) => {
   const { organizationId } = req.user;
-  const { households } = req.body;
+  const { households, projectId: bodyProjectId } = req.body;
 
   if (!households || !Array.isArray(households)) {
     return res.status(400).json({ error: 'Format invalide : "households" doit être un tableau.' });
@@ -1088,9 +1088,9 @@ export const bulkImportHouseholds = async (req, res) => {
   try {
     // 1. Validation de la Zone (on prend la zone du premier ménage ou une zone par défaut)
     const firstHousehold = households[0];
-    let zoneId = firstHousehold.zoneId;
+    let zoneId = firstHousehold.zoneId || null;
 
-    let zoneExists = await prisma.zone.findUnique({ where: { id: zoneId } });
+    let zoneExists = zoneId ? await prisma.zone.findUnique({ where: { id: zoneId } }) : null;
     if (!zoneExists) {
       // Recours à une zone existante ou création
       const fallbackZone = await prisma.zone.findFirst({
@@ -1184,6 +1184,7 @@ export const bulkImportHouseholds = async (req, res) => {
       const item = {
         id: String(h.id || normalizedNum || `import_${Math.random().toString(36).substr(2, 9)}`),
         organizationId,
+        projectId: bodyProjectId || h.projectId || null,
         zoneId: zoneId,
         numeroordre: normalizedNum,
         status: h.status || 'planned',
@@ -1274,15 +1275,19 @@ export const bulkImportHouseholds = async (req, res) => {
       }
     }
 
-    // 4. Mise à jour PostGIS (Spatial)
-    await prisma.$executeRaw`
-            UPDATE "Household"
-            SET location_gis = ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)
-            WHERE "organizationId" = ${organizationId}
-            AND (location_gis IS NULL OR latitude != ST_Y(location_gis::geometry))
-            AND latitude IS NOT NULL
-            AND longitude IS NOT NULL
-        `;
+    // 4. Mise à jour PostGIS (Spatial) - optionnel, ne pas bloquer l'import
+    try {
+      await prisma.$executeRaw`
+              UPDATE "Household"
+              SET location_gis = ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)
+              WHERE "organizationId" = ${organizationId}
+              AND (location_gis IS NULL OR latitude != ST_Y(location_gis::geometry))
+              AND latitude IS NOT NULL
+              AND longitude IS NOT NULL
+          `;
+    } catch (postgisErr) {
+      logger.warn('[SYNC-BULK] PostGIS update skipped:', postgisErr.message);
+    }
 
     logger.info(`[SYNC-BULK] Success: ${importedCount} households processed.`);
 
@@ -1300,7 +1305,9 @@ export const bulkImportHouseholds = async (req, res) => {
       message: `${importedCount} ménages traités (import/update) sur le serveur.`,
     });
   } catch (error) {
-    logger.error('[SYNC-BULK-FATAL]:', error);
-    res.status(500).json({ error: 'Bulk import failed' });
+    logger.error('[SYNC-BULK-FATAL]:', error.message || error);
+    if (error.stack)
+      logger.error('[SYNC-BULK-FATAL-STACK]:', error.stack.split('\n').slice(0, 5).join('\n'));
+    res.status(500).json({ error: 'Bulk import failed', detail: error.message || String(error) });
   }
 };

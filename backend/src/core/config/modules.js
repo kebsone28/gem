@@ -104,6 +104,13 @@ export const BACKEND_MODULE_REGISTRY = {
     isPackage: true,
     packageCategory: 'ADMIN',
     global: false
+  },
+  carto_grappes: {
+    name: 'Cartographie Grappes',
+    description: 'Cartographie et suivi des grappes de raccordement PROQUELEC',
+    isPackage: true,
+    packageCategory: 'OPERATIONAL',
+    global: false
   }
 };
 

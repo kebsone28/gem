@@ -45,6 +45,7 @@
   },
   "dependencies": {
     "@heyputer/puter.js": "^2.3.4",
-    "dompurify": "^3.4.1"
+    "dompurify": "^3.4.1",
+    "jszip": "^3.10.1"
   }
 }

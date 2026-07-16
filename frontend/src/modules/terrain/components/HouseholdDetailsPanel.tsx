@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import {
   X,
@@ -40,7 +40,7 @@ import {
   Truck as TruckIcon,
   Hammer as HammerIcon,
   Zap as ZapIcon,
-  Download
+  Download,
 } from 'lucide-react';
 import * as ReportGen from '@services/householdReportGenerator';
 import { getHouseholdDerivedStatus, getStatusTailwindClasses } from '@utils/statusUtils';
@@ -204,7 +204,10 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
   const [showInternalReportModal, setShowInternalReportModal] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [nativeKoboAuditForm, setNativeKoboAuditForm] = useState<Record<string, unknown>>({});
-  const [nativeKoboTargetHousehold, setNativeKoboTargetHousehold] = useState<Record<string, any> | null>(null);
+  const [nativeKoboTargetHousehold, setNativeKoboTargetHousehold] = useState<Record<
+    string,
+    any
+  > | null>(null);
   const [nativeKoboValidated, setNativeKoboValidated] = useState(false);
   const [toolboxQueueCount, settoolboxQueueCount] = useState(0);
   const [toolboxQueueItems, settoolboxQueueItems] = useState<toolboxQueuedSubmission[]>([]);
@@ -221,38 +224,48 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
     return items.length;
   }, []);
 
-  const loadtoolboxHistory = useCallback(async (target?: Record<string, any> | null) => {
-    const targetHousehold = target || (household as unknown as Record<string, any>);
-    const householdId = targetHousehold?.id ? String(targetHousehold.id) : '';
-    const numeroOrdre = String(targetHousehold?.numeroordre || targetHousehold?.koboData?.Numero_ordre || household.numeroordre || '').trim();
+  const loadtoolboxHistory = useCallback(
+    async (target?: Record<string, any> | null) => {
+      const targetHousehold = target || (household as unknown as Record<string, any>);
+      const householdId = targetHousehold?.id ? String(targetHousehold.id) : '';
+      const numeroOrdre = String(
+        targetHousehold?.numeroordre ||
+          targetHousehold?.koboData?.Numero_ordre ||
+          household.numeroordre ||
+          ''
+      ).trim();
 
-    if (!householdId && !numeroOrdre) {
-      settoolboxHistory([]);
+      if (!householdId && !numeroOrdre) {
+        settoolboxHistory([]);
+        settoolboxHistoryError('');
+        return;
+      }
+
+      if (!isOnline) {
+        settoolboxHistoryError('Historique VPS indisponible hors-ligne');
+        return;
+      }
+
+      setIstoolboxHistoryLoading(true);
       settoolboxHistoryError('');
-      return;
-    }
 
-    if (!isOnline) {
-      settoolboxHistoryError('Historique VPS indisponible hors-ligne');
-      return;
-    }
-
-    setIstoolboxHistoryLoading(true);
-    settoolboxHistoryError('');
-
-    try {
-      const submissions = await fetchToolboxSubmissions({
-        householdId: householdId || undefined,
-        numeroOrdre: householdId ? undefined : numeroOrdre,
-        limit: 3,
-      });
-      settoolboxHistory(submissions);
-    } catch (error) {
-      settoolboxHistoryError(error instanceof Error ? error.message : 'Historique VPS indisponible');
-    } finally {
-      setIstoolboxHistoryLoading(false);
-    }
-  }, [household, isOnline]);
+      try {
+        const submissions = await fetchToolboxSubmissions({
+          householdId: householdId || undefined,
+          numeroOrdre: householdId ? undefined : numeroOrdre,
+          limit: 3,
+        });
+        settoolboxHistory(submissions);
+      } catch (error) {
+        settoolboxHistoryError(
+          error instanceof Error ? error.message : 'Historique VPS indisponible'
+        );
+      } finally {
+        setIstoolboxHistoryLoading(false);
+      }
+    },
+    [household, isOnline]
+  );
 
   useEffect(() => {
     refreshtoolboxQueueCount();
@@ -335,7 +348,9 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
       stringifyHouseholdValue(coordinates?.[0]) ||
       stringifyHouseholdValue(koboData.C4);
 
-    nextForm.Numero_ordre = String(koboData.Numero_ordre ?? household.numeroordre ?? household.id ?? '');
+    nextForm.Numero_ordre = String(
+      koboData.Numero_ordre ?? household.numeroordre ?? household.id ?? ''
+    );
     nextForm.nom_key =
       stringifyHouseholdValue(koboData.nom_key) ||
       stringifyHouseholdValue(household.name) ||
@@ -354,7 +369,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
       stringifyHouseholdValue(koboData.region);
     nextForm.LOCALISATION_CLIENT = String(
       koboData.LOCALISATION_CLIENT ??
-      (initialLatitude && initialLongitude ? `${initialLatitude} ${initialLongitude}` : '')
+        (initialLatitude && initialLongitude ? `${initialLatitude} ${initialLongitude}` : '')
     );
 
     const localDraft = loadtoolboxLocalDraft({
@@ -380,13 +395,16 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
     if (!showInternalReportModal) return;
     if (Object.keys(nativeKoboAuditForm).length === 0) return;
 
-    const targetHousehold = nativeKoboTargetHousehold || (household as unknown as Record<string, any>);
-    const householdId = targetHousehold?.id ? String(targetHousehold.id) : String(household.id || '');
+    const targetHousehold =
+      nativeKoboTargetHousehold || (household as unknown as Record<string, any>);
+    const householdId = targetHousehold?.id
+      ? String(targetHousehold.id)
+      : String(household.id || '');
     const numeroOrdre = String(
       nativeKoboAuditForm.Numero_ordre ||
-      targetHousehold?.numeroordre ||
-      household.numeroordre ||
-      ''
+        targetHousehold?.numeroordre ||
+        household.numeroordre ||
+        ''
     ).trim();
 
     if (!householdId && !numeroOrdre) return;
@@ -397,7 +415,9 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
         numeroOrdre,
         formKey: String(nativeKoboAuditForm._ged_os_runtime_form_key || 'terrain_internal'),
         role: nativeKoboAuditForm.role ? String(nativeKoboAuditForm.role) : null,
-        formVersion: String(nativeKoboAuditForm._ged_os_runtime_form_version || INTERNAL_GED_OS_FORM_SETTINGS.version),
+        formVersion: String(
+          nativeKoboAuditForm._ged_os_runtime_form_version || INTERNAL_GED_OS_FORM_SETTINGS.version
+        ),
         values: nativeKoboAuditForm,
       });
       if (draft) settoolboxLocalDraft(draft);
@@ -406,22 +426,32 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
     return () => window.clearTimeout(timeoutId);
   }, [household, nativeKoboAuditForm, nativeKoboTargetHousehold, showInternalReportModal]);
 
-  const clearToolboxDraftForTarget = useCallback((target?: Record<string, any> | null, numeroOverride?: string | null) => {
-    const targetHousehold = target || nativeKoboTargetHousehold || (household as unknown as Record<string, any>);
-    cleartoolboxLocalDraft({
-      householdId: targetHousehold?.id ? String(targetHousehold.id) : String(household.id || ''),
-      numeroOrdre: String(numeroOverride || nativeKoboAuditForm.Numero_ordre || targetHousehold?.numeroordre || household.numeroordre || ''),
-      formKey: String(nativeKoboAuditForm._ged_os_runtime_form_key || 'terrain_internal'),
-      role: nativeKoboAuditForm.role ? String(nativeKoboAuditForm.role) : null,
-    });
-    settoolboxLocalDraft(null);
-  }, [
-    household,
-    nativeKoboAuditForm.Numero_ordre,
-    nativeKoboAuditForm._ged_os_runtime_form_key,
-    nativeKoboAuditForm.role,
-    nativeKoboTargetHousehold,
-  ]);
+  const clearToolboxDraftForTarget = useCallback(
+    (target?: Record<string, any> | null, numeroOverride?: string | null) => {
+      const targetHousehold =
+        target || nativeKoboTargetHousehold || (household as unknown as Record<string, any>);
+      cleartoolboxLocalDraft({
+        householdId: targetHousehold?.id ? String(targetHousehold.id) : String(household.id || ''),
+        numeroOrdre: String(
+          numeroOverride ||
+            nativeKoboAuditForm.Numero_ordre ||
+            targetHousehold?.numeroordre ||
+            household.numeroordre ||
+            ''
+        ),
+        formKey: String(nativeKoboAuditForm._ged_os_runtime_form_key || 'terrain_internal'),
+        role: nativeKoboAuditForm.role ? String(nativeKoboAuditForm.role) : null,
+      });
+      settoolboxLocalDraft(null);
+    },
+    [
+      household,
+      nativeKoboAuditForm.Numero_ordre,
+      nativeKoboAuditForm._ged_os_runtime_form_key,
+      nativeKoboAuditForm.role,
+      nativeKoboTargetHousehold,
+    ]
+  );
 
   const handleClearToolboxDraft = useCallback(() => {
     clearToolboxDraftForTarget();
@@ -461,9 +491,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
       .split('.')
       .filter(Boolean)
       .map((segment) =>
-        segment
-          .replace(/_/g, ' ')
-          .replace(/\b\w/g, (letter) => letter.toUpperCase())
+        segment.replace(/_/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase())
       )
       .join(' / ');
   };
@@ -492,14 +520,17 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
     'Non encore installée',
   ];
 
-  const timelineStages = useMemo(() => [
-    'Non encore installée',
-    'Livraison effectuée',
-    'Murs terminés',
-    'Réseau terminé',
-    'Intérieur terminé',
-    'Contrôle conforme',
-  ], []);
+  const timelineStages = useMemo(
+    () => [
+      'Non encore installée',
+      'Livraison effectuée',
+      'Murs terminés',
+      'Réseau terminé',
+      'Intérieur terminé',
+      'Contrôle conforme',
+    ],
+    []
+  );
   const stageVisuals: Record<
     string,
     {
@@ -549,13 +580,18 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
       DISJONCTEUR_GENERAL_EN_TETE_D_: "Disjoncteur général en tête d'installation",
       TYPE_DE_DISJONCTEUR_GENERAL: 'Type de disjoncteur général',
       ENSEMBLE_DE_L_INSTALLATION_PRO: "Ensemble de l'installation protégé par DDR 30 mA",
-      PROTECTION_L_ORIGINE_DE_CHAQ: "Protection à l'origine de chaque circuit (modulaire et conducteur)",
+      PROTECTION_L_ORIGINE_DE_CHAQ:
+        "Protection à l'origine de chaque circuit (modulaire et conducteur)",
       S_PARATION_DES_CIRCUITS_Lumi_: 'Séparation des circuits (lumière et prise)',
-      PROTECTION_CONTACT_D_TOUTE_L_INSTALLATION: "Protection contact direct à vérifier sur toute l'installation",
+      PROTECTION_CONTACT_D_TOUTE_L_INSTALLATION:
+        "Protection contact direct à vérifier sur toute l'installation",
       PROTECTION_CONTRE_LES_CONTACTS: 'Protection contre les contacts directs',
-      MISE_EN_OEUVRE_MAT_RIEL_ET_APP: 'Mise en œuvre matériel et appareillage (coffret, prise, interrupteur, boîte, câble...)',
-      CONTINUITE_DE_LA_PROTECTION_ME: 'Continuité de la protection mécanique des fils conducteurs (phase, neutre, terre)',
-      RESEAU_DE_TERRE_A_VE_TOUTE_L_INSTALLATION: "Réseau de terre à vérifier sur toute l'installation",
+      MISE_EN_OEUVRE_MAT_RIEL_ET_APP:
+        'Mise en œuvre matériel et appareillage (coffret, prise, interrupteur, boîte, câble...)',
+      CONTINUITE_DE_LA_PROTECTION_ME:
+        'Continuité de la protection mécanique des fils conducteurs (phase, neutre, terre)',
+      RESEAU_DE_TERRE_A_VE_TOUTE_L_INSTALLATION:
+        "Réseau de terre à vérifier sur toute l'installation",
       MISE_EN_UVRE_DU_R_SEAU_DE_TER: 'Mise en œuvre du réseau de terre et continuité',
       ETAT_DE_LA_BARRETTE_DE_TERRE: 'État de la barrette de terre',
       VALEUR_DE_LA_RESISTANCE_DE_TER: 'Valeur de la résistance de terre ou de boucle',
@@ -571,7 +607,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
       ga7rh54: 'Phase du contrôle',
       sv3tg34: 'État du branchement',
       ETAT_DE_L_INSTALLATION: "État de l'installation",
-      controleurPROB: 'Problèmes détectés par le contrôleur'
+      controleurPROB: 'Problèmes détectés par le contrôleur',
     };
 
     const makeLookupKey = (value: string) =>
@@ -591,19 +627,39 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
     const exactLabel = knownKoboLabels[rawSegment] || knownKoboLabels[formatted];
     if (exactLabel) return exactLabel;
 
-    const lookupLabel = knownKoboLabelsByLookup[makeLookupKey(rawSegment)] || knownKoboLabelsByLookup[makeLookupKey(formatted)];
+    const lookupLabel =
+      knownKoboLabelsByLookup[makeLookupKey(rawSegment)] ||
+      knownKoboLabelsByLookup[makeLookupKey(formatted)];
     if (lookupLabel) return lookupLabel;
 
     formatted = rawSegment;
 
     const inferredLabels: Array<[RegExp, string]> = [
       [/S\s*PARATION\s+DES\s+CIRCUITS\s+LUMI/i, 'Séparation des circuits (lumière et prise)'],
-      [/PROTECTION\s+L\s+ORIGINE\s+DE\s+CHAQ/i, "Protection à l'origine de chaque circuit (modulaire et conducteur)"],
-      [/MISE\s+EN\s+UVRE\s+DU\s+R\s*SEAU\s+DE\s+TER/i, 'Mise en œuvre du réseau de terre et continuité'],
-      [/MISE\s+EN\s+OEUVRE\s+MAT\s*RIEL\s+ET\s+APP/i, 'Mise en œuvre matériel et appareillage (coffret, prise, interrupteur, boîte, câble...)'],
-      [/CONTINUITE\s+DE\s+LA\s+PROTECTION\s+ME/i, 'Continuité de la protection mécanique des fils conducteurs (phase, neutre, terre)'],
-      [/VALEUR\s+DE\s+LA\s+RESISTANCE\s+DE\s+TER/i, 'Valeur de la résistance de terre ou de boucle'],
-      [/ENSEMBLE\s+DE\s+L\s+INSTALLATION\s+PRO/i, "Ensemble de l'installation protégé par DDR 30 mA"],
+      [
+        /PROTECTION\s+L\s+ORIGINE\s+DE\s+CHAQ/i,
+        "Protection à l'origine de chaque circuit (modulaire et conducteur)",
+      ],
+      [
+        /MISE\s+EN\s+UVRE\s+DU\s+R\s*SEAU\s+DE\s+TER/i,
+        'Mise en œuvre du réseau de terre et continuité',
+      ],
+      [
+        /MISE\s+EN\s+OEUVRE\s+MAT\s*RIEL\s+ET\s+APP/i,
+        'Mise en œuvre matériel et appareillage (coffret, prise, interrupteur, boîte, câble...)',
+      ],
+      [
+        /CONTINUITE\s+DE\s+LA\s+PROTECTION\s+ME/i,
+        'Continuité de la protection mécanique des fils conducteurs (phase, neutre, terre)',
+      ],
+      [
+        /VALEUR\s+DE\s+LA\s+RESISTANCE\s+DE\s+TER/i,
+        'Valeur de la résistance de terre ou de boucle',
+      ],
+      [
+        /ENSEMBLE\s+DE\s+L\s+INSTALLATION\s+PRO/i,
+        "Ensemble de l'installation protégé par DDR 30 mA",
+      ],
       [/DISJONCTEUR\s+GENERAL\s+EN\s+TETE/i, "Disjoncteur général en tête d'installation"],
     ];
 
@@ -615,27 +671,27 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
 
     const corrections: Record<string, string> = {
       'etape controleur': 'étape contrôleur',
-      'group': 'groupe',
+      group: 'groupe',
       'fix e': 'fixée',
       'lumi re': 'lumière',
       'c blage': 'câblage',
       'd rivation': 'dérivation',
-      'rése': 'réseau',
+      rése: 'réseau',
       'r seau': 'réseau',
       'mise en uvre': 'mise en œuvre',
       's paration': 'séparation',
       'protection l origine': "protection à l'origine",
-      'chaq': 'chaque',
-      'ter': 'terre',
+      chaq: 'chaque',
+      ter: 'terre',
       'pr parateur': 'préparateur',
-      'récupér': 'récupéré',
-      'installat': 'installation',
-      'effec': 'effectué',
-      'piquet': 'piquet de terre',
-      'disjoncteur': 'disjoncteur',
+      récupér: 'récupéré',
+      installat: 'installation',
+      effec: 'effectué',
+      piquet: 'piquet de terre',
+      disjoncteur: 'disjoncteur',
       'd placer': 'déplacer',
       'en lieu c': 'en lieu sûr',
-      'contr leur': 'contrôleur'
+      'contr leur': 'contrôleur',
     };
 
     Object.entries(corrections).forEach(([search, replace]) => {
@@ -676,17 +732,15 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
     if (status.includes('audit')) return 'Intérieur terminé';
 
     return currentStatus
-        .replace(
-          /[\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF]/g,
-          ''
-        )
-        .trim();
+      .replace(
+        /[\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF]/g,
+        ''
+      )
+      .trim();
   }, [currentStatus]);
 
   const currentStageIndex = useMemo(() => {
-    const idx = timelineStages.findIndex(
-      (s) => s.toLowerCase() === normalizedStatus.toLowerCase()
-    );
+    const idx = timelineStages.findIndex((s) => s.toLowerCase() === normalizedStatus.toLowerCase());
     if (idx === -1 && currentStatus.toLowerCase().includes('non conforme')) return 4;
     return idx;
   }, [normalizedStatus, currentStatus, timelineStages]);
@@ -698,7 +752,8 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
   const progressPercent = isNaN(progressPercentRaw) ? 0 : progressPercentRaw;
 
   const isTerminalStatus = ['Non éligible', 'Désistement', 'Refusé'].includes(currentStatus);
-  const justification = (household.constructionData as any)?.livreur?.justificatif ||
+  const justification =
+    (household.constructionData as any)?.livreur?.justificatif ||
     (household.constructionData as any)?.livreur?.kit_problems ||
     household.koboData?.justificatif;
   const activeStageMeta =
@@ -706,7 +761,8 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
     stageVisuals['Non encore installée'];
   const progressRingCircumference = 2 * Math.PI * 28;
   const progressRingOffset =
-    progressRingCircumference - (Math.max(0, Math.min(100, progressPercent)) / 100) * progressRingCircumference;
+    progressRingCircumference -
+    (Math.max(0, Math.min(100, progressPercent)) / 100) * progressRingCircumference;
   const completedStageCount = currentStageIndex >= 0 ? currentStageIndex + 1 : 0;
   const headerAuraClass = isTerminalStatus
     ? 'from-rose-500/26 via-rose-500/8 to-transparent'
@@ -746,7 +802,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
     if (syncState === 'error') {
       return {
         label: 'Erreur',
-        helper: "La dernière synchronisation a échoué, une reprise est nécessaire",
+        helper: 'La dernière synchronisation a échoué, une reprise est nécessaire',
         classes: 'bg-rose-500/10 text-rose-400 border-rose-500/20',
       };
     }
@@ -762,43 +818,61 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
     const statusLower = currentStatus.toLowerCase();
     const isAuditPhase = statusLower.includes('conforme') || statusLower.includes('audit');
 
-    if ((currentStageIndex >= 5 || household.koboSync?.controleOk || (household.constructionData as any)?.audit) && !statusLower.includes('non conforme')) {
+    if (
+      (currentStageIndex >= 5 ||
+        household.koboSync?.controleOk ||
+        (household.constructionData as any)?.audit) &&
+      !statusLower.includes('non conforme')
+    ) {
       return {
         label: 'Certificat Final',
         action: () => ReportGen.generateConformiteFinalPDF(household),
         icon: <ShieldCheck size={18} />,
-        color: 'from-emerald-600 to-emerald-900'
+        color: 'from-emerald-600 to-emerald-900',
       };
     }
-    if (currentStageIndex >= 4 || isAuditPhase || household.koboSync?.interieurOk || (household.constructionData as any)?.interieur) {
+    if (
+      currentStageIndex >= 4 ||
+      isAuditPhase ||
+      household.koboSync?.interieurOk ||
+      (household.constructionData as any)?.interieur
+    ) {
       return {
         label: 'PV Intérieur',
         action: () => ReportGen.generateInstallationPDF(household),
         icon: <FileText size={18} />,
-        color: 'from-violet-600 to-violet-900'
+        color: 'from-violet-600 to-violet-900',
       };
     }
-    if (currentStageIndex >= 3 || household.koboSync?.reseauOk || (household.constructionData as any)?.reseau) {
+    if (
+      currentStageIndex >= 3 ||
+      household.koboSync?.reseauOk ||
+      (household.constructionData as any)?.reseau
+    ) {
       return {
         label: 'Fiche Réseau',
         action: () => ReportGen.generateBranchementPDF(household),
         icon: <ZapIcon size={18} />,
-        color: 'from-sky-600 to-sky-900'
+        color: 'from-sky-600 to-sky-900',
       };
     }
-    if (currentStageIndex >= 2 || household.koboSync?.maconOk || (household.constructionData as any)?.macon) {
+    if (
+      currentStageIndex >= 2 ||
+      household.koboSync?.maconOk ||
+      (household.constructionData as any)?.macon
+    ) {
       return {
         label: 'PV Maçonnerie',
         action: () => ReportGen.generateMaconneriePDF(household),
         icon: <HammerIcon size={18} />,
-        color: 'from-amber-600 to-amber-900'
+        color: 'from-amber-600 to-amber-900',
       };
     }
     return {
       label: 'Bon Livraison',
       action: () => ReportGen.generateLivraisonPDF(household),
       icon: <TruckIcon size={18} />,
-      color: 'from-blue-600 to-indigo-900'
+      color: 'from-blue-600 to-indigo-900',
     };
   }, [household, currentStageIndex, currentStatus]);
 
@@ -832,7 +906,9 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
     if (resolvedHousehold?.id) {
       const restoredDraft = loadtoolboxLocalDraft({
         householdId: String(resolvedHousehold.id),
-        numeroOrdre: String(resolvedHousehold.numeroordre || nativeKoboAuditForm.Numero_ordre || ''),
+        numeroOrdre: String(
+          resolvedHousehold.numeroordre || nativeKoboAuditForm.Numero_ordre || ''
+        ),
         formKey: String(nativeKoboAuditForm._ged_os_runtime_form_key || 'terrain_internal'),
         role: nativeKoboAuditForm.role ? String(nativeKoboAuditForm.role) : null,
       });
@@ -855,45 +931,61 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
   };
 
   const handleSaveNativeKoboAudit = async () => {
-    const runtimeFormKey = String(nativeKoboAuditForm._ged_os_runtime_form_key || 'terrain_internal').trim() || 'terrain_internal';
-    const runtimeFormVersion = String(nativeKoboAuditForm._ged_os_runtime_form_version || INTERNAL_GED_OS_FORM_SETTINGS.version).trim();
-    const runtimeFormTitle = String(nativeKoboAuditForm._ged_os_runtime_title || 'Formulaire terrain interne').trim();
+    const runtimeFormKey =
+      String(nativeKoboAuditForm._ged_os_runtime_form_key || 'terrain_internal').trim() ||
+      'terrain_internal';
+    const runtimeFormVersion = String(
+      nativeKoboAuditForm._ged_os_runtime_form_version || INTERNAL_GED_OS_FORM_SETTINGS.version
+    ).trim();
+    const runtimeFormTitle = String(
+      nativeKoboAuditForm._ged_os_runtime_title || 'Formulaire terrain interne'
+    ).trim();
     const isUniversalXlsForm = runtimeFormKey !== 'terrain_internal';
     const runtimeIssueRows = Array.isArray(nativeKoboAuditForm._ged_os_runtime_validation_issues)
-      ? nativeKoboAuditForm._ged_os_runtime_validation_issues.filter((issue): issue is Record<string, any> =>
-        Boolean(issue) && typeof issue === 'object' && !Array.isArray(issue)
-      )
+      ? nativeKoboAuditForm._ged_os_runtime_validation_issues.filter(
+          (issue): issue is Record<string, any> =>
+            Boolean(issue) && typeof issue === 'object' && !Array.isArray(issue)
+        )
       : [];
     const runtimeMissingNames = Array.isArray(nativeKoboAuditForm._ged_os_runtime_required_missing)
       ? nativeKoboAuditForm._ged_os_runtime_required_missing.map(String).filter(Boolean)
       : [];
     const validationIssues = isUniversalXlsForm
-      ? runtimeIssueRows.map((issue) => ({
-        field: {
-          name: String(issue.field || ''),
-          label: String(issue.field || ''),
-          type: 'text',
-          required: issue.type === 'required',
-        },
-        type: issue.type === 'constraint' ? 'constraint' as const : 'required' as const,
-        message: String(issue.message || 'Validation XLSForm a corriger'),
-      })).filter((issue) => issue.field.name)
+      ? runtimeIssueRows
+          .map((issue) => ({
+            field: {
+              name: String(issue.field || ''),
+              label: String(issue.field || ''),
+              type: 'text',
+              required: issue.type === 'required',
+            },
+            type: issue.type === 'constraint' ? ('constraint' as const) : ('required' as const),
+            message: String(issue.message || 'Validation XLSForm a corriger'),
+          }))
+          .filter((issue) => issue.field.name)
       : validateInternalGemFields(nativeKoboAuditForm);
     const missingRequiredFields = isUniversalXlsForm
       ? runtimeMissingNames.map((name) => ({
-        name,
-        label: name,
-        type: 'text',
-        required: true,
-      }))
+          name,
+          label: name,
+          type: 'text',
+          required: true,
+        }))
       : validateInternalGemRequiredFields(nativeKoboAuditForm);
     const constraintIssues = validationIssues.filter((issue) => issue.type === 'constraint');
     const requestedNumeroOrdre = String(nativeKoboAuditForm.Numero_ordre || '').trim();
     const currentNumeroOrdre = String(household.numeroordre || household.id || '').trim();
-    const submissionHousehold = nativeKoboTargetHousehold || (household as unknown as Record<string, any>);
+    const submissionHousehold =
+      nativeKoboTargetHousehold || (household as unknown as Record<string, any>);
 
-    if (requestedNumeroOrdre && requestedNumeroOrdre !== currentNumeroOrdre && !nativeKoboTargetHousehold?.id) {
-      toast.error("Numero ordre introuvable sur le VPS: soumission bloquee pour eviter d'ecrire sur le mauvais menage");
+    if (
+      requestedNumeroOrdre &&
+      requestedNumeroOrdre !== currentNumeroOrdre &&
+      !nativeKoboTargetHousehold?.id
+    ) {
+      toast.error(
+        "Numero ordre introuvable sur le VPS: soumission bloquee pour eviter d'ecrire sur le mauvais menage"
+      );
       return;
     }
 
@@ -935,13 +1027,21 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
         _xform_default_language: INTERNAL_GED_OS_FORM_SETTINGS.defaultLanguage,
       };
       const cleanValues = Object.fromEntries(
-        Object.entries({ ...xlsFormMetadata, ...nativeKoboAuditForm, ...submissionValues }).filter(([, value]) => {
-          if (Array.isArray(value)) return value.length > 0;
-          return value !== undefined && value !== null && String(value).trim() !== '';
-        })
+        Object.entries({ ...xlsFormMetadata, ...nativeKoboAuditForm, ...submissionValues }).filter(
+          ([, value]) => {
+            if (Array.isArray(value)) return value.length > 0;
+            return value !== undefined && value !== null && String(value).trim() !== '';
+          }
+        )
       );
       const attachments = Object.entries(cleanValues)
-        .filter(([key, value]) => key.startsWith('_ged_os_attachment_') && value && typeof value === 'object' && !Array.isArray(value))
+        .filter(
+          ([key, value]) =>
+            key.startsWith('_ged_os_attachment_') &&
+            value &&
+            typeof value === 'object' &&
+            !Array.isArray(value)
+        )
         .map(([, value]) => value as toolboxAttachment)
         .filter((attachment) => attachment.fieldName);
       const photoFields = attachments
@@ -957,13 +1057,13 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
       };
       const activeXlsFormSettings = isUniversalXlsForm
         ? {
-          formKey: runtimeFormKey,
-          version: runtimeFormVersion,
-          title: runtimeFormTitle,
-          engine: 'gem-xlsform-universal',
-          style: INTERNAL_GED_OS_FORM_SETTINGS.style,
-          defaultLanguage: INTERNAL_GED_OS_FORM_SETTINGS.defaultLanguage,
-        }
+            formKey: runtimeFormKey,
+            version: runtimeFormVersion,
+            title: runtimeFormTitle,
+            engine: 'gem-xlsform-universal',
+            style: INTERNAL_GED_OS_FORM_SETTINGS.style,
+            defaultLanguage: INTERNAL_GED_OS_FORM_SETTINGS.defaultLanguage,
+          }
         : INTERNAL_GED_OS_FORM_SETTINGS;
 
       const hasControlNonConformity = INTERNAL_GED_OS_CONTROL_FIELD_NAMES.some(
@@ -972,20 +1072,20 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
       const controlCompleted = isTruthyKoboValue(nativeKoboAuditForm.validation_controleur_final);
       const allRequiredComplete = validationIssues.length === 0;
       const controleOk = controlCompleted && allRequiredComplete && !hasControlNonConformity;
-      const nextStatus =
-        controleOk
-          ? 'Contrôle conforme'
-          : hasControlNonConformity || nativeKoboAuditForm.ETAT_DE_L_INSTALLATION === 'probleme_a_signaler'
-            ? 'Non conforme'
-            : isTruthyKoboValue(nativeKoboAuditForm.validation_interieur_final)
-              ? 'Intérieur terminé'
-              : isTruthyKoboValue(nativeKoboAuditForm.validation_reseau_final)
-                ? 'Réseau terminé'
-                : isTruthyKoboValue(nativeKoboAuditForm.validation_macon_final)
-                  ? 'Murs terminés'
-                  : nativeKoboAuditForm.Situation_du_M_nage === 'menage_non_eligible'
-                    ? 'Non éligible'
-                    : submissionHousehold.status || household.status;
+      const nextStatus = controleOk
+        ? 'Contrôle conforme'
+        : hasControlNonConformity ||
+            nativeKoboAuditForm.ETAT_DE_L_INSTALLATION === 'probleme_a_signaler'
+          ? 'Non conforme'
+          : isTruthyKoboValue(nativeKoboAuditForm.validation_interieur_final)
+            ? 'Intérieur terminé'
+            : isTruthyKoboValue(nativeKoboAuditForm.validation_reseau_final)
+              ? 'Réseau terminé'
+              : isTruthyKoboValue(nativeKoboAuditForm.validation_macon_final)
+                ? 'Murs terminés'
+                : nativeKoboAuditForm.Situation_du_M_nage === 'menage_non_eligible'
+                  ? 'Non éligible'
+                  : submissionHousehold.status || household.status;
 
       const auditPatch: Record<string, any> = {
         ...((submissionHousehold.constructionData as any)?.audit || {}),
@@ -1008,7 +1108,8 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
         ...(submissionHousehold.koboData || {}),
         ...cleanValues,
         numeroordre: submissionHousehold.numeroordre || requestedNumeroOrdre || targetHouseholdId,
-        Numero_ordre: nativeKoboAuditForm.Numero_ordre || submissionHousehold.numeroordre || targetHouseholdId,
+        Numero_ordre:
+          nativeKoboAuditForm.Numero_ordre || submissionHousehold.numeroordre || targetHouseholdId,
         _ged_os_toolbox: true,
         _ged_os_TOOLBOX_updated_at: now,
         _ged_os_submission_target: 'ged-os-vps',
@@ -1024,19 +1125,56 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
         koboData: koboDataPatch,
         koboSync: {
           ...(submissionHousehold.koboSync || {}),
-          preparateurKits: Number(nativeKoboAuditForm.Nombre_de_KIT_pr_par || submissionHousehold.koboSync?.preparateurKits || 0),
-          câbleInt25: Number(nativeKoboAuditForm.Longueur_Cable_2_5mm_Int_rieure || submissionHousehold.koboSync?.câbleInt25 || 0),
-          câbleInt15: Number(nativeKoboAuditForm.Longueur_Cable_1_5mm_Int_rieure || submissionHousehold.koboSync?.câbleInt15 || 0),
-          tranchee4: Number(nativeKoboAuditForm.Longueur_Tranch_e_Cable_arm_4mm || submissionHousehold.koboSync?.tranchee4 || 0),
-          tranchee15: Number(nativeKoboAuditForm.Longueur_Tranch_e_C_ble_arm_1_5mm || submissionHousehold.koboSync?.tranchee15 || 0),
-          maconOk: isTruthyKoboValue(nativeKoboAuditForm.validation_macon_final) || submissionHousehold.koboSync?.maconOk,
-          reseauOk: isTruthyKoboValue(nativeKoboAuditForm.validation_reseau_final) || submissionHousehold.koboSync?.reseauOk,
-          interieurOk: isTruthyKoboValue(nativeKoboAuditForm.validation_interieur_final) || submissionHousehold.koboSync?.interieurOk,
+          preparateurKits: Number(
+            nativeKoboAuditForm.Nombre_de_KIT_pr_par ||
+              submissionHousehold.koboSync?.preparateurKits ||
+              0
+          ),
+          câbleInt25: Number(
+            nativeKoboAuditForm.Longueur_Cable_2_5mm_Int_rieure ||
+              submissionHousehold.koboSync?.câbleInt25 ||
+              0
+          ),
+          câbleInt15: Number(
+            nativeKoboAuditForm.Longueur_Cable_1_5mm_Int_rieure ||
+              submissionHousehold.koboSync?.câbleInt15 ||
+              0
+          ),
+          tranchee4: Number(
+            nativeKoboAuditForm.Longueur_Tranch_e_Cable_arm_4mm ||
+              submissionHousehold.koboSync?.tranchee4 ||
+              0
+          ),
+          tranchee15: Number(
+            nativeKoboAuditForm.Longueur_Tranch_e_C_ble_arm_1_5mm ||
+              submissionHousehold.koboSync?.tranchee15 ||
+              0
+          ),
+          maconOk:
+            isTruthyKoboValue(nativeKoboAuditForm.validation_macon_final) ||
+            submissionHousehold.koboSync?.maconOk,
+          reseauOk:
+            isTruthyKoboValue(nativeKoboAuditForm.validation_reseau_final) ||
+            submissionHousehold.koboSync?.reseauOk,
+          interieurOk:
+            isTruthyKoboValue(nativeKoboAuditForm.validation_interieur_final) ||
+            submissionHousehold.koboSync?.interieurOk,
           controleOk,
           village: submissionHousehold.village || submissionHousehold.koboSync?.village,
           departement: submissionHousehold.departement || submissionHousehold.koboSync?.departement,
-          region: String(nativeKoboAuditForm.region_key || submissionHousehold.region || submissionHousehold.koboSync?.region || ''),
-          tel: String(nativeKoboAuditForm.telephone_key || submissionHousehold.phone || submissionHousehold.ownerPhone || submissionHousehold.koboSync?.tel || ''),
+          region: String(
+            nativeKoboAuditForm.region_key ||
+              submissionHousehold.region ||
+              submissionHousehold.koboSync?.region ||
+              ''
+          ),
+          tel: String(
+            nativeKoboAuditForm.telephone_key ||
+              submissionHousehold.phone ||
+              submissionHousehold.ownerPhone ||
+              submissionHousehold.koboSync?.tel ||
+              ''
+          ),
         },
         constructionData: {
           ...(submissionHousehold.constructionData || {}),
@@ -1061,7 +1199,9 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
       fallbackSubmissionPayload = {
         clientSubmissionId: internalSubmissionId,
         householdId: targetHouseholdId,
-        numeroOrdre: String(nativeKoboAuditForm.Numero_ordre || submissionHousehold.numeroordre || targetHouseholdId),
+        numeroOrdre: String(
+          nativeKoboAuditForm.Numero_ordre || submissionHousehold.numeroordre || targetHouseholdId
+        ),
         formKey: runtimeFormKey,
         formVersion: runtimeFormVersion,
         role: nativeKoboAuditForm.role ? String(nativeKoboAuditForm.role) : null,
@@ -1165,7 +1305,9 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
       exit={{ x: '100%' }}
       transition={{ type: 'spring', damping: 25, stiffness: 200 }}
       className={`fixed inset-x-0 bottom-0 z-[2000] flex w-full flex-col overflow-hidden rounded-t-[1.75rem] border-t border-white/10 bg-slate-950/94 text-white shadow-[-20px_0_90px_rgba(0,0,0,0.56)] backdrop-blur-3xl transition-[max-height,min-height] duration-300 sm:rounded-t-[2.4rem] md:inset-y-0 md:left-auto md:right-0 md:h-screen md:max-h-none md:min-h-0 md:w-[430px] md:rounded-none md:border-l lg:w-[446px] ${
-        isExpanded ? 'max-h-[98dvh] min-h-[92dvh] sm:max-h-[96dvh]' : 'max-h-[94dvh] min-h-[72dvh] sm:max-h-[92dvh]'
+        isExpanded
+          ? 'max-h-[98dvh] min-h-[92dvh] sm:max-h-[96dvh]'
+          : 'max-h-[94dvh] min-h-[72dvh] sm:max-h-[92dvh]'
       }`}
     >
       {/* Drag Handle for Mobile */}
@@ -1188,7 +1330,9 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
 
       {/* Header Sticky */}
       <div className="sticky top-0 z-10 shrink-0 overflow-hidden border-b border-white/[0.08] bg-slate-950/95 px-4 pb-3 pt-2.5 backdrop-blur-2xl sm:px-5 sm:py-4 md:px-7 md:py-5">
-        <div className={`pointer-events-none absolute -right-20 -top-24 h-52 w-52 rounded-full bg-gradient-to-br ${headerAuraClass} blur-3xl`} />
+        <div
+          className={`pointer-events-none absolute -right-20 -top-24 h-52 w-52 rounded-full bg-gradient-to-br ${headerAuraClass} blur-3xl`}
+        />
         <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent" />
 
         <div className="relative z-10 flex items-start justify-between gap-3">
@@ -1200,7 +1344,9 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
               {hasConflict && (
                 <div className="flex shrink-0 animate-pulse items-center gap-1 rounded-full border border-rose-500/20 bg-rose-500/10 px-2 py-0.5 text-rose-500">
                   <AlertTriangle size={8} />
-                  <span className="text-[7px] font-black uppercase tracking-[0.1em] sm:text-[9px]">CONFLIT</span>
+                  <span className="text-[7px] font-black uppercase tracking-[0.1em] sm:text-[9px]">
+                    CONFLIT
+                  </span>
                 </div>
               )}
               {isTerminalStatus ? (
@@ -1211,7 +1357,9 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
                   </span>
                 </div>
               ) : (
-                <div className={`flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 shadow-inner sm:px-3 ${syncBadge.classes}`}>
+                <div
+                  className={`flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 shadow-inner sm:px-3 ${syncBadge.classes}`}
+                >
                   {syncState === 'pending' ? (
                     <RefreshCcw size={8} className="animate-spin text-amber-500" />
                   ) : syncState === 'error' ? (
@@ -1256,8 +1404,19 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
         <div className="relative z-10 mt-3 rounded-[1.35rem] border border-white/[0.09] bg-white/[0.045] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_18px_45px_rgba(2,6,23,0.36)]">
           <div className="flex items-center gap-3">
             <div className="relative grid h-[72px] w-[72px] shrink-0 place-items-center">
-              <svg className="absolute inset-0 h-full w-full -rotate-90" viewBox="0 0 72 72" aria-hidden="true">
-                <circle cx="36" cy="36" r="28" fill="none" stroke="rgba(255,255,255,0.09)" strokeWidth="6" />
+              <svg
+                className="absolute inset-0 h-full w-full -rotate-90"
+                viewBox="0 0 72 72"
+                aria-hidden="true"
+              >
+                <circle
+                  cx="36"
+                  cy="36"
+                  r="28"
+                  fill="none"
+                  stroke="rgba(255,255,255,0.09)"
+                  strokeWidth="6"
+                />
                 <circle
                   className={`household-filter-glow ${isTerminalStatus ? 'animate-pulse' : ''}`}
                   cx="36"
@@ -1269,22 +1428,30 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
                   strokeWidth="6"
                   strokeDasharray="var(--progress-array)"
                   strokeDashoffset="var(--progress-offset)"
-                  style={{ 
-                    '--filter-value': isTerminalStatus ? 'drop-shadow(0 0 5px rgba(239,68,68,0.9))' : 'none',
-                    '--progress-array': progressRingCircumference,
-                    '--progress-offset': progressRingOffset
-                  } as React.CSSProperties}
+                  style={
+                    {
+                      '--filter-value': isTerminalStatus
+                        ? 'drop-shadow(0 0 5px rgba(239,68,68,0.9))'
+                        : 'none',
+                      '--progress-array': progressRingCircumference,
+                      '--progress-offset': progressRingOffset,
+                    } as React.CSSProperties
+                  }
                 />
                 <defs>
                   <linearGradient id="household-progress-ring" x1="0" y1="0" x2="72" y2="72">
-                    <stop 
-                      style={{ '--stop-color': '#38bdf8' } as React.CSSProperties} 
-                      stopColor="var(--stop-color)" 
+                    <stop
+                      style={{ '--stop-color': '#38bdf8' } as React.CSSProperties}
+                      stopColor="var(--stop-color)"
                     />
-                     <stop 
-                      offset="1" 
-                      style={{ '--stop-color': isTerminalStatus ? '#fb7185' : '#34d399' } as React.CSSProperties} 
-                      stopColor="var(--stop-color)" 
+                    <stop
+                      offset="1"
+                      style={
+                        {
+                          '--stop-color': isTerminalStatus ? '#fb7185' : '#34d399',
+                        } as React.CSSProperties
+                      }
+                      stopColor="var(--stop-color)"
                     />
                   </linearGradient>
                 </defs>
@@ -1314,15 +1481,21 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
 
           <div className="mt-3 grid grid-cols-3 gap-2">
             <div className="rounded-2xl border border-white/[0.07] bg-black/18 px-3 py-2">
-              <p className="text-[7px] font-black uppercase tracking-[0.16em] text-slate-500">Progression</p>
+              <p className="text-[7px] font-black uppercase tracking-[0.16em] text-slate-500">
+                Progression
+              </p>
               <p className="mt-1 text-sm font-black text-white">{progressPercent}%</p>
             </div>
             <div className="rounded-2xl border border-white/[0.07] bg-black/18 px-3 py-2">
-              <p className="text-[7px] font-black uppercase tracking-[0.16em] text-slate-500">Équipes</p>
+              <p className="text-[7px] font-black uppercase tracking-[0.16em] text-slate-500">
+                Équipes
+              </p>
               <p className="mt-1 text-sm font-black text-white">{memoizedTeams.length || 0}</p>
             </div>
             <div className="rounded-2xl border border-white/[0.07] bg-black/18 px-3 py-2">
-              <p className="text-[7px] font-black uppercase tracking-[0.16em] text-slate-500">MAJ</p>
+              <p className="text-[7px] font-black uppercase tracking-[0.16em] text-slate-500">
+                MAJ
+              </p>
               <p className="mt-1 truncate text-sm font-black text-white">{lastUpdateSummary}</p>
             </div>
           </div>
@@ -1342,15 +1515,17 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
                     <AlertTriangle size={16} /> ALERTES CRITIQUES
                   </h4>
                   <div className="space-y-3">
-                    {alerts.filter((a: any) => a.severity === 'HIGH').map((alert: any, i: number) => (
-                      <div
-                        key={i}
-                        className="flex items-start gap-3 p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs font-bold text-rose-400 uppercase tracking-widest shadow-inner"
-                      >
-                        <div className="w-2 h-2 mt-1 rounded-full bg-rose-500 shrink-0 shadow-[0_0_15px_rgba(244,63,94,0.8)]" />
-                        <span>{alert.message || alert}</span>
-                      </div>
-                    ))}
+                    {alerts
+                      .filter((a: any) => a.severity === 'HIGH')
+                      .map((alert: any, i: number) => (
+                        <div
+                          key={i}
+                          className="flex items-start gap-3 p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs font-bold text-rose-400 uppercase tracking-widest shadow-inner"
+                        >
+                          <div className="w-2 h-2 mt-1 rounded-full bg-rose-500 shrink-0 shadow-[0_0_15px_rgba(244,63,94,0.8)]" />
+                          <span>{alert.message || alert}</span>
+                        </div>
+                      ))}
                   </div>
                 </div>
               )}
@@ -1362,21 +1537,22 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
                     <Zap size={14} /> ALERTES SYSTÈME
                   </h4>
                   <div className="space-y-3">
-                    {alerts.filter((a: any) => a.severity !== 'HIGH').map((alert: any, i: number) => (
-                      <div
-                        key={i}
-                        className="flex items-start gap-3 p-3 rounded-xl bg-white/5 border border-white/5 text-[10px] font-bold text-amber-400/80 uppercase tracking-widest"
-                      >
-                        <div className="w-1.5 h-1.5 mt-1 rounded-full bg-amber-500 shrink-0" />
-                        <span>{alert.message || alert}</span>
-                      </div>
-                    ))}
+                    {alerts
+                      .filter((a: any) => a.severity !== 'HIGH')
+                      .map((alert: any, i: number) => (
+                        <div
+                          key={i}
+                          className="flex items-start gap-3 p-3 rounded-xl bg-white/5 border border-white/5 text-[10px] font-bold text-amber-400/80 uppercase tracking-widest"
+                        >
+                          <div className="w-1.5 h-1.5 mt-1 rounded-full bg-amber-500 shrink-0" />
+                          <span>{alert.message || alert}</span>
+                        </div>
+                      ))}
                   </div>
                 </div>
               )}
             </div>
           )}
-
 
           {/* GLOBAL STATUS TRACKING (REPOSITIONNÉ ICI POUR ÉVITER LE DOUBLON) */}
           <HouseholdStatusTimeline
@@ -1396,15 +1572,19 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
           {project?.config?.customFields && project.config.customFields.length > 0 && (
             <div className="p-6 rounded-[2rem] bg-indigo-500/5 border-2 border-indigo-500/10 shadow-inner flex flex-col gap-4">
               <h4 className="text-[10px] font-black uppercase tracking-[0.25em] flex items-center gap-2 text-indigo-400">
-                <Database size={16} /> 
+                <Database size={16} />
                 DONNÉES {project.config.sector?.toUpperCase().replace('_', ' ') || 'MÉTIER'}
               </h4>
               <div className="grid grid-cols-2 gap-4">
                 {project.config.customFields.map((field) => (
                   <div key={field.id} className="p-3 rounded-xl bg-white/5 border border-white/5">
-                    <p className="text-[7px] font-black uppercase tracking-widest text-slate-500 mb-1">{field.label}</p>
+                    <p className="text-[7px] font-black uppercase tracking-widest text-slate-500 mb-1">
+                      {field.label}
+                    </p>
                     <p className="text-xs font-bold text-white truncate">
-                      {String(household.metadata?.[field.id] || household.koboData?.[field.id] || '—')}
+                      {String(
+                        household.metadata?.[field.id] || household.koboData?.[field.id] || '—'
+                      )}
                     </p>
                   </div>
                 ))}
@@ -1421,13 +1601,19 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
                   <CloudOff size={24} />
                 </div>
                 <div>
-                  <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-rose-500">Ménage Non Éligible</h4>
-                  <p className="text-white font-black text-xl uppercase tracking-tighter">Construction annulée</p>
+                  <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-rose-500">
+                    Ménage Non Éligible
+                  </h4>
+                  <p className="text-white font-black text-xl uppercase tracking-tighter">
+                    Construction annulée
+                  </p>
                 </div>
               </div>
 
               <div className="p-5 rounded-2xl bg-black/20 border border-white/5 space-y-3">
-                <p className="text-[8px] font-black uppercase tracking-widest text-slate-500">Motif du rejet :</p>
+                <p className="text-[8px] font-black uppercase tracking-widest text-slate-500">
+                  Motif du rejet :
+                </p>
                 <p className="text-xs font-bold text-slate-300 tracking-wide leading-relaxed">
                   {justification || 'Aucun motif renseigné dans le formulaire Kobo'}
                 </p>
@@ -1533,7 +1719,8 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
 
               <p className="mt-2.5 text-white font-black text-[1.02rem] sm:text-[1.12rem] uppercase tracking-[-0.025em] leading-[1.06] max-w-[240px] flex items-center justify-center gap-2">
                 {getHouseholdDisplayName(household)}
-                {(manualOverrideFields.includes('owner') || manualOverrideFields.includes('name')) && (
+                {(manualOverrideFields.includes('owner') ||
+                  manualOverrideFields.includes('name')) && (
                   <Lock size={12} className="text-amber-400 shrink-0" />
                 )}
               </p>
@@ -1584,7 +1771,9 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
             </div>
 
             {/* Localisation & Administratif */}
-            <div className={`p-4 sm:p-5 rounded-[1.5rem] border space-y-4 relative overflow-hidden transition-colors ${alerts.some((a: any) => a.type === 'MISMATCH_GPS') ? 'bg-amber-900/10 border-amber-500/30 ring-1 ring-amber-500/20' : 'bg-[linear-gradient(180deg,rgba(59,130,246,0.045),rgba(15,23,42,0.56))] border-white/8'}`}>
+            <div
+              className={`p-4 sm:p-5 rounded-[1.5rem] border space-y-4 relative overflow-hidden transition-colors ${alerts.some((a: any) => a.type === 'MISMATCH_GPS') ? 'bg-amber-900/10 border-amber-500/30 ring-1 ring-amber-500/20' : 'bg-[linear-gradient(180deg,rgba(59,130,246,0.045),rgba(15,23,42,0.56))] border-white/8'}`}
+            >
               <div className="absolute top-0 right-0 p-4 opacity-[0.035]">
                 <Database size={88} />
               </div>
@@ -1594,7 +1783,9 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
                   <div className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center text-amber-500">
                     <AlertTriangle size={18} />
                   </div>
-                  <p className="text-[10px] font-black uppercase text-amber-400">Position Suspecte !</p>
+                  <p className="text-[10px] font-black uppercase text-amber-400">
+                    Position Suspecte !
+                  </p>
                 </div>
               )}
 
@@ -1611,9 +1802,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
                     <ArrowRight size={10} />
                     <span className="text-white/75">{household.departement || '?'}</span>
                     <ArrowRight size={10} />
-                    <span className="text-orange-300">
-                      {household.village || '?'}
-                    </span>
+                    <span className="text-orange-300">{household.village || '?'}</span>
                   </div>
                 </div>
               </div>
@@ -1660,69 +1849,114 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
 
                 {/* Grid Visualizer */}
                 <div className="grid grid-cols-2 gap-4">
-                   {/* Ohm Meter Card */}
-                   <div className="p-5 rounded-3xl bg-black/40 border border-white/5 space-y-3 relative overflow-hidden group">
-                      <div className="absolute top-0 left-0 w-1 h-full bg-blue-500/50" />
-                      <div className="flex items-center justify-between">
-                        <Zap size={14} className="text-amber-500/60" />
-                        <span className="text-[7px] font-black text-slate-500 uppercase tracking-widest">Impédance Terre</span>
-                      </div>
-                      <div className="flex items-end gap-1">
-                        <span className={`text-2xl font-black tracking-tighter ${Number((household.constructionData as any)?.audit?.resistance_terre) > 1500 ? 'text-rose-400' : 'text-emerald-400'}`}>
-                          {(household.constructionData as any)?.audit?.resistance_terre ?? '—'}
-                        </span>
-                        <span className="text-xs font-bold text-slate-600 mb-1.5">Ω</span>
-                      </div>
-                      <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
-                        <motion.div
-                          initial={{ '--progress': '0%' } as any}
-                          animate={{ '--progress': `${Math.min(100, (Number((household.constructionData as any)?.audit?.resistance_terre) / 2000) * 100)}%` } as any}
-                          className="h-full"
-                          style={{ 
-                            '--bg-color': Number((household.constructionData as any)?.audit?.resistance_terre) > 1500 ? '#f43f5e' : '#10b981'
-                          } as React.CSSProperties}
-                        />
-                      </div>
-                   </div>
+                  {/* Ohm Meter Card */}
+                  <div className="p-5 rounded-3xl bg-black/40 border border-white/5 space-y-3 relative overflow-hidden group">
+                    <div className="absolute top-0 left-0 w-1 h-full bg-blue-500/50" />
+                    <div className="flex items-center justify-between">
+                      <Zap size={14} className="text-amber-500/60" />
+                      <span className="text-[7px] font-black text-slate-500 uppercase tracking-widest">
+                        Impédance Terre
+                      </span>
+                    </div>
+                    <div className="flex items-end gap-1">
+                      <span
+                        className={`text-2xl font-black tracking-tighter ${Number((household.constructionData as any)?.audit?.resistance_terre) > 1500 ? 'text-rose-400' : 'text-emerald-400'}`}
+                      >
+                        {(household.constructionData as any)?.audit?.resistance_terre ?? '—'}
+                      </span>
+                      <span className="text-xs font-bold text-slate-600 mb-1.5">Ω</span>
+                    </div>
+                    <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                      <motion.div
+                        initial={{ '--progress': '0%' } as any}
+                        animate={
+                          {
+                            '--progress': `${Math.min(100, (Number((household.constructionData as any)?.audit?.resistance_terre) / 2000) * 100)}%`,
+                          } as any
+                        }
+                        className="h-full"
+                        style={
+                          {
+                            '--bg-color':
+                              Number((household.constructionData as any)?.audit?.resistance_terre) >
+                              1500
+                                ? '#f43f5e'
+                                : '#10b981',
+                          } as React.CSSProperties
+                        }
+                      />
+                    </div>
+                  </div>
 
-                   {/* Masonry Card */}
-                   <div className="p-5 rounded-3xl bg-black/40 border border-white/5 space-y-3 relative overflow-hidden">
-                      <div className="absolute top-0 left-0 w-1 h-full bg-amber-500/50" />
-                      <div className="flex items-center justify-between">
-                        <Hammer size={14} className="text-blue-500/60" />
-                        <span className="text-[7px] font-black text-slate-500 uppercase tracking-widest">Maçonnerie</span>
-                      </div>
-                      <div className="flex items-end gap-1">
-                        <span className={`text-2xl font-black tracking-tighter ${household.koboSync?.maconOk ? 'text-emerald-400' : 'text-slate-400'}`}>
-                          {household.koboSync?.maconOk ? 'OK' : '—'}
-                        </span>
-                      </div>
-                      <p className="text-[9px] font-bold text-slate-500">
-                        Support mural et kit maçon
-                      </p>
-                   </div>
+                  {/* Masonry Card */}
+                  <div className="p-5 rounded-3xl bg-black/40 border border-white/5 space-y-3 relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-1 h-full bg-amber-500/50" />
+                    <div className="flex items-center justify-between">
+                      <Hammer size={14} className="text-blue-500/60" />
+                      <span className="text-[7px] font-black text-slate-500 uppercase tracking-widest">
+                        Maçonnerie
+                      </span>
+                    </div>
+                    <div className="flex items-end gap-1">
+                      <span
+                        className={`text-2xl font-black tracking-tighter ${household.koboSync?.maconOk ? 'text-emerald-400' : 'text-slate-400'}`}
+                      >
+                        {household.koboSync?.maconOk ? 'OK' : '—'}
+                      </span>
+                    </div>
+                    <p className="text-[9px] font-bold text-slate-500">
+                      Support mural et kit maçon
+                    </p>
+                  </div>
                 </div>
 
                 {/* Sub-Technical Details */}
                 <div className="space-y-4 pt-2">
                   {[
-                    { label: 'Réseau / Branchement', data: (household.constructionData as any)?.reseau?.problemes_branchement || (household.constructionData as any)?.reseau?.etat_branchement, color: 'text-sky-400' },
-                    { label: 'Installation Intérieure', data: (household.constructionData as any)?.interieur?.problemes_installation || (household.constructionData as any)?.interieur?.etat_installation, color: 'text-violet-400' },
-                  ].filter(s => !!s.data).map((s, i) => (
-                    <div key={i} className="flex flex-col gap-2 p-4 rounded-2xl bg-white/[0.03] border border-white/[0.05]">
-                      <div className="flex items-center justify-between">
-                        <span className={`text-[8px] font-black uppercase tracking-widest ${s.color}`}>{s.label}</span>
-                        <Info size={10} className="text-slate-600" />
-                      </div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {String(s.data).split(' ').filter(Boolean).map((tag: string, j: number) => (
-                          <span key={j} className="px-2 py-0.5 rounded-md bg-white/5 text-[9px] font-bold text-slate-300 border border-white/5">
-                            {reformatKoboText(tag)}
+                    {
+                      label: 'Réseau / Branchement',
+                      data:
+                        (household.constructionData as any)?.reseau?.problemes_branchement ||
+                        (household.constructionData as any)?.reseau?.etat_branchement,
+                      color: 'text-sky-400',
+                    },
+                    {
+                      label: 'Installation Intérieure',
+                      data:
+                        (household.constructionData as any)?.interieur?.problemes_installation ||
+                        (household.constructionData as any)?.interieur?.etat_installation,
+                      color: 'text-violet-400',
+                    },
+                  ]
+                    .filter((s) => !!s.data)
+                    .map((s, i) => (
+                      <div
+                        key={i}
+                        className="flex flex-col gap-2 p-4 rounded-2xl bg-white/[0.03] border border-white/[0.05]"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span
+                            className={`text-[8px] font-black uppercase tracking-widest ${s.color}`}
+                          >
+                            {s.label}
                           </span>
-                        ))}
+                          <Info size={10} className="text-slate-600" />
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {String(s.data)
+                            .split(' ')
+                            .filter(Boolean)
+                            .map((tag: string, j: number) => (
+                              <span
+                                key={j}
+                                className="px-2 py-0.5 rounded-md bg-white/5 text-[9px] font-bold text-slate-300 border border-white/5"
+                              >
+                                {reformatKoboText(tag)}
+                              </span>
+                            ))}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
                 </div>
               </div>
             </div>
@@ -1730,8 +1964,6 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
 
           {/* Assigned Teams */}
           <TeamAllocationsBadge teams={memoizedTeams} />
-
-
 
           {/* Grappe */}
           {grappeInfo && (
@@ -1755,7 +1987,6 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
             </div>
           )}
 
-
           {/* Kobo Data Explorer */}
           {household.koboData && Object.keys(household.koboData).length > 0 && (
             <div className="p-6 sm:p-8 rounded-[2.5rem] bg-white/5 border border-white/10 space-y-6">
@@ -1765,16 +1996,18 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
 
               <div className="grid grid-cols-1 gap-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
                 {Object.entries(household.koboData)
-                  .filter(([key, val]) =>
-                    !key.startsWith('_') &&
-                    val !== null &&
-                    typeof val !== 'object' &&
-                    key !== 'photo' &&
-                    key !== 'photoUrl'
+                  .filter(
+                    ([key, val]) =>
+                      !key.startsWith('_') &&
+                      val !== null &&
+                      typeof val !== 'object' &&
+                      key !== 'photo' &&
+                      key !== 'photoUrl'
                   )
                   .map(([key, val]) => {
                     const rawValue = String(val);
-                    const isMultiValue = rawValue.includes(' ') && (rawValue.includes('_') || rawValue.length > 40);
+                    const isMultiValue =
+                      rawValue.includes(' ') && (rawValue.includes('_') || rawValue.length > 40);
                     const displayValue = formatKoboValue(val);
                     const normalizedValue = displayValue.toLowerCase();
                     const valueTone = normalizedValue.includes('non conforme')
@@ -1791,15 +2024,20 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
                         <span className="max-w-full whitespace-normal break-words text-[11px] font-semibold normal-case leading-[1.45] tracking-normal text-blue-200/85 sm:text-[12px]">
                           {reformatKoboText(key)}
                         </span>
-                        <div className={`max-w-full whitespace-normal break-words text-[14px] font-black leading-snug tracking-[-0.01em] ${valueTone}`}>
+                        <div
+                          className={`max-w-full whitespace-normal break-words text-[14px] font-black leading-snug tracking-[-0.01em] ${valueTone}`}
+                        >
                           {isMultiValue ? (
                             <ul className="mt-1 space-y-2">
-                              {rawValue.split(' ').filter(Boolean).map((v, idx) => (
-                                <li key={idx} className="flex items-start gap-2.5">
-                                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-blue-400/50" />
-                                  <span className="flex-1">{formatKoboValue(v)}</span>
-                                </li>
-                              ))}
+                              {rawValue
+                                .split(' ')
+                                .filter(Boolean)
+                                .map((v, idx) => (
+                                  <li key={idx} className="flex items-start gap-2.5">
+                                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-blue-400/50" />
+                                    <span className="flex-1">{formatKoboValue(v)}</span>
+                                  </li>
+                                ))}
                             </ul>
                           ) : (
                             <p>{displayValue}</p>
@@ -1807,8 +2045,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
                         </div>
                       </div>
                     );
-                  })
-                }
+                  })}
               </div>
 
               <p className="text-[8px] font-bold text-slate-600 uppercase tracking-widest text-center">
@@ -1829,20 +2066,26 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
                   <p className="text-[8px] font-black uppercase tracking-[0.2em] opacity-70">
                     Sync local
                   </p>
-                  <p className="mt-1 text-sm font-black uppercase tracking-wide">{syncBadge.label}</p>
+                  <p className="mt-1 text-sm font-black uppercase tracking-wide">
+                    {syncBadge.label}
+                  </p>
                 </div>
                 <div className="text-right">
                   <p className="text-[8px] font-black uppercase tracking-[0.2em] opacity-70">
                     File globale
                   </p>
-                  <p className="mt-1 text-sm font-black">{isNaN(Number(pendingSyncCount)) ? 0 : pendingSyncCount}</p>
+                  <p className="mt-1 text-sm font-black">
+                    {isNaN(Number(pendingSyncCount)) ? 0 : pendingSyncCount}
+                  </p>
                 </div>
               </div>
               <p className="mt-3 text-[10px] font-semibold leading-relaxed opacity-90">
                 {syncBadge.helper}
               </p>
               <div className="mt-3 flex flex-wrap gap-2 text-[9px] font-black uppercase tracking-widest">
-                <span className={`rounded-full px-2.5 py-1 ${isOnline ? 'bg-emerald-950/40 text-emerald-300' : 'bg-slate-950/40 text-slate-300'}`}>
+                <span
+                  className={`rounded-full px-2.5 py-1 ${isOnline ? 'bg-emerald-950/40 text-emerald-300' : 'bg-slate-950/40 text-slate-300'}`}
+                >
                   {isOnline ? 'Connecté' : 'Hors-ligne'}
                 </span>
                 {lastSyncError ? (
@@ -1892,7 +2135,8 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
                   </>
                 ) : (
                   <p className="mt-2 text-[10px] font-semibold leading-relaxed opacity-90">
-                    Aucun cadenas actif. Ce ménage suit entièrement la dernière synchronisation Kobo.
+                    Aucun cadenas actif. Ce ménage suit entièrement la dernière synchronisation
+                    Kobo.
                   </p>
                 )}
               </div>
@@ -1900,9 +2144,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 text-[10px] font-mono text-slate-400">
               <div>
-                <p className="text-slate-600 mb-1 tracking-widest font-sans font-bold">
-                  SOURCE
-                </p>
+                <p className="text-slate-600 mb-1 tracking-widest font-sans font-bold">SOURCE</p>
 
                 <p className="font-bold text-slate-300 uppercase bg-slate-800/50 inline-block px-2 py-0.5 rounded">
                   {household.source || 'INCONNUE'}
@@ -1929,8 +2171,8 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
                 <p className="font-bold text-blue-400/80 text-xs">
                   {household.updatedAt && !isNaN(new Date(household.updatedAt).getTime())
                     ? new Date(household.updatedAt).toLocaleString('fr-FR', {
-                      timeZoneName: 'short',
-                    })
+                        timeZoneName: 'short',
+                      })
                     : 'En attente'}
                 </p>
               </div>
@@ -1956,12 +2198,16 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
                   <p className="text-[9px] font-black uppercase tracking-widest text-white">
                     {isTerminalStatus ? 'Attestation' : 'Bon Livraison'}
                   </p>
-                  <p className="text-[7px] font-bold text-slate-500 uppercase">Étape 1 - Logistique</p>
+                  <p className="text-[7px] font-bold text-slate-500 uppercase">
+                    Étape 1 - Logistique
+                  </p>
                 </div>
               </button>
 
               {/* ÉTAPE 2 : MAÇONNERIE */}
-              {(currentStageIndex >= 2 || household.koboSync?.maconOk || (household.constructionData as any)?.macon) ? (
+              {currentStageIndex >= 2 ||
+              household.koboSync?.maconOk ||
+              (household.constructionData as any)?.macon ? (
                 <button
                   onClick={() => ReportGen.generateMaconneriePDF(household)}
                   className="flex items-center gap-3 p-4 bg-white/5 border border-white/5 rounded-2xl hover:bg-white/10 hover:border-amber-500/30 transition-all group animate-in fade-in zoom-in-95"
@@ -1970,21 +2216,29 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
                     <HammerIcon size={16} className="text-amber-400" />
                   </div>
                   <div className="text-left">
-                    <p className="text-[9px] font-black uppercase tracking-widest text-white">PV Maçonnerie</p>
-                    <p className="text-[7px] font-bold text-slate-500 uppercase">Étape 2 - Support</p>
+                    <p className="text-[9px] font-black uppercase tracking-widest text-white">
+                      PV Maçonnerie
+                    </p>
+                    <p className="text-[7px] font-bold text-slate-500 uppercase">
+                      Étape 2 - Support
+                    </p>
                   </div>
                 </button>
               ) : (
                 <div className="flex items-center gap-3 p-4 bg-white/[0.02] border border-white/5 rounded-2xl opacity-30 grayscale cursor-not-allowed">
                   <HammerIcon size={16} className="text-slate-600" />
                   <div className="text-left">
-                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 italic">En attente...</p>
+                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 italic">
+                      En attente...
+                    </p>
                   </div>
                 </div>
               )}
 
               {/* ÉTAPE 3 : RÉSEAU */}
-              {(currentStageIndex >= 3 || household.koboSync?.reseauOk || (household.constructionData as any)?.reseau) ? (
+              {currentStageIndex >= 3 ||
+              household.koboSync?.reseauOk ||
+              (household.constructionData as any)?.reseau ? (
                 <button
                   onClick={() => ReportGen.generateBranchementPDF(household)}
                   className="flex items-center gap-3 p-4 bg-white/5 border border-white/5 rounded-2xl hover:bg-white/10 hover:border-sky-500/30 transition-all group animate-in fade-in zoom-in-95"
@@ -1993,21 +2247,29 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
                     <ZapIcon size={16} className="text-sky-400" />
                   </div>
                   <div className="text-left">
-                    <p className="text-[9px] font-black uppercase tracking-widest text-white">Fiche Réseau</p>
-                    <p className="text-[7px] font-bold text-slate-500 uppercase">Étape 3 - Branchement</p>
+                    <p className="text-[9px] font-black uppercase tracking-widest text-white">
+                      Fiche Réseau
+                    </p>
+                    <p className="text-[7px] font-bold text-slate-500 uppercase">
+                      Étape 3 - Branchement
+                    </p>
                   </div>
                 </button>
               ) : (
                 <div className="flex items-center gap-3 p-4 bg-white/[0.02] border border-white/5 rounded-2xl opacity-30 grayscale cursor-not-allowed">
                   <ZapIcon size={16} className="text-slate-600" />
                   <div className="text-left">
-                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 italic">En attente...</p>
+                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 italic">
+                      En attente...
+                    </p>
                   </div>
                 </div>
               )}
 
               {/* ÉTAPE 4 : INSTALLATION */}
-              {(currentStageIndex >= 4 || household.koboSync?.interieurOk || (household.constructionData as any)?.interieur) ? (
+              {currentStageIndex >= 4 ||
+              household.koboSync?.interieurOk ||
+              (household.constructionData as any)?.interieur ? (
                 <button
                   onClick={() => ReportGen.generateInstallationPDF(household)}
                   className="flex items-center gap-3 p-4 bg-white/5 border border-white/5 rounded-2xl hover:bg-white/10 hover:border-violet-500/30 transition-all group animate-in fade-in zoom-in-95"
@@ -2016,36 +2278,56 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
                     <FileText size={16} className="text-violet-400" />
                   </div>
                   <div className="text-left">
-                    <p className="text-[9px] font-black uppercase tracking-widest text-white">PV Installation</p>
-                    <p className="text-[7px] font-bold text-slate-500 uppercase">Étape 4 - Intérieur</p>
+                    <p className="text-[9px] font-black uppercase tracking-widest text-white">
+                      PV Installation
+                    </p>
+                    <p className="text-[7px] font-bold text-slate-500 uppercase">
+                      Étape 4 - Intérieur
+                    </p>
                   </div>
                 </button>
               ) : (
                 <div className="flex items-center gap-3 p-4 bg-white/[0.02] border border-white/5 rounded-2xl opacity-30 grayscale cursor-not-allowed">
                   <FileText size={16} className="text-slate-600" />
                   <div className="text-left">
-                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 italic">En attente...</p>
+                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 italic">
+                      En attente...
+                    </p>
                   </div>
                 </div>
               )}
 
               {/* ÉTAPE 5 : CERTIFICAT FINAL */}
-              {(currentStageIndex >= 5 || household.koboSync?.controleOk || (household.constructionData as any)?.audit) ? (
+              {currentStageIndex >= 5 ||
+              household.koboSync?.controleOk ||
+              (household.constructionData as any)?.audit ? (
                 <button
                   onClick={() => ReportGen.generateConformiteFinalPDF(household)}
                   className="col-span-1 sm:col-span-2 flex items-center justify-center gap-4 p-5 bg-emerald-500/10 border border-emerald-500/20 rounded-[1.5rem] hover:bg-emerald-500/20 hover:border-emerald-500/40 transition-all group shadow-lg shadow-emerald-500/5 animate-in fade-in slide-in-from-bottom-4"
                 >
-                  <ShieldCheck size={24} className="text-emerald-400 group-hover:scale-110 transition-transform" />
+                  <ShieldCheck
+                    size={24}
+                    className="text-emerald-400 group-hover:scale-110 transition-transform"
+                  />
                   <div className="text-left">
-                    <p className="text-[11px] font-black uppercase tracking-[0.1em] text-white">Certificat de Conformité Final</p>
-                    <p className="text-[8px] font-bold text-emerald-500/60 uppercase">Rapport complet d'Audit NS 01 001 & NF C14-100</p>
+                    <p className="text-[11px] font-black uppercase tracking-[0.1em] text-white">
+                      Certificat de Conformité Final
+                    </p>
+                    <p className="text-[8px] font-bold text-emerald-500/60 uppercase">
+                      Rapport complet d'Audit NS 01 001 & NF C14-100
+                    </p>
                   </div>
-                  <Download size={18} className="ml-auto text-emerald-400 opacity-40 group-hover:opacity-100 transition-opacity" />
+                  <Download
+                    size={18}
+                    className="ml-auto text-emerald-400 opacity-40 group-hover:opacity-100 transition-opacity"
+                  />
                 </button>
               ) : (
                 <div className="col-span-1 sm:col-span-2 flex items-center justify-center gap-4 p-5 bg-white/[0.02] border border-white/5 rounded-[1.5rem] opacity-20 grayscale cursor-not-allowed">
                   <ShieldCheck size={24} className="text-slate-600" />
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-700 italic">Audit final non encore effectué</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-700 italic">
+                    Audit final non encore effectué
+                  </p>
                 </div>
               )}
             </div>
@@ -2062,7 +2344,9 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
               className="flex h-[52px] min-w-0 items-center justify-center gap-2 rounded-[1.15rem] border border-blue-300/20 bg-blue-600 px-2 text-white shadow-xl shadow-blue-600/20 transition-all hover:bg-blue-500 active:scale-95"
             >
               <Navigation size={18} className="shrink-0 rotate-45" />
-              <span className="truncate text-[10px] font-black uppercase tracking-[0.12em]">Itinéraire</span>
+              <span className="truncate text-[10px] font-black uppercase tracking-[0.12em]">
+                Itinéraire
+              </span>
             </button>
           ) : (
             <button
@@ -2070,7 +2354,9 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
               className="flex h-[52px] min-w-0 items-center justify-center gap-2 rounded-[1.15rem] border border-rose-500/40 bg-rose-500/[0.18] px-2 text-rose-300 transition-all active:scale-95"
             >
               <X size={18} className="shrink-0" />
-              <span className="truncate text-[10px] font-black uppercase tracking-[0.12em]">Annuler</span>
+              <span className="truncate text-[10px] font-black uppercase tracking-[0.12em]">
+                Annuler
+              </span>
             </button>
           )}
 
@@ -2081,8 +2367,13 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
             className={`relative flex h-[52px] min-w-0 items-center justify-center gap-2 overflow-hidden rounded-[1.15rem] border border-white/20 bg-[linear-gradient(135deg,var(--tw-gradient-stops))] ${smartReportAction.color} px-2 text-white shadow-xl ${(smartReportAction as any).glow || 'shadow-blue-600/20'} transition-all hover:brightness-110`}
           >
             <span className="absolute inset-y-0 -left-1/2 w-1/2 animate-pulse bg-gradient-to-r from-transparent via-white/20 to-transparent blur-sm" />
-            {React.cloneElement(smartReportAction.icon as React.ReactElement<any>, { size: 18, className: "relative z-10 shrink-0 text-white/90" })}
-            <span className="relative z-10 truncate text-[10px] font-black uppercase tracking-[0.12em]">{smartReportAction.label}</span>
+            {React.cloneElement(smartReportAction.icon as React.ReactElement<any>, {
+              size: 18,
+              className: 'relative z-10 shrink-0 text-white/90',
+            })}
+            <span className="relative z-10 truncate text-[10px] font-black uppercase tracking-[0.12em]">
+              {smartReportAction.label}
+            </span>
           </motion.button>
 
           {/* GEM Collect — soumission VPS */}
@@ -2108,7 +2399,10 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
           <button
             onClick={() => {
               const [lng, lat] = household.location!.coordinates;
-              window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`, '_blank');
+              window.open(
+                `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`,
+                '_blank'
+              );
             }}
             className="mt-2.5 flex h-11 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 text-[10px] font-black uppercase tracking-widest text-white/70"
           >
@@ -2119,95 +2413,110 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
       </div>
 
       {/* Status Modal - Premium Version (Portaled to break out of transformed side panel) */}
-      {showStatusModal && createPortal(
-        <div className="fixed inset-0 z-[5000] flex items-end sm:items-center justify-center bg-slate-950/60 backdrop-blur-3xl p-3 sm:p-6 overflow-hidden">
-          <motion.div
-            initial={{ scale: 0.95, opacity: 0, y: 20 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            className="rounded-[2rem] sm:rounded-[3rem] p-5 sm:p-10 max-w-sm w-full max-h-[85vh] overflow-y-auto shadow-3xl bg-slate-900 border border-white/10 ring-1 ring-white/5"
-          >
-            <h3 className="text-2xl font-black uppercase tracking-tighter mb-2 text-white leading-none">
-              Status Audit
-            </h3>
-            <p className="text-[10px] font-black uppercase tracking-[0.18em] sm:tracking-[0.3em] mb-10 text-blue-500/50 leading-none">
-              Évolution du cycle de vie terrain
-            </p>
+      {showStatusModal &&
+        createPortal(
+          <div className="fixed inset-0 z-[5000] flex items-end sm:items-center justify-center bg-slate-950/60 backdrop-blur-3xl p-3 sm:p-6 overflow-hidden">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              className="rounded-[2rem] sm:rounded-[3rem] p-5 sm:p-10 max-w-sm w-full max-h-[85vh] overflow-y-auto shadow-3xl bg-slate-900 border border-white/10 ring-1 ring-white/5"
+            >
+              <h3 className="text-2xl font-black uppercase tracking-tighter mb-2 text-white leading-none">
+                Status Audit
+              </h3>
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] sm:tracking-[0.3em] mb-10 text-blue-500/50 leading-none">
+                Évolution du cycle de vie terrain
+              </p>
 
-            <div className="space-y-2 mb-10 max-h-[40vh] overflow-y-auto pr-3 custom-scrollbar">
-              {statuses.map((status) => (
-                <button
-                  key={status}
-                  onClick={() => setSelectedNewStatus(status)}
-                  className={`w-full p-5 rounded-2xl border-2 transition-all text-left font-black text-[9px] uppercase tracking-[0.2em] ${selectedNewStatus === status
-                    ? 'bg-blue-600 border-blue-600 text-white shadow-xl shadow-blue-600/30 scale-[1.02]'
-                    : 'bg-white/5 border-white/10 hover:border-blue-500/40 text-slate-400'
+              <div className="space-y-2 mb-10 max-h-[40vh] overflow-y-auto pr-3 custom-scrollbar">
+                {statuses.map((status) => (
+                  <button
+                    key={status}
+                    onClick={() => setSelectedNewStatus(status)}
+                    className={`w-full p-5 rounded-2xl border-2 transition-all text-left font-black text-[9px] uppercase tracking-[0.2em] ${
+                      selectedNewStatus === status
+                        ? 'bg-blue-600 border-blue-600 text-white shadow-xl shadow-blue-600/30 scale-[1.02]'
+                        : 'bg-white/5 border-white/10 hover:border-blue-500/40 text-slate-400'
                     }`}
-                >
-                  {status}
-                </button>
-              ))}
-            </div>
+                  >
+                    {status}
+                  </button>
+                ))}
+              </div>
 
-            <div className="flex flex-col sm:flex-row gap-4">
-              <button
-                onClick={() => {
-                  setShowStatusModal(false);
-                  setSelectedNewStatus(null);
-                }}
-                disabled={isUpdating}
-                className="flex-1 h-14 rounded-2xl font-black text-[9px] uppercase tracking-widest bg-white/5 text-slate-500 hover:bg-white/10 transition-all"
-              >
-                FERMER
-              </button>
-              <button
-                onClick={handleConfirmStatusChange}
-                disabled={!selectedNewStatus || isUpdating}
-                className="flex-1 h-14 rounded-2xl bg-blue-600 text-white font-black text-[9px] uppercase tracking-widest shadow-xl shadow-blue-600/20 hover:brightness-110 active:scale-95 disabled:opacity-20"
-              >
-                {isUpdating ? 'PROCESS...' : 'Mettre à jour'}
-              </button>
-            </div>
-          </motion.div>
-        </div>,
-        document.body
-      )}
+              <div className="flex flex-col sm:flex-row gap-4">
+                <button
+                  onClick={() => {
+                    setShowStatusModal(false);
+                    setSelectedNewStatus(null);
+                  }}
+                  disabled={isUpdating}
+                  className="flex-1 h-14 rounded-2xl font-black text-[9px] uppercase tracking-widest bg-white/5 text-slate-500 hover:bg-white/10 transition-all"
+                >
+                  FERMER
+                </button>
+                <button
+                  onClick={handleConfirmStatusChange}
+                  disabled={!selectedNewStatus || isUpdating}
+                  className="flex-1 h-14 rounded-2xl bg-blue-600 text-white font-black text-[9px] uppercase tracking-widest shadow-xl shadow-blue-600/20 hover:brightness-110 active:scale-95 disabled:opacity-20"
+                >
+                  {isUpdating ? 'PROCESS...' : 'Mettre à jour'}
+                </button>
+              </div>
+            </motion.div>
+          </div>,
+          document.body
+        )}
       {/* Formulaire GEM-Kobo natif */}
-      {showInternalReportModal && createPortal(
-        <Suspense fallback={<div className="flex items-center justify-center p-12 text-slate-400"><div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" /></div>}>
-        <ToolboxForm
-          values={nativeKoboAuditForm}
-          onChange={updateNativeKoboAuditField}
-          onSave={handleSaveNativeKoboAudit}
-          onClose={() => setShowInternalReportModal(false)}
-          isSaving={isUpdating}
-          onPhotoUpload={onPhotoUpload}
-          onResolvedHousehold={handleToolboxResolvedHousehold}
-          resolveHouseholdByNumero={resolveHouseholdByNumero}
-          queueCount={toolboxQueueCount}
-          queueItems={toolboxQueueItems}
-          isQueueFlushing={isToolboxQueueFlushing}
-          onFlushQueue={handleFlushToolboxQueue}
-          localDraft={toolboxLocalDraft}
-          onClearLocalDraft={handleClearToolboxDraft}
-          isOnline={isOnline}
-          submissions={toolboxHistory}
-          isHistoryLoading={istoolboxHistoryLoading}
-          historyError={toolboxHistoryError}
-          onRefreshHistory={() => loadtoolboxHistory(nativeKoboTargetHousehold)}
-        />
-        </Suspense>,
-        document.body
-      )}
+      {showInternalReportModal &&
+        createPortal(
+          <Suspense
+            fallback={
+              <div className="flex items-center justify-center p-12 text-slate-400">
+                <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+              </div>
+            }
+          >
+            <ToolboxForm
+              values={nativeKoboAuditForm}
+              onChange={updateNativeKoboAuditField}
+              onSave={handleSaveNativeKoboAudit}
+              onClose={() => setShowInternalReportModal(false)}
+              isSaving={isUpdating}
+              onPhotoUpload={onPhotoUpload}
+              onResolvedHousehold={handleToolboxResolvedHousehold}
+              resolveHouseholdByNumero={resolveHouseholdByNumero}
+              queueCount={toolboxQueueCount}
+              queueItems={toolboxQueueItems}
+              isQueueFlushing={isToolboxQueueFlushing}
+              onFlushQueue={handleFlushToolboxQueue}
+              localDraft={toolboxLocalDraft}
+              onClearLocalDraft={handleClearToolboxDraft}
+              isOnline={isOnline}
+              submissions={toolboxHistory}
+              isHistoryLoading={istoolboxHistoryLoading}
+              historyError={toolboxHistoryError}
+              onRefreshHistory={() => loadtoolboxHistory(nativeKoboTargetHousehold)}
+            />
+          </Suspense>,
+          document.body
+        )}
 
       {/* Admin Control Center Modal */}
       {isAdmin && onUpdate && (
-        <Suspense fallback={<div className="flex items-center justify-center p-12 text-slate-400"><div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" /></div>}>
-        <AdminControlCenterModal
-          isOpen={showAdminModal}
-          onClose={() => setShowAdminModal(false)}
-          household={household}
-          onUpdate={onUpdate}
-        />
+        <Suspense
+          fallback={
+            <div className="flex items-center justify-center p-12 text-slate-400">
+              <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+            </div>
+          }
+        >
+          <AdminControlCenterModal
+            isOpen={showAdminModal}
+            onClose={() => setShowAdminModal(false)}
+            household={household}
+            onUpdate={onUpdate}
+          />
         </Suspense>
       )}
     </motion.div>

@@ -36,6 +36,7 @@ import { manifest as helpManifest } from '../../modules/help/manifest';
 import { manifest as loginManifest } from '../../modules/login/manifest';
 import { manifest as mission_verificationManifest } from '../../modules/mission_verification/manifest';
 import { manifest as mesManifest } from '../../modules/mes/manifest';
+import { manifest as carto_grappesManifest } from '../../modules/carto_grappes/manifest';
 
 export const MODULE_REGISTRY: Record<string, ModuleManifest> = {
   home: homeManifest,
@@ -72,6 +73,7 @@ export const MODULE_REGISTRY: Record<string, ModuleManifest> = {
   login: loginManifest,
   mission_verification: mission_verificationManifest,
   mes: mesManifest,
+  carto_grappes: carto_grappesManifest,
   admin_permissions: admin_permissionsManifest,
 };
 

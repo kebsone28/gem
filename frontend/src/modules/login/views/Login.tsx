@@ -389,6 +389,15 @@ export default function Login() {
       onMouseMove={handleMouseMove}
       className="fixed inset-0 w-full h-full overflow-hidden bg-[#020617] font-outfit z-0"
     >
+      <header className="absolute top-0 left-0 right-0 z-20 p-4" role="banner">
+        <div className="max-w-[940px] mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">🔐</span>
+            <span className="text-sm font-bold text-white/80">GED OS — Connexion</span>
+          </div>
+          <span className="text-xs text-white/40">PROQUELEC</span>
+        </div>
+      </header>
       {/* 0. DYNAMIC MOUSE SPOTLIGHT (Ultra-Premium Follower) */}
       <motion.div
         style={{
@@ -445,7 +454,8 @@ export default function Login() {
         {/* Giant Parallax Watermark */}
         <motion.div
           style={{ x: watermarkX, y: watermarkY }}
-          className="absolute inset-0 flex flex-col items-center justify-center select-none overflow-hidden"
+          className="absolute inset-0 flex flex-col items-center justify-center select-none overflow-hidden pointer-events-none"
+          aria-hidden="true"
         >
           <h2 className="text-[14vw] font-black leading-none uppercase tracking-tighter text-center bg-gradient-to-b from-white/[0.03] to-transparent bg-clip-text text-transparent">
             SÉCURITÉ
@@ -455,7 +465,7 @@ export default function Login() {
           <motion.p
             animate={{ opacity: [0.03, 0.08, 0.03] }}
             transition={{ duration: 4, repeat: Infinity }}
-            className="text-[1.5vw] font-black text-indigo-500 tracking-[1.5em] uppercase mt-8"
+            className="text-[1.5vw] font-black text-indigo-200 tracking-[1.5em] uppercase mt-8"
           >
             Expertise Terrain
           </motion.p>
@@ -495,7 +505,7 @@ export default function Login() {
         />
       </div>
 
-      <div className="relative z-10 flex flex-col items-center justify-center min-h-screen px-4 py-12">
+      <main className="relative z-10 flex flex-col items-center justify-center min-h-screen px-4 py-12">
         {/* 3. THE MAIN LOGIN CARD (3D Tilt) */}
         <motion.div
           ref={cardRef}
@@ -1009,19 +1019,19 @@ export default function Login() {
                   >
                     <ChevronLeft size={14} /> Retour
                   </button>
-                </motion.form>
-              )}
-            </div>
-          </div>
-        </motion.div>
-      </div>
+</motion.form>
+          )}
+        </div>
+        </div>
+      </motion.div>
+    </main>
 
       {/* Footer Branding */}
-      <div className="absolute bottom-8 left-0 right-0 z-10 flex justify-center opacity-30">
+      <footer role="contentinfo" className="absolute bottom-8 left-0 right-0 z-10 flex justify-center opacity-30">
         <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.5em]">
           Powered by GED OS Systems
         </p>
-      </div>
+      </footer>
     </div>
   );
 }

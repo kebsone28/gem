@@ -2,18 +2,19 @@
  * gedcollect.service.js
  *
  * Service de synchronisation avec l'API GedCollect (GEDToolbox).
- * Fonctionne de façon analogue à kobo.service.js mais utilise les
+ * Fonctionne de facon analogue a kobo.service.js mais utilise les
  * variables d'environnement GED_API_URL, GED_TOKEN et GED_FORM_ID.
  *
  * Le service expose deux fonctions principales :
- *   - fetchGedCollectSubmissions(token, assetUid, since?) → récupère les
+ *   - fetchGedCollectSubmissions(token, assetUid, since?) -> recupere les
  *     soumissions depuis le serveur GedCollect.
  *   - syncGedCollectToDatabase(organizationId, defaultZoneId, since, projectId,
- *     userId) → transforme chaque soumission en ménage et l'upsert dans la DB.
+ *     userId) -> transforme chaque soumission en menage et l'upsert dans la DB.
  */
 
+import { v4 as uuidv4 } from 'uuid';
 import prisma from '../core/utils/prisma.js';
-import { transformRowToHousehold } from './kobo.mapping.js'; // reuse existing mapping logic – field names are compatible
+import { transformRowToHousehold, extractNumeroOrdre } from './kobo.mapping.js';
 import logger from '../utils/logger.js';
 
 const GED_API_URL = process.env.GED_API_URL || 'https://gedcollect.example.com';
@@ -70,7 +71,7 @@ export async function fetchGedCollectSubmissions(token, assetUid, since = null) 
         success = true;
       } catch (e) {
         retries--;
-        logger.warn(`[GEDCOLLECT] Échec du fetch (retries left ${retries}) – ${e.message}`);
+        logger.warn(`[GEDCOLLECT] Echec du fetch (retries left ${retries}) - ${e.message}`);
         if (retries === 0) {
           const finalErr = new Error(`GedCollect API unreachable after retries: ${e.message}`);
           finalErr.statusCode = e.statusCode || 500;
@@ -94,9 +95,10 @@ export async function fetchGedCollectSubmissions(token, assetUid, since = null) 
 
 /**
  * Synchronise les soumissions GedCollect vers la base Prisma.
- * Le processus est très similaire à syncKoboToDatabase : on récupère les
- * soumissions, on les transforme en objet ménage via `transformRowToHousehold`
- * (les champs Kobo et GedCollect sont compatibles) et on effectue un upsert.
+ * Logique de matching identique a syncKoboToDatabase :
+ *   1. Chercher par numeroordre (business key)
+ *   2. Si trouve -> UPDATE (pas de doublon)
+ *   3. Si pas trouve -> CREATE avec UUID genere
  */
 export async function syncGedCollectToDatabase(
   organizationId,
@@ -105,7 +107,7 @@ export async function syncGedCollectToDatabase(
   projectId,
   userId
 ) {
-  logger.info('[GEDCOLLECT] Démarrage de la synchronisation', {
+  logger.info('[GEDCOLLECT] Demarrage de la synchronisation', {
     organizationId,
     defaultZoneId,
     since,
@@ -113,7 +115,7 @@ export async function syncGedCollectToDatabase(
   });
 
   const submissions = await fetchGedCollectSubmissions();
-  logger.info(`[GEDCOLLECT] ${submissions.length} soumissions récupérées`);
+  logger.info(`[GEDCOLLECT] ${submissions.length} soumissions recuperees`);
 
   let applied = 0,
     skipped = 0,
@@ -121,24 +123,104 @@ export async function syncGedCollectToDatabase(
 
   for (const sub of submissions) {
     try {
-      const household = await transformRowToHousehold(sub, organizationId, defaultZoneId, projectId, {}, null);
+      const household = await transformRowToHousehold(
+        sub,
+        organizationId,
+        defaultZoneId,
+        projectId,
+        {},
+        null
+      );
       if (!household) {
         skipped++;
         continue;
       }
 
-      await prisma.household.upsert({
-        where: { id: household.id },
-        update: household,
-        create: household,
-      });
+      // Extract numeroordre from submission (business key for matching)
+      const numeroordreRaw = extractNumeroOrdre(sub, {});
+      const numeroordre = numeroordreRaw ? String(numeroordreRaw).trim().toUpperCase() : null;
+
+      let existingHousehold = null;
+
+      // 1. Try to match by numeroordre (business key)
+      if (numeroordre) {
+        existingHousehold = await prisma.household.findFirst({
+          where: {
+            organizationId,
+            OR: [
+              { numeroordre: { equals: numeroordre, mode: 'insensitive' } },
+              { id: { equals: numeroordre, mode: 'insensitive' } },
+            ],
+            deletedAt: null,
+          },
+          select: { id: true, version: true, manualOverrides: true },
+        });
+      }
+
+      if (existingHousehold) {
+        // UPDATE existing household
+        logger.info(
+          `[GEDCOLLECT] UPDATE existing household: ${existingHousehold.id} (N: ${numeroordre})`
+        );
+        await prisma.household.update({
+          where: { id: existingHousehold.id },
+          data: {
+            status: household.status,
+            zoneId: household.zoneId || defaultZoneId,
+            projectId: household.projectId || projectId || undefined,
+            region: household.region || undefined,
+            name: household.name || undefined,
+            phone: household.phone || undefined,
+            numeroordre: numeroordre || undefined,
+            departement: household.departement || undefined,
+            village: household.village || undefined,
+            latitude: household.latitude || undefined,
+            longitude: household.longitude || undefined,
+            location: household.location || {},
+            owner: household.owner || {},
+            koboData: household.koboData || {},
+            source: 'GEDTOOLBOX',
+            version: { increment: 1 },
+            updatedAt: new Date(),
+          },
+          select: { id: true },
+        });
+      } else {
+        // CREATE new household
+        const newId = uuidv4();
+        logger.info(`[GEDCOLLECT] CREATE new household: ${newId} (N: ${numeroordre})`);
+        await prisma.household.create({
+          data: {
+            id: newId,
+            organizationId,
+            zoneId: household.zoneId || defaultZoneId,
+            projectId: household.projectId || projectId || undefined,
+            status: household.status || 'planned',
+            region: household.region || null,
+            name: household.name || null,
+            phone: household.phone || null,
+            numeroordre: numeroordre || null,
+            departement: household.departement || null,
+            village: household.village || null,
+            latitude: household.latitude || null,
+            longitude: household.longitude || null,
+            location: household.location || {},
+            owner: household.owner || {},
+            koboData: household.koboData || {},
+            source: 'GEDTOOLBOX',
+            version: 1,
+          },
+          select: { id: true },
+        });
+      }
+
       applied++;
     } catch (e) {
       errors++;
-      logger.error('[GEDCOLLECT] Erreur lors du upsert d\'une soumission', e);
+      logger.error("[GEDCOLLECT] Erreur lors du upsert d'une soumission:", e.message);
     }
   }
 
-  logger.info('[GEDCOLLECT] Synchronisation terminée', { applied, skipped, errors });
+  logger.info(`[GEDCOLLECT] Termine: ${applied} appliques, ${skipped} sautes, ${errors} erreurs`);
   return { applied, skipped, errors, total: submissions.length };
 }

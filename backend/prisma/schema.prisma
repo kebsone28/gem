@@ -284,6 +284,50 @@ model Grappe {
   @@unique([name, regionId])
 }
 
+// Carto Grappes Tables
+model CartoRegion {
+  id            String   @id @default(uuid())
+  organizationId String
+  name          String
+  code          String
+  description   String?
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  grappes       CartoGrappe[]
+
+  @@unique([organizationId, code])
+}
+
+model CartoGrappe {
+  id            String   @id @default(uuid())
+  organizationId String
+  regionId      String
+  grappeNumber  Int
+  grappeKey     String
+  menageCount   Int      @default(0)
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  region        CartoRegion @relation(fields: [regionId], references: [id])
+
+  @@unique([organizationId, grappeKey])
+  @@index([organizationId, regionId])
+}
+
+model CartoLot {
+  id            String   @id @default(uuid())
+  organizationId String
+  lotKey        String
+  title         String
+  description   String?
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([organizationId, lotKey])
+}
+
 model Team {
   id              String           @id @default(uuid())
   name            String
@@ -1604,4 +1648,229 @@ model MESControl {
   @@index([mesRecordId])
   @@index([controllerId])
   @@index([conforme])
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CARTO GRAPPES — Remplacement du stockage localStorage par PostgreSQL
+// ═══════════════════════════════════════════════════════════════════════════════
+
+model CartoHouseholdEntry {
+  id             String   @id @default(uuid())
+  organizationId String
+  householdOrdre Int
+  lotAStatus     String   @default("non_fait")
+  lotAJustif     String   @default("")
+  lotAUpdatedAt  DateTime?
+  lotBStatus     String   @default("non_fait")
+  lotBJustif     String   @default("")
+  lotBUpdatedAt  DateTime?
+  lotCStatus     String   @default("non_fait")
+  lotCJustif     String   @default("")
+  lotCUpdatedAt  DateTime?
+  conforme       Boolean  @default(false)
+  obs            String   @default("")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([organizationId, householdOrdre])
+  @@index([organizationId])
+  @@index([householdOrdre])
+}
+
+model CartoEntrepreneur {
+  id             String   @id @default(uuid())
+  organizationId String
+  lot            String
+  grappeKey      String?
+  mode           String   @default("individuel")
+  groupId        String?
+  entreprise     String   @default("")
+  societe        String   @default("")
+  telephone      String   @default("")
+  email          String   @default("")
+  adresse        String   @default("")
+  createdAt      DateTime @default(now())
+
+  @@unique([organizationId, lot, grappeKey, entreprise])
+  @@index([organizationId, lot])
+  @@index([organizationId, lot, groupId])
+}
+
+model CartoVillageOverride {
+  id             String   @id @default(uuid())
+  organizationId String
+  villageKey     String
+  grappeNumber   Int
+  createdAt      DateTime @default(now())
+
+  @@unique([organizationId, villageKey])
+  @@index([organizationId])
+}
+
+model CartoHistory {
+  id             String   @id @default(uuid())
+  organizationId String
+  householdOrdre Int
+  nom            String
+  village        String
+  region         String
+  lot            String
+  fromStatus     String
+  toStatus       String
+  justif         String   @default("")
+  userName       String
+  createdAt      DateTime @default(now())
+
+  @@index([organizationId])
+  @@index([householdOrdre])
+  @@index([createdAt])
+}
+
+model CartoFiche {
+  id             String   @id @default(uuid())
+  organizationId String
+  ficheKey       String
+  entryIndex     Int
+  data           Json
+  author         String
+  createdAt      DateTime @default(now())
+
+  @@unique([organizationId, ficheKey, entryIndex])
+  @@index([organizationId, ficheKey])
+}
+
+model CartoGantt {
+  id             String   @id @default(uuid())
+  organizationId String
+  grappeKey      String
+  phase          String
+  startDate      String?
+  endDate        String?
+  status         String   @default("pending")
+  data           Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([organizationId, grappeKey, phase])
+  @@index([organizationId])
+}
+
+model CartoAlerts {
+  id             String   @id @default(uuid())
+  organizationId String   @unique
+  delayDays      Int      @default(7)
+  enabled        Boolean  @default(true)
+  dismissed      Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model CartoPhoto {
+  id             String   @id @default(uuid())
+  organizationId String
+  householdOrdre Int
+  lot            String
+  data           String
+  userName       String
+  createdAt      DateTime @default(now())
+
+  @@unique([organizationId, householdOrdre, lot])
+  @@index([organizationId])
+}
+
+model CartoSettings {
+  id             String   @id @default(uuid())
+  organizationId String   @unique
+  bareme         Json?
+  lotLabels      Json?
+  featureToggles Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model CartoWorkflow {
+  id             String   @id @default(uuid())
+  organizationId String
+  householdOrdre Int
+  nom            String
+  village        String
+  region         String
+  grappe         Int
+  submittedBy    String
+  status         String   @default("pending")
+  statuts        Json
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId, status])
+  @@index([organizationId, householdOrdre])
+}
+
+model CartoArchive {
+  id             String   @id @default(uuid())
+  organizationId String
+  grappeKey      String
+  archivedBy     String
+  region         String
+  grappe         Int
+  totalMenages   Int
+  totalConformes Int
+  snapshot       Json
+  createdAt      DateTime @default(now())
+
+  @@unique([organizationId, grappeKey])
+  @@index([organizationId])
+}
+
+model CartoPlanningParams {
+  id             String   @id @default(uuid())
+  organizationId String   @unique
+  params         Json
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model CartoStatsSnapshot {
+  id             String   @id @default(uuid())
+  organizationId String
+  snapshotDate   String
+  conforme       Int      @default(0)
+  lotA           Int      @default(0)
+  lotB           Int      @default(0)
+  lotC           Int      @default(0)
+  bloques        Int      @default(0)
+  createdAt      DateTime @default(now())
+
+  @@unique([organizationId, snapshotDate])
+  @@index([organizationId])
+}
+
+model CartoContractTemplate {
+  id             String   @id @default(uuid())
+  organizationId String
+  lot            String
+  htmlContent    String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([organizationId, lot])
+  @@index([organizationId])
+}
+
+model CartoPrestataire {
+  id         Int      @id @default(autoincrement())
+  nom        String
+  entreprise String?
+  societe    String?
+  telephone  String?
+  email      String?
+  adresse    String?
+  lot        String?
+  region     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([nom])
+  @@index([lot])
 }

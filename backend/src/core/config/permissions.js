@@ -73,6 +73,13 @@ export const PERMISSIONS = {
     TOOLBOX_SETTINGS_MANAGE: "toolbox.settings.manage",
     // Household export
     HOUSEHOLD_EXPORT: "household.export",
+    // Terrain / Cartographie
+    TERRAIN_READ: "terrain.read",
+    TERRAIN_MAP: "terrain.map",
+    TERRAIN_ZONES: "terrain.zones",
+    TERRAIN_MENAGES: "terrain.menages",
+    TERRAIN_TERMINAL: "terrain.terminal",
+    TERRAIN_REJECT: "terrain.reject",
 };
 
 export const ROLE_PERMISSIONS = {

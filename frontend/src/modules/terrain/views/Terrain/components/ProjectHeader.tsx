@@ -1,5 +1,6 @@
 ﻿import React from 'react';
-import { MapPin, RefreshCw, X, Wifi, WifiOff } from 'lucide-react';
+import { MapPin, RefreshCw, X, Wifi, WifiOff, ArrowLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import type { Project } from '@utils/types';
 import { useOfflineStore } from '@/store/offlineStore';
 
@@ -27,6 +28,7 @@ const ProjectHeader: React.FC<ProjectHeaderProps> = ({
   showSync,
   toggleToolbar,
 }) => {
+  const navigate = useNavigate();
   const isOnline = useOfflineStore((s) => s.isOnline);
   const rtt = useOfflineStore((s) => s.rtt);
   const isQualityDegraded = useOfflineStore((s) => s.isQualityDegraded);
@@ -35,6 +37,14 @@ const ProjectHeader: React.FC<ProjectHeaderProps> = ({
   return (
     <div className="flex items-center justify-between mb-2 px-1 gap-2">
       <div className="flex min-w-0 items-center gap-2 md:gap-3">
+        <button
+          onClick={() => navigate('/operations/carto-grappes')}
+          title="Retour Planning"
+          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-blue-600/80 hover:bg-blue-500 text-white text-[10px] font-bold uppercase tracking-wider transition-all duration-150 flex-shrink-0 shadow-md hover:shadow-lg"
+        >
+          <ArrowLeft size={12} />
+          <span className="hidden sm:inline">Planning</span>
+        </button>
         <div className="flex items-center justify-center w-7 h-7 md:w-8 md:h-8 rounded-xl bg-gradient-to-br from-blue-600/20 to-indigo-600/20 border border-blue-500/20 text-blue-400">
           <MapPin size={14} className="md:w-4 md:h-4" />
         </div>
@@ -67,11 +77,18 @@ const ProjectHeader: React.FC<ProjectHeaderProps> = ({
         }`}
       >
         {!isOnline ? (
-          <><WifiOff size={9} /> Offline</>
+          <>
+            <WifiOff size={9} /> Offline
+          </>
         ) : isQualityDegraded ? (
-          <><Wifi size={9} /> CB ⚡</>
+          <>
+            <Wifi size={9} /> CB ⚡
+          </>
         ) : (
-          <><Wifi size={9} className={rttColor} />{rtt !== null ? `${rtt}ms` : '...'}</>
+          <>
+            <Wifi size={9} className={rttColor} />
+            {rtt !== null ? `${rtt}ms` : '...'}
+          </>
         )}
       </div>
 
