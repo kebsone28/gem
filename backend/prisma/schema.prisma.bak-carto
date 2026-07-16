@@ -284,38 +284,6 @@ model Grappe {
   @@unique([name, regionId])
 }
 
-// ══════════════════════════════════════════════════════════════
-// Prestataires (remplace CartoPrestataire + CartoEntrepreneur)
-// ══════════════════════════════════════════════════════════════
-model Prestataire {
-  id             String   @id @default(uuid())
-  organizationId String
-  nom            String
-  entreprise     String?
-  societe        String?
-  telephone      String?
-  email          String?
-  adresse        String?
-  lot            String?   // A, B, C
-  region         String?
-  representantLegal   String?
-  fonctionRepresentant String?
-  nrc            String?   // Numero Registre de Commerce
-  ifu            String?   // Identifiant Fiscal Unique
-  compteBancaire String?
-  formeJuridique String?
-  nombreEquipes  Int?
-  dateDebut      String?
-  dateFin        String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([organizationId, nom])
-  @@index([organizationId, lot])
-  @@index([organizationId])
-}
-
 // Carto Grappes Tables
 model CartoRegion {
   id            String   @id @default(uuid())
