@@ -414,10 +414,10 @@ export class ProquelecDatabase extends Dexie {
       // 🛡️ [MIGRATION v16] Sécurisation de la persistance multi-tenant
       // On s'assure que les données existantes ne sont pas corrompues par l'ajout des index de tenant
       logger.log('🚀 [DEXIE MIGRATION] Début de la mise à jour vers v16 (Multi-Tenant)...');
-      
+
       return tx.table('syncOutbox').toCollection().modify(item => {
           if (!item.organizationId) {
-             // On laisse l'application le remplir au prochain démarrage si possible, 
+             // On laisse l'application le remplir au prochain démarrage si possible,
              // ou on marque le besoin de resync.
           }
       });
@@ -428,6 +428,32 @@ export class ProquelecDatabase extends Dexie {
       syncQueue: 'id, entityType, operation, entityId, tenantId, status, createdAt',
       user_feedback: '++id, query, userId, role, rating, timestamp, organizationId, projectId',
       notifications: 'id, type, projectId, missionId, archived, read, createdAt, dedupKey, organizationId',
+      pvs: 'id, householdId, projectId, type, createdAt, organizationId',
+      ai_learning_logs: '++id, query, userId, role, timestamp, organizationId, projectId',
+      audit_logs: 'id, userId, action, timestamp, organizationId, projectId',
+      missions: 'id, projectId, organizationId, orderNumber, startDate, endDate',
+      inventory: 'id, projectId, organizationId, category, name',
+      expenses: 'id, projectId, organizationId, category, date',
+      organizations: 'id, slug, name',
+      users: 'id, organizationId, email, role',
+      projects: 'id, organizationId, name, status, version, syncStatus, dirty',
+      zones: 'id, projectId, organizationId, name, version',
+      households: 'id, projectId, zoneId, organizationId, status, version',
+      grappes: 'id, projectId, organizationId, region',
+      teams: 'id, organizationId, projectId, name, type, specialty',
+      sync_logs: '++id, timestamp, action, organizationId',
+      app_security: 'key, updatedAt, organizationId',
+      syncOutbox: '++id, status, timestamp, organizationId',
+      favorites: '++id, projectId, householdId, createdAt, organizationId',
+      map_tiles: 'url, timestamp, zoom',
+      projectAssignments: '++id, projectId, userId, role, assignedAt, organizationId',
+    });
+
+    // Version 18 — Compound index [type+read] for notification badge queries
+    this.version(18).stores({
+      syncQueue: 'id, entityType, operation, entityId, tenantId, status, createdAt',
+      user_feedback: '++id, query, userId, role, rating, timestamp, organizationId, projectId',
+      notifications: 'id, [type+read], projectId, missionId, archived, createdAt, dedupKey, organizationId',
       pvs: 'id, householdId, projectId, type, createdAt, organizationId',
       ai_learning_logs: '++id, query, userId, role, timestamp, organizationId, projectId',
       audit_logs: 'id, userId, action, timestamp, organizationId, projectId',

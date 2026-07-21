@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import prisma from '../../core/utils/prisma.js';
 import logger from '../../utils/logger.js';
 import { socketService } from '../../services/socket.service.js';
@@ -6,9 +7,9 @@ function getOrgId(req) {
   return req.user?.organizationId;
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════════════
 // Carto Regions, Grappes and Lots Management
-// ═══════════════════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════════════
 
 /**
  * Récupère toutes les régions pour une organisation.
@@ -20,7 +21,7 @@ export async function getRegions(req, res) {
 
     const regions = await prisma.cartoRegion.findMany({
       where: { organizationId, active: true },
-      orderBy: { name: 'asc' }
+      orderBy: { name: 'asc' },
     });
 
     res.json(regions);
@@ -43,12 +44,12 @@ export async function upsertRegion(req, res) {
     if (id) {
       const region = await prisma.cartoRegion.update({
         where: { id },
-        data: { name, code, description, active: active !== undefined ? active : true }
+        data: { name, code, description, active: active !== undefined ? active : true },
       });
       res.json(region);
     } else {
       const region = await prisma.cartoRegion.create({
-        data: { organizationId, name, code, description, active: true }
+        data: { organizationId, name, code, description, active: true },
       });
       res.json(region);
     }
@@ -73,10 +74,18 @@ export async function getGrappes(req, res) {
     const grappes = await prisma.cartoGrappe.findMany({
       where,
       include: { region: true },
-      orderBy: [{ region: { name: 'asc' } }, { grappeNumber: 'asc' }]
+      orderBy: [{ region: { name: 'asc' } }, { grappeNumber: 'asc' }],
     });
 
-    res.json(grappes);
+    const mapped = grappes.map((g) => ({
+      region: g.region?.name || 'Unknown',
+      key: g.grappeKey,
+      label: `Grappe ${g.grappeNumber}`,
+      households: g.menageCount,
+      villages: 0,
+    }));
+
+    res.json({ grappes: mapped });
   } catch (err) {
     logger.error('getGrappes error:', err);
     res.status(500).json({ error: 'Failed to fetch grappes' });
@@ -96,12 +105,18 @@ export async function upsertGrappe(req, res) {
     if (id) {
       const grappe = await prisma.cartoGrappe.update({
         where: { id },
-        data: { regionId, grappeNumber, grappeKey, menageCount, active: active !== undefined ? active : true }
+        data: {
+          regionId,
+          grappeNumber,
+          grappeKey,
+          menageCount,
+          active: active !== undefined ? active : true,
+        },
       });
       res.json(grappe);
     } else {
       const grappe = await prisma.cartoGrappe.create({
-        data: { organizationId, regionId, grappeNumber, grappeKey, menageCount: menageCount || 0, active: true }
+        data: { organizationId, regionId, grappeNumber, grappeKey, menageCount, active: true },
       });
       res.json(grappe);
     }
@@ -112,7 +127,7 @@ export async function upsertGrappe(req, res) {
 }
 
 /**
- * Récupère tous les lots pour une organisation.
+ * Récupère toutes les lots pour une organisation.
  */
 export async function getLots(req, res) {
   try {
@@ -121,10 +136,31 @@ export async function getLots(req, res) {
 
     const lots = await prisma.cartoLot.findMany({
       where: { organizationId, active: true },
-      orderBy: { lotKey: 'asc' }
+      orderBy: { lotKey: 'asc' },
     });
 
-    res.json(lots);
+    // Count grappes per lot
+    const grappes = await prisma.cartoGrappe.findMany({
+      where: { organizationId, active: true },
+    });
+    const grappesCountByLot = {};
+    for (const g of grappes) {
+      for (const lotKey of ['A', 'B', 'C']) {
+        if (g.grappeKey?.includes(lotKey)) {
+          grappesCountByLot[lotKey] = (grappesCountByLot[lotKey] || 0) + 1;
+        }
+      }
+    }
+
+    const mapped = lots.map((l) => ({
+      key: l.lotKey,
+      title: l.title,
+      description: l.description || '',
+      active: l.active,
+      grappesCount: grappesCountByLot[l.lotKey] || 0,
+    }));
+
+    res.json({ lots: mapped });
   } catch (err) {
     logger.error('getLots error:', err);
     res.status(500).json({ error: 'Failed to fetch lots' });
@@ -144,12 +180,12 @@ export async function upsertLot(req, res) {
     if (id) {
       const lot = await prisma.cartoLot.update({
         where: { id },
-        data: { lotKey, title, description, active: active !== undefined ? active : true }
+        data: { lotKey, title, description, active: active !== undefined ? active : true },
       });
       res.json(lot);
     } else {
       const lot = await prisma.cartoLot.create({
-        data: { organizationId, lotKey, title, description, active: true }
+        data: { organizationId, lotKey, title, description, active: true },
       });
       res.json(lot);
     }
@@ -160,51 +196,129 @@ export async function upsertLot(req, res) {
 }
 
 /**
- * Initialise les données par défaut (régions, lots) pour une organisation.
+ * Initialise les données par défaut pour une organisation.
  */
 export async function initializeDefaultData(req, res) {
   try {
     const organizationId = getOrgId(req);
     if (!organizationId) return res.status(400).json({ error: 'organizationId required' });
 
-    // Créer les lots par défaut si n'existent pas
+    // Default lots
     const defaultLots = [
-      { lotKey: 'A', title: 'Lot A - Pré-câblage et Kits de Distribution Intérieure', description: 'Production et installation de kits d\'installation intérieure' },
-      { lotKey: 'B', title: 'Lot B - Installation Intérieure', description: 'Génie civil, installation intérieure et kits secondaires' },
-      { lotKey: 'C', title: 'Lot C - Branchement', description: 'Tirage câble et branchements' }
+      {
+        lotKey: 'A',
+        title: 'Lot A — Pré-câblage',
+        description: 'Pré-câblage & coffrets',
+        active: true,
+      },
+      {
+        lotKey: 'B',
+        title: 'Lot B — Installation intérieure',
+        description: 'Installation intérieure',
+        active: true,
+      },
+      {
+        lotKey: 'C',
+        title: 'Lot C — Raccordement',
+        description: 'Raccordement abonnés',
+        active: true,
+      },
     ];
 
-    for (const lot of defaultLots) {
-      await prisma.cartoLot.upsert({
-        where: { organizationId_lotKey: { organizationId, lotKey: lot.lotKey } },
-        update: lot,
-        create: { organizationId, ...lot }
-      });
-    }
+    // Default regions
+    const defaultRegions = [
+      { name: 'Kaffrine', code: 'KAF', organizationId, active: true },
+      { name: 'Tambacounda', code: 'TAM', organizationId, active: true },
+    ];
 
-    // Récupérer les régions à partir des ménages si disponibles
-    const households = await prisma.household.findMany({
+    // Default grappes
+    const defaultGrappes = [
+      { regionId: '00000000-0000-0000-0000-000000000001', grappeNumber: 1, grappeKey: 'KAF_G001', menageCount: 9, active: true },
+      { regionId: '00000000-0000-0000-0000-000000000001', grappeNumber: 2, grappeKey: 'KAF_G002', menageCount: 14, active: true },
+      { regionId: '00000000-0000-0000-0000-000000000001', grappeNumber: 3, grappeKey: 'KAF_G003', menageCount: 5, active: true },
+      { regionId: '00000000-0000-0000-0000-000000000001', grappeNumber: 4, grappeKey: 'KAF_G004', menageCount: 17, active: true },
+      { regionId: '00000000-0000-0000-0000-000000000001', grappeNumber: 5, grappeKey: 'KAF_G005', menageCount: 4, active: true },
+      { regionId: '00000000-0000-0000-0000-000000000002', grappeNumber: 1, grappeKey: 'TAM_G001', menageCount: 8, active: true },
+      { regionId: '00000000-0000-0000-0000-000000000002', grappeNumber: 2, grappeKey: 'TAM_G002', menageCount: 7, active: true },
+      { regionId: '00000000-0000-0000-0000-000000000002', grappeNumber: 3, grappeKey: 'TAM_G003', menageCount: 11, active: true },
+    ];
+
+    // Default entrepreneurs (empty for now)
+    const defaultEntrepreneurs = [];
+
+    // Default settings
+    const defaultSettings = {
+      organizationId,
+      bareme: {},
+      lotLabels: {},
+      featureToggles: {},
+    };
+
+    // Upsert regions
+    const regionPromises = defaultRegions.map((r) =>
+      prisma.cartoRegion.upsert({
+        where: { organizationId_code: { organizationId, code: r.code } },
+        create: r,
+        update: r,
+      })
+    );
+
+    // Upsert lots
+    const lotPromises = defaultLots.map((l) =>
+      prisma.cartoLot.upsert({
+        where: { organizationId_lotKey: { organizationId, lotKey: l.lotKey } },
+        create: { ...l, organizationId },
+        update: l,
+      })
+    );
+
+    // Upsert grappes
+    const grappePromises = defaultGrappes.map((g) =>
+      prisma.cartoGrappe.upsert({
+        where: { organizationId_grappeKey: { organizationId, grappeKey: g.grappeKey } },
+        create: { ...g, organizationId },
+        update: g,
+      })
+    );
+
+    // Upsert entrepreneurs
+    const entrepreneurPromises = defaultEntrepreneurs.map((e) =>
+      prisma.cartoEntrepreneur.upsert({
+        where: {
+          organizationId_lot_grappeKey_entreprise: {
+            organizationId,
+            lot: e.lot,
+            grappeKey: e.grappeKey,
+            entreprise: e.entreprise || '',
+          },
+        },
+        create: { ...e, organizationId },
+        update: e,
+      })
+    );
+
+    // Upsert settings
+    await prisma.cartoSettings.upsert({
       where: { organizationId },
-      select: { region: true }
+      create: defaultSettings,
+      update: defaultSettings,
     });
 
-    const uniqueRegions = [...new Set(households.map(h => h.region).filter(Boolean))];
+    await Promise.all([
+      ...regionPromises,
+      ...lotPromises,
+      ...grappePromises,
+      ...entrepreneurPromises,
+    ]);
 
-    // Créer les régions détectées
-    for (const regionName of uniqueRegions) {
-      const code = regionName.toUpperCase().replace(/\s+/g, '_');
-      await prisma.cartoRegion.upsert({
-        where: { organizationId_code: { organizationId, code } },
-        update: { name: regionName, active: true },
-        create: { organizationId, name: regionName, code, active: true }
-      });
-    }
-
-    res.json({ 
-      message: 'Default data initialized',
-      lots: defaultLots.length,
-      regions: uniqueRegions.length
+    // Count unique regions from households
+    const householdRegions = await prisma.household.findMany({
+      where: { organizationId },
+      select: { region: true },
     });
+    const distinctRegions = [...new Set(householdRegions.map((h) => h.region))];
+
+    res.json({ success: true, message: 'Default data initialized', lots: defaultLots.length, regions: distinctRegions.length });
   } catch (err) {
     logger.error('initializeDefaultData error:', err);
     res.status(500).json({ error: 'Failed to initialize default data' });
@@ -212,216 +326,97 @@ export async function initializeDefaultData(req, res) {
 }
 
 /**
- * Récupère les statistiques du tableau de bord depuis PostgreSQL.
+ * Récupère les statistiques du tableau de bord.
  */
 export async function getDashboardStats(req, res) {
   try {
     const organizationId = getOrgId(req);
     if (!organizationId) return res.status(400).json({ error: 'organizationId required' });
 
-    // Récupérer toutes les régions actives
     const regions = await prisma.cartoRegion.findMany({
       where: { organizationId, active: true },
-      orderBy: { name: 'asc' }
+      orderBy: { name: 'asc' },
     });
 
-    // Récupérer toutes les grappes actives
     const grappes = await prisma.cartoGrappe.findMany({
       where: { organizationId, active: true },
-      include: { region: true }
+      orderBy: [{ region: { name: 'asc' } }, { grappeNumber: 'asc' }],
     });
 
-    // Récupérer tous les lots actifs
     const lots = await prisma.cartoLot.findMany({
       where: { organizationId, active: true },
-      orderBy: { lotKey: 'asc' }
+      orderBy: { lotKey: 'asc' },
     });
 
-    // Récupérer tous les entrepreneurs
     const entrepreneurs = await prisma.cartoEntrepreneur.findMany({
-      where: { organizationId }
+      where: { organizationId },
     });
 
-    // Calculer les statistiques avec prise en compte de tous les lots
+    // Compute stats
+    const totalGrappes = grappes.length;
+    const totalRegions = regions.length;
+    const totalLots = lots.length;
+    const assignedGrappes = grappes.filter((g) => g.menageCount > 0).length;
+    const unassignedGrappes = grappes.filter((g) => g.menageCount === 0).length;
+    const globalAssignments = grappes.filter((g) => g.menageCount > 0 && g.active).length;
+    const groupAssignments = grappes.filter(
+      (g) => g.menageCount > 0 && g.active && g.grappeNumber > 0
+    ).length;
+    const individualAssignments = grappes.filter(
+      (g) => g.menageCount > 0 && g.active && g.grappeNumber === 0
+    ).length;
+
+    // Lot stats
+    const lotStats = {};
+    for (const lot of lots) {
+      const key = lot.lotKey;
+      const grappesInLot = grappes.filter((g) => g.grappeKey?.includes(key) && g.active);
+      lotStats[key] = {
+        total: grappesInLot.length,
+        assigned: grappesInLot.filter((g) => g.menageCount > 0).length,
+      };
+    }
+
+    // Region stats
+    const regionStats = {};
+    for (const region of regions) {
+      const grappesInRegion = grappes.filter((g) => g.regionId === region.id && g.active);
+      regionStats[region.name] = {
+        total: grappesInRegion.length,
+        assigned: grappesInRegion.filter((g) => g.menageCount > 0).length,
+      };
+    }
+
+    // Prestataire usage
+    const prestataireUsage = {};
+    for (const prestataire of entrepreneurs) {
+      const key = `${prestataire.lot}_${prestataire.grappeKey || 'none'}`;
+      prestataireUsage[key] = (prestataireUsage[key] || 0) + 1;
+    }
+
     const stats = {
-      totalGrappes: grappes.length,
-      totalRegions: regions.length,
-      totalLots: lots.length,
-      assignedGrappes: 0,
-      unassignedGrappes: 0,
-      globalAssignments: 0,
-      groupAssignments: 0,
-      individualAssignments: 0,
-      lotStats: {},
-      regionStats: {},
-      prestataireUsage: {}
+      totalGrappes,
+      totalRegions,
+      totalLots,
+      assignedGrappes,
+      unassignedGrappes,
+      globalAssignments,
+      groupAssignments,
+      individualAssignments,
+      lotStats,
+      regionStats,
+      prestataireUsage,
     };
-
-    // Pour chaque lot, calculer les assignations
-    lots.forEach(lot => {
-      const lotEntrepreneurs = entrepreneurs.filter(e => e.lot === lot.lotKey);
-      const globalAssignment = lotEntrepreneurs.find(e => e.mode === 'global');
-      const groupAssignments = lotEntrepreneurs.filter(e => e.mode === 'groupe');
-      const individualAssignments = lotEntrepreneurs.filter(e => e.mode === 'individuel');
-
-      let assigned = 0;
-      let global = 0;
-      let group = 0;
-      let individual = 0;
-
-      if (globalAssignment) {
-        global = grappes.length;
-        assigned = grappes.length;
-      } else {
-        group = groupAssignments.reduce((sum, e) => {
-          const grappe = grappes.find(g => g.grappeKey === e.grappeKey);
-          return sum + (grappe ? 1 : 0);
-        }, 0);
-
-        individual = individualAssignments.reduce((sum, e) => {
-          const grappe = grappes.find(g => g.grappeKey === e.grappeKey);
-          return sum + (grappe ? 1 : 0);
-        }, 0);
-
-        assigned = group + individual;
-      }
-
-      stats.lotStats[lot.lotKey] = {
-        total: grappes.length,
-        assigned,
-        global,
-        group,
-        individual
-      };
-
-      // Pour les statistiques globales, prendre le maximum assigné parmi tous les lots
-      if (assigned > stats.assignedGrappes) {
-        stats.assignedGrappes = assigned;
-      }
-      if (global > stats.globalAssignments) {
-        stats.globalAssignments = global;
-      }
-      if (group > stats.groupAssignments) {
-        stats.groupAssignments = group;
-      }
-      if (individual > stats.individualAssignments) {
-        stats.individualAssignments = individual;
-      }
-    });
-
-    stats.unassignedGrappes = stats.totalGrappes - stats.assignedGrappes;
-
-    // Calculer les statistiques par région en prenant en compte tous les lots
-    regions.forEach(region => {
-      const regionGrappes = grappes.filter(g => g.regionId === region.id);
-      let maxAssignedInRegion = 0;
-
-      // Pour chaque lot, calculer les assignations dans cette région
-      lots.forEach(lot => {
-        const lotEntrepreneurs = entrepreneurs.filter(e => e.lot === lot.lotKey);
-        const globalAssignment = lotEntrepreneurs.find(e => e.mode === 'global');
-        const groupAssignments = lotEntrepreneurs.filter(e => e.mode === 'groupe');
-        const individualAssignments = lotEntrepreneurs.filter(e => e.mode === 'individuel');
-
-        let assignedInRegion = 0;
-
-        if (globalAssignment) {
-          assignedInRegion = regionGrappes.length;
-        } else {
-          groupAssignments.forEach(e => {
-            const grappe = grappes.find(g => g.grappeKey === e.grappeKey);
-            if (grappe && grappe.regionId === region.id) {
-              assignedInRegion += 1;
-            }
-          });
-          
-          assignedInRegion += individualAssignments.filter(e => {
-            const grappe = grappes.find(g => g.grappeKey === e.grappeKey);
-            return grappe && grappe.regionId === region.id;
-          }).length;
-        }
-
-        // Garder le maximum d'assignations pour cette région
-        if (assignedInRegion > maxAssignedInRegion) {
-          maxAssignedInRegion = assignedInRegion;
-        }
-      });
-
-      stats.regionStats[region.code] = {
-        total: regionGrappes.length,
-        assigned: maxAssignedInRegion
-      };
-    });
-
-    // Calculer l'utilisation des prestataires pour tous les lots avec détails complets
-    const prestataireMap = {};
-    const prestataireDetails = {}; // Pour stocker les détails complets
-    
-    entrepreneurs.forEach(e => {
-      const key = e.entreprise || 'Unknown';
-      if (!prestataireMap[key]) {
-        prestataireMap[key] = 0;
-        prestataireDetails[key] = [];
-      }
-
-      if (e.mode === 'global') {
-        prestataireMap[key] += grappes.length;
-        // Ajouter toutes les grappes avec détails
-        grappes.forEach(g => {
-          prestataireDetails[key].push({
-            lot: e.lot,
-            grappeKey: g.grappeKey,
-            region: g.region?.name || '',
-            menageCount: g.menageCount,
-            mode: 'global'
-          });
-        });
-      } else if (e.mode === 'groupe') {
-        const grappe = grappes.find(g => g.grappeKey === e.grappeKey);
-        if (grappe) {
-          prestataireMap[key] += 1;
-          prestataireDetails[key].push({
-            lot: e.lot,
-            grappeKey: grappe.grappeKey,
-            region: grappe.region?.name || '',
-            menageCount: grappe.menageCount,
-            mode: 'groupe'
-          });
-        }
-      } else {
-        const grappe = grappes.find(g => g.grappeKey === e.grappeKey);
-        if (grappe) {
-          prestataireMap[key] += 1;
-          prestataireDetails[key].push({
-            lot: e.lot,
-            grappeKey: grappe.grappeKey,
-            region: grappe.region?.name || '',
-            menageCount: grappe.menageCount,
-            mode: 'individuel'
-          });
-        }
-      }
-    });
-
-    stats.prestataireUsage = prestataireMap;
-    stats.prestataireDetails = prestataireDetails; // Ajouter les détails complets
 
     res.json(stats);
   } catch (err) {
     logger.error('getDashboardStats error:', err);
-    res.status(500).json({ error: 'Failed to fetch dashboard stats' });
+    res.status(500).json({ error: 'Failed to compute dashboard stats' });
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// Household Entries (suivi par ménage/lot)
-// ═══════════════════════════════════════════════════════════════════════════════
-
 /**
- * Récupère toutes les entrées ménages pour une organisation.
- * @param {import('express').Request} req
- * @param {import('express').Response} res
- * @returns {Promise<void>}
+ * Récupère toutes les entrées de ménage.
  */
 export async function getHouseholdEntries(req, res) {
   try {
@@ -430,31 +425,29 @@ export async function getHouseholdEntries(req, res) {
 
     const entries = await prisma.cartoHouseholdEntry.findMany({
       where: { organizationId },
+      orderBy: { householdOrdre: 'asc' },
     });
 
-    const map = {};
+    const result = {};
     for (const e of entries) {
-      map[e.householdOrdre] = {
-        A: { status: e.lotAStatus, justif: e.lotAJustif, updatedAt: e.lotAUpdatedAt?.toISOString() || null },
-        B: { status: e.lotBStatus, justif: e.lotBJustif, updatedAt: e.lotBUpdatedAt?.toISOString() || null },
-        C: { status: e.lotCStatus, justif: e.lotCJustif, updatedAt: e.lotCUpdatedAt?.toISOString() || null },
+      result[e.householdOrdre] = {
+        A: { status: e.lotAStatus, justif: e.lotAJustif, updatedAt: e.lotAUpdatedAt },
+        B: { status: e.lotBStatus, justif: e.lotBJustif, updatedAt: e.lotBUpdatedAt },
+        C: { status: e.lotCStatus, justif: e.lotCJustif, updatedAt: e.lotCUpdatedAt },
         conforme: e.conforme,
         obs: e.obs,
       };
     }
-    res.json(map);
+
+    res.json(result);
   } catch (err) {
     logger.error('getHouseholdEntries error:', err);
-    res.status(500).json({ error: 'Failed to fetch entries' });
+    res.status(500).json({ error: 'Failed to fetch household entries' });
   }
 }
 
 /**
- * Crée ou met à jour une entrée ménage (statut d'un lot A/B/C et conformité).
- * Crée également une entrée d'historique si le statut d'un lot change.
- * @param {import('express').Request} req
- * @param {import('express').Response} res
- * @returns {Promise<void>}
+ * Sauvegarde une entrée de ménage.
  */
 export async function upsertHouseholdEntry(req, res) {
   try {
@@ -462,125 +455,153 @@ export async function upsertHouseholdEntry(req, res) {
     if (!organizationId) return res.status(400).json({ error: 'organizationId required' });
 
     const { householdOrdre, lot, status, justif, conforme, obs } = req.body;
-    if (!householdOrdre) return res.status(400).json({ error: 'householdOrdre required' });
-
-    const now = new Date();
-    const data = {
-      organizationId,
-      householdOrdre: Number(householdOrdre),
-    };
-
-    if (lot && status !== undefined) {
-      if (lot === 'A') { data.lotAStatus = status; data.lotAJustif = justif || ''; data.lotAUpdatedAt = now; }
-      else if (lot === 'B') { data.lotBStatus = status; data.lotBJustif = justif || ''; data.lotBUpdatedAt = now; }
-      else if (lot === 'C') { data.lotCStatus = status; data.lotCJustif = justif || ''; data.lotCUpdatedAt = now; }
+    if (!householdOrdre || !lot) {
+      return res.status(400).json({ error: 'householdOrdre and lot required' });
     }
 
-    if (conforme !== undefined) data.conforme = conforme;
-    if (obs !== undefined) data.obs = obs;
+    const ordre = parseInt(householdOrdre, 10);
+    const lotStatusField = `lot${lot}Status`;
+    const lotJustifField = `lot${lot}Justif`;
+    const lotUpdatedAtField = `lot${lot}UpdatedAt`;
+    const now = new Date();
 
-    const entry = await prisma.cartoHouseholdEntry.upsert({
-      where: { organizationId_householdOrdre: { organizationId, householdOrdre: Number(householdOrdre) } },
-      update: data,
-      create: data,
+    await prisma.cartoHouseholdEntry.upsert({
+      where: {
+        organizationId_householdOrdre: { organizationId, householdOrdre: ordre },
+      },
+      create: {
+        organizationId,
+        householdOrdre: ordre,
+        [lotStatusField]: status,
+        [lotJustifField]: justif || '',
+        [lotUpdatedAtField]: now,
+        conforme: conforme || false,
+        obs: obs || '',
+      },
+      update: {
+        [lotStatusField]: status,
+        [lotJustifField]: justif || '',
+        [lotUpdatedAtField]: now,
+      },
     });
 
-    // Log to history (only when lot status changes)
-    if (lot && status !== undefined) {
-      await prisma.cartoHistory.create({
-        data: {
-          organizationId,
-          householdOrdre: Number(householdOrdre),
-          nom: req.body.nom || '',
-          village: req.body.village || '',
-          region: req.body.region || '',
-          lot,
-          fromStatus: req.body.fromStatus || '',
-          toStatus: status,
-          justif: justif || '',
-          userName: req.user?.name || 'system',
-        },
-      });
-    }
+    await prisma.cartoHistory.create({
+      data: {
+        organizationId,
+        householdOrdre: ordre,
+        nom: '',
+        village: '',
+        region: '',
+        lot,
+        fromStatus: '',
+        toStatus: status,
+        justif: justif || '',
+        userName: req.user?.name || '',
+      },
+    });
 
-    if (organizationId) socketService.emit('carto:updated', { type: 'entries', householdOrdre: Number(householdOrdre) }, 'org_' + organizationId);
-    res.json({ ok: true, entry });
+    socketService.emit('carto:updated', { type: 'entries', householdOrdre: ordre }, `org_${organizationId}`);
+
+    res.json({ ok: true });
   } catch (err) {
     logger.error('upsertHouseholdEntry error:', err);
-    res.status(500).json({ error: 'Failed to update entry' });
+    res.status(500).json({ error: 'Failed to update household entry' });
   }
 }
 
 /**
- * Met à jour en masse plusieurs entrées ménages dans une transaction.
- * @param {import('express').Request} req
- * @param {import('express').Response} res
- * @returns {Promise<void>}
+ * Bulk upsert household entries.
  */
 export async function bulkUpsertEntries(req, res) {
   try {
     const organizationId = getOrgId(req);
     if (!organizationId) return res.status(400).json({ error: 'organizationId required' });
 
-    const { entries } = req.body;
-    if (!Array.isArray(entries)) return res.status(400).json({ error: 'entries array required' });
+    const entries = req.body.entries;
+    if (!entries || !Array.isArray(entries)) {
+      return res.status(400).json({ error: 'entries array required' });
+    }
 
     const now = new Date();
-    const operations = entries.map(e => {
-      const data = {
-        organizationId,
-        householdOrdre: Number(e.householdOrdre),
-      };
-      if (e.lotA) { data.lotAStatus = e.lotA.status; data.lotAJustif = e.lotA.justif || ''; data.lotAUpdatedAt = now; }
-      if (e.lotB) { data.lotBStatus = e.lotB.status; data.lotBJustif = e.lotB.justif || ''; data.lotBUpdatedAt = now; }
-      if (e.lotC) { data.lotCStatus = e.lotC.status; data.lotCJustif = e.lotC.justif || ''; data.lotCUpdatedAt = now; }
-      if (e.conforme !== undefined) data.conforme = e.conforme;
-      if (e.obs !== undefined) data.obs = e.obs;
+    const operations = entries.map((entry) => {
+      const { householdOrdre, lotA, lotB, lotC, conforme, obs } = entry;
+      const ordre = parseInt(householdOrdre, 10);
+
+      let lotLetter, status, justif;
+      if (lotA) { lotLetter = 'A'; status = lotA.status; justif = lotA.justif; }
+      else if (lotB) { lotLetter = 'B'; status = lotB.status; justif = lotB.justif; }
+      else if (lotC) { lotLetter = 'C'; status = lotC.status; justif = lotC.justif; }
+
+      const lotStatusField = `lot${lotLetter}Status`;
+      const lotJustifField = `lot${lotLetter}Justif`;
+      const lotUpdatedAtField = `lot${lotLetter}UpdatedAt`;
 
       return prisma.cartoHouseholdEntry.upsert({
-        where: { organizationId_householdOrdre: { organizationId, householdOrdre: Number(e.householdOrdre) } },
-        update: data,
-        create: data,
+        where: {
+          organizationId_householdOrdre: { organizationId, householdOrdre: ordre },
+        },
+        create: {
+          organizationId,
+          householdOrdre: ordre,
+          [lotStatusField]: status,
+          [lotJustifField]: justif || '',
+          [lotUpdatedAtField]: now,
+          conforme: conforme || false,
+          obs: obs || '',
+        },
+        update: {
+          [lotStatusField]: status,
+          [lotJustifField]: justif || '',
+          [lotUpdatedAtField]: now,
+        },
       });
     });
 
-    await prisma.$transaction(operations);
-    if (organizationId) socketService.emit('carto:updated', { type: 'entries', count: entries.length }, 'org_' + organizationId);
-    res.json({ ok: true, count: entries.length });
+    const results = await Promise.all(operations);
+    socketService.emit('carto:updated', { type: 'entries', count: results.length }, `org_${organizationId}`);
+    res.json({ count: results.length, ok: true });
   } catch (err) {
     logger.error('bulkUpsertEntries error:', err);
-    res.status(500).json({ error: 'Failed to bulk update entries' });
+    res.status(500).json({ error: 'Failed to bulk upsert entries' });
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// Entrepreneurs
-// ═══════════════════════════════════════════════════════════════════════════════
-
 /**
- * Récupère la liste des entrepreneurs pour une organisation, filtrée par lot optionnel.
- * @param {import('express').Request} req
- * @param {import('express').Response} res
- * @returns {Promise<void>}
+ * Récupère les entrepreneurs.
  */
 export async function getEntrepreneurs(req, res) {
   try {
     const organizationId = getOrgId(req);
     if (!organizationId) return res.status(400).json({ error: 'organizationId required' });
 
-    const { lot } = req.query;
-    const where = { organizationId };
-    if (lot) where.lot = lot;
+    const lot = req.query.lot;
+    const where = lot ? { organizationId, lot } : { organizationId };
+    const entrepreneurs = await prisma.cartoEntrepreneur.findMany({
+      where,
+    });
 
-    const entrepreneurs = await prisma.cartoEntrepreneur.findMany({ where });
-    
-    // Map __global back to null for frontend compatibility
-    const mappedEntrepreneurs = entrepreneurs.map(e => ({
-      ...e,
-      grappeKey: e.grappeKey === '__global' ? null : e.grappeKey,
-    }));
-    
-    res.json(mappedEntrepreneurs);
+    // Build a map of grappeKey -> region name for region lookup
+    const grappes = await prisma.cartoGrappe.findMany({
+      where: { organizationId },
+      include: { region: true },
+    });
+    const grappeRegionMap = {};
+    for (const g of grappes) {
+      grappeRegionMap[g.grappeKey] = g.region?.name || '';
+    }
+
+    // Transform to assignments format for frontend
+    const assignments = entrepreneurs
+      .filter((e) => e.lot)
+      .map((e) => ({
+        grappeKey: e.grappeKey || '',
+        region: grappeRegionMap[e.grappeKey] || '',
+        lotKey: e.lot,
+        mode: e.mode || 'groupe',
+        prestataire: e.entreprise || '',
+      }));
+
+    res.json({ assignments });
   } catch (err) {
     logger.error('getEntrepreneurs error:', err);
     res.status(500).json({ error: 'Failed to fetch entrepreneurs' });
@@ -588,42 +609,49 @@ export async function getEntrepreneurs(req, res) {
 }
 
 /**
- * Crée ou met à jour un entrepreneur (individuel ou lié à une grappe).
- * @param {import('express').Request} req
- * @param {import('express').Response} res
- * @returns {Promise<void>}
+ * Sauvegarde un entrepreneur.
  */
 export async function upsertEntrepreneur(req, res) {
   try {
     const organizationId = getOrgId(req);
     if (!organizationId) return res.status(400).json({ error: 'organizationId required' });
 
-    const { lot, grappeKey, mode, groupId, entreprise, societe, telephone, email, adresse } = req.body;
-    if (!lot) return res.status(400).json({ error: 'lot required' });
+    const { lot, grappeKey, mode, groupId, entreprise, societe, telephone, email, adresse } =
+      req.body;
 
-    // Use special key for global mode to avoid null issues with unique constraint
-    const effectiveGrappeKey = (mode === 'global' || !grappeKey) ? '__global' : grappeKey;
+    if (!organizationId || !lot) {
+      return res.status(400).json({ error: 'organizationId and lot required' });
+    }
 
+    const effectiveGrappeKey = grappeKey || (groupId ? groupId : null);
     const data = {
       organizationId,
       lot,
       grappeKey: effectiveGrappeKey,
-      mode: mode || 'individuel',
-      groupId: groupId || null,
-      entreprise: entreprise || '',
-      societe: societe || '',
-      telephone: telephone || '',
-      email: email || '',
-      adresse: adresse || '',
+      mode,
+      groupId,
+      entreprise,
+      societe,
+      telephone,
+      email,
+      adresse,
     };
 
     const entrepreneur = await prisma.cartoEntrepreneur.upsert({
-      where: { organizationId_lot_grappeKey: { organizationId, lot, grappeKey: effectiveGrappeKey } },
-      update: data,
+      where: {
+        organizationId_lot_grappeKey_entreprise: {
+          organizationId,
+          lot,
+          grappeKey: effectiveGrappeKey,
+          entreprise: entreprise || '',
+        },
+      },
       create: data,
+      update: data,
     });
 
-    if (organizationId) socketService.emit('carto:updated', { type: 'entrepreneur', id: entrepreneur?.id, lot }, 'org_' + organizationId);
+    socketService.emit('carto:updated', { type: 'entrepreneur', id: entrepreneur.id, lot }, `org_${organizationId}`);
+
     res.json(entrepreneur);
   } catch (err) {
     logger.error('upsertEntrepreneur error:', err);
@@ -632,20 +660,24 @@ export async function upsertEntrepreneur(req, res) {
 }
 
 /**
- * Supprime un entrepreneur par son ID.
- * @param {import('express').Request} req
- * @param {import('express').Response} res
- * @returns {Promise<void>}
+ * Supprime un entrepreneur.
  */
 export async function deleteEntrepreneur(req, res) {
   try {
     const organizationId = getOrgId(req);
-    const { id } = req.params;
+    if (!organizationId) return res.status(400).json({ error: 'organizationId required' });
+
+    const id = req.params.id;
+    if (!id) {
+      return res.status(400).json({ error: 'entrepreneur id required' });
+    }
 
     await prisma.cartoEntrepreneur.deleteMany({
       where: { organizationId, id },
     });
-    if (organizationId) socketService.emit('carto:updated', { type: 'entrepreneur', id, deleted: true }, 'org_' + organizationId);
+
+    socketService.emit('carto:updated', { type: 'entrepreneur', id, deleted: true }, `org_${organizationId}`);
+
     res.json({ ok: true });
   } catch (err) {
     logger.error('deleteEntrepreneur error:', err);
@@ -653,75 +685,67 @@ export async function deleteEntrepreneur(req, res) {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// Village Overrides
-// ═══════════════════════════════════════════════════════════════════════════════
-
 /**
- * Récupère la map des surcharges de numéros de grappes par village.
- * @param {import('express').Request} req
- * @param {import('express').Response} res
- * @returns {Promise<void>}
+ * Récupère les overrides de villages.
  */
 export async function getVillageOverrides(req, res) {
   try {
     const organizationId = getOrgId(req);
+    if (!organizationId) return res.status(400).json({ error: 'organizationId required' });
+
     const overrides = await prisma.cartoVillageOverride.findMany({
       where: { organizationId },
     });
-    const map = {};
-    for (const o of overrides) map[o.villageKey] = o.grappeNumber;
-    res.json(map);
+
+    res.json(Object.fromEntries(overrides.map(o => [o.villageKey, o.grappeNumber])));
   } catch (err) {
     logger.error('getVillageOverrides error:', err);
-    res.status(500).json({ error: 'Failed to fetch overrides' });
+    res.status(500).json({ error: 'Failed to fetch village overrides' });
   }
 }
 
 /**
- * Définit ou met à jour la surcharge du numéro de grappe pour un village.
- * @param {import('express').Request} req
- * @param {import('express').Response} res
- * @returns {Promise<void>}
+ * Définit un override de village.
  */
 export async function setVillageOverride(req, res) {
   try {
     const organizationId = getOrgId(req);
+    if (!organizationId) return res.status(400).json({ error: 'organizationId required' });
+
     const { villageKey, grappeNumber } = req.body;
+    if (!villageKey || !grappeNumber) {
+      return res.status(400).json({ error: 'villageKey and grappeNumber required' });
+    }
 
     const override = await prisma.cartoVillageOverride.upsert({
       where: { organizationId_villageKey: { organizationId, villageKey } },
-      update: { grappeNumber },
       create: { organizationId, villageKey, grappeNumber },
+      update: { grappeNumber },
     });
-    if (organizationId) socketService.emit('carto:updated', { type: 'villageOverride', villageKey, grappeNumber }, 'org_' + organizationId);
+
+    socketService.emit('carto:updated', { type: 'villageOverride', villageKey, grappeNumber }, `org_${organizationId}`);
+
     res.json(override);
   } catch (err) {
     logger.error('setVillageOverride error:', err);
-    res.status(500).json({ error: 'Failed to set override' });
+    res.status(500).json({ error: 'Failed to set village override' });
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// History
-// ═══════════════════════════════════════════════════════════════════════════════
-
 /**
- * Récupère l'historique des changements de statuts.
- * @param {import('express').Request} req
- * @param {import('express').Response} res
- * @returns {Promise<void>}
+ * Récupère l'historique.
  */
 export async function getHistory(req, res) {
   try {
     const organizationId = getOrgId(req);
-    const { limit = 500 } = req.query;
+    if (!organizationId) return res.status(400).json({ error: 'organizationId required' });
 
     const history = await prisma.cartoHistory.findMany({
       where: { organizationId },
       orderBy: { createdAt: 'desc' },
-      take: Number(limit),
+      take: 100,
     });
+
     res.json(history);
   } catch (err) {
     logger.error('getHistory error:', err);
@@ -730,16 +754,15 @@ export async function getHistory(req, res) {
 }
 
 /**
- * Vide tout l'historique des changements pour l'organisation courante.
- * @param {import('express').Request} req
- * @param {import('express').Response} res
- * @returns {Promise<void>}
+ * Efface l'historique.
  */
 export async function clearHistory(req, res) {
   try {
     const organizationId = getOrgId(req);
+    if (!organizationId) return res.status(400).json({ error: 'organizationId required' });
+
     await prisma.cartoHistory.deleteMany({ where: { organizationId } });
-    if (organizationId) socketService.emit('carto:updated', { type: 'history', cleared: true }, 'org_' + organizationId);
+    socketService.emit('carto:updated', { type: 'history', cleared: true }, `org_${organizationId}`);
     res.json({ ok: true });
   } catch (err) {
     logger.error('clearHistory error:', err);
@@ -747,141 +770,568 @@ export async function clearHistory(req, res) {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// Settings
-// ═══════════════════════════════════════════════════════════════════════════════
-
 /**
- * Récupère les paramètres carto pour l'organisation (crée des paramètres par défaut si absents).
- * @param {import('express').Request} req
- * @param {import('express').Response} res
- * @returns {Promise<void>}
+ * Récupère les paramètres de planning.
  */
-export async function getSettings(req, res) {
+export async function getPlanningParams(req, res) {
   try {
     const organizationId = getOrgId(req);
-    let settings = await prisma.cartoSettings.findUnique({ where: { organizationId } });
-    if (!settings) {
-      settings = await prisma.cartoSettings.create({ data: { organizationId } });
-    }
-    res.json(settings);
-  } catch (err) {
-    logger.error('getSettings error:', err);
-    res.status(500).json({ error: 'Failed to fetch settings' });
-  }
-}
+    if (!organizationId) return res.status(400).json({ error: 'organizationId required' });
 
-/**
- * Met à jour les paramètres carto pour l'organisation.
- * @param {import('express').Request} req
- * @param {import('express').Response} res
- * @returns {Promise<void>}
- */
-export async function updateSettings(req, res) {
-  try {
-    const organizationId = getOrgId(req);
-    const data = req.body;
-
-    const settings = await prisma.cartoSettings.upsert({
+    const params = await prisma.cartoPlanningParams.findUnique({
       where: { organizationId },
-      update: data,
-      create: { organizationId, ...data },
     });
-    if (organizationId) socketService.emit('carto:updated', { type: 'settings' }, 'org_' + organizationId);
-    res.json(settings);
+
+    res.json(params?.params || {});
   } catch (err) {
-    logger.error('updateSettings error:', err);
-    res.status(500).json({ error: 'Failed to update settings' });
+    logger.error('getPlanningParams error:', err);
+    res.status(500).json({ error: 'Failed to fetch planning params' });
+  }
+}
+
+/**
+ * Met à jour les paramètres de planning.
+ */
+export async function updatePlanningParams(req, res) {
+  try {
+    const organizationId = getOrgId(req);
+    if (!organizationId) return res.status(400).json({ error: 'organizationId required' });
+
+    const params = req.body;
+    await prisma.cartoPlanningParams.upsert({
+      where: { organizationId },
+      create: params,
+      update: params,
+    });
+
+    res.json({ ok: true });
+  } catch (err) {
+    logger.error('updatePlanningParams error:', err);
+    res.status(500).json({ error: 'Failed to update planning params' });
+  }
+}
+
+/**
+ * Récupère le Gantt.
+ */
+export async function getGantt(req, res) {
+  try {
+    const organizationId = getOrgId(req);
+    if (!organizationId) return res.status(400).json({ error: 'organizationId required' });
+
+    const entries = await prisma.cartoGantt.findMany({
+      where: { organizationId },
+    });
+
+    res.json(entries);
+  } catch (err) {
+    logger.error('getGantt error:', err);
+    res.status(500).json({ error: 'Failed to fetch Gantt' });
+  }
+}
+
+/**
+ * Met à jour le Gantt.
+ */
+export async function upsertGantt(req, res) {
+  try {
+    const organizationId = getOrgId(req);
+    if (!organizationId) return res.status(400).json({ error: 'organizationId required' });
+
+    const { grappeKey, phase, startDate, endDate, status } = req.body;
+    if (!grappeKey || !phase || !startDate) {
+      return res.status(400).json({ error: 'grappeKey, phase and startDate required' });
+    }
+
+    const entry = await prisma.cartoGantt.upsert({
+      where: { organizationId_grappeKey_phase: { organizationId, grappeKey, phase } },
+      create: { organizationId, grappeKey, phase, startDate, endDate, status },
+      update: { endDate, status },
+    });
+
+    res.json(entry);
+  } catch (err) {
+    logger.error('upsertGantt error:', err);
+    res.status(500).json({ error: 'Failed to update Gantt' });
+  }
+}
+
+/**
+ * Récupère les fiches.
+ */
+export async function getFiches(req, res) {
+  try {
+    const organizationId = getOrgId(req);
+    if (!organizationId) return res.status(400).json({ error: 'organizationId required' });
+
+    const ficheKey = req.query.ficheKey;
+    const where = ficheKey ? { key: ficheKey } : {};
+
+    const fiches = await prisma.cartoFiche.findMany({
+      where,
+      orderBy: { entryIndex: 'asc' },
+    });
+
+    res.json(fiches);
+  } catch (err) {
+    logger.error('getFiches error:', err);
+    res.status(500).json({ error: 'Failed to fetch fiches' });
+  }
+}
+
+/**
+ * Ajoute une entrée de fiche.
+ */
+export async function addFicheEntry(req, res) {
+  try {
+    const organizationId = getOrgId(req);
+    if (!organizationId) return res.status(400).json({ error: 'organizationId required' });
+
+    const { ficheKey, data } = req.body;
+    if (!ficheKey || !data) {
+      return res.status(400).json({ error: 'ficheKey and data required' });
+    }
+
+    const count = await prisma.cartoFiche.count({ where: { key: ficheKey } });
+    const entryIndex = count;
+
+    const entry = await prisma.cartoFiche.create({
+      data: {
+        key: ficheKey,
+        entryIndex,
+        data,
+        author: req.user?.name || 'system',
+      },
+    });
+
+    res.json(entry);
+  } catch (err) {
+    logger.error('addFicheEntry error:', err);
+    res.status(500).json({ error: 'Failed to add fiche entry' });
+  }
+}
+
+/**
+ * Supprime une entrée de fiche.
+ */
+export async function deleteFicheEntry(req, res) {
+  try {
+    const organizationId = getOrgId(req);
+    if (!organizationId) return res.status(400).json({ error: 'organizationId required' });
+
+    const id = req.params.id;
+    if (!id) {
+      return res.status(400).json({ error: 'fiche entry id required' });
+    }
+
+    const entry = await prisma.cartoFiche.findUnique({ where: { id } });
+    if (!entry || entry.organizationId !== organizationId) {
+      return res.status(404).json({ error: 'Not found' });
+    }
+    await prisma.cartoFiche.delete({ where: { id } });
+    res.json({ success: true, ok: true });
+  } catch (err) {
+    logger.error('deleteFicheEntry error:', err);
+    res.status(500).json({ error: 'Failed to delete fiche entry' });
+  }
+}
+
+/**
+ * Récupère les photos.
+ */
+export async function getPhoto(req, res) {
+  try {
+    const organizationId = getOrgId(req);
+    if (!organizationId) return res.status(400).json({ error: 'organizationId required' });
+
+    const householdOrdre = req.query.householdOrdre;
+    const lot = req.query.lot;
+    if (!householdOrdre || !lot) {
+      return res.status(400).json({ error: 'householdOrdre and lot required' });
+    }
+
+    const photo = await prisma.cartoPhoto.findUnique({
+      where: { organizationId_householdOrdre_lot: { organizationId, householdOrdre, lot } },
+    });
+
+    res.json(photo || {});
+  } catch (err) {
+    logger.error('getPhoto error:', err);
+    res.status(500).json({ error: 'Failed to fetch photo' });
+  }
+}
+
+/**
+ * Sauvegarde une photo.
+ */
+export async function savePhoto(req, res) {
+  try {
+    const organizationId = getOrgId(req);
+    if (!organizationId) return res.status(400).json({ error: 'organizationId required' });
+
+    const householdOrdre = req.body.householdOrdre;
+    const lot = req.body.lot;
+    const data = req.body.data;
+    if (!householdOrdre || !lot || !data) {
+      return res.status(400).json({ error: 'householdOrdre, lot and data required' });
+    }
+
+    await prisma.cartoPhoto.upsert({
+      where: { organizationId_householdOrdre_lot: { organizationId, householdOrdre, lot } },
+      create: { organizationId, householdOrdre, lot, data, userName: req.user?.name || 'system' },
+      update: { data, userName: req.user?.name || 'system' },
+    });
+
+    res.json({ success: true });
+  } catch (err) {
+    logger.error('savePhoto error:', err);
+    res.status(500).json({ error: 'Failed to save photo' });
+  }
+}
+
+/**
+ * Récupère les modèles de contrats.
+ */
+export async function getContractTemplates(req, res) {
+  try {
+    const organizationId = getOrgId(req);
+    if (!organizationId) return res.status(400).json({ error: 'organizationId required' });
+
+    const templates = await prisma.cartoContractTemplate.findMany({
+      where: { organizationId },
+    });
+
+    res.json(Object.fromEntries(templates.map(t => [t.lot, t.htmlContent])));
+  } catch (err) {
+    logger.error('getContractTemplates error:', err);
+    res.status(500).json({ error: 'Failed to fetch contract templates' });
+  }
+}
+
+/**
+ * Sauvegarde un modèle de contrat.
+ */
+export async function saveContractTemplate(req, res) {
+  try {
+    const organizationId = getOrgId(req);
+    if (!organizationId) return res.status(400).json({ error: 'organizationId required' });
+
+    const { lot, htmlContent } = req.body;
+    if (!lot || !htmlContent) {
+      return res.status(400).json({ error: 'lot and htmlContent required' });
+    }
+
+    await prisma.cartoContractTemplate.upsert({
+      where: { organizationId_lot: { organizationId, lot } },
+      create: { organizationId, lot, htmlContent },
+      update: { htmlContent },
+    });
+
+    res.json({ success: true });
+  } catch (err) {
+    logger.error('saveContractTemplate error:', err);
+    res.status(500).json({ error: 'Failed to save contract template' });
+  }
+}
+
+/**
+ * Récupère les villages.
+ */
+/**
+ * Récupère les villages (agrégés depuis les ménages unifiés).
+ */
+export async function getVillages(req, res) {
+  try {
+    const organizationId = getOrgId(req);
+    if (!organizationId) return res.status(400).json({ error: 'organizationId required' });
+
+    const villages = await prisma.$queryRaw(
+      Prisma.sql`SELECT region, village, COUNT(*) as n, AVG(latitude) as lat, AVG(longitude) as lon FROM "Household" WHERE "organizationId" = ${organizationId} AND village IS NOT NULL GROUP BY region, village`
+    );
+
+    res.json(villages);
+  } catch (err) {
+    logger.error('getVillages error:', err);
+    res.status(500).json({ error: 'Failed to fetch villages' });
+  }
+}
+
+/**
+ * Récupère les ménages.
+ */
+export async function getMenages(req, res) {
+  try {
+    const organizationId = getOrgId(req);
+    if (!organizationId) return res.status(400).json({ error: 'organizationId required' });
+
+    const menages = await prisma.$queryRaw(
+      Prisma.sql`SELECT numeroordre as ordre, name as nom, phone as tel, village, departement as commune, region FROM "Household" WHERE "organizationId" = ${organizationId}`
+    );
+
+    res.json(menages);
+  } catch (err) {
+    logger.error('getMenages error:', err);
+    res.status(500).json({ error: 'Failed to fetch menages' });
+  }
+}
+
+/**
+ * Récupère les données GPS.
+ */
+export async function getGps(req, res) {
+  try {
+    const organizationId = getOrgId(req);
+    if (!organizationId) return res.status(400).json({ error: 'organizationId required' });
+
+    const gps = await prisma.$queryRaw(
+      Prisma.sql`SELECT numeroordre as ordre, latitude as lat, longitude as lon, 5 as accuracy FROM "Household" WHERE "organizationId" = ${organizationId} AND latitude IS NOT NULL`
+    );
+
+    res.json(gps);
+  } catch (err) {
+    logger.error('getGps error:', err);
+    res.status(500).json({ error: 'Failed to fetch GPS data' });
+  }
+}
+
+/**
+ * Récupère les prestataires.
+ */
+export async function getPrestataires(req, res) {
+  try {
+    const organizationId = getOrgId(req);
+    if (!organizationId) return res.status(400).json({ error: 'organizationId required' });
+
+    const prestataires = await prisma.$queryRaw(
+      Prisma.sql`SELECT id, nom, entreprise, societe, telephone, email, adresse, lot, region FROM "Prestataire" WHERE "organizationId" = ${organizationId}`
+    );
+
+    res.json(prestataires);
+  } catch (err) {
+    logger.error('getPrestataires error:', err);
+    res.status(500).json({ error: 'Failed to fetch prestataires' });
+  }
+}
+
+/**
+ * Met à jour les prestataires en masse.
+ */
+export async function upsertPrestataires(req, res) {
+  try {
+    const organizationId = getOrgId(req);
+    if (!organizationId) return res.status(400).json({ error: 'organizationId required' });
+
+    const prestataires = req.body.prestataires;
+    if (!prestataires || !Array.isArray(prestataires)) {
+      return res.status(400).json({ error: 'prestataires array required' });
+    }
+
+    if (prestataires.length > 0) {
+      for (const p of prestataires) {
+        await prisma.$executeRaw(
+          Prisma.sql`INSERT INTO "Prestataire" (nom, entreprise, societe, telephone, email, adresse, lot, region, "organizationId") VALUES (${p.nom || ''}, ${p.entreprise || ''}, ${p.societe || ''}, ${p.telephone || ''}, ${p.email || ''}, ${p.adresse || ''}, ${p.lot || ''}, ${p.region || ''}, ${organizationId}) ON CONFLICT ("organizationId", nom) DO UPDATE SET entreprise = EXCLUDED.entreprise, societe = EXCLUDED.societe, telephone = EXCLUDED.telephone, email = EXCLUDED.email, adresse = EXCLUDED.adresse, lot = EXCLUDED.lot, region = EXCLUDED.region`
+        );
+      }
+    }
+
+    res.json({ total: prestataires.length, ok: true });
+  } catch (err) {
+    logger.error('upsertPrestataires error:', err);
+    res.status(500).json({ error: 'Failed to upsert prestataires' });
+  }
+}
+
+/**
+ * Met à jour un prestataire.
+ */
+export async function updatePrestataire(req, res) {
+  try {
+    const organizationId = getOrgId(req);
+    if (!organizationId) return res.status(400).json({ error: 'organizationId required' });
+
+    const id = req.params.id;
+    const { nom, entreprise, societe, telephone, email, adresse, lot, region } = req.body;
+    if (!id) {
+      return res.status(400).json({ error: 'prestataire id required' });
+    }
+
+    const result = await prisma.prestataire.update({
+      where: { id },
+      data: {
+        nom,
+        entreprise,
+        societe,
+        telephone,
+        email,
+        adresse,
+        lot,
+        region,
+      },
+    });
+
+    res.json(result);
+  } catch (err) {
+    logger.error('updatePrestataire error:', err);
+    res.status(500).json({ error: 'Failed to update prestataire' });
+  }
+}
+
+/**
+ * Supprime un prestataire.
+ */
+export async function deletePrestataire(req, res) {
+  try {
+    const organizationId = getOrgId(req);
+    if (!organizationId) return res.status(400).json({ error: 'organizationId required' });
+
+    const id = req.params.id;
+    if (!id) {
+      return res.status(400).json({ error: 'prestataire id required' });
+    }
+
+    await prisma.prestataire.delete({ where: { id } });
+    res.json({ success: true });
+  } catch (err) {
+    logger.error('deletePrestataire error:', err);
+    res.status(500).json({ error: 'Failed to delete prestataire' });
+  }
+}
+
+/**
+ * Récupère la configuration des alertes.
+ */
+export async function getAlertsConfig(req, res) {
+  try {
+    const organizationId = getOrgId(req);
+    if (!organizationId) return res.status(400).json({ error: 'organizationId required' });
+
+    let config = await prisma.cartoAlerts.findUnique({
+      where: { organizationId },
+    });
+
+    if (!config) {
+      config = {
+        organizationId,
+        delayDays: 7,
+        enabled: true,
+        dismissed: false,
+      };
+      await prisma.cartoAlerts.create({ data: config });
+    }
+
+    res.json(config);
+  } catch (err) {
+    logger.error('getAlertsConfig error:', err);
+    res.status(500).json({ error: 'Failed to fetch alerts config' });
+  }
+}
+
+/**
+ * Met à jour la configuration des alertes.
+ */
+export async function updateAlertsConfig(req, res) {
+  try {
+    const organizationId = getOrgId(req);
+    if (!organizationId) return res.status(400).json({ error: 'organizationId required' });
+
+    const { delayDays, enabled, dismissed } = req.body;
+    if (delayDays === undefined && enabled === undefined && dismissed === undefined) {
+      return res.status(400).json({ error: 'At least one config field required' });
+    }
+
+    await prisma.cartoAlerts.upsert({
+      where: { organizationId },
+      create: {
+        organizationId,
+        delayDays: delayDays ?? 7,
+        enabled: enabled ?? true,
+        dismissed: dismissed ?? false,
+      },
+      update: {
+        delayDays: delayDays,
+        enabled: enabled,
+        dismissed: dismissed,
+      },
+    });
+
+    socketService.emit('carto:updated', { type: 'alertsConfig' }, `org_${organizationId}`);
+
+    res.json({ success: true });
+  } catch (err) {
+    logger.error('updateAlertsConfig error:', err);
+    res.status(500).json({ error: 'Failed to update alerts config' });
   }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// Workflow (approbation)
+// Secondary Features - Stub Implementations (return empty/default responses)
+// These are kept for API compatibility but not yet fully migrated to unified DB
 // ═══════════════════════════════════════════════════════════════════════════════
 
-/**
- * Récupère la file d'attente des workflows (soumissions en attente d'approbation).
- * @param {import('express').Request} req
- * @param {import('express').Response} res
- * @returns {Promise<void>}
- */
+/** Workflow queue - returns pending workflows */
 export async function getWorkflowQueue(req, res) {
   try {
     const organizationId = getOrgId(req);
-    const queue = await prisma.cartoWorkflow.findMany({
+    if (!organizationId) return res.status(400).json({ error: 'organizationId required' });
+    const workflows = await prisma.cartoWorkflow.findMany({
       where: { organizationId },
       orderBy: { createdAt: 'desc' },
     });
-    res.json(queue);
+    res.json(workflows);
   } catch (err) {
     logger.error('getWorkflowQueue error:', err);
-    res.status(500).json({ error: 'Failed to fetch workflow' });
+    res.status(500).json({ error: 'Failed to fetch workflow queue' });
   }
 }
 
-/**
- * Soumet un nouveau workflow d'approbation.
- * @param {import('express').Request} req
- * @param {import('express').Response} res
- * @returns {Promise<void>}
- */
+/** Submit workflow - creates a new workflow entry */
 export async function submitWorkflow(req, res) {
   try {
     const organizationId = getOrgId(req);
+    if (!organizationId) return res.status(400).json({ error: 'organizationId required' });
     const { householdOrdre, nom, village, region, grappe, statuts } = req.body;
-
-    const entry = await prisma.cartoWorkflow.create({
+    const workflow = await prisma.cartoWorkflow.create({
       data: {
         organizationId,
-        householdOrdre,
-        nom, village, region, grappe,
-        submittedBy: req.user?.name || 'system',
+        householdOrdre: parseInt(householdOrdre, 10) || 0,
+        nom: nom || '',
+        village: village || '',
+        region: region || '',
+        grappe: parseInt(grappe, 10) || 0,
+        submittedBy: req.user?.id || req.user?.email || 'system',
+        status: 'pending',
         statuts: statuts || {},
       },
     });
-    if (organizationId) socketService.emit('carto:updated', { type: 'workflow', submitted: true, householdOrdre }, 'org_' + organizationId);
-    res.json(entry);
+    res.json({ success: true, id: workflow.id });
   } catch (err) {
     logger.error('submitWorkflow error:', err);
     res.status(500).json({ error: 'Failed to submit workflow' });
   }
 }
 
-/**
- * Approuve un workflow par son ID.
- * @param {import('express').Request} req
- * @param {import('express').Response} res
- * @returns {Promise<void>}
- */
+/** Approve workflow - updates workflow status */
 export async function approveWorkflow(req, res) {
   try {
     const organizationId = getOrgId(req);
-    const { id } = req.params;
-    const entry = await prisma.cartoWorkflow.update({
+    if (!organizationId) return res.status(400).json({ error: 'organizationId required' });
+    const id = req.params.id;
+    const workflow = await prisma.cartoWorkflow.update({
       where: { id },
-      data: { status: 'approved', updatedAt: new Date() },
+      data: { status: 'approved' },
     });
-    if (organizationId) socketService.emit('carto:updated', { type: 'workflow', approved: true, id }, 'org_' + organizationId);
-    res.json(entry);
+    res.json({ success: true, workflow });
   } catch (err) {
     logger.error('approveWorkflow error:', err);
     res.status(500).json({ error: 'Failed to approve workflow' });
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// Archive
-// ═══════════════════════════════════════════════════════════════════════════════
-
-/**
- * Récupère la liste des archives (snapshots de grappes).
- * @param {import('express').Request} req
- * @param {import('express').Response} res
- * @returns {Promise<void>}
- */
+/** Archives - returns list of archives */
 export async function getArchives(req, res) {
   try {
     const organizationId = getOrgId(req);
+    if (!organizationId) return res.status(400).json({ error: 'organizationId required' });
     const archives = await prisma.cartoArchive.findMany({
       where: { organizationId },
       orderBy: { createdAt: 'desc' },
@@ -893,567 +1343,113 @@ export async function getArchives(req, res) {
   }
 }
 
-/**
- * Crée une nouvelle archive (snapshot d'une grappe à un instant T).
- * @param {import('express').Request} req
- * @param {import('express').Response} res
- * @returns {Promise<void>}
- */
+/** Create archive - stores a new archive */
 export async function createArchive(req, res) {
   try {
     const organizationId = getOrgId(req);
+    if (!organizationId) return res.status(400).json({ error: 'organizationId required' });
     const { grappeKey, region, grappe, totalMenages, totalConformes, snapshot } = req.body;
-
     const archive = await prisma.cartoArchive.create({
       data: {
         organizationId,
-        grappeKey,
-        archivedBy: req.user?.name || 'system',
-        region, grappe, totalMenages, totalConformes,
-        snapshot: snapshot || [],
+        grappeKey: grappeKey || '',
+        archivedBy: req.user?.id || req.user?.email || 'system',
+        region: region || '',
+        grappe: parseInt(grappe, 10) || 0,
+        totalMenages: parseInt(totalMenages, 10) || 0,
+        totalConformes: parseInt(totalConformes, 10) || 0,
+        snapshot: snapshot || {},
       },
     });
-    if (organizationId) socketService.emit('carto:updated', { type: 'archive', grappeKey }, 'org_' + organizationId);
-    res.json(archive);
+    res.json({ success: true, id: archive.id });
   } catch (err) {
     logger.error('createArchive error:', err);
     res.status(500).json({ error: 'Failed to create archive' });
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// Stats Snapshots
-// ═══════════════════════════════════════════════════════════════════════════════
-
-/**
- * Récupère les 90 derniers snapshots de statistiques.
- * @param {import('express').Request} req
- * @param {import('express').Response} res
- * @returns {Promise<void>}
- */
+/** Stats snapshots - returns list */
 export async function getStatsSnapshots(req, res) {
   try {
     const organizationId = getOrgId(req);
+    if (!organizationId) return res.status(400).json({ error: 'organizationId required' });
     const snapshots = await prisma.cartoStatsSnapshot.findMany({
       where: { organizationId },
       orderBy: { snapshotDate: 'desc' },
-      take: 90,
     });
     res.json(snapshots);
   } catch (err) {
     logger.error('getStatsSnapshots error:', err);
-    res.status(500).json({ error: 'Failed to fetch stats' });
+    res.status(500).json({ error: 'Failed to fetch stats snapshots' });
   }
 }
 
-/**
- * Crée ou met à jour un snapshot de statistiques pour la date courante.
- * @param {import('express').Request} req
- * @param {import('express').Response} res
- * @returns {Promise<void>}
- */
+/** Create stats snapshot - upserts a snapshot */
 export async function createStatsSnapshot(req, res) {
   try {
     const organizationId = getOrgId(req);
-    const { conforme, lotA, lotB, lotC, bloques } = req.body;
-    const snapshotDate = new Date().toISOString().split('T')[0];
-
+    if (!organizationId) return res.status(400).json({ error: 'organizationId required' });
+    const { conforme, lotA, lotB, lotC, bloques, snapshotDate } = req.body;
+    const date = snapshotDate || new Date().toISOString().slice(0, 10);
     const snapshot = await prisma.cartoStatsSnapshot.upsert({
-      where: { organizationId_snapshotDate: { organizationId, snapshotDate } },
-      update: { conforme, lotA, lotB, lotC, bloques },
-      create: { organizationId, snapshotDate, conforme, lotA, lotB, lotC, bloques },
-    });
-    if (organizationId) socketService.emit('carto:updated', { type: 'statsSnapshot', snapshotDate }, 'org_' + organizationId);
-    res.json(snapshot);
-  } catch (err) {
-    logger.error('createStatsSnapshot error:', err);
-    res.status(500).json({ error: 'Failed to create snapshot' });
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// Planning Params
-// ═══════════════════════════════════════════════════════════════════════════════
-
-/**
- * Récupère les paramètres de planning pour l'organisation.
- * @param {import('express').Request} req
- * @param {import('express').Response} res
- * @returns {Promise<void>}
- */
-export async function getPlanningParams(req, res) {
-  try {
-    const organizationId = getOrgId(req);
-    const params = await prisma.cartoPlanningParams.findUnique({ where: { organizationId } });
-    res.json(params?.params || {});
-  } catch (err) {
-    logger.error('getPlanningParams error:', err);
-    res.status(500).json({ error: 'Failed to fetch planning params' });
-  }
-}
-
-/**
- * Met à jour les paramètres de planning pour l'organisation.
- * @param {import('express').Request} req
- * @param {import('express').Response} res
- * @returns {Promise<void>}
- */
-export async function updatePlanningParams(req, res) {
-  try {
-    const organizationId = getOrgId(req);
-    const { params } = req.body;
-
-    await prisma.cartoPlanningParams.upsert({
-      where: { organizationId },
-      update: { params },
-      create: { organizationId, params },
-    });
-    if (organizationId) socketService.emit('carto:updated', { type: 'planningParams' }, 'org_' + organizationId);
-    res.json({ ok: true });
-  } catch (err) {
-    logger.error('updatePlanningParams error:', err);
-    res.status(500).json({ error: 'Failed to update planning params' });
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// Gantt
-// ═══════════════════════════════════════════════════════════════════════════════
-
-/**
- * Récupère toutes les entrées du diagramme de Gantt.
- * @param {import('express').Request} req
- * @param {import('express').Response} res
- * @returns {Promise<void>}
- */
-export async function getGantt(req, res) {
-  try {
-    const organizationId = getOrgId(req);
-    const entries = await prisma.cartoGantt.findMany({ where: { organizationId } });
-    res.json(entries);
-  } catch (err) {
-    logger.error('getGantt error:', err);
-    res.status(500).json({ error: 'Failed to fetch gantt' });
-  }
-}
-
-/**
- * Crée ou met à jour une entrée du diagramme de Gantt.
- * @param {import('express').Request} req
- * @param {import('express').Response} res
- * @returns {Promise<void>}
- */
-export async function upsertGantt(req, res) {
-  try {
-    const organizationId = getOrgId(req);
-    const { grappeKey, phase, startDate, endDate, status, data } = req.body;
-
-    const entry = await prisma.cartoGantt.upsert({
-      where: { organizationId_grappeKey_phase: { organizationId, grappeKey, phase } },
-      update: { startDate, endDate, status, data },
-      create: { organizationId, grappeKey, phase, startDate, endDate, status, data },
-    });
-    if (organizationId) socketService.emit('carto:updated', { type: 'gantt', grappeKey, phase }, 'org_' + organizationId);
-    res.json(entry);
-  } catch (err) {
-    logger.error('upsertGantt error:', err);
-    res.status(500).json({ error: 'Failed to update gantt' });
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// Fiches de suivi
-// ═══════════════════════════════════════════════════════════════════════════════
-
-/**
- * Récupère les fiches de suivi, optionnellement filtrées par ficheKey.
- * @param {import('express').Request} req
- * @param {import('express').Response} res
- * @returns {Promise<void>}
- */
-export async function getFiches(req, res) {
-  try {
-    const organizationId = getOrgId(req);
-    const { ficheKey } = req.query;
-    const where = { organizationId };
-    if (ficheKey) where.ficheKey = ficheKey;
-
-    const fiches = await prisma.cartoFiche.findMany({ where, orderBy: { entryIndex: 'asc' } });
-    res.json(fiches);
-  } catch (err) {
-    logger.error('getFiches error:', err);
-    res.status(500).json({ error: 'Failed to fetch fiches' });
-  }
-}
-
-/**
- * Ajoute une entrée dans une fiche de suivi.
- * @param {import('express').Request} req
- * @param {import('express').Response} res
- * @returns {Promise<void>}
- */
-export async function addFicheEntry(req, res) {
-  try {
-    const organizationId = getOrgId(req);
-    const { ficheKey, data } = req.body;
-
-    const count = await prisma.cartoFiche.count({ where: { organizationId, ficheKey } });
-
-    const entry = await prisma.cartoFiche.create({
-      data: {
+      where: { organizationId_snapshotDate: { organizationId, snapshotDate: date } },
+      create: {
         organizationId,
-        ficheKey,
-        entryIndex: count,
-        data: data || {},
-        author: req.user?.name || 'system',
+        snapshotDate: date,
+        conforme: parseInt(conforme, 10) || 0,
+        lotA: parseInt(lotA, 10) || 0,
+        lotB: parseInt(lotB, 10) || 0,
+        lotC: parseInt(lotC, 10) || 0,
+        bloques: parseInt(bloques, 10) || 0,
+      },
+      update: {
+        conforme: parseInt(conforme, 10) || 0,
+        lotA: parseInt(lotA, 10) || 0,
+        lotB: parseInt(lotB, 10) || 0,
+        lotC: parseInt(lotC, 10) || 0,
+        bloques: parseInt(bloques, 10) || 0,
       },
     });
-    if (organizationId) socketService.emit('carto:updated', { type: 'fiche', ficheKey, entryIndex: count }, 'org_' + organizationId);
-    res.json(entry);
+    res.json({ success: true, snapshot });
   } catch (err) {
-    logger.error('addFicheEntry error:', err);
-    res.status(500).json({ error: 'Failed to add fiche entry' });
+    logger.error('createStatsSnapshot error:', err);
+    res.status(500).json({ error: 'Failed to create stats snapshot' });
   }
 }
 
-/**
- * Supprime une entrée de fiche de suivi.
- * @param {import('express').Request} req
- * @param {import('express').Response} res
- * @returns {Promise<void>}
- */
-export async function deleteFicheEntry(req, res) {
+/** Settings - returns org settings or creates default */
+export async function getSettings(req, res) {
   try {
     const organizationId = getOrgId(req);
-    const { id } = req.params;
+    if (!organizationId) return res.status(400).json({ error: 'organizationId required' });
 
-    const entry = await prisma.cartoFiche.findUnique({ where: { id } });
-    if (!entry || entry.organizationId !== organizationId) {
-      return res.status(404).json({ error: 'Entry not found' });
+    let settings = await prisma.cartoSettings.findUnique({ where: { organizationId } });
+    if (!settings) {
+      settings = await prisma.cartoSettings.create({
+        data: { organizationId, bareme: {}, lotLabels: {}, featureToggles: {} },
+      });
     }
-
-    await prisma.cartoFiche.delete({ where: { id } });
-    if (organizationId) socketService.emit('carto:updated', { type: 'fiche', ficheKey: entry.ficheKey }, 'org_' + organizationId);
-    res.json({ ok: true });
+    res.json(settings);
   } catch (err) {
-    logger.error('deleteFicheEntry error:', err);
-    res.status(500).json({ error: 'Failed to delete fiche entry' });
+    logger.error('getSettings error:', err);
+    res.status(500).json({ error: 'Failed to fetch settings' });
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// Photos
-// ═══════════════════════════════════════════════════════════════════════════════
-
-/**
- * Récupère une photo par ménage et lot.
- * @param {import('express').Request} req
- * @param {import('express').Response} res
- * @returns {Promise<void>}
- */
-export async function getPhoto(req, res) {
+export async function updateSettings(req, res) {
   try {
     const organizationId = getOrgId(req);
-    const { householdOrdre, lot } = req.query;
+    if (!organizationId) return res.status(400).json({ error: 'organizationId required' });
 
-    const photo = await prisma.cartoPhoto.findUnique({
-      where: { organizationId_householdOrdre_lot: { organizationId, householdOrdre: Number(householdOrdre), lot } },
-    });
-    res.json(photo || null);
-  } catch (err) {
-    res.json(null);
-  }
-}
-
-/**
- * Sauvegarde ou met à jour une photo pour un ménage/lot.
- * @param {import('express').Request} req
- * @param {import('express').Response} res
- * @returns {Promise<void>}
- */
-export async function savePhoto(req, res) {
-  try {
-    const organizationId = getOrgId(req);
-    const { householdOrdre, lot, data } = req.body;
-
-    const photo = await prisma.cartoPhoto.upsert({
-      where: { organizationId_householdOrdre_lot: { organizationId, householdOrdre: Number(householdOrdre), lot } },
-      update: { data, userName: req.user?.name || 'system' },
-      create: { organizationId, householdOrdre: Number(householdOrdre), lot, data, userName: req.user?.name || 'system' },
-    });
-    if (organizationId) socketService.emit('carto:updated', { type: 'photo', householdOrdre: Number(householdOrdre), lot }, 'org_' + organizationId);
-    res.json(photo);
-  } catch (err) {
-    logger.error('savePhoto error:', err);
-    res.status(500).json({ error: 'Failed to save photo' });
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// Contract Templates
-// ═══════════════════════════════════════════════════════════════════════════════
-
-/**
- * Récupère les templates de contrats (map lot → HTML).
- * @param {import('express').Request} req
- * @param {import('express').Response} res
- * @returns {Promise<void>}
- */
-export async function getContractTemplates(req, res) {
-  try {
-    const organizationId = getOrgId(req);
-    const templates = await prisma.cartoContractTemplate.findMany({ where: { organizationId } });
-    const map = {};
-    for (const t of templates) map[t.lot] = t.htmlContent;
-    res.json(map);
-  } catch (err) {
-    logger.error('getContractTemplates error:', err);
-    res.status(500).json({ error: 'Failed to fetch templates' });
-  }
-}
-
-/**
- * Sauvegarde ou met à jour un template de contrat pour un lot.
- * @param {import('express').Request} req
- * @param {import('express').Response} res
- * @returns {Promise<void>}
- */
-export async function saveContractTemplate(req, res) {
-  try {
-    const organizationId = getOrgId(req);
-    const { lot, htmlContent } = req.body;
-
-    const template = await prisma.cartoContractTemplate.upsert({
-      where: { organizationId_lot: { organizationId, lot } },
-      update: { htmlContent },
-      create: { organizationId, lot, htmlContent },
-    });
-    if (organizationId) socketService.emit('carto:updated', { type: 'contractTemplate', lot }, 'org_' + organizationId);
-    res.json(template);
-  } catch (err) {
-    logger.error('saveContractTemplate error:', err);
-    res.status(500).json({ error: 'Failed to save template' });
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// Reference Data (Villages, Menages, GPS, Prestataires)
-// ═══════════════════════════════════════════════════════════════════════════════
-
-/**
- * Récupère tous les villages (reference data).
- * @param {import('express').Request} req
- * @param {import('express').Response} res
- * @returns {Promise<void>}
- */
-export async function getVillages(req, res) {
-  try {
-    const villages = await prisma.$queryRaw`
-      SELECT region, village, n, lat, lon, defaultgrappe, x, y
-      FROM carto_villages
-      ORDER BY region, village
-    `;
-    res.json(villages);
-  } catch (err) {
-    logger.error('getVillages error:', err);
-    res.status(500).json({ error: 'Failed to fetch villages' });
-  }
-}
-
-/**
- * Récupère tous les ménages (reference data).
- * @param {import('express').Request} req
- * @param {import('express').Response} res
- * @returns {Promise<void>}
- */
-export async function getMenages(req, res) {
-  try {
-    const menages = await prisma.$queryRaw`
-      SELECT ordre, nom, tel, village, commune, region
-      FROM carto_menages
-      ORDER BY ordre
-    `;
-    res.json(menages);
-  } catch (err) {
-    logger.error('getMenages error:', err);
-    res.status(500).json({ error: 'Failed to fetch menages' });
-  }
-}
-
-/**
- * Récupère toutes les données GPS (reference data).
- * @param {import('express').Request} req
- * @param {import('express').Response} res
- * @returns {Promise<void>}
- */
-export async function getGps(req, res) {
-  try {
-    const gps = await prisma.$queryRaw`
-      SELECT ordre, lat, lon, accuracy
-      FROM carto_gps
-      ORDER BY ordre
-    `;
-    res.json(gps);
-  } catch (err) {
-    logger.error('getGps error:', err);
-    res.status(500).json({ error: 'Failed to fetch GPS data' });
-  }
-}
-
-/**
- * Récupère tous les prestataires (reference data).
- * @param {import('express').Request} req
- * @param {import('express').Response} res
- * @returns {Promise<void>}
- */
-export async function getPrestataires(req, res) {
-  try {
-      const prestataires = await prisma.$queryRaw`
-        SELECT id, nom, entreprise, societe, telephone, email, adresse, lot, region
-        FROM carto_prestataires
-        ORDER BY nom
-      `;
-    res.json(prestataires);
-  } catch (err) {
-    logger.error('getPrestataires error:', err);
-    res.status(500).json({ error: 'Failed to fetch prestataires' });
-  }
-}
-
-/**
- * Upsert multiple prestataires (import Excel/JSON).
- * @param {import('express').Request} req
- * @param {import('express').Response} res
- * @returns {Promise<void>}
- */
-export async function upsertPrestataires(req, res) {
-  try {
-    const { prestataires } = req.body;
-    if (!Array.isArray(prestataires)) {
-      return res.status(400).json({ error: 'prestataires must be an array' });
-    }
-
-    let added = 0;
-    let updated = 0;
-
-    for (const p of prestataires) {
-      if (!p.nom && !p.entreprise) continue;
-      const nom = p.nom || p.entreprise || '';
-      const result = await prisma.$executeRaw`
-        INSERT INTO carto_prestataires (nom, entreprise, societe, telephone, email, adresse, lot, region)
-        VALUES (${nom}, ${p.entreprise || nom || null}, ${p.societe || null}, ${p.telephone || null}, ${p.email || null}, ${p.adresse || null}, ${p.lot || null}, ${p.region || null})
-        ON CONFLICT (nom) DO UPDATE SET
-          entreprise = EXCLUDED.entreprise,
-          societe = EXCLUDED.societe,
-          telephone = EXCLUDED.telephone,
-          email = EXCLUDED.email,
-          adresse = EXCLUDED.adresse,
-          lot = EXCLUDED.lot,
-          region = EXCLUDED.region
-      `;
-      if (result > 0) added++;
-    }
-
-    res.json({ added, updated, total: prestataires.length });
-  } catch (err) {
-    logger.error('upsertPrestataires error:', err);
-    res.status(500).json({ error: 'Failed to upsert prestataires' });
-  }
-}
-
-/**
- * Update a single prestataire by id.
- * @param {import('express').Request} req
- * @param {import('express').Response} res
- * @returns {Promise<void>}
- */
-export async function updatePrestataire(req, res) {
-  try {
-    const { id } = req.params;
-    const { nom, entreprise, societe, telephone, email, adresse, lot, region } = req.body;
-    
-    const result = await prisma.$executeRaw`
-      UPDATE carto_prestataires
-      SET nom = ${nom || ''},
-          entreprise = ${entreprise || ''},
-          societe = ${societe || null},
-          telephone = ${telephone || null},
-          email = ${email || null},
-          adresse = ${adresse || null},
-          lot = ${lot || null},
-          region = ${region || null}
-      WHERE id = ${Number(id)}
-      RETURNING *
-    `;
-    
-    res.json({ ok: true, prestataire: result[0] });
-  } catch (err) {
-    logger.error('updatePrestataire error:', err);
-    res.status(500).json({ error: 'Failed to update prestataire' });
-  }
-}
-
-/**
- * Delete a prestataire by id.
- * @param {import('express').Request} req
- * @param {import('express').Response} res
- * @returns {Promise<void>}
- */
-export async function deletePrestataire(req, res) {
-  try {
-    const { id } = req.params;
-    await prisma.$executeRaw`DELETE FROM carto_prestataires WHERE id = ${Number(id)}`;
-    res.json({ ok: true });
-  } catch (err) {
-    logger.error('deletePrestataire error:', err);
-    res.status(500).json({ error: 'Failed to delete prestataire' });
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// Alerts Config
-// ═══════════════════════════════════════════════════════════════════════════════
-
-/**
- * Récupère la configuration des alertes (crée une config par défaut si absente).
- * @param {import('express').Request} req
- * @param {import('express').Response} res
- * @returns {Promise<void>}
- */
-export async function getAlertsConfig(req, res) {
-  try {
-    const organizationId = getOrgId(req);
-    let config = await prisma.cartoAlerts.findUnique({ where: { organizationId } });
-    if (!config) {
-      config = await prisma.cartoAlerts.create({ data: { organizationId } });
-    }
-    res.json(config);
-  } catch (err) {
-    logger.error('getAlertsConfig error:', err);
-    res.status(500).json({ error: 'Failed to fetch alerts config' });
-  }
-}
-
-/**
- * Met à jour la configuration des alertes (delayDays, enabled, dismissed).
- * @param {import('express').Request} req
- * @param {import('express').Response} res
- * @returns {Promise<void>}
- */
-export async function updateAlertsConfig(req, res) {
-  try {
-    const organizationId = getOrgId(req);
-    const { delayDays, enabled, dismissed } = req.body;
-
-    const config = await prisma.cartoAlerts.upsert({
+    const settings = await prisma.cartoSettings.upsert({
       where: { organizationId },
-      update: { delayDays, enabled, dismissed },
-      create: { organizationId, delayDays, enabled, dismissed },
+      create: { organizationId, ...req.body },
+      update: req.body,
     });
-    if (organizationId) socketService.emit('carto:updated', { type: 'alertsConfig' }, 'org_' + organizationId);
-    res.json(config);
+    socketService.emit('carto:updated', { type: 'settings' }, `org_${organizationId}`);
+    res.json(settings);
   } catch (err) {
-    logger.error('updateAlertsConfig error:', err);
-    res.status(500).json({ error: 'Failed to update alerts config' });
+    logger.error('updateSettings error:', err);
+    res.status(500).json({ error: 'Failed to update settings' });
   }
 }

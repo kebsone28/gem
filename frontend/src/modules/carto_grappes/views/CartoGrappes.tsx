@@ -1,3 +1,10 @@
+/**
+ * CartoGrappes.tsx
+ * Planning Global - PROQUELEC
+ * Main container with tab navigation for grappe cartography.
+ * Tabs: Carte (SVG bubble map), Carte GPS (terrain redirect), Bordereau, Dashboard, Planning, Fiches, Admin, Aide
+ * All data from unified DB: Household + Grappe + Prestataire tables.
+ */
 import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCartoGrappes } from '../hooks/useCartoGrappes';
@@ -11,38 +18,52 @@ import FichesView from './FichesView';
 import PlanningView from './PlanningView';
 import AdminView from './AdminView';
 import DossiersView from './DossiersView';
-import HistoryView from './HistoryView';
-import SyncView from './SyncView';
-
-import AlertsView from './AlertsView';
-import WorkflowView from './WorkflowView';
-import SettingsView from './SettingsView';
-import ComputedAlertsView from './ComputedAlertsView';
 import HelpView from './HelpView';
-import ContratView from './ContratView';
-import StatsView from './StatsView';
-import PrestatairesDB from './PrestatairesDB';
 
 const TABS: { key: TabKey; label: string; icon: string; group: number }[] = [
   { key: 'map', label: 'Carte', icon: '\u{1F5FA}', group: 1 },
   { key: 'gps', label: 'Carte GPS', icon: '\u{1F4E1}', group: 1 },
-
   { key: 'bordereau', label: 'Bordereau', icon: '\u{1F4CB}', group: 1 },
   { key: 'dashboard', label: 'Tableau de bord', icon: '\u{1F4CA}', group: 1 },
   { key: 'fiches', label: 'Fiches de suivi', icon: '\u{1F4DD}', group: 2 },
+  { key: 'planning', label: 'Planning', icon: '\u{1F3D7}', group: 2 },
   { key: 'admin', label: 'Administration', icon: '\u2699', group: 2 },
-  { key: 'prestataires' as TabKey, label: 'Prestataires', icon: '\u{1F3E2}', group: 2 },
   { key: 'dossiers', label: 'Dossiers', icon: '\u{1F4C1}', group: 2 },
-  { key: 'contrat', label: 'Contrats', icon: '\u{1F4C4}', group: 2 },
-  { key: 'stats' as TabKey, label: 'Evolution', icon: '\u{1F4C8}', group: 3 },
-  { key: 'planning', label: 'Planning', icon: '\u{1F3D7}', group: 3 },
-  { key: 'history', label: 'Historique', icon: '\u{1F4DD}', group: 3 },
-  { key: 'alerts', label: 'Alertes', icon: '\u{1F514}', group: 3 },
-  { key: 'alerts-computed', label: 'Alertes calc.', icon: '\u{1F4CA}', group: 3 },
-  { key: 'workflow', label: 'Validation', icon: '\u2705', group: 3 },
-  { key: 'sync', label: 'Sync', icon: '\u{1F4E1}', group: 3 },
-  { key: 'settings', label: 'Parametres', icon: '\u2699', group: 3 },
   { key: 'help', label: 'Aide', icon: '\u2753', group: 3 },
+];
+
+/** Context features shown on the Carte GPS tab (terrain redirect) */
+const GPS_FEATURES = [
+  {
+    icon: '\u{1F4CD}',
+    title: 'Position GPS en direct',
+    desc: 'Localisation de chaque technicien en temps reel sur la carte vectorielle MapLibre.',
+  },
+  {
+    icon: '\u{1F9ED}',
+    title: 'Itineraires et routing',
+    desc: 'Calcul de trajets vers les villages cibles avec distance et duree estimee.',
+  },
+  {
+    icon: '\u{1F512}',
+    title: 'Geofencing',
+    desc: "Delimitation de zones d'intervention avec alertes automatiques de sortie de zone.",
+  },
+  {
+    icon: '\u{1F4F8}',
+    title: 'Photos geolocalisees',
+    desc: "Capture de photos terrain horodatees et liees aux points d'intervention.",
+  },
+  {
+    icon: '\u{1F504}',
+    title: 'Sync et mode hors-ligne',
+    desc: 'Fonctionnement complet sans internet, synchronisation automatique a la reconnexion.',
+  },
+  {
+    icon: '\u{1F4CA}',
+    title: 'Donnees et statuts',
+    desc: "Mise a jour des statuts d'avancement par menage directement depuis le terrain.",
+  },
 ];
 
 const CartoGrappes: React.FC = () => {
@@ -62,8 +83,6 @@ const CartoGrappes: React.FC = () => {
     entrepreneurConfig,
     updateEntrepreneurConfig,
     syncEntrepreneursToAPI,
-    lotModes,
-    updateLotMode,
     selectedRegion,
     setSelectedRegion,
     selectedGrappe,
@@ -75,22 +94,12 @@ const CartoGrappes: React.FC = () => {
     regionSummaries,
     globalSummary,
     filteredMenages,
-    getEntrepreneur,
     history,
     loadHistory,
     prestataires,
-    updatePrestataires,
-    importPrestatairesExcel,
-    createPrestataire,
-    updatePrestataire,
-    deletePrestataire,
-    importGlobalBackup,
-    importExcelData,
-    resetAllData,
-    dashboardStats,
-    refreshDashboardStats,
-    initializeServerData,
-    serverConfig,
+    lotModes,
+    updateLotMode,
+    getEntrepreneur,
   } = useCartoGrappes();
 
   const regionGrappes = useMemo(() => regionSummaries.flatMap((r) => r.grappes), [regionSummaries]);
@@ -124,56 +133,22 @@ const CartoGrappes: React.FC = () => {
     );
   }
 
-  const features = [
-    {
-      icon: '\u{1F4CD}',
-      title: 'Position GPS en direct',
-      desc: 'Localisation de chaque technicien en temps reel sur la carte vectorielle MapLibre.',
-    },
-    {
-      icon: '\u{1F9ED}',
-      title: 'Itineraires et routing',
-      desc: 'Calcul de trajets vers les villages cibles avec distance et duree estimee.',
-    },
-    {
-      icon: '\u{1F512}',
-      title: 'Geofencing',
-      desc: "Delimitation de zones d'intervention avec alertes automatiques de sortie de zone.",
-    },
-    {
-      icon: '\u{1F4F8}',
-      title: 'Photos geolocalisees',
-      desc: "Capture de photos terrain horodatees et liees aux points d'intervention.",
-    },
-    {
-      icon: '\u{1F504}',
-      title: 'Sync et mode hors-ligne',
-      desc: 'Fonctionnement complet sans internet, synchronisation automatique a la reconnexion.',
-    },
-    {
-      icon: '\u{1F4CA}',
-      title: 'Donnees et statuts',
-      desc: "Mise a jour des statuts d'avancement par menage directement depuis le terrain.",
-    },
-  ];
-
   return (
     <ToastProvider>
       <div className="flex flex-col min-h-[calc(100vh-64px)] bg-slate-50">
+        {/* Header */}
         <header className="bg-gradient-to-r from-slate-900 via-blue-900 to-slate-900 text-white px-4 sm:px-6 py-3 flex items-center justify-between flex-wrap gap-3 shadow-lg">
           <div className="min-w-0">
             <h1 className="text-lg sm:text-xl font-bold tracking-tight truncate">
               Planning Global - PROQUELEC
             </h1>
             <p className="text-[11px] text-blue-200/80 mt-0.5 truncate">
-              PROQUELEC - Kaffrine et Tambacounda - {globalSummary.total} menages repartis en{' '}
+              Kaffrine ({menageCounts['Kaffrine'] || 0} m) et Tambacounda (
+              {menageCounts['Tambacounda'] || 0} m) - {globalSummary.total} menages repartis en{' '}
               {totalGrappes} grappes
             </p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            <label htmlFor="region-filter" className="sr-only">
-              Filtrer par region
-            </label>
             <select
               id="region-filter"
               value={selectedRegion}
@@ -192,11 +167,7 @@ const CartoGrappes: React.FC = () => {
                 </option>
               ))}
             </select>
-            <label htmlFor="search-input" className="sr-only">
-              Rechercher un menage
-            </label>
             <input
-              id="search-input"
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -206,10 +177,10 @@ const CartoGrappes: React.FC = () => {
           </div>
         </header>
 
+        {/* Tabs */}
         <nav
           className="bg-white border-b border-slate-200 px-2 sm:px-4 flex gap-0.5 overflow-x-auto shadow-sm"
           role="tablist"
-          aria-label="Onglets principaux"
         >
           {TABS.map((tab, i) => {
             const prevGroup = i > 0 ? TABS[i - 1].group : 0;
@@ -221,7 +192,6 @@ const CartoGrappes: React.FC = () => {
                 <button
                   role="tab"
                   aria-selected={activeTab === tab.key}
-                  aria-label={tab.label}
                   onClick={() => setActiveTab(tab.key)}
                   className={`flex items-center gap-1 px-3 py-3 text-[11px] font-semibold border-b-2 transition-all whitespace-nowrap min-h-[44px] min-w-[44px] justify-center ${
                     activeTab === tab.key
@@ -237,6 +207,7 @@ const CartoGrappes: React.FC = () => {
           })}
         </nav>
 
+        {/* Content */}
         <main className="flex-1 overflow-auto min-h-0" role="main">
           <div>
             {activeTab === 'map' && (
@@ -254,12 +225,12 @@ const CartoGrappes: React.FC = () => {
                 prestataires={prestataires}
               />
             )}
+
             {activeTab === 'gps' && (
               <div className="flex flex-col items-center justify-start pt-8 sm:pt-12 px-4 pb-10 bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 min-h-full">
                 <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center shadow-xl shadow-blue-500/20 mb-6">
                   <span className="text-4xl">{'\u{1F6F0}'}</span>
                 </div>
-
                 <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-800 mb-2 text-center">
                   Carte GPS Terrain
                 </h2>
@@ -268,9 +239,8 @@ const CartoGrappes: React.FC = () => {
                   <strong className="text-blue-600">Terrain</strong>, un outil dedie au suivi
                   terrain en temps reel. Cliquez ci-dessous pour y acceder.
                 </p>
-
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-w-3xl w-full mb-8">
-                  {features.map((f) => (
+                  {GPS_FEATURES.map((f) => (
                     <div
                       key={f.title}
                       className="flex items-start gap-3 p-4 bg-white rounded-xl border border-slate-200/80 shadow-sm hover:shadow-md hover:border-blue-300/50 transition-all duration-200"
@@ -283,7 +253,6 @@ const CartoGrappes: React.FC = () => {
                     </div>
                   ))}
                 </div>
-
                 <button
                   onClick={() => navigate('/operations/map')}
                   className="px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold rounded-2xl shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/30 transition-all duration-200 text-sm sm:text-base flex items-center gap-2.5"
@@ -304,7 +273,6 @@ const CartoGrappes: React.FC = () => {
                     />
                   </svg>
                 </button>
-
                 <div className="mt-6 flex flex-col items-center gap-1.5">
                   <div className="flex items-center gap-1.5 text-xs text-slate-400">
                     <svg
@@ -329,6 +297,7 @@ const CartoGrappes: React.FC = () => {
                 </div>
               </div>
             )}
+
             {activeTab === 'bordereau' && (
               <BordereauView
                 menages={filteredMenages}
@@ -345,6 +314,7 @@ const CartoGrappes: React.FC = () => {
                 gps={gps}
               />
             )}
+
             {activeTab === 'dashboard' && (
               <DashboardView
                 menages={filteredMenages}
@@ -357,8 +327,10 @@ const CartoGrappes: React.FC = () => {
                 }}
               />
             )}
+
             {activeTab === 'fiches' && <FichesView menages={filteredMenages} />}
             {activeTab === 'planning' && <PlanningView menageCounts={menageCounts} />}
+
             {activeTab === 'admin' && (
               <AdminView
                 entrepreneurConfig={entrepreneurConfig}
@@ -371,18 +343,19 @@ const CartoGrappes: React.FC = () => {
                 villages={villages}
                 gps={gps}
                 onVillageOverride={setSelectedGrappe}
-                onImportExcel={importExcelData}
-                onResetAllData={resetAllData}
+                onImportExcel={undefined as any}
+                onResetAllData={undefined as any}
                 prestataires={prestataires}
-                onPrestataireCreate={createPrestataire}
-                onPrestataireUpdate={updatePrestataire}
-                onPrestataireDelete={deletePrestataire}
-                serverDashboardStats={dashboardStats}
-                refreshDashboardStats={refreshDashboardStats}
-                initializeServerData={initializeServerData}
-                serverConfig={serverConfig}
+                onPrestataireCreate={undefined as any}
+                onPrestataireUpdate={undefined as any}
+                onPrestataireDelete={undefined as any}
+                serverDashboardStats={null}
+                refreshDashboardStats={undefined as any}
+                initializeServerData={undefined as any}
+                serverConfig={null}
               />
             )}
+
             {activeTab === 'dossiers' && (
               <DossiersView
                 menages={filteredMenages}
@@ -396,36 +369,14 @@ const CartoGrappes: React.FC = () => {
                 getEntrepreneur={getEntrepreneur}
                 villages={villages}
                 gps={gps}
-                onImportGlobalBackup={importGlobalBackup}
+                onImportGlobalBackup={undefined as any}
               />
             )}
-            {activeTab === 'history' && (
-              <HistoryView history={history} menages={menages} onRefresh={loadHistory} />
-            )}
-            {activeTab === 'alerts' && <AlertsView />}
-            {activeTab === 'alerts-computed' && (
-              <ComputedAlertsView entries={entries} menages={filteredMenages} alertConfig={null} />
-            )}
-            {activeTab === 'workflow' && <WorkflowView />}
-            {activeTab === 'sync' && <SyncView menages={menages} entries={entries} />}
-            {activeTab === 'settings' && <SettingsView />}
-            {activeTab === 'prestataires' && (
-              <PrestatairesDB
-                prestataires={prestataires}
-                onUpdate={updatePrestataires}
-                onImportExcel={importPrestatairesExcel}
-              />
-            )}
-            {activeTab === 'contrat' && (
-              <ContratView menages={menages} getEntrepreneur={getEntrepreneur} gps={gps} />
-            )}
-            {activeTab === 'stats' && <StatsView entries={entries} menages={menages} />}
+
             {activeTab === 'help' && <HelpView role="admin" />}
           </div>
-          <footer
-            role="contentinfo"
-            className="border-t border-slate-200 px-4 py-3 text-[11px] text-slate-400 text-center"
-          >
+
+          <footer className="border-t border-slate-200 px-4 py-3 text-[11px] text-slate-400 text-center">
             GED OS - Planning Global - PROQUELEC
           </footer>
         </main>

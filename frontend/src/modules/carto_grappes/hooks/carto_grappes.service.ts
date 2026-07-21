@@ -1,7 +1,5 @@
 import apiClient from '../../../api/client';
-import type {
-  LotKey, LotMode, StatusValue,
-} from '../types';
+import type { LotKey, LotMode, StatusValue } from '../types';
 
 /* ── Types for API responses ── */
 
@@ -73,24 +71,30 @@ export async function saveEntry(
   lot: LotKey,
   status: StatusValue,
   justif: string,
-  meta?: { nom?: string; village?: string; region?: string; fromStatus?: string },
+  meta?: { nom?: string; village?: string; region?: string; fromStatus?: string }
 ) {
   const { data } = await apiClient.post('/carto-grappes/entries', {
-    householdOrdre, lot, status, justif, ...meta,
+    householdOrdre,
+    lot,
+    status,
+    justif,
+    ...meta,
   });
   return data;
 }
 
 export async function saveConforme(householdOrdre: number, conforme: boolean) {
   const { data } = await apiClient.post('/carto-grappes/entries', {
-    householdOrdre, conforme,
+    householdOrdre,
+    conforme,
   });
   return data;
 }
 
 export async function saveObs(householdOrdre: number, obs: string) {
   const { data } = await apiClient.post('/carto-grappes/entries', {
-    householdOrdre, obs,
+    householdOrdre,
+    obs,
   });
   return data;
 }
@@ -104,8 +108,15 @@ export async function fetchEntrepreneurs(lot?: string): Promise<EntrepreneurAPI[
 }
 
 export async function saveEntrepreneur(payload: {
-  lot: string; grappeKey?: string; mode?: string; groupId?: string;
-  entreprise?: string; societe?: string; telephone?: string; email?: string; adresse?: string;
+  lot: string;
+  grappeKey?: string;
+  mode?: string;
+  groupId?: string;
+  entreprise?: string;
+  societe?: string;
+  telephone?: string;
+  email?: string;
+  adresse?: string;
 }) {
   const { data } = await apiClient.post('/carto-grappes/entrepreneurs', payload);
   return data;
@@ -163,8 +174,12 @@ export async function fetchWorkflowQueue() {
 }
 
 export async function submitWorkflow(payload: {
-  householdOrdre: number; nom: string; village: string;
-  region: string; grappe: string; statuts: Record<string, unknown>;
+  householdOrdre: number;
+  nom: string;
+  village: string;
+  region: string;
+  grappe: string;
+  statuts: Record<string, unknown>;
 }) {
   const { data } = await apiClient.post('/carto-grappes/workflow', payload);
   return data;
@@ -183,8 +198,12 @@ export async function fetchArchives() {
 }
 
 export async function createArchive(payload: {
-  grappeKey: string; region: string; grappe: string;
-  totalMenages: number; totalConformes: number; snapshot: unknown[];
+  grappeKey: string;
+  region: string;
+  grappe: string;
+  totalMenages: number;
+  totalConformes: number;
+  snapshot: unknown[];
 }) {
   const { data } = await apiClient.post('/carto-grappes/archives', payload);
   return data;
@@ -198,7 +217,11 @@ export async function fetchStatsSnapshots() {
 }
 
 export async function createStatsSnapshot(payload: {
-  conforme: number; lotA: number; lotB: number; lotC: number; bloques: number;
+  conforme: number;
+  lotA: number;
+  lotB: number;
+  lotC: number;
+  bloques: number;
 }) {
   const { data } = await apiClient.post('/carto-grappes/stats/snapshot', payload);
   return data;
@@ -218,18 +241,28 @@ export async function savePlanningParams(params: Record<string, unknown>) {
 
 /* ── Gantt ── */
 
-export async function fetchGantt(): Promise<Array<{
-  id: string; grappeKey: string; phase: string;
-  startDate: string | null; endDate: string | null; status: string;
-  data: Record<string, unknown> | null;
-}>> {
+export async function fetchGantt(): Promise<
+  Array<{
+    id: string;
+    grappeKey: string;
+    phase: string;
+    startDate: string | null;
+    endDate: string | null;
+    status: string;
+    data: Record<string, unknown> | null;
+  }>
+> {
   const { data } = await apiClient.get('/carto-grappes/gantt');
   return data;
 }
 
 export async function saveGantt(entry: {
-  grappeKey: string; phase: string; startDate?: string;
-  endDate?: string; status?: string; data?: Record<string, unknown>;
+  grappeKey: string;
+  phase: string;
+  startDate?: string;
+  endDate?: string;
+  status?: string;
+  data?: Record<string, unknown>;
 }) {
   const { data } = await apiClient.post('/carto-grappes/gantt', entry);
   return data;
@@ -250,7 +283,9 @@ export async function fetchPhoto(householdOrdre: number, lot: string) {
 
 export async function savePhoto(householdOrdre: number, lot: string, data_: string) {
   const { data } = await apiClient.post('/carto-grappes/photos', {
-    householdOrdre, lot, data: data_,
+    householdOrdre,
+    lot,
+    data: data_,
   });
   return data;
 }
@@ -293,7 +328,9 @@ export async function fetchAlertsConfig() {
 }
 
 export async function saveAlertsConfig(config: {
-  delayDays?: number; enabled?: boolean; dismissed?: boolean;
+  delayDays?: number;
+  enabled?: boolean;
+  dismissed?: boolean;
 }) {
   const { data } = await apiClient.put('/carto-grappes/alerts', config);
   return data;

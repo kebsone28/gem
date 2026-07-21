@@ -11,8 +11,6 @@ import {
   setVillageOverride,
   getHistory,
   clearHistory,
-  getSettings,
-  updateSettings,
   getWorkflowQueue,
   submitWorkflow,
   approveWorkflow,
@@ -48,6 +46,8 @@ import {
   upsertLot,
   initializeDefaultData,
   getDashboardStats,
+  getSettings,
+  updateSettings,
 } from './carto_grappes.controller.js';
 
 const router = Router();
@@ -82,10 +82,6 @@ router.post('/overrides', setVillageOverride);
 // History
 router.get('/history', getHistory);
 router.delete('/history', clearHistory);
-
-// Settings
-router.get('/settings', getSettings);
-router.put('/settings', updateSettings);
 
 // Workflow
 router.get('/workflow', getWorkflowQueue);
@@ -124,6 +120,10 @@ router.post('/templates', saveContractTemplate);
 // Alerts
 router.get('/alerts', getAlertsConfig);
 router.put('/alerts', updateAlertsConfig);
+
+// Settings
+router.get('/settings', getSettings);
+router.put('/settings', updateSettings);
 
 // Reference Data
 router.get('/villages', getVillages);
