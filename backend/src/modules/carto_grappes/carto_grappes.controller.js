@@ -1045,9 +1045,33 @@ export async function getVillages(req, res) {
     const organizationId = getOrgId(req);
     if (!organizationId) return res.status(400).json({ error: 'organizationId required' });
 
-    const villages = await prisma.$queryRaw(
-      Prisma.sql`SELECT region, village, COUNT(*) as n, AVG(latitude) as lat, AVG(longitude) as lon FROM "Household" WHERE "organizationId" = ${organizationId} AND village IS NOT NULL GROUP BY region, village`
-    );
+    const raw = await prisma.household.findMany({
+      where: {
+        organizationId,
+        village: { not: null },
+      },
+      select: {
+        region: true,
+        village: true,
+        latitude: true,
+        longitude: true,
+      },
+    });
+    // Aggregate by region+village
+    const map = new Map();
+    for (const h of raw) {
+      const key = `${h.region}|${h.village}`;
+      if (!map.has(key)) map.set(key, { region: h.region, village: h.village, n: 0, latSum: 0, lonSum: 0 });
+      const agg = map.get(key);
+      agg.n++;
+      if (h.latitude) agg.latSum += h.latitude;
+      if (h.longitude) agg.lonSum += h.longitude;
+    }
+    const villages = Array.from(map.values()).map(v => ({
+      region: v.region, village: v.village, n: v.n,
+      lat: v.n > 0 ? v.latSum / v.n : null,
+      lon: v.n > 0 ? v.lonSum / v.n : null,
+    }));
 
     res.json(villages);
   } catch (err) {
@@ -1064,11 +1088,28 @@ export async function getMenages(req, res) {
     const organizationId = getOrgId(req);
     if (!organizationId) return res.status(400).json({ error: 'organizationId required' });
 
-    const menages = await prisma.$queryRaw(
-      Prisma.sql`SELECT numeroordre as ordre, name as nom, phone as tel, village, departement as commune, region FROM "Household" WHERE "organizationId" = ${organizationId}`
-    );
+    const menages = await prisma.household.findMany({
+      where: { organizationId },
+      select: {
+        numeroordre: true,
+        name: true,
+        phone: true,
+        village: true,
+        departement: true,
+        region: true,
+      },
+      orderBy: { numeroordre: 'asc' },
+    });
+    const mapped = menages.map(m => ({
+      ordre: m.numeroordre,
+      nom: m.name,
+      tel: m.phone,
+      village: m.village,
+      commune: m.departement,
+      region: m.region,
+    }));
 
-    res.json(menages);
+    res.json(mapped);
   } catch (err) {
     logger.error('getMenages error:', err);
     res.status(500).json({ error: 'Failed to fetch menages' });
@@ -1083,9 +1124,23 @@ export async function getGps(req, res) {
     const organizationId = getOrgId(req);
     if (!organizationId) return res.status(400).json({ error: 'organizationId required' });
 
-    const gps = await prisma.$queryRaw(
-      Prisma.sql`SELECT numeroordre as ordre, latitude as lat, longitude as lon, 5 as accuracy FROM "Household" WHERE "organizationId" = ${organizationId} AND latitude IS NOT NULL`
-    );
+    const households = await prisma.household.findMany({
+      where: {
+        organizationId,
+        latitude: { not: null },
+      },
+      select: {
+        numeroordre: true,
+        latitude: true,
+        longitude: true,
+      },
+    });
+    const gps = households.map(h => ({
+      ordre: h.numeroordre,
+      lat: h.latitude,
+      lon: h.longitude,
+      accuracy: 5,
+    }));
 
     res.json(gps);
   } catch (err) {
@@ -1102,9 +1157,21 @@ export async function getPrestataires(req, res) {
     const organizationId = getOrgId(req);
     if (!organizationId) return res.status(400).json({ error: 'organizationId required' });
 
-    const prestataires = await prisma.$queryRaw(
-      Prisma.sql`SELECT id, nom, entreprise, societe, telephone, email, adresse, lot, region FROM "Prestataire" WHERE "organizationId" = ${organizationId}`
-    );
+    const prestataires = await prisma.prestataire.findMany({
+      where: { organizationId },
+      select: {
+        id: true,
+        nom: true,
+        entreprise: true,
+        societe: true,
+        telephone: true,
+        email: true,
+        adresse: true,
+        lot: true,
+        region: true,
+      },
+      orderBy: { nom: 'asc' },
+    });
 
     res.json(prestataires);
   } catch (err) {
@@ -1128,9 +1195,31 @@ export async function upsertPrestataires(req, res) {
 
     if (prestataires.length > 0) {
       for (const p of prestataires) {
-        await prisma.$executeRaw(
-          Prisma.sql`INSERT INTO "Prestataire" (nom, entreprise, societe, telephone, email, adresse, lot, region, "organizationId") VALUES (${p.nom || ''}, ${p.entreprise || ''}, ${p.societe || ''}, ${p.telephone || ''}, ${p.email || ''}, ${p.adresse || ''}, ${p.lot || ''}, ${p.region || ''}, ${organizationId}) ON CONFLICT ("organizationId", nom) DO UPDATE SET entreprise = EXCLUDED.entreprise, societe = EXCLUDED.societe, telephone = EXCLUDED.telephone, email = EXCLUDED.email, adresse = EXCLUDED.adresse, lot = EXCLUDED.lot, region = EXCLUDED.region`
-        );
+        await prisma.prestataire.upsert({
+          where: {
+            organizationId_nom: { organizationId, nom: p.nom || '' },
+          },
+          create: {
+            organizationId,
+            nom: p.nom || '',
+            entreprise: p.entreprise || '',
+            societe: p.societe || '',
+            telephone: p.telephone || '',
+            email: p.email || '',
+            adresse: p.adresse || '',
+            lot: p.lot || '',
+            region: p.region || '',
+          },
+          update: {
+            entreprise: p.entreprise || '',
+            societe: p.societe || '',
+            telephone: p.telephone || '',
+            email: p.email || '',
+            adresse: p.adresse || '',
+            lot: p.lot || '',
+            region: p.region || '',
+          },
+        });
       }
     }
 
